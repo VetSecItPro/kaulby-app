@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { SignedIn, SignedOut } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Bell, Zap, Shield, Globe, ArrowRight, MessageSquare, TrendingUp } from "lucide-react";
+import { AuthButtons, AuthCTA, HeroCTA } from "@/components/shared/auth-buttons";
 
 export default function HomePage() {
   return (
@@ -18,19 +18,7 @@ export default function HomePage() {
             <Link href="/pricing" className="text-sm text-muted-foreground hover:text-foreground">
               Pricing
             </Link>
-            <SignedOut>
-              <Link href="/sign-in">
-                <Button variant="ghost">Sign In</Button>
-              </Link>
-              <Link href="/sign-up">
-                <Button>Get Started</Button>
-              </Link>
-            </SignedOut>
-            <SignedIn>
-              <Link href="/dashboard">
-                <Button>Dashboard</Button>
-              </Link>
-            </SignedIn>
+            <AuthButtons />
           </nav>
         </div>
       </header>
@@ -50,25 +38,7 @@ export default function HomePage() {
             Get instant alerts when topics you care about are mentioned.
           </p>
           <div className="flex gap-4 justify-center">
-            <SignedOut>
-              <Link href="/sign-up">
-                <Button size="lg" className="gap-2">
-                  Start Free Trial <ArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
-              <Link href="/pricing">
-                <Button size="lg" variant="outline">
-                  View Pricing
-                </Button>
-              </Link>
-            </SignedOut>
-            <SignedIn>
-              <Link href="/dashboard">
-                <Button size="lg" className="gap-2">
-                  Go to Dashboard <ArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
-            </SignedIn>
+            <HeroCTA />
           </div>
         </div>
       </section>
@@ -155,20 +125,7 @@ export default function HomePage() {
           <p className="text-primary-foreground/80 mb-8 max-w-xl mx-auto">
             Join thousands of companies using Kaulby to track conversations and engage with their communities.
           </p>
-          <SignedOut>
-            <Link href="/sign-up">
-              <Button size="lg" variant="secondary" className="gap-2">
-                Get Started for Free <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
-          </SignedOut>
-          <SignedIn>
-            <Link href="/dashboard">
-              <Button size="lg" variant="secondary" className="gap-2">
-                Go to Dashboard <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
-          </SignedIn>
+          <AuthCTA />
         </div>
       </section>
 

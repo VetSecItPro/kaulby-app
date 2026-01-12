@@ -22,25 +22,36 @@ export const metadata: Metadata = {
   description: "Track discussions across Reddit, Hacker News, and online communities. AI-powered pain point detection, sentiment analysis, and natural language querying.",
 };
 
+// Check if Clerk is fully configured
+const isClerkConfigured = !!(
+  process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY &&
+  process.env.CLERK_SECRET_KEY
+);
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return (
-    <ClerkProvider>
-      <html lang="en">
-        <body
-          className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-        >
-          <PostHogProvider>
-            <PostHogPageView />
-            <PostHogIdentify />
-            {children}
-            <Toaster />
-          </PostHogProvider>
-        </body>
-      </html>
-    </ClerkProvider>
+  const content = (
+    <html lang="en">
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
+        <PostHogProvider>
+          <PostHogPageView />
+          {isClerkConfigured && <PostHogIdentify />}
+          {children}
+          <Toaster />
+        </PostHogProvider>
+      </body>
+    </html>
   );
+
+  // Only wrap with ClerkProvider if fully configured
+  if (isClerkConfigured) {
+    return <ClerkProvider>{content}</ClerkProvider>;
+  }
+
+  return content;
 }
