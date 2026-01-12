@@ -21,14 +21,15 @@ if (isClerkConfigured) {
 }
 
 // Fallback components when Clerk isn't configured
-function FallbackSignedOut({ children }: { children: React.ReactNode }) {
+const FallbackSignedOut: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return <>{children}</>;
-}
+};
 
-function FallbackSignedIn(_props: { children: React.ReactNode }) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const FallbackSignedIn: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // When not configured, don't show signed-in content
   return null;
-}
+};
 
 const SafeSignedIn = SignedIn || FallbackSignedIn;
 const SafeSignedOut = SignedOut || FallbackSignedOut;
