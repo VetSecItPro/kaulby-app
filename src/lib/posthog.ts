@@ -1,11 +1,25 @@
 import { PostHog } from "posthog-node";
 
-// Server-side PostHog client
-export const posthog = new PostHog(process.env.NEXT_PUBLIC_POSTHOG_KEY || "", {
-  host: process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://app.posthog.com",
-  flushAt: 1, // Flush immediately for serverless
-  flushInterval: 0,
-});
+// Server-side PostHog client - lazy initialized
+let posthogClient: PostHog | null = null;
+
+function getPostHog(): PostHog | null {
+  if (!posthogClient && process.env.NEXT_PUBLIC_POSTHOG_KEY) {
+    posthogClient = new PostHog(process.env.NEXT_PUBLIC_POSTHOG_KEY, {
+      host: process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://app.posthog.com",
+      flushAt: 1, // Flush immediately for serverless
+      flushInterval: 0,
+    });
+  }
+  return posthogClient;
+}
+
+// Export for backwards compatibility (may be null if key not set)
+export const posthog = {
+  capture: (params: Parameters<PostHog["capture"]>[0]) => getPostHog()?.capture(params),
+  identify: (params: Parameters<PostHog["identify"]>[0]) => getPostHog()?.identify(params),
+  shutdown: () => getPostHog()?.shutdown(),
+};
 
 // Capture server-side event
 export function captureEvent(params: {
@@ -13,7 +27,7 @@ export function captureEvent(params: {
   event: string;
   properties?: Record<string, unknown>;
 }) {
-  posthog.capture({
+  getPostHog()?.capture({
     distinctId: params.distinctId,
     event: params.event,
     properties: params.properties,
@@ -25,7 +39,7 @@ export function identifyUser(params: {
   distinctId: string;
   properties?: Record<string, unknown>;
 }) {
-  posthog.identify({
+  getPostHog()?.identify({
     distinctId: params.distinctId,
     properties: params.properties,
   });
@@ -34,6 +48,6 @@ export function identifyUser(params: {
 // Shutdown on process exit
 if (typeof process !== "undefined") {
   process.on("beforeExit", async () => {
-    await posthog.shutdown();
+    await getPostHog()?.shutdown();
   });
 }

@@ -8,11 +8,7 @@ export interface SentimentResult {
 }
 
 export async function analyzeSentiment(
-  content: string,
-  options?: {
-    userId?: string;
-    traceId?: string;
-  }
+  content: string
 ): Promise<{ result: SentimentResult; meta: { model: string; cost: number; latencyMs: number } }> {
   const { system, user } = buildAnalysisPrompt("sentimentAnalysis", content);
 
@@ -21,8 +17,6 @@ export async function analyzeSentiment(
       { role: "system", content: system },
       { role: "user", content: user },
     ],
-    userId: options?.userId,
-    traceId: options?.traceId,
   });
 
   return {

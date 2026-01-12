@@ -57,16 +57,12 @@ export function calculateCost(
 // AI completion with fallback
 export async function completion(params: {
   messages: OpenAI.ChatCompletionMessageParam[];
-  userId?: string;
-  traceId?: string;
   model?: string;
   temperature?: number;
   maxTokens?: number;
 }) {
   const {
     messages,
-    userId,
-    traceId,
     model = MODELS.primary,
     temperature = 0.7,
     maxTokens = 1024,
@@ -76,18 +72,12 @@ export async function completion(params: {
 
   try {
     // Try primary model
-    const response = await openrouter.chat.completions.create(
-      {
-        model,
-        messages,
-        temperature,
-        max_tokens: maxTokens,
-      },
-      {
-        langfuseTraceId: traceId,
-        langfuseUserId: userId,
-      }
-    );
+    const response = await openrouter.chat.completions.create({
+      model,
+      messages,
+      temperature,
+      max_tokens: maxTokens,
+    });
 
     const latencyMs = Date.now() - startTime;
     const usage = response.usage;
@@ -120,8 +110,6 @@ export async function completion(params: {
 // Structured JSON completion
 export async function jsonCompletion<T>(params: {
   messages: OpenAI.ChatCompletionMessageParam[];
-  userId?: string;
-  traceId?: string;
   model?: string;
 }): Promise<{ data: T; meta: Omit<Awaited<ReturnType<typeof completion>>, "content"> }> {
   const result = await completion({
