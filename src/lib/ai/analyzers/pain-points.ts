@@ -9,11 +9,7 @@ export interface PainPointResult {
 }
 
 export async function analyzePainPoints(
-  content: string,
-  options?: {
-    userId?: string;
-    traceId?: string;
-  }
+  content: string
 ): Promise<{ result: PainPointResult; meta: { model: string; cost: number; latencyMs: number } }> {
   const { system, user } = buildAnalysisPrompt("painPointDetection", content);
 
@@ -22,8 +18,6 @@ export async function analyzePainPoints(
       { role: "system", content: system },
       { role: "user", content: user },
     ],
-    userId: options?.userId,
-    traceId: options?.traceId,
   });
 
   return {

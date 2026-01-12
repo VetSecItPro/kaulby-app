@@ -8,11 +8,7 @@ export interface SummaryResult {
 }
 
 export async function summarizeContent(
-  content: string,
-  options?: {
-    userId?: string;
-    traceId?: string;
-  }
+  content: string
 ): Promise<{ result: SummaryResult; meta: { model: string; cost: number; latencyMs: number } }> {
   const { system, user } = buildAnalysisPrompt("summarize", content);
 
@@ -21,8 +17,6 @@ export async function summarizeContent(
       { role: "system", content: system },
       { role: "user", content: user },
     ],
-    userId: options?.userId,
-    traceId: options?.traceId,
   });
 
   return {

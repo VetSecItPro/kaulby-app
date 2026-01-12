@@ -45,17 +45,17 @@ export const analyzeContent = inngest.createFunction(
 
     // Run sentiment analysis
     const sentimentResult = await step.run("analyze-sentiment", async () => {
-      return analyzeSentiment(contentToAnalyze, { userId, traceId });
+      return analyzeSentiment(contentToAnalyze);
     });
 
     // Run pain point detection
     const painPointResult = await step.run("analyze-pain-points", async () => {
-      return analyzePainPoints(contentToAnalyze, { userId, traceId });
+      return analyzePainPoints(contentToAnalyze);
     });
 
     // Run summarization
     const summaryResult = await step.run("summarize-content", async () => {
-      return summarizeContent(contentToAnalyze, { userId, traceId });
+      return summarizeContent(contentToAnalyze);
     });
 
     // Update result with AI analysis
