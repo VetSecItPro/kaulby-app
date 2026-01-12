@@ -2,6 +2,13 @@
 
 AI-powered community monitoring SaaS. Tracks Reddit, Hacker News, Product Hunt for keywords, analyzes sentiment/pain points via AI, sends alerts.
 
+## Deployment
+
+- **Production URL**: https://kaulbyapp.com
+- **Vercel Project**: kaulby-app
+- **Vercel Project ID**: prj_PulgkWaqblpsmmTuMwG00TPIa0qJ
+- **Vercel Team ID**: team_unWh27RcjbaJx4bOQ5N7k5v0
+
 ## Tech Stack
 
 - Next.js 14 (App Router), TypeScript, Tailwind, shadcn/ui
