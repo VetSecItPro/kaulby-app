@@ -1,19 +1,47 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-const isPublicRoute = createRouteMatcher([
-  "/",
-  "/pricing",
-  "/sign-in(.*)",
-  "/sign-up(.*)",
-  "/api/webhooks(.*)",
-  "/api/inngest(.*)",
-]);
+// Lazy-loaded Clerk middleware to avoid initialization errors when not configured
+let clerkHandler: ((request: NextRequest, event: never) => Promise<Response>) | null = null;
 
-export default clerkMiddleware(async (auth, request) => {
-  if (!isPublicRoute(request)) {
-    await auth.protect();
+async function getClerkHandler() {
+  if (!clerkHandler) {
+    const { clerkMiddleware, createRouteMatcher } = await import("@clerk/nextjs/server");
+
+    const isPublicRoute = createRouteMatcher([
+      "/",
+      "/pricing",
+      "/sign-in(.*)",
+      "/sign-up(.*)",
+      "/api/webhooks(.*)",
+      "/api/inngest(.*)",
+    ]);
+
+    clerkHandler = clerkMiddleware(async (auth, request) => {
+      if (!isPublicRoute(request)) {
+        await auth.protect();
+      }
+    }) as (request: NextRequest, event: never) => Promise<Response>;
   }
-});
+  return clerkHandler;
+}
+
+// Main middleware - checks if Clerk is configured at runtime
+export default async function middleware(request: NextRequest) {
+  // Check if Clerk is configured at runtime
+  const isClerkConfigured =
+    process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY &&
+    process.env.CLERK_SECRET_KEY;
+
+  if (!isClerkConfigured) {
+    // Allow all routes when auth isn't configured
+    return NextResponse.next();
+  }
+
+  // Use Clerk middleware when configured
+  const handler = await getClerkHandler();
+  return handler(request, {} as never);
+}
 
 export const config = {
   matcher: [
