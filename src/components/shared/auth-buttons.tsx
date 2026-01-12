@@ -25,7 +25,7 @@ function FallbackSignedOut({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-function FallbackSignedIn({ children }: { children: React.ReactNode }) {
+function FallbackSignedIn(_props: { children: React.ReactNode }) {
   // When not configured, don't show signed-in content
   return null;
 }
