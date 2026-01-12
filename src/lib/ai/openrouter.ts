@@ -8,24 +8,36 @@ export const MODELS = {
   fallback: "openai/gpt-4o-mini",
 } as const;
 
-// Create OpenAI client configured for OpenRouter
-const openrouterClient = new OpenAI({
-  baseURL: "https://openrouter.ai/api/v1",
-  apiKey: process.env.OPENROUTER_API_KEY,
-  defaultHeaders: {
-    "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
-    "X-Title": "Kaulby",
-  },
-});
+// Lazy-initialized OpenRouter client to avoid build-time errors
+let _openrouter: OpenAI | ReturnType<typeof observeOpenAI> | null = null;
 
-// Wrap with Langfuse observability
-export const openrouter = observeOpenAI(openrouterClient, {
-  clientInitParams: {
-    publicKey: process.env.LANGFUSE_PUBLIC_KEY,
-    secretKey: process.env.LANGFUSE_SECRET_KEY,
-    baseUrl: process.env.LANGFUSE_HOST || "https://cloud.langfuse.com",
-  },
-});
+function getOpenRouter(): OpenAI {
+  if (!_openrouter) {
+    const openrouterClient = new OpenAI({
+      baseURL: "https://openrouter.ai/api/v1",
+      apiKey: process.env.OPENROUTER_API_KEY || "placeholder-for-build",
+      defaultHeaders: {
+        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+        "X-Title": "Kaulby",
+      },
+    });
+
+    // Only wrap with Langfuse if keys are available
+    if (process.env.LANGFUSE_PUBLIC_KEY && process.env.LANGFUSE_SECRET_KEY) {
+      _openrouter = observeOpenAI(openrouterClient, {
+        clientInitParams: {
+          publicKey: process.env.LANGFUSE_PUBLIC_KEY,
+          secretKey: process.env.LANGFUSE_SECRET_KEY,
+          baseUrl: process.env.LANGFUSE_HOST || "https://cloud.langfuse.com",
+        },
+      });
+    } else {
+      // Use client without observability during build or when keys are missing
+      _openrouter = openrouterClient;
+    }
+  }
+  return _openrouter as OpenAI;
+}
 
 // Model pricing (per 1M tokens) - for cost tracking
 export const MODEL_PRICING = {
@@ -72,7 +84,7 @@ export async function completion(params: {
 
   try {
     // Try primary model
-    const response = await openrouter.chat.completions.create({
+    const response = await getOpenRouter().chat.completions.create({
       model,
       messages,
       temperature,
@@ -142,5 +154,8 @@ export async function jsonCompletion<T>(params: {
 
 // Flush Langfuse events (call at end of request)
 export async function flushAI() {
-  await langfuse.flushAsync();
+  // Only flush if Langfuse is configured
+  if (process.env.LANGFUSE_PUBLIC_KEY && process.env.LANGFUSE_SECRET_KEY) {
+    await langfuse.flushAsync();
+  }
 }
