@@ -7,8 +7,6 @@ import {
   ExternalLink,
   Bookmark,
   BookmarkCheck,
-  Eye,
-  EyeOff,
   ChevronDown,
   Filter,
   CheckCheck
