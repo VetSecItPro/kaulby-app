@@ -6,7 +6,9 @@ import { ResultsList } from "./results-list";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { HiddenResultsBanner, RefreshDelayBanner } from "./upgrade-prompt";
 import Link from "next/link";
+import type { PlanKey } from "@/lib/stripe";
 
 interface Result {
   id: string;
@@ -26,12 +28,23 @@ interface Result {
   monitor: { name: string } | null;
 }
 
+interface PlanInfo {
+  plan: PlanKey;
+  visibleLimit: number;
+  isLimited: boolean;
+  hiddenCount: number;
+  hasUnlimitedAi: boolean;
+  refreshDelayHours: number;
+  nextRefreshAt: Date | null;
+}
+
 interface ResponsiveResultsProps {
   results: Result[];
   totalCount: number;
   page: number;
   totalPages: number;
   hasMonitors: boolean;
+  planInfo?: PlanInfo;
 }
 
 export function ResponsiveResults({
@@ -40,8 +53,14 @@ export function ResponsiveResults({
   page,
   totalPages,
   hasMonitors,
+  planInfo,
 }: ResponsiveResultsProps) {
   const { isMobile, isTablet } = useDevice();
+
+  // Filter results based on visibility limit for free tier
+  const visibleResults = planInfo?.isLimited
+    ? results.slice(0, planInfo.visibleLimit)
+    : results;
 
   if (isMobile || isTablet) {
     if (results.length === 0 && !hasMonitors) {
@@ -68,17 +87,18 @@ export function ResponsiveResults({
 
     return (
       <MobileResults
-        results={results}
+        results={visibleResults}
         totalCount={totalCount}
         page={page}
         totalPages={totalPages}
+        planInfo={planInfo}
       />
     );
   }
 
   // Desktop view
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -93,6 +113,14 @@ export function ResponsiveResults({
           </Badge>
         )}
       </div>
+
+      {/* Refresh Delay Banner (for free tier) */}
+      {planInfo && planInfo.refreshDelayHours > 0 && (
+        <RefreshDelayBanner
+          delayHours={planInfo.refreshDelayHours}
+          nextRefreshAt={planInfo.nextRefreshAt}
+        />
+      )}
 
       {/* Results List */}
       {results.length === 0 && !hasMonitors ? (
@@ -120,7 +148,18 @@ export function ResponsiveResults({
         </Card>
       ) : (
         <>
-          <ResultsList results={results} />
+          <ResultsList
+            results={visibleResults}
+            hasUnlimitedAi={planInfo?.hasUnlimitedAi ?? true}
+          />
+
+          {/* Hidden Results Banner (after visible results, before pagination) */}
+          {planInfo && planInfo.hiddenCount > 0 && (
+            <HiddenResultsBanner
+              hiddenCount={planInfo.hiddenCount}
+              totalCount={totalCount}
+            />
+          )}
 
           {/* Pagination */}
           {totalPages > 1 && (

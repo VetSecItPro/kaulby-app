@@ -23,6 +23,7 @@ import {
 import Link from "next/link";
 import { markAllResultsViewed } from "@/app/(dashboard)/dashboard/results/actions";
 import { getPlatformBadgeColor, getSentimentBadgeColor } from "@/lib/platform-utils";
+import type { PlanKey } from "@/lib/stripe";
 
 interface Result {
   id: string;
@@ -42,11 +43,22 @@ interface Result {
   monitor: { name: string } | null;
 }
 
+interface PlanInfo {
+  plan: PlanKey;
+  visibleLimit: number;
+  isLimited: boolean;
+  hiddenCount: number;
+  hasUnlimitedAi: boolean;
+  refreshDelayHours: number;
+  nextRefreshAt: Date | null;
+}
+
 interface MobileResultsProps {
   results: Result[];
   totalCount: number;
   page: number;
   totalPages: number;
+  planInfo?: PlanInfo;
 }
 
 const containerVariants = {

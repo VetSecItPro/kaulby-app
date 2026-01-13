@@ -11,8 +11,9 @@ import {
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Zap, Lock, ArrowRight, Check } from "lucide-react";
+import { Zap, Lock, ArrowRight, Check, Sparkles, Clock, Eye, Users } from "lucide-react";
 import { PLANS, PlanKey } from "@/lib/stripe";
+import type { UpgradePrompt } from "@/lib/limits";
 import Link from "next/link";
 
 interface UpgradePromptProps {
@@ -73,6 +74,103 @@ export function UpgradePromptDialog({
           </Button>
           <Button variant="ghost" onClick={onClose} className="w-full">
             Maybe later
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ============================================================================
+// CONVERSION-FOCUSED UPGRADE MODAL
+// ============================================================================
+
+interface ConversionUpgradeModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  prompt: UpgradePrompt;
+  socialProof?: {
+    proUsersCount: number;
+    mentionsTrackedThisWeek: number;
+    message: string;
+  };
+}
+
+export function ConversionUpgradeModal({
+  isOpen,
+  onClose,
+  prompt,
+  socialProof,
+}: ConversionUpgradeModalProps) {
+  const plan = PLANS[prompt.suggestedPlan];
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader className="space-y-3">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-primary to-purple-600 shadow-lg shadow-primary/25">
+            <Sparkles className="h-7 w-7 text-white" />
+          </div>
+          <DialogTitle className="text-center text-xl">{prompt.title}</DialogTitle>
+          <DialogDescription className="text-center text-base">
+            {prompt.description}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-4">
+          {/* Benefit highlight */}
+          <div className="rounded-xl bg-gradient-to-br from-primary/10 to-purple-600/10 border border-primary/20 p-4">
+            <p className="text-sm font-medium text-foreground">{prompt.benefit}</p>
+          </div>
+
+          {/* Urgency message */}
+          {prompt.urgency && (
+            <div className="flex items-start gap-3 rounded-lg bg-amber-500/10 border border-amber-500/20 p-3">
+              <Clock className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+              <p className="text-sm text-amber-700 dark:text-amber-400">{prompt.urgency}</p>
+            </div>
+          )}
+
+          {/* Plan features */}
+          <div className="rounded-lg border bg-card p-4">
+            <div className="flex items-center justify-between mb-3">
+              <span className="font-semibold">{plan.name}</span>
+              <Badge className="bg-gradient-to-r from-primary to-purple-600 text-white">
+                ${plan.price}/mo
+              </Badge>
+            </div>
+            <ul className="grid grid-cols-2 gap-2 text-sm">
+              {plan.features.slice(0, 6).map((feature, i) => (
+                <li key={i} className="flex items-center gap-2">
+                  <Check className="h-4 w-4 text-green-500 shrink-0" />
+                  <span className="text-muted-foreground">{feature}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Social proof */}
+          {socialProof && (
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <Users className="h-4 w-4" />
+              <span>{socialProof.message}</span>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter className="flex-col gap-2 sm:flex-col">
+          <Button
+            asChild
+            size="lg"
+            className="w-full bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 shadow-lg shadow-primary/25"
+          >
+            <Link href="/pricing">
+              {prompt.ctaText}
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Link>
+          </Button>
+          <Button variant="ghost" onClick={onClose} className="w-full text-muted-foreground">
+            Not now
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -190,5 +288,167 @@ export function FeatureBadge({ requiredPlan }: FeatureBadgeProps) {
       <Lock className="h-3 w-3 mr-1" />
       {PLANS[requiredPlan].name}
     </Badge>
+  );
+}
+
+// ============================================================================
+// BLURRED AI ANALYSIS TEASER
+// ============================================================================
+
+interface BlurredAiAnalysisProps {
+  aiSummary?: string;
+  sentiment?: string;
+  painPointCategory?: string;
+}
+
+export function BlurredAiAnalysis({ aiSummary, sentiment, painPointCategory }: BlurredAiAnalysisProps) {
+  // Generate fake/placeholder content if none provided
+  const displaySummary = aiSummary || "This mention discusses a common pain point about product onboarding. The author is asking for solutions to improve their workflow...";
+
+  return (
+    <div className="relative group">
+      {/* Blurred content */}
+      <div className="blur-sm select-none pointer-events-none">
+        <div className="space-y-2 p-3 bg-muted/50 rounded-lg">
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="text-xs">
+              {sentiment || "positive"}
+            </Badge>
+            {painPointCategory && (
+              <Badge variant="outline" className="text-xs">
+                {painPointCategory.replace(/_/g, " ")}
+              </Badge>
+            )}
+          </div>
+          <p className="text-sm text-muted-foreground line-clamp-2">
+            {displaySummary}
+          </p>
+        </div>
+      </div>
+
+      {/* Overlay with unlock CTA */}
+      <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-background/90 via-background/50 to-transparent rounded-lg">
+        <div className="text-center px-4">
+          <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-primary to-purple-600 mb-2 shadow-lg shadow-primary/25">
+            <Sparkles className="h-5 w-5 text-white" />
+          </div>
+          <p className="text-sm font-medium mb-1">AI Analysis Ready</p>
+          <p className="text-xs text-muted-foreground mb-3">
+            Unlock insights on every result
+          </p>
+          <Button size="sm" asChild className="bg-gradient-to-r from-primary to-purple-600">
+            <Link href="/pricing">
+              Unlock AI
+              <ArrowRight className="ml-1 h-3 w-3" />
+            </Link>
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// HIDDEN RESULTS BANNER
+// ============================================================================
+
+interface HiddenResultsBannerProps {
+  hiddenCount: number;
+  totalCount: number;
+}
+
+export function HiddenResultsBanner({ hiddenCount, totalCount }: HiddenResultsBannerProps) {
+  if (hiddenCount <= 0) return null;
+
+  return (
+    <Card className="border-dashed border-2 border-primary/30 bg-gradient-to-r from-primary/5 to-purple-600/5">
+      <CardContent className="flex items-center justify-between p-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary to-purple-600 shadow-md shadow-primary/20">
+            <Eye className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <p className="font-semibold text-sm">
+              +{hiddenCount} more results waiting
+            </p>
+            <p className="text-xs text-muted-foreground">
+              You&apos;re seeing 3 of {totalCount} mentions. Upgrade to see all.
+            </p>
+          </div>
+        </div>
+        <Button size="sm" asChild className="bg-gradient-to-r from-primary to-purple-600 shadow-md shadow-primary/20">
+          <Link href="/pricing">
+            See All Results
+            <ArrowRight className="ml-1 h-3 w-3" />
+          </Link>
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================================================
+// REFRESH DELAY BANNER
+// ============================================================================
+
+interface RefreshDelayBannerProps {
+  delayHours: number;
+  nextRefreshAt?: Date | null;
+}
+
+export function RefreshDelayBanner({ delayHours, nextRefreshAt }: RefreshDelayBannerProps) {
+  const formatTimeRemaining = () => {
+    if (!nextRefreshAt) return `${delayHours} hours`;
+    const now = new Date();
+    const diff = nextRefreshAt.getTime() - now.getTime();
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    return `${minutes} minutes`;
+  };
+
+  return (
+    <div className="flex items-center justify-between p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+      <div className="flex items-center gap-3">
+        <Clock className="h-5 w-5 text-amber-500" />
+        <div>
+          <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+            Results refresh in {formatTimeRemaining()}
+          </p>
+          <p className="text-xs text-amber-600/80 dark:text-amber-500/80">
+            Upgrade to Pro for real-time monitoring
+          </p>
+        </div>
+      </div>
+      <Button size="sm" variant="outline" asChild className="border-amber-500/50 text-amber-700 hover:bg-amber-500/10">
+        <Link href="/pricing">
+          Go Real-Time
+        </Link>
+      </Button>
+    </div>
+  );
+}
+
+// ============================================================================
+// INLINE UPGRADE CTA (for use within cards/lists)
+// ============================================================================
+
+interface InlineUpgradeCtaProps {
+  message: string;
+  ctaText?: string;
+}
+
+export function InlineUpgradeCta({ message, ctaText = "Upgrade" }: InlineUpgradeCtaProps) {
+  return (
+    <div className="flex items-center gap-2 p-2 rounded-md bg-primary/5 border border-primary/10">
+      <Sparkles className="h-4 w-4 text-primary shrink-0" />
+      <span className="text-xs text-muted-foreground flex-1">{message}</span>
+      <Button size="sm" variant="ghost" asChild className="h-6 px-2 text-xs text-primary hover:text-primary">
+        <Link href="/pricing">
+          {ctaText}
+          <ArrowRight className="ml-1 h-3 w-3" />
+        </Link>
+      </Button>
+    </div>
   );
 }

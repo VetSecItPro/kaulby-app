@@ -1,0 +1,24 @@
+{
+  "mcpServers": {
+    "neon": {
+      "type": "http",
+      "url": "https://mcp.neon.tech"
+    },
+    "stripe": {
+      "type": "http",
+      "url": "https://mcp.stripe.com"
+    },
+    "posthog": {
+      "type": "sse",
+      "url": "https://mcp.posthog.com/sse"
+    },
+    "langfuse": {
+      "type": "http",
+      "url": "https://cloud.langfuse.com/api/public/mcp"
+    },
+    "inngest": {
+      "type": "http",
+      "url": "http://127.0.0.1:8288/mcp"
+    }
+  }
+}

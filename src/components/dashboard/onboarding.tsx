@@ -11,20 +11,28 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Radio,
-  MessageSquare,
   Bell,
   Activity,
   ArrowRight,
+  ArrowLeft,
   Check,
   Rocket,
   Target,
   Zap,
   Search,
+  Briefcase,
+  Code,
+  ShoppingCart,
+  Sparkles,
+  X,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -34,40 +42,113 @@ interface OnboardingWizardProps {
   userName?: string;
 }
 
-const STEPS = [
+// Pre-built monitor templates for quick setup
+const MONITOR_TEMPLATES = [
   {
-    id: 1,
-    title: "Welcome to Kaulby",
-    description: "Let's get you set up to track conversations that matter to your business.",
-    icon: Rocket,
+    id: "brand",
+    icon: Briefcase,
+    title: "Brand Monitoring",
+    description: "Track mentions of your brand or company name",
+    placeholder: "Your brand name",
+    suggestedKeywords: ["reviews", "alternatives", "vs"],
   },
   {
-    id: 2,
-    title: "How Kaulby Works",
-    description: "Kaulby monitors communities and alerts you when people talk about topics you care about.",
-    icon: Search,
-  },
-  {
-    id: 3,
-    title: "Create Your First Monitor",
-    description: "Ready to start tracking? Let's create your first monitor.",
+    id: "competitor",
     icon: Target,
+    title: "Competitor Tracking",
+    description: "Monitor what people say about competitors",
+    placeholder: "Competitor name",
+    suggestedKeywords: ["problems with", "switching from", "hate"],
   },
+  {
+    id: "tech",
+    icon: Code,
+    title: "Tech/Framework",
+    description: "Follow discussions about technologies you use",
+    placeholder: "e.g., React, Python, AWS",
+    suggestedKeywords: ["help with", "how to", "best practices"],
+  },
+  {
+    id: "product",
+    icon: ShoppingCart,
+    title: "Product Category",
+    description: "Track interest in your product category",
+    placeholder: "e.g., project management, CRM",
+    suggestedKeywords: ["looking for", "recommend", "best"],
+  },
+  {
+    id: "custom",
+    icon: Sparkles,
+    title: "Custom Keywords",
+    description: "Start from scratch with your own keywords",
+    placeholder: "Enter any keyword",
+    suggestedKeywords: [],
+  },
+];
+
+const PLATFORMS = [
+  { id: "reddit", name: "Reddit", description: "Discussions across communities" },
+  { id: "hackernews", name: "Hacker News", description: "Tech & startup news" },
+  { id: "producthunt", name: "Product Hunt", description: "Product launches" },
+];
+
+const STEPS = [
+  { id: 1, title: "Welcome" },
+  { id: 2, title: "What to Track" },
+  { id: 3, title: "Keywords" },
+  { id: 4, title: "Platforms" },
 ];
 
 export function OnboardingWizard({ isOpen, onClose, userName }: OnboardingWizardProps) {
   const [step, setStep] = useState(1);
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  const [monitorName, setMonitorName] = useState("");
+  const [keywordInput, setKeywordInput] = useState("");
+  const [keywords, setKeywords] = useState<string[]>([]);
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(["reddit", "hackernews"]);
+  const [isCreating, setIsCreating] = useState(false);
+  const [error, setError] = useState("");
   const router = useRouter();
 
-  const currentStep = STEPS.find((s) => s.id === step);
   const progress = (step / STEPS.length) * 100;
+
+  const addKeyword = (keyword?: string) => {
+    const k = (keyword || keywordInput).trim();
+    if (k && !keywords.includes(k)) {
+      setKeywords([...keywords, k]);
+      setKeywordInput("");
+    }
+  };
+
+  const removeKeyword = (keyword: string) => {
+    setKeywords(keywords.filter((k) => k !== keyword));
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addKeyword();
+    }
+  };
+
+  const selectTemplate = (templateId: string) => {
+    setSelectedTemplate(templateId);
+    const template = MONITOR_TEMPLATES.find((t) => t.id === templateId);
+    if (template && template.id !== "custom") {
+      setMonitorName(`${template.title} Monitor`);
+    }
+    setStep(3);
+  };
 
   const handleNext = () => {
     if (step < STEPS.length) {
       setStep(step + 1);
-    } else {
-      onClose();
-      router.push("/dashboard/monitors/new");
+    }
+  };
+
+  const handleBack = () => {
+    if (step > 1) {
+      setStep(step - 1);
     }
   };
 
@@ -75,140 +156,355 @@ export function OnboardingWizard({ isOpen, onClose, userName }: OnboardingWizard
     onClose();
   };
 
+  const handleCreateMonitor = async () => {
+    setError("");
+
+    if (keywords.length === 0) {
+      setError("Please add at least one keyword");
+      return;
+    }
+
+    if (selectedPlatforms.length === 0) {
+      setError("Please select at least one platform");
+      return;
+    }
+
+    setIsCreating(true);
+
+    try {
+      const response = await fetch("/api/monitors", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: monitorName || "My First Monitor",
+          keywords,
+          platforms: selectedPlatforms,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to create monitor");
+      }
+
+      onClose();
+      router.push("/dashboard/monitors");
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const template = MONITOR_TEMPLATES.find((t) => t.id === selectedTemplate);
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-xl">
         <Progress value={progress} className="h-1 absolute top-0 left-0 right-0 rounded-t-lg" />
 
-        <DialogHeader className="pt-4">
-          {currentStep && (
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-600">
-              <currentStep.icon className="h-8 w-8 text-white" />
-            </div>
-          )}
-          <DialogTitle className="text-center text-xl">
-            {step === 1 && userName ? `Welcome, ${userName}!` : currentStep?.title}
-          </DialogTitle>
-          <DialogDescription className="text-center">
-            {currentStep?.description}
-          </DialogDescription>
-        </DialogHeader>
+        {/* Step 1: Welcome */}
+        {step === 1 && (
+          <>
+            <DialogHeader className="pt-4">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-600">
+                <Rocket className="h-8 w-8 text-white" />
+              </div>
+              <DialogTitle className="text-center text-xl">
+                {userName ? `Welcome, ${userName}!` : "Welcome to Kaulby"}
+              </DialogTitle>
+              <DialogDescription className="text-center">
+                Let&apos;s set up your first monitor in under 60 seconds.
+              </DialogDescription>
+            </DialogHeader>
 
-        <div className="py-6">
-          {step === 1 && (
-            <div className="space-y-4">
+            <div className="py-6 space-y-4">
               <p className="text-center text-muted-foreground">
-                Kaulby helps you discover and engage with conversations across the web.
-                Never miss a mention again.
+                Kaulby monitors Reddit, Hacker News, and Product Hunt for conversations that matter to your business.
               </p>
               <div className="grid gap-3">
                 <FeatureItem
-                  icon={Radio}
-                  title="Track keywords & topics"
-                  description="Monitor Reddit, Hacker News, Product Hunt, and more"
+                  icon={Search}
+                  title="Find conversations"
+                  description="Track keywords across multiple platforms automatically"
                 />
                 <FeatureItem
                   icon={Activity}
                   title="AI-powered insights"
-                  description="Automatic sentiment analysis and pain point detection"
+                  description="Understand sentiment and pain points instantly"
                 />
                 <FeatureItem
                   icon={Bell}
-                  title="Get notified"
-                  description="Email or Slack alerts when new mentions are found"
+                  title="Never miss a mention"
+                  description="Get notified when someone talks about you"
                 />
               </div>
             </div>
-          )}
 
-          {step === 2 && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-center gap-4">
-                <StepVisual label="Keywords" icon={Search} />
-                <ArrowRight className="h-5 w-5 text-muted-foreground" />
-                <StepVisual label="Monitor" icon={Radio} />
-                <ArrowRight className="h-5 w-5 text-muted-foreground" />
-                <StepVisual label="Results" icon={MessageSquare} />
-              </div>
-              <div className="space-y-3 mt-6">
-                <HowItWorksItem
-                  number={1}
-                  title="Define your keywords"
-                  description="Add the topics, brands, or phrases you want to track"
-                />
-                <HowItWorksItem
-                  number={2}
-                  title="Choose your sources"
-                  description="Select which platforms to monitor"
-                />
-                <HowItWorksItem
-                  number={3}
-                  title="Get actionable results"
-                  description="View matches with AI summaries and engage directly"
-                />
-              </div>
+            <DialogFooter className="flex-col gap-2 sm:flex-row">
+              <Button variant="ghost" onClick={handleSkip}>
+                Skip for now
+              </Button>
+              <Button onClick={handleNext} className="gap-2">
+                Get Started
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </DialogFooter>
+          </>
+        )}
+
+        {/* Step 2: What to Track */}
+        {step === 2 && (
+          <>
+            <DialogHeader className="pt-4">
+              <DialogTitle className="text-center text-xl">
+                What do you want to track?
+              </DialogTitle>
+              <DialogDescription className="text-center">
+                Choose a template to get started quickly
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="py-4 grid gap-2">
+              {MONITOR_TEMPLATES.map((tmpl) => (
+                <button
+                  key={tmpl.id}
+                  onClick={() => selectTemplate(tmpl.id)}
+                  className={cn(
+                    "flex items-start gap-3 rounded-lg border p-3 text-left transition-all hover:bg-muted/50",
+                    selectedTemplate === tmpl.id && "border-primary bg-primary/5"
+                  )}
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 flex-shrink-0">
+                    <tmpl.icon className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-medium text-sm">{tmpl.title}</p>
+                    <p className="text-xs text-muted-foreground">{tmpl.description}</p>
+                  </div>
+                </button>
+              ))}
             </div>
-          )}
 
-          {step === 3 && (
-            <div className="space-y-6">
-              <div className="rounded-lg border bg-muted/50 p-4">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
-                    <Check className="h-5 w-5 text-green-600 dark:text-green-400" />
-                  </div>
-                  <div>
-                    <p className="font-medium">You&apos;re all set!</p>
-                    <p className="text-sm text-muted-foreground">
-                      Create your first monitor to start tracking mentions.
-                    </p>
-                  </div>
+            <DialogFooter className="flex-col gap-2 sm:flex-row">
+              <Button variant="ghost" onClick={handleBack}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back
+              </Button>
+              <Button variant="ghost" onClick={handleSkip}>
+                Skip
+              </Button>
+            </DialogFooter>
+          </>
+        )}
+
+        {/* Step 3: Keywords */}
+        {step === 3 && (
+          <>
+            <DialogHeader className="pt-4">
+              <DialogTitle className="text-center text-xl">
+                Add your keywords
+              </DialogTitle>
+              <DialogDescription className="text-center">
+                {template?.id !== "custom"
+                  ? `Enter your ${template?.title.toLowerCase().replace(" monitoring", "").replace(" tracking", "")} and any related terms`
+                  : "Enter the keywords you want to track"
+                }
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="py-4 space-y-4">
+              {/* Monitor Name */}
+              <div className="space-y-2">
+                <Label htmlFor="monitor-name">Monitor Name</Label>
+                <Input
+                  id="monitor-name"
+                  placeholder="e.g., Brand Mentions"
+                  value={monitorName}
+                  onChange={(e) => setMonitorName(e.target.value)}
+                />
+              </div>
+
+              {/* Keyword Input */}
+              <div className="space-y-2">
+                <Label htmlFor="keyword-input">Keywords</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="keyword-input"
+                    placeholder={template?.placeholder || "Enter a keyword"}
+                    value={keywordInput}
+                    onChange={(e) => setKeywordInput(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                  />
+                  <Button type="button" variant="outline" onClick={() => addKeyword()}>
+                    Add
+                  </Button>
                 </div>
               </div>
-              <div className="text-center">
-                <p className="text-sm text-muted-foreground mb-4">
-                  Pro tip: Start with broad keywords and narrow down based on results.
-                </p>
-                <Badge variant="outline" className="text-xs">
-                  <Zap className="h-3 w-3 mr-1" />
-                  Free plan: 1 monitor, 3 keywords
-                </Badge>
-              </div>
-            </div>
-          )}
-        </div>
 
-        <DialogFooter className="flex-col gap-2 sm:flex-row">
-          {step < STEPS.length && (
-            <Button variant="ghost" onClick={handleSkip}>
-              Skip for now
-            </Button>
-          )}
-          <Button onClick={handleNext} className="gap-2">
-            {step === STEPS.length ? (
-              <>
-                Create Monitor
-                <Rocket className="h-4 w-4" />
-              </>
-            ) : (
-              <>
+              {/* Keywords List */}
+              {keywords.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {keywords.map((keyword) => (
+                    <Badge key={keyword} variant="secondary" className="gap-1 py-1">
+                      {keyword}
+                      <button
+                        type="button"
+                        onClick={() => removeKeyword(keyword)}
+                        className="ml-1 hover:text-destructive"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+
+              {/* Suggested Keywords */}
+              {template && template.suggestedKeywords.length > 0 && keywords.length < 3 && (
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Suggested additions</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {template.suggestedKeywords
+                      .filter((k) => !keywords.includes(k))
+                      .map((suggestion) => (
+                        <Badge
+                          key={suggestion}
+                          variant="outline"
+                          className="cursor-pointer hover:bg-primary/10"
+                          onClick={() => addKeyword(suggestion)}
+                        >
+                          + {suggestion}
+                        </Badge>
+                      ))}
+                  </div>
+                </div>
+              )}
+
+              <p className="text-xs text-muted-foreground">
+                Free plan: up to 3 keywords per monitor
+              </p>
+            </div>
+
+            <DialogFooter className="flex-col gap-2 sm:flex-row">
+              <Button variant="ghost" onClick={handleBack}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back
+              </Button>
+              <Button
+                onClick={handleNext}
+                className="gap-2"
+                disabled={keywords.length === 0}
+              >
                 Next
                 <ArrowRight className="h-4 w-4" />
-              </>
-            )}
-          </Button>
-        </DialogFooter>
+              </Button>
+            </DialogFooter>
+          </>
+        )}
+
+        {/* Step 4: Platforms & Create */}
+        {step === 4 && (
+          <>
+            <DialogHeader className="pt-4">
+              <DialogTitle className="text-center text-xl">
+                Choose platforms to monitor
+              </DialogTitle>
+              <DialogDescription className="text-center">
+                Select where you want to track mentions
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="py-4 space-y-4">
+              <div className="grid gap-2">
+                {PLATFORMS.map((platform) => (
+                  <div
+                    key={platform.id}
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-all hover:bg-muted/50",
+                      selectedPlatforms.includes(platform.id) && "border-primary bg-primary/5"
+                    )}
+                    onClick={() => {
+                      setSelectedPlatforms((prev) =>
+                        prev.includes(platform.id)
+                          ? prev.filter((p) => p !== platform.id)
+                          : [...prev, platform.id]
+                      );
+                    }}
+                  >
+                    <Checkbox
+                      checked={selectedPlatforms.includes(platform.id)}
+                      onCheckedChange={() => {
+                        setSelectedPlatforms((prev) =>
+                          prev.includes(platform.id)
+                            ? prev.filter((p) => p !== platform.id)
+                            : [...prev, platform.id]
+                        );
+                      }}
+                    />
+                    <div>
+                      <p className="font-medium text-sm">{platform.name}</p>
+                      <p className="text-xs text-muted-foreground">{platform.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Summary */}
+              <div className="rounded-lg border bg-muted/30 p-3">
+                <p className="text-sm font-medium mb-2">Your monitor:</p>
+                <div className="space-y-1 text-sm text-muted-foreground">
+                  <p><strong>Name:</strong> {monitorName || "My First Monitor"}</p>
+                  <p><strong>Keywords:</strong> {keywords.join(", ")}</p>
+                  <p><strong>Platforms:</strong> {selectedPlatforms.map(p =>
+                    PLATFORMS.find(pl => pl.id === p)?.name
+                  ).join(", ")}</p>
+                </div>
+              </div>
+
+              {error && (
+                <p className="text-sm text-destructive text-center">{error}</p>
+              )}
+            </div>
+
+            <DialogFooter className="flex-col gap-2 sm:flex-row">
+              <Button variant="ghost" onClick={handleBack}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back
+              </Button>
+              <Button
+                onClick={handleCreateMonitor}
+                className="gap-2"
+                disabled={isCreating || selectedPlatforms.length === 0}
+              >
+                {isCreating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    Create Monitor
+                    <Rocket className="h-4 w-4" />
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </>
+        )}
 
         {/* Step indicators */}
         <div className="flex justify-center gap-2 pb-2">
           {STEPS.map((s) => (
             <button
               key={s.id}
-              onClick={() => setStep(s.id)}
+              onClick={() => s.id <= step && setStep(s.id)}
               className={cn(
                 "h-2 w-2 rounded-full transition-all",
-                step === s.id ? "bg-primary w-4" : "bg-muted hover:bg-muted-foreground/50"
+                step === s.id ? "bg-primary w-4" : s.id < step ? "bg-primary/50" : "bg-muted"
               )}
+              disabled={s.id > step}
             />
           ))}
         </div>
@@ -230,45 +526,6 @@ function FeatureItem({
     <div className="flex items-start gap-3 rounded-lg border bg-card p-3">
       <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
         <Icon className="h-4 w-4 text-primary" />
-      </div>
-      <div>
-        <p className="font-medium text-sm">{title}</p>
-        <p className="text-xs text-muted-foreground">{description}</p>
-      </div>
-    </div>
-  );
-}
-
-function StepVisual({
-  label,
-  icon: Icon,
-}: {
-  label: string;
-  icon: React.ElementType;
-}) {
-  return (
-    <div className="flex flex-col items-center gap-1">
-      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-        <Icon className="h-6 w-6 text-primary" />
-      </div>
-      <span className="text-xs text-muted-foreground">{label}</span>
-    </div>
-  );
-}
-
-function HowItWorksItem({
-  number,
-  title,
-  description,
-}: {
-  number: number;
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="flex items-start gap-3">
-      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-        {number}
       </div>
       <div>
         <p className="font-medium text-sm">{title}</p>
@@ -316,75 +573,198 @@ export function WelcomeBanner({ onDismiss }: WelcomeBannerProps) {
   );
 }
 
-// Quick start guide component
-export function QuickStartGuide() {
+// Quick start guide component - dynamic based on user data
+interface QuickStartGuideProps {
+  hasMonitors: boolean;
+  hasResults: boolean;
+  hasAlerts?: boolean;
+  onDismiss?: () => void;
+}
+
+export function QuickStartGuide({ hasMonitors, hasResults, hasAlerts = false, onDismiss }: QuickStartGuideProps) {
   const router = useRouter();
 
   const steps = [
     {
-      completed: false,
+      completed: hasMonitors,
       title: "Create your first monitor",
-      description: "Set up keywords to track",
+      description: "Set up keywords to track mentions",
       action: () => router.push("/dashboard/monitors/new"),
-      actionLabel: "Create",
+      actionLabel: hasMonitors ? "View" : "Create",
+      actionHref: hasMonitors ? "/dashboard/monitors" : "/dashboard/monitors/new",
     },
     {
-      completed: false,
-      title: "Configure alerts",
-      description: "Get notified of new mentions",
-      action: () => router.push("/dashboard/settings"),
-      actionLabel: "Configure",
-    },
-    {
-      completed: false,
-      title: "Explore results",
-      description: "Review and engage with mentions",
+      completed: hasResults,
+      title: "Review your results",
+      description: "See what people are saying",
       action: () => router.push("/dashboard/results"),
       actionLabel: "View",
+      actionHref: "/dashboard/results",
+    },
+    {
+      completed: hasAlerts,
+      title: "Set up notifications",
+      description: "Get alerted to new mentions",
+      action: () => router.push("/dashboard/settings"),
+      actionLabel: "Configure",
+      actionHref: "/dashboard/settings",
     },
   ];
 
+  const completedCount = steps.filter(s => s.completed).length;
+  const allCompleted = completedCount === steps.length;
+  const progressPercent = (completedCount / steps.length) * 100;
+
+  // Don't show if all steps are completed
+  if (allCompleted && onDismiss) {
+    return null;
+  }
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg flex items-center gap-2">
-          <Rocket className="h-5 w-5" />
-          Quick Start Guide
-        </CardTitle>
-        <CardDescription>
-          Complete these steps to get the most out of Kaulby
-        </CardDescription>
+    <Card className={cn(
+      "border-2 transition-all",
+      allCompleted ? "border-green-500/20" : "border-primary/20"
+    )}>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Rocket className="h-5 w-5 text-primary" />
+            Getting Started
+          </CardTitle>
+          {onDismiss && (
+            <Button variant="ghost" size="sm" onClick={onDismiss} className="h-8 w-8 p-0">
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+        <div className="space-y-1">
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">
+              {allCompleted ? "All done!" : `${completedCount} of ${steps.length} completed`}
+            </span>
+            <span className="font-medium text-primary">{Math.round(progressPercent)}%</span>
+          </div>
+          <Progress value={progressPercent} className="h-2" />
+        </div>
       </CardHeader>
-      <CardContent>
-        <div className="space-y-3">
+      <CardContent className="pt-0">
+        <div className="space-y-2">
           {steps.map((step, index) => (
             <div
               key={index}
-              className="flex items-center justify-between rounded-lg border p-3"
+              className={cn(
+                "flex items-center justify-between rounded-lg border p-3 transition-all",
+                step.completed ? "bg-green-50/50 border-green-200 dark:bg-green-900/10 dark:border-green-900/30" : "hover:bg-muted/50"
+              )}
             >
               <div className="flex items-center gap-3">
                 <div
                   className={cn(
-                    "flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold",
+                    "flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-all",
                     step.completed
                       ? "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400"
-                      : "bg-muted text-muted-foreground"
+                      : "bg-primary/10 text-primary"
                   )}
                 >
-                  {step.completed ? <Check className="h-3 w-3" /> : index + 1}
+                  {step.completed ? <Check className="h-4 w-4" /> : index + 1}
                 </div>
                 <div>
-                  <p className="font-medium text-sm">{step.title}</p>
+                  <p className={cn(
+                    "font-medium text-sm",
+                    step.completed && "text-green-700 dark:text-green-400"
+                  )}>
+                    {step.title}
+                  </p>
                   <p className="text-xs text-muted-foreground">{step.description}</p>
                 </div>
               </div>
-              <Button size="sm" variant="outline" onClick={step.action}>
+              <Button
+                size="sm"
+                variant={step.completed ? "ghost" : "default"}
+                onClick={step.action}
+                className="shrink-0"
+              >
                 {step.actionLabel}
+                <ArrowRight className="h-3 w-3 ml-1" />
               </Button>
             </div>
           ))}
         </div>
+
+        {/* Upgrade prompt for completed free users */}
+        {hasMonitors && hasResults && (
+          <div className="mt-4 rounded-lg bg-gradient-to-r from-primary/5 to-purple-500/5 border border-primary/10 p-3">
+            <div className="flex items-center gap-3">
+              <Zap className="h-5 w-5 text-primary flex-shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium">Ready to level up?</p>
+                <p className="text-xs text-muted-foreground">Upgrade to Pro for unlimited results and AI insights</p>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => router.push("/dashboard/settings")}>
+                Upgrade
+              </Button>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
+  );
+}
+
+// Compact checklist for sidebar or smaller spaces
+interface CompactChecklistProps {
+  hasMonitors: boolean;
+  hasResults: boolean;
+}
+
+export function CompactChecklist({ hasMonitors, hasResults }: CompactChecklistProps) {
+  const router = useRouter();
+
+  if (hasMonitors && hasResults) return null;
+
+  return (
+    <div className="rounded-lg border bg-card p-3 space-y-2">
+      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Getting Started</p>
+      <div className="space-y-1">
+        <ChecklistItem
+          completed={hasMonitors}
+          label="Create a monitor"
+          onClick={() => router.push("/dashboard/monitors/new")}
+        />
+        <ChecklistItem
+          completed={hasResults}
+          label="View your results"
+          onClick={() => router.push("/dashboard/results")}
+        />
+      </div>
+    </div>
+  );
+}
+
+function ChecklistItem({
+  completed,
+  label,
+  onClick,
+}: {
+  completed: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "flex items-center gap-2 w-full text-left text-sm rounded px-2 py-1 transition-colors",
+        completed ? "text-green-600 dark:text-green-400" : "hover:bg-muted"
+      )}
+    >
+      <div className={cn(
+        "h-4 w-4 rounded-full flex items-center justify-center",
+        completed ? "bg-green-100 dark:bg-green-900/30" : "border border-muted-foreground/30"
+      )}>
+        {completed && <Check className="h-2.5 w-2.5" />}
+      </div>
+      <span className={completed ? "line-through" : ""}>{label}</span>
+    </button>
   );
 }

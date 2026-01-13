@@ -2,6 +2,17 @@
 
 AI-powered community monitoring SaaS. Tracks Reddit, Hacker News, Product Hunt for keywords, analyzes sentiment/pain points via AI, sends alerts.
 
+## Business Objective
+
+**Primary goal: Convert users to paying customers.**
+
+Everything we build serves this purpose. The product must be so valuable and the UI so elegant that users gladly pay for it. Every feature, interaction, and design decision should move users toward subscription:
+
+- Deliver immediate, tangible value that makes the product indispensable
+- Create an experience so polished users trust us with their money
+- Show free users exactly what they're missing (tasteful, not annoying)
+- Make upgrading feel like unlocking superpowers, not removing restrictions
+
 ## Development Philosophy
 
 - **No shortcuts**: Always implement strategic, comprehensive fixes. Never apply band-aids or quick patches that defer the real problem.
@@ -50,19 +61,25 @@ AI-powered community monitoring SaaS. Tracks Reddit, Hacker News, Product Hunt f
 
 ## Subscription Limits
 
-| Tier | Monitors | Keywords/Monitor | Sources/Monitor | Results History | Platforms |
-|------|----------|------------------|-----------------|-----------------|-----------|
-| free | 1 | 3 | 2 | 7 days | Reddit only |
-| pro | 10 | 20 | 10 | 90 days | Reddit + HN |
-| enterprise | Unlimited | 50 | 25 | 1 year | All (Reddit, HN, PH, Dev.to) |
+| Tier | Monitors | Keywords | Results Visible | History | Platforms | Refresh |
+|------|----------|----------|-----------------|---------|-----------|---------|
+| free | 1 | 3 | Last 3 | 3 days | Reddit | 24hr delay |
+| pro | 10 | 20 | Unlimited | 90 days | Reddit + HN + PH | Real-time |
+| enterprise | Unlimited | 50 | Unlimited | 1 year | All platforms | Real-time |
 
-| Tier | Email Digest | AI Features | Alerts | Export |
-|------|--------------|-------------|--------|--------|
-| free | Weekly only | Basic sentiment | None | None |
-| pro | Daily + Weekly | Sentiment + Pain point categories | Email + Slack | CSV |
-| enterprise | Real-time option | Full + "Ask" feature | All + Webhooks | CSV + API |
+| Tier | AI Analysis | Email Digest | Alerts | Export |
+|------|-------------|--------------|--------|--------|
+| free | First result only, then blurred/locked | None | None | None |
+| pro | Full sentiment + pain points | Daily + Weekly | Email + Slack | CSV |
+| enterprise | Full + "Ask AI" feature | Real-time option | All + Webhooks | CSV + API |
 
-**Upgrade Triggers**: User hits monitor limit, tries to add more keywords, clicks locked feature, 7 days on free tier.
+**Conversion Strategy:**
+- Free users see AI analysis is ready but blurred - "Unlock with Pro" CTA
+- Results show count: "12 new mentions" but only 3 visible
+- Urgency: "Results expire in 2 days"
+- Social proof: "X Pro users tracked Y mentions this week"
+
+**Upgrade Triggers**: Hits monitor limit, tries to see more results, clicks locked AI analysis, adds 4th keyword, after 3 days on free tier.
 
 ## Key Files
 
