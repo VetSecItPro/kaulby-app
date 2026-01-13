@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Radio, ChevronRight, Play, Pause, MoreHorizontal } from "lucide-react";
+import { Radio, Play, Pause, MoreHorizontal } from "lucide-react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -39,7 +39,7 @@ const itemVariants = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.3, ease: "easeOut" },
+    transition: { duration: 0.3, ease: "easeOut" as const },
   },
 };
 
@@ -80,14 +80,14 @@ export function MobileMonitors({ monitors }: MobileMonitorsProps) {
       ) : (
         <AnimatePresence mode="popLayout">
           <div className="space-y-3">
-            {monitors.map((monitor, index) => (
+            {monitors.map((monitor) => (
               <motion.div
                 key={monitor.id}
                 variants={itemVariants}
                 layout
                 exit={{ opacity: 0, scale: 0.9 }}
               >
-                <MonitorCard monitor={monitor} index={index} />
+                <MonitorCard monitor={monitor} />
               </motion.div>
             ))}
           </div>
@@ -97,7 +97,7 @@ export function MobileMonitors({ monitors }: MobileMonitorsProps) {
   );
 }
 
-function MonitorCard({ monitor, index }: { monitor: Monitor; index: number }) {
+function MonitorCard({ monitor }: { monitor: Monitor }) {
   return (
     <motion.div whileTap={{ scale: 0.98 }}>
       <Link href={`/dashboard/monitors/${monitor.id}`}>

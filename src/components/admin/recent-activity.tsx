@@ -7,10 +7,10 @@ import { Users } from "lucide-react";
 
 interface User {
   id: string;
-  email: string;
+  email: string | null;
   name: string | null;
-  subscriptionStatus: "free" | "pro" | "enterprise";
-  createdAt: Date;
+  subscriptionStatus: string | null;
+  createdAt: Date | null;
 }
 
 interface RecentActivityProps {
@@ -29,14 +29,18 @@ export function RecentActivity({ users }: RecentActivityProps) {
     }
   };
 
-  const getInitials = (name: string | null, email: string) => {
+  const getInitials = (name: string | null, email: string | null) => {
     if (name) {
       return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
     }
-    return email[0].toUpperCase();
+    if (email) {
+      return email[0].toUpperCase();
+    }
+    return "?";
   };
 
-  const formatTimeAgo = (date: Date) => {
+  const formatTimeAgo = (date: Date | null) => {
+    if (!date) return "Unknown";
     const now = new Date();
     const diff = now.getTime() - new Date(date).getTime();
     const minutes = Math.floor(diff / 60000);
@@ -74,7 +78,7 @@ export function RecentActivity({ users }: RecentActivityProps) {
                   </Avatar>
                   <div>
                     <p className="text-sm font-medium leading-none">
-                      {user.name || user.email.split("@")[0]}
+                      {user.name || user.email?.split("@")[0] || "Unknown"}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
                       {user.email}
@@ -84,9 +88,9 @@ export function RecentActivity({ users }: RecentActivityProps) {
                 <div className="flex items-center gap-2">
                   <Badge
                     variant="secondary"
-                    className={`text-xs ${getStatusColor(user.subscriptionStatus)}`}
+                    className={`text-xs ${getStatusColor(user.subscriptionStatus || "free")}`}
                   >
-                    {user.subscriptionStatus}
+                    {user.subscriptionStatus || "free"}
                   </Badge>
                   <span className="text-xs text-muted-foreground w-16 text-right">
                     {formatTimeAgo(user.createdAt)}
