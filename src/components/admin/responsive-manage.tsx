@@ -14,6 +14,7 @@ import {
 import { AdminCharts } from "./admin-charts";
 import { RecentActivity } from "./recent-activity";
 import { AiCostsTable } from "./ai-costs-table";
+import { getPlatformBarColor, getSentimentBarColor } from "@/lib/platform-utils";
 
 interface Stats {
   totalUsers: number;
@@ -67,19 +68,6 @@ interface ResponsiveManageProps {
   recentUsers: RecentUser[];
 }
 
-const platformColors: Record<string, string> = {
-  reddit: "bg-orange-500",
-  hackernews: "bg-amber-500",
-  producthunt: "bg-red-500",
-  twitter: "bg-sky-500",
-  devto: "bg-violet-500",
-};
-
-const sentimentColors: Record<string, string> = {
-  positive: "bg-green-500",
-  negative: "bg-red-500",
-  neutral: "bg-gray-500",
-};
 
 export function ResponsiveManage({
   stats,
@@ -229,7 +217,7 @@ export function ResponsiveManage({
                       </div>
                       <div className="h-2 w-full rounded-full bg-muted">
                         <div
-                          className={`h-2 rounded-full ${platformColors[p.platform] || "bg-primary"}`}
+                          className={`h-2 rounded-full ${getPlatformBarColor(p.platform)}`}
                           style={{ width: `${percentage}%` }}
                         />
                       </div>
@@ -266,7 +254,7 @@ export function ResponsiveManage({
                         </div>
                         <div className="h-2 w-full rounded-full bg-muted">
                           <div
-                            className={`h-2 rounded-full ${sentimentColors[s.sentiment || ""] || "bg-primary"}`}
+                            className={`h-2 rounded-full ${getSentimentBarColor(s.sentiment)}`}
                             style={{ width: `${percentage}%` }}
                           />
                         </div>
