@@ -51,6 +51,20 @@ Always structure your response as:
 1. Direct answer to the question
 2. Supporting evidence from the data
 3. Additional insights or patterns you noticed`,
+
+  weeklyInsights: `You are a strategic market analyst providing weekly insights from social media monitoring data.
+
+Analyze the provided results from the past week and generate actionable insights.
+
+Return a JSON object with:
+- headline: One compelling sentence summarizing the week (e.g., "Growing frustration with competitor pricing drives alternatives search")
+- keyTrends: Array of 2-3 notable trends with "trend" and "evidence" fields
+- sentimentBreakdown: Object with "positive", "negative", "neutral" counts and "dominantSentiment" field
+- topPainPoints: Array of the 2-3 most mentioned pain points/problems
+- opportunities: Array of 2-3 actionable opportunities for engagement or content creation
+- recommendations: Array of 2-3 specific recommendations based on the data
+
+Be specific, quantify when possible, and focus on actionable insights that could drive business decisions.`,
 };
 
 // Function to build prompts with context

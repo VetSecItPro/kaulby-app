@@ -1,9 +1,10 @@
 import { inngest } from "../client";
 import { db } from "@/lib/db";
 import { results, aiLogs } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, count } from "drizzle-orm";
 import { analyzeSentiment, analyzePainPoints, summarizeContent, createTrace, flushAI } from "@/lib/ai";
-import { incrementAiCallsCount } from "@/lib/limits";
+import { incrementAiCallsCount, getUserPlan } from "@/lib/limits";
+import { getPlanLimits } from "@/lib/stripe";
 
 // Analyze content with AI
 export const analyzeContent = inngest.createFunction(
@@ -28,6 +29,36 @@ export const analyzeContent = inngest.createFunction(
 
     if (!result) {
       return { error: "Result not found" };
+    }
+
+    // Check user's plan for AI access
+    const planCheck = await step.run("check-plan", async () => {
+      const plan = await getUserPlan(userId);
+      const limits = getPlanLimits(plan);
+      return {
+        plan,
+        hasUnlimitedAi: limits.aiFeatures.unlimitedAiAnalysis,
+      };
+    });
+
+    // For free users, only analyze first result
+    if (!planCheck.hasUnlimitedAi) {
+      const userResultCount = await step.run("count-user-results", async () => {
+        const [countResult] = await db
+          .select({ count: count() })
+          .from(results)
+          .where(eq(results.monitorId, result.monitorId));
+        return countResult?.count || 0;
+      });
+
+      // Skip AI analysis if this is not the first result
+      if (userResultCount > 1) {
+        return {
+          skipped: true,
+          reason: "Free tier - AI analysis limited to first result",
+          plan: planCheck.plan,
+        };
+      }
     }
 
     const contentToAnalyze = `${result.title}\n\n${result.content || ""}`;

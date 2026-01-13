@@ -1,7 +1,9 @@
 import { inngest } from "../client";
 import { db, alerts, results } from "@/lib/db";
 import { eq, and, gte, inArray } from "drizzle-orm";
-import { sendAlertEmail, sendDigestEmail } from "@/lib/loops";
+import { sendAlertEmail, sendDigestEmail, type WeeklyInsights } from "@/lib/loops";
+import { getPlanLimits } from "@/lib/stripe";
+import { generateWeeklyInsights } from "@/lib/ai";
 
 // Send instant alert
 export const sendAlert = inngest.createFunction(
@@ -70,16 +72,16 @@ export const sendAlert = inngest.createFunction(
   }
 );
 
-// Send daily/weekly digest
+// Send daily digest - Pro+ users only
 export const sendDigest = inngest.createFunction(
   {
-    id: "send-digest",
-    name: "Send Alert Digest",
-    retries: 3,
+    id: "send-daily-digest",
+    name: "Send Daily Digest Emails",
+    retries: 2,
   },
-  { cron: "0 9 * * *" }, // Daily at 9 AM
+  { cron: "0 9 * * *" }, // Every day at 9 AM UTC
   async ({ step }) => {
-    // Get all users with active daily alerts
+    // Get all users with daily email alerts (Pro+ only can have daily)
     const usersWithAlerts = await step.run("get-users", async () => {
       return db.query.users.findMany({
         with: {
@@ -88,13 +90,8 @@ export const sendDigest = inngest.createFunction(
               alerts: {
                 where: and(
                   eq(alerts.isActive, true),
-                  eq(alerts.frequency, "daily")
-                ),
-              },
-              results: {
-                where: gte(
-                  results.createdAt,
-                  new Date(Date.now() - 24 * 60 * 60 * 1000)
+                  eq(alerts.frequency, "daily"),
+                  eq(alerts.channel, "email")
                 ),
               },
             },
@@ -104,34 +101,76 @@ export const sendDigest = inngest.createFunction(
     });
 
     let digestsSent = 0;
+    let skippedNoPlan = 0;
+    let skippedNoResults = 0;
 
     for (const user of usersWithAlerts) {
-      const allResults = user.monitors.flatMap((m) => m.results);
+      // Check if user has Pro+ plan for daily digests
+      const limits = getPlanLimits(user.subscriptionStatus);
+      if (!limits.digestFrequencies.includes("daily")) {
+        skippedNoPlan++;
+        continue;
+      }
 
-      if (allResults.length === 0) continue;
+      const hasEmailAlerts = user.monitors.some((m) =>
+        m.alerts.some((a) => a.channel === "email" && a.frequency === "daily")
+      );
 
-      const emailAlerts = user.monitors
-        .flatMap((m) => m.alerts)
-        .filter((a) => a.channel === "email");
+      if (!hasEmailAlerts) continue;
 
-      if (emailAlerts.length === 0) continue;
+      // Get results from last 24 hours
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+
+      const userResults = await step.run(`get-results-${user.id}`, async () => {
+        const monitorIds = user.monitors.map((m) => m.id);
+        if (monitorIds.length === 0) return [];
+
+        return db.query.results.findMany({
+          where: and(
+            inArray(results.monitorId, monitorIds),
+            gte(results.createdAt, yesterday)
+          ),
+          orderBy: (results, { desc }) => [desc(results.createdAt)],
+        });
+      });
+
+      if (userResults.length === 0) {
+        skippedNoResults++;
+        continue;
+      }
+
+      // Group results by monitor
+      const resultsByMonitor = new Map<string, typeof userResults>();
+      for (const result of userResults) {
+        const existing = resultsByMonitor.get(result.monitorId) || [];
+        existing.push(result);
+        resultsByMonitor.set(result.monitorId, existing);
+      }
 
       await step.run(`send-digest-${user.id}`, async () => {
+        const monitorsData = user.monitors
+          .filter((m) => resultsByMonitor.has(m.id))
+          .map((m) => {
+            const monitorResults = resultsByMonitor.get(m.id) || [];
+            return {
+              name: m.name,
+              resultsCount: monitorResults.length,
+              topResults: monitorResults.slice(0, 5).map((r) => ({
+                title: r.title,
+                url: r.sourceUrl,
+                platform: r.platform,
+                sentiment: r.sentiment,
+                summary: r.aiSummary,
+              })),
+            };
+          });
+
         await sendDigestEmail({
           to: user.email,
           userName: user.name || "there",
           frequency: "daily",
-          monitors: user.monitors.map((m) => ({
-            name: m.name,
-            resultsCount: m.results.length,
-            topResults: m.results.slice(0, 3).map((r) => ({
-              title: r.title,
-              url: r.sourceUrl,
-              platform: r.platform,
-              sentiment: r.sentiment,
-              summary: r.aiSummary,
-            })),
-          })),
+          monitors: monitorsData,
         });
 
         digestsSent++;
@@ -139,7 +178,142 @@ export const sendDigest = inngest.createFunction(
     }
 
     return {
+      message: "Daily digest completed",
       digestsSent,
+      skippedNoPlan,
+      skippedNoResults,
+    };
+  }
+);
+
+// Send weekly digest - All users (including free tier)
+export const sendWeeklyDigest = inngest.createFunction(
+  {
+    id: "send-weekly-digest",
+    name: "Send Weekly Digest Emails",
+    retries: 2,
+  },
+  { cron: "0 9 * * 1" }, // Every Monday at 9 AM UTC
+  async ({ step }) => {
+    // Get all users with weekly email alerts
+    const usersWithAlerts = await step.run("get-users", async () => {
+      return db.query.users.findMany({
+        with: {
+          monitors: {
+            with: {
+              alerts: {
+                where: and(
+                  eq(alerts.isActive, true),
+                  eq(alerts.frequency, "weekly"),
+                  eq(alerts.channel, "email")
+                ),
+              },
+            },
+          },
+        },
+      });
+    });
+
+    let digestsSent = 0;
+    let skippedNoResults = 0;
+
+    for (const user of usersWithAlerts) {
+      const hasEmailAlerts = user.monitors.some((m) =>
+        m.alerts.some((a) => a.channel === "email" && a.frequency === "weekly")
+      );
+
+      if (!hasEmailAlerts) continue;
+
+      // Get results from last 7 days
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+
+      const userResults = await step.run(`get-results-${user.id}`, async () => {
+        const monitorIds = user.monitors.map((m) => m.id);
+        if (monitorIds.length === 0) return [];
+
+        return db.query.results.findMany({
+          where: and(
+            inArray(results.monitorId, monitorIds),
+            gte(results.createdAt, weekAgo)
+          ),
+          orderBy: (results, { desc }) => [desc(results.createdAt)],
+        });
+      });
+
+      if (userResults.length === 0) {
+        skippedNoResults++;
+        continue;
+      }
+
+      // Group results by monitor
+      const resultsByMonitor = new Map<string, typeof userResults>();
+      for (const result of userResults) {
+        const existing = resultsByMonitor.get(result.monitorId) || [];
+        existing.push(result);
+        resultsByMonitor.set(result.monitorId, existing);
+      }
+
+      // Check if user has Pro+ plan for AI insights
+      const limits = getPlanLimits(user.subscriptionStatus);
+      const includeAiInsights = limits.aiFeatures.unlimitedAiAnalysis;
+
+      // Generate AI insights for Pro+ users
+      let aiInsights: WeeklyInsights | undefined;
+      if (includeAiInsights && userResults.length >= 5) {
+        try {
+          const insightsResult = await step.run(`generate-insights-${user.id}`, async () => {
+            const analysisResults = userResults.map(r => ({
+              title: r.title,
+              content: r.content,
+              platform: r.platform,
+              sentiment: r.sentiment,
+              painPointCategory: r.painPointCategory,
+              aiSummary: r.aiSummary,
+            }));
+            return generateWeeklyInsights(analysisResults);
+          });
+          aiInsights = insightsResult.result;
+        } catch (error) {
+          console.error(`Failed to generate AI insights for user ${user.id}:`, error);
+          // Continue without AI insights
+        }
+      }
+
+      await step.run(`send-digest-${user.id}`, async () => {
+        const monitorsData = user.monitors
+          .filter((m) => resultsByMonitor.has(m.id))
+          .map((m) => {
+            const monitorResults = resultsByMonitor.get(m.id) || [];
+            return {
+              name: m.name,
+              resultsCount: monitorResults.length,
+              topResults: monitorResults.slice(0, 10).map((r) => ({
+                title: r.title,
+                url: r.sourceUrl,
+                platform: r.platform,
+                sentiment: r.sentiment,
+                summary: r.aiSummary,
+              })),
+            };
+          });
+
+        await sendDigestEmail({
+          to: user.email,
+          userName: user.name || "there",
+          frequency: "weekly",
+          monitors: monitorsData,
+          aiInsights,
+        });
+
+        digestsSent++;
+      });
+    }
+
+    return {
+      message: "Weekly digest completed",
+      digestsSent,
+      skippedNoResults,
     };
   }
 );
