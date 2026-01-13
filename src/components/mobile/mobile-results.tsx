@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import Link from "next/link";
 import { markAllResultsViewed } from "@/app/(dashboard)/dashboard/results/actions";
+import { getPlatformBadgeColor, getSentimentBadgeColor } from "@/lib/platform-utils";
 
 interface Result {
   id: string;
@@ -65,18 +66,6 @@ const itemVariants = {
   },
 };
 
-const platformColors: Record<string, string> = {
-  reddit: "bg-orange-500/10 text-orange-500",
-  hackernews: "bg-amber-500/10 text-amber-500",
-  producthunt: "bg-red-500/10 text-red-500",
-  devto: "bg-purple-500/10 text-purple-500",
-};
-
-const sentimentColors: Record<string, string> = {
-  positive: "bg-green-500/10 text-green-500",
-  negative: "bg-red-500/10 text-red-500",
-  neutral: "bg-gray-500/10 text-gray-400",
-};
 
 export function MobileResults({ results, totalCount, page, totalPages }: MobileResultsProps) {
   const [filter, setFilter] = useState<"all" | "unread" | "saved" | "hidden">("all");
@@ -234,7 +223,7 @@ function MobileResultCard({ result, allMarkedRead }: { result: Result; allMarked
         <CardContent className="p-4">
           {/* Header */}
           <div className="flex items-start gap-3 mb-3">
-            <div className={`p-2 rounded-full shrink-0 ${platformColors[result.platform]}`}>
+            <div className={`p-2 rounded-full shrink-0 ${getPlatformBadgeColor(result.platform)}`}>
               <MessageSquare className="h-4 w-4" />
             </div>
             <div className="flex-1 min-w-0">
@@ -243,7 +232,7 @@ function MobileResultCard({ result, allMarkedRead }: { result: Result; allMarked
                   {result.platform}
                 </Badge>
                 {result.sentiment && (
-                  <Badge className={`text-xs ${sentimentColors[result.sentiment]}`}>
+                  <Badge className={`text-xs ${getSentimentBadgeColor(result.sentiment)}`}>
                     {result.sentiment}
                   </Badge>
                 )}
