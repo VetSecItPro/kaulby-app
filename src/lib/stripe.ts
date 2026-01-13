@@ -36,12 +36,15 @@ export interface PlanLimits {
   keywordsPerMonitor: number;
   sourcesPerMonitor: number;
   resultsHistoryDays: number; // -1 for unlimited
+  resultsVisible: number; // -1 for unlimited, how many results user can see
+  refreshDelayHours: number; // 0 for real-time, 24 for daily delay
   platforms: Platform[];
   digestFrequencies: DigestFrequency[];
   aiFeatures: {
     sentiment: boolean;
     painPointCategories: boolean;
     askFeature: boolean;
+    unlimitedAiAnalysis: boolean; // false = only first result gets AI analysis
   };
   alerts: {
     email: boolean;
@@ -68,29 +71,32 @@ export interface PlanDefinition {
 export const PLANS: Record<"free" | "pro" | "enterprise", PlanDefinition> = {
   free: {
     name: "Free",
-    description: "Get started with basic monitoring",
+    description: "Try Kaulby with limited features",
     price: 0,
     priceId: null,
     features: [
       "1 monitor",
-      "3 keywords per monitor",
-      "2 sources per monitor",
+      "3 keywords",
+      "See last 3 results",
       "Reddit only",
-      "7-day history",
-      "Weekly email digest",
-      "Basic sentiment analysis",
+      "3-day history",
+      "24-hour refresh delay",
+      "AI analysis on first result",
     ],
     limits: {
       monitors: 1,
       keywordsPerMonitor: 3,
       sourcesPerMonitor: 2,
-      resultsHistoryDays: 7,
+      resultsHistoryDays: 3,
+      resultsVisible: 3,
+      refreshDelayHours: 24,
       platforms: ["reddit"],
-      digestFrequencies: ["weekly"],
+      digestFrequencies: [],
       aiFeatures: {
         sentiment: true,
         painPointCategories: false,
         askFeature: false,
+        unlimitedAiAnalysis: false, // Only first result
       },
       alerts: {
         email: false,
@@ -111,13 +117,14 @@ export const PLANS: Record<"free" | "pro" | "enterprise", PlanDefinition> = {
     features: [
       "10 monitors",
       "20 keywords per monitor",
-      "10 sources per monitor",
-      "Reddit + Hacker News",
+      "Unlimited results",
+      "Reddit + HN + Product Hunt",
       "90-day history",
-      "Daily + Weekly digests",
+      "Real-time monitoring",
       "Full AI analysis",
       "Pain point detection",
       "Email + Slack alerts",
+      "Daily & weekly digests",
       "CSV export",
     ],
     limits: {
@@ -125,12 +132,15 @@ export const PLANS: Record<"free" | "pro" | "enterprise", PlanDefinition> = {
       keywordsPerMonitor: 20,
       sourcesPerMonitor: 10,
       resultsHistoryDays: 90,
-      platforms: ["reddit", "hackernews"],
+      resultsVisible: -1, // unlimited
+      refreshDelayHours: 0, // real-time
+      platforms: ["reddit", "hackernews", "producthunt"],
       digestFrequencies: ["daily", "weekly"],
       aiFeatures: {
         sentiment: true,
         painPointCategories: true,
         askFeature: false,
+        unlimitedAiAnalysis: true,
       },
       alerts: {
         email: true,
@@ -151,10 +161,10 @@ export const PLANS: Record<"free" | "pro" | "enterprise", PlanDefinition> = {
     features: [
       "Unlimited monitors",
       "50 keywords per monitor",
-      "25 sources per monitor",
-      "All platforms",
+      "Unlimited results",
+      "All 5 platforms",
       "1-year history",
-      "Real-time alerts",
+      "Real-time monitoring",
       "Full AI + Ask feature",
       "All alert channels",
       "Webhooks",
@@ -166,12 +176,15 @@ export const PLANS: Record<"free" | "pro" | "enterprise", PlanDefinition> = {
       keywordsPerMonitor: 50,
       sourcesPerMonitor: 25,
       resultsHistoryDays: 365,
+      resultsVisible: -1, // unlimited
+      refreshDelayHours: 0, // real-time
       platforms: ["reddit", "hackernews", "producthunt", "devto", "twitter"],
       digestFrequencies: ["daily", "weekly", "realtime"],
       aiFeatures: {
         sentiment: true,
         painPointCategories: true,
         askFeature: true,
+        unlimitedAiAnalysis: true,
       },
       alerts: {
         email: true,

@@ -39,6 +39,19 @@ interface RecentUser {
   createdAt: Date | null;
 }
 
+interface BusinessMetricsData {
+  mrr: number;
+  mrrChange: number;
+  arr: number;
+  conversionRate: number;
+  conversionRateChange: number;
+  avgRevenuePerUser: number;
+  proConversions: number;
+  enterpriseConversions: number;
+  monthlySignups: number;
+  paidUserPercentage: number;
+}
+
 interface MobileManageProps {
   stats: Stats;
   freeUsers: number;
@@ -47,6 +60,7 @@ interface MobileManageProps {
   platformDist: PlatformDist[];
   sentimentDist: SentimentDist[];
   recentUsers: RecentUser[];
+  businessMetrics?: BusinessMetricsData;
 }
 
 const containerVariants = {
@@ -75,6 +89,7 @@ export function MobileManage({
   platformDist,
   sentimentDist,
   recentUsers,
+  businessMetrics,
 }: MobileManageProps) {
   return (
     <motion.div
@@ -154,6 +169,55 @@ export function MobileManage({
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* Business Metrics */}
+      {businessMetrics && (
+        <motion.div variants={itemVariants} className="space-y-3">
+          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+            Revenue
+          </h2>
+          <div className="grid grid-cols-2 gap-3">
+            <Card>
+              <CardContent className="p-4">
+                <p className="text-xs text-muted-foreground mb-1">MRR</p>
+                <p className="text-xl font-bold">
+                  ${businessMetrics.mrr.toLocaleString()}
+                </p>
+                <p className={`text-xs ${businessMetrics.mrrChange >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                  {businessMetrics.mrrChange >= 0 ? '+' : ''}{businessMetrics.mrrChange.toFixed(1)}%
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <p className="text-xs text-muted-foreground mb-1">ARR</p>
+                <p className="text-xl font-bold">
+                  ${businessMetrics.arr.toLocaleString()}
+                </p>
+                <p className="text-xs text-muted-foreground">Annual</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <p className="text-xs text-muted-foreground mb-1">Conversion</p>
+                <p className="text-xl font-bold">
+                  {businessMetrics.conversionRate.toFixed(1)}%
+                </p>
+                <p className="text-xs text-muted-foreground">To paid</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <p className="text-xs text-muted-foreground mb-1">ARPU</p>
+                <p className="text-xl font-bold">
+                  ${businessMetrics.avgRevenuePerUser.toFixed(0)}
+                </p>
+                <p className="text-xs text-muted-foreground">Per user</p>
+              </CardContent>
+            </Card>
+          </div>
+        </motion.div>
+      )}
 
       {/* Platform Distribution */}
       <motion.div variants={itemVariants} className="space-y-3">

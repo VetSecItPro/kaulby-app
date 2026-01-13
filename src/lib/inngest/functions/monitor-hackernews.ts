@@ -2,7 +2,7 @@ import { inngest } from "../client";
 import { db } from "@/lib/db";
 import { monitors, results } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { incrementResultsCount, canAccessPlatform } from "@/lib/limits";
+import { incrementResultsCount, canAccessPlatform, shouldProcessMonitor } from "@/lib/limits";
 
 const HN_API_BASE = "https://hacker-news.firebaseio.com/v0";
 
@@ -67,6 +67,12 @@ export const monitorHackerNews = inngest.createFunction(
       const access = await canAccessPlatform(monitor.userId, "hackernews");
       if (!access.hasAccess) {
         continue; // Skip monitors for users without platform access
+      }
+
+      // Check refresh delay for free tier users
+      const scheduleCheck = await shouldProcessMonitor(monitor.userId, monitor.lastCheckedAt);
+      if (!scheduleCheck.shouldProcess) {
+        continue; // Skip monitors that are within refresh delay period
       }
 
       let monitorMatchCount = 0;

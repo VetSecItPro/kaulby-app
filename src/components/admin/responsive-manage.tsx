@@ -11,9 +11,13 @@ import {
   DollarSign,
   TrendingUp,
 } from "lucide-react";
+import Link from "next/link";
 import { AdminCharts } from "./admin-charts";
 import { RecentActivity } from "./recent-activity";
 import { AiCostsTable } from "./ai-costs-table";
+import { BusinessMetrics } from "./business-metrics";
+import { CostBreakdown } from "./cost-breakdown";
+import { SystemHealth } from "./system-health";
 import { getPlatformBarColor, getSentimentBarColor } from "@/lib/platform-utils";
 
 interface Stats {
@@ -56,6 +60,64 @@ interface RecentUser {
   createdAt: Date | null;
 }
 
+interface BusinessMetricsData {
+  mrr: number;
+  mrrChange: number;
+  arr: number;
+  conversionRate: number;
+  conversionRateChange: number;
+  avgRevenuePerUser: number;
+  proConversions: number;
+  enterpriseConversions: number;
+  monthlySignups: number;
+  paidUserPercentage: number;
+}
+
+interface CostByPlan {
+  plan: string;
+  userCount: number;
+  totalCost: number;
+  avgCostPerUser: number;
+}
+
+interface TopUserCost {
+  userId: string;
+  email: string | null;
+  name: string | null;
+  plan: string;
+  totalCost: number;
+  aiCalls: number;
+}
+
+interface CostBreakdownData {
+  costByPlan: CostByPlan[];
+  topUsersByCost: TopUserCost[];
+  avgCostPerUser: number;
+  avgCostPerPaidUser: number;
+  costPerResult: number;
+}
+
+interface JobStatus {
+  name: string;
+  lastRun: Date | null;
+  status: "success" | "failed" | "pending" | "running";
+  runsLast24h: number;
+  failuresLast24h: number;
+}
+
+interface SystemHealthData {
+  jobs: JobStatus[];
+  errorRate24h: number;
+  avgResponseTime: number;
+  totalApiCalls24h: number;
+  healthChecks: {
+    database: boolean;
+    ai: boolean;
+    email: boolean;
+    stripe: boolean;
+  };
+}
+
 interface ResponsiveManageProps {
   stats: Stats;
   freeUsers: number;
@@ -66,6 +128,9 @@ interface ResponsiveManageProps {
   platformDist: PlatformDist[];
   sentimentDist: SentimentDist[];
   recentUsers: RecentUser[];
+  businessMetrics: BusinessMetricsData;
+  costBreakdown: CostBreakdownData;
+  systemHealth: SystemHealthData;
 }
 
 
@@ -79,6 +144,9 @@ export function ResponsiveManage({
   platformDist,
   sentimentDist,
   recentUsers,
+  businessMetrics,
+  costBreakdown,
+  systemHealth,
 }: ResponsiveManageProps) {
   const { isMobile, isTablet } = useDevice();
 
@@ -92,6 +160,7 @@ export function ResponsiveManage({
         platformDist={platformDist}
         sentimentDist={sentimentDist}
         recentUsers={recentUsers}
+        businessMetrics={businessMetrics}
       />
     );
   }
@@ -111,13 +180,15 @@ export function ResponsiveManage({
 
       {/* Key Stats */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatsCard
-          title="Total Users"
-          value={stats.totalUsers}
-          description={`+${stats.usersToday} today`}
-          icon={Users}
-          trend="up"
-        />
+        <Link href="/manage/users" className="block">
+          <StatsCard
+            title="Total Users"
+            value={stats.totalUsers}
+            description={`+${stats.usersToday} today • Click to manage`}
+            icon={Users}
+            trend="up"
+          />
+        </Link>
         <StatsCard
           title="Active Monitors"
           value={stats.activeMonitors}
@@ -190,6 +261,15 @@ export function ResponsiveManage({
           </CardContent>
         </Card>
       </div>
+
+      {/* Business Metrics */}
+      <BusinessMetrics {...businessMetrics} />
+
+      {/* Cost Breakdown */}
+      <CostBreakdown {...costBreakdown} />
+
+      {/* System Health */}
+      <SystemHealth {...systemHealth} />
 
       {/* Charts */}
       <AdminCharts userGrowth={userGrowth} aiCosts={aiCosts} />

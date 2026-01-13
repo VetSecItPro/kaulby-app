@@ -191,6 +191,49 @@ export const slackIntegrations = pgTable("slack_integrations", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Webhook status enum
+export const webhookStatusEnum = pgEnum("webhook_status", [
+  "pending",
+  "success",
+  "failed",
+  "retrying",
+]);
+
+// Webhooks - custom webhook endpoints for enterprise users
+export const webhooks = pgTable("webhooks", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  url: text("url").notNull(),
+  secret: text("secret"), // For HMAC signature verification
+  isActive: boolean("is_active").default(true).notNull(),
+  events: jsonb("events").$type<string[]>().default(["new_result"]), // Which events to send
+  headers: jsonb("headers").$type<Record<string, string>>(), // Custom headers
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Webhook Deliveries - tracks each delivery attempt with retry logic
+export const webhookDeliveries = pgTable("webhook_deliveries", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  webhookId: uuid("webhook_id")
+    .notNull()
+    .references(() => webhooks.id, { onDelete: "cascade" }),
+  eventType: text("event_type").notNull(), // e.g., "new_result", "monitor_triggered"
+  payload: jsonb("payload").notNull(), // The data sent to the webhook
+  status: webhookStatusEnum("status").default("pending").notNull(),
+  statusCode: integer("status_code"), // HTTP status code from response
+  responseBody: text("response_body"), // Response from the webhook endpoint
+  errorMessage: text("error_message"), // Error message if failed
+  attemptCount: integer("attempt_count").default(0).notNull(),
+  maxAttempts: integer("max_attempts").default(5).notNull(),
+  nextRetryAt: timestamp("next_retry_at"), // When to retry (null if not scheduled)
+  completedAt: timestamp("completed_at"), // When delivery was successful or gave up
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   audiences: many(audiences),
@@ -198,6 +241,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   aiLogs: many(aiLogs),
   usage: many(usage),
   slackIntegrations: many(slackIntegrations),
+  webhooks: many(webhooks),
 }));
 
 export const audiencesRelations = relations(audiences, ({ one, many }) => ({
@@ -264,6 +308,21 @@ export const slackIntegrationsRelations = relations(slackIntegrations, ({ one })
   }),
 }));
 
+export const webhooksRelations = relations(webhooks, ({ one, many }) => ({
+  user: one(users, {
+    fields: [webhooks.userId],
+    references: [users.id],
+  }),
+  deliveries: many(webhookDeliveries),
+}));
+
+export const webhookDeliveriesRelations = relations(webhookDeliveries, ({ one }) => ({
+  webhook: one(webhooks, {
+    fields: [webhookDeliveries.webhookId],
+    references: [webhooks.id],
+  }),
+}));
+
 // Type exports
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -283,3 +342,7 @@ export type Usage = typeof usage.$inferSelect;
 export type NewUsage = typeof usage.$inferInsert;
 export type SlackIntegration = typeof slackIntegrations.$inferSelect;
 export type NewSlackIntegration = typeof slackIntegrations.$inferInsert;
+export type Webhook = typeof webhooks.$inferSelect;
+export type NewWebhook = typeof webhooks.$inferInsert;
+export type WebhookDelivery = typeof webhookDeliveries.$inferSelect;
+export type NewWebhookDelivery = typeof webhookDeliveries.$inferInsert;

@@ -43,4 +43,16 @@ export type Events = {
       name?: string;
     };
   };
+  "webhook/send": {
+    data: {
+      userId: string;
+      eventType: string;
+      data: Record<string, unknown>;
+    };
+  };
+  "webhook/process-delivery": {
+    data: {
+      deliveryId: string;
+    };
+  };
 };

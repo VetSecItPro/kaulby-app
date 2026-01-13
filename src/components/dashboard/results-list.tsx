@@ -24,9 +24,10 @@ interface Result {
 
 interface ResultsListProps {
   results: Result[];
+  hasUnlimitedAi?: boolean;
 }
 
-export function ResultsList({ results }: ResultsListProps) {
+export function ResultsList({ results, hasUnlimitedAi = true }: ResultsListProps) {
   const [filter, setFilter] = useState<"all" | "unread" | "saved" | "hidden">("all");
   const [isPending, startTransition] = useTransition();
   const [allMarkedRead, setAllMarkedRead] = useState(false);
@@ -81,11 +82,12 @@ export function ResultsList({ results }: ResultsListProps) {
             {filter === "all" && "No results found"}
           </div>
         ) : (
-          filteredResults.map((result) => (
+          filteredResults.map((result, index) => (
             <ResultCard
               key={result.id}
               result={result}
               showHidden={filter === "hidden"}
+              isAiBlurred={!hasUnlimitedAi && index > 0}
             />
           ))
         )}

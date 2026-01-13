@@ -32,6 +32,7 @@ import {
   toggleResultHidden,
 } from "@/app/(dashboard)/dashboard/results/actions";
 import { getPlatformBadgeColor } from "@/lib/platform-utils";
+import { BlurredAiAnalysis } from "./upgrade-prompt";
 
 interface ResultCardProps {
   result: {
@@ -52,6 +53,7 @@ interface ResultCardProps {
     monitor?: { name: string } | null;
   };
   showHidden?: boolean;
+  isAiBlurred?: boolean;
 }
 
 const sentimentIcons = {
@@ -61,7 +63,7 @@ const sentimentIcons = {
 };
 
 
-export function ResultCard({ result, showHidden = false }: ResultCardProps) {
+export function ResultCard({ result, showHidden = false, isAiBlurred = false }: ResultCardProps) {
   const [isPending, startTransition] = useTransition();
   const [isSaved, setIsSaved] = useState(result.isSaved);
   const [isHidden, setIsHidden] = useState(result.isHidden);
@@ -243,7 +245,13 @@ export function ResultCard({ result, showHidden = false }: ResultCardProps) {
 
       {(result.content || result.aiSummary) && (
         <CardContent className="pt-0">
-          {result.aiSummary ? (
+          {isAiBlurred && result.aiSummary ? (
+            <BlurredAiAnalysis
+              aiSummary={result.aiSummary}
+              sentiment={result.sentiment || undefined}
+              painPointCategory={result.painPointCategory || undefined}
+            />
+          ) : result.aiSummary ? (
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground font-medium">AI Summary:</p>
               <p className="text-sm">{result.aiSummary}</p>
