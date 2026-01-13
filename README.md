@@ -32,6 +32,8 @@ Kaulby helps you track discussions across Reddit, Hacker News, and other online 
 **UI:**
 - Tailwind CSS
 - shadcn/ui components
+- Framer Motion (animations)
+- Mobile-first responsive design
 
 ## Prerequisites
 
@@ -251,6 +253,16 @@ Then update webhook endpoints in Clerk, Stripe with the ngrok URL.
 - [ ] Update webhook URLs in Clerk, Stripe, Inngest
 - [ ] Create transactional emails in Loops
 - [ ] Set up Stripe products with production price IDs
+
+## Mobile Support
+
+Kaulby features a fully responsive, mobile-first design:
+
+- **Device Detection**: Automatic mobile/tablet/desktop detection via `useDevice` hook
+- **Mobile Navigation**: Bottom tab bar with animated FAB for quick actions
+- **Touch Optimized**: All interactive elements meet 44px minimum touch target
+- **iOS Safe Areas**: Full support for notch and home indicator
+- **Separate Views**: Distinct mobile and desktop components for optimal UX
 
 ## Pricing Tiers
 
