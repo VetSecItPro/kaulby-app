@@ -6,7 +6,7 @@ import { eq, desc, inArray } from "drizzle-orm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, MessageSquare, ThumbsUp, ThumbsDown, Minus } from "lucide-react";
+import { ExternalLink, ThumbsUp, ThumbsDown, Minus } from "lucide-react";
 import Link from "next/link";
 
 export default async function ResultsPage() {
@@ -41,11 +41,6 @@ export default async function ResultsPage() {
     neutral: <Minus className="h-4 w-4 text-gray-500" />,
   };
 
-  const platformColors: Record<string, string> = {
-    reddit: "bg-orange-500",
-    hackernews: "bg-orange-600",
-    producthunt: "bg-red-500",
-  };
 
   return (
     <div className="space-y-8">

@@ -30,13 +30,12 @@ export default async function DashboardPage() {
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
   // Get results count for user's monitors
-  const userMonitors = user
+  const userMonitorIds = user
     ? await db.select({ id: monitors.id }).from(monitors).where(eq(monitors.userId, userId))
     : [];
 
   let resultsCount = 0;
-  if (userMonitors.length > 0) {
-    const monitorIds = userMonitors.map((m) => m.id);
+  if (userMonitorIds.length > 0) {
     // Get results from the last 30 days
     const resultsData = await db
       .select({ count: count() })
