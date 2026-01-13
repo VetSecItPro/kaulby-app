@@ -79,7 +79,7 @@ const itemVariants = {
 };
 
 
-export function MobileResults({ results, totalCount, page, totalPages, planInfo }: MobileResultsProps) {
+export function MobileResults({ results, totalCount, page, totalPages }: MobileResultsProps) {
   const [filter, setFilter] = useState<"all" | "unread" | "saved" | "hidden">("all");
   const [isPending, startTransition] = useTransition();
   const [allMarkedRead, setAllMarkedRead] = useState(false);

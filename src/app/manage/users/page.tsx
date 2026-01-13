@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { users, monitors, results, usage } from "@/lib/db/schema";
+import { users, monitors, usage } from "@/lib/db/schema";
 import { eq, count, desc, like, or, sql, and, gte } from "drizzle-orm";
 import { UsersManagement } from "@/components/admin/users-management";
 
@@ -17,7 +17,7 @@ async function getUsers(searchParams: SearchParams) {
   const offset = (page - 1) * perPage;
 
   // Build where conditions
-  let whereConditions = [];
+  const whereConditions = [];
 
   if (search) {
     whereConditions.push(

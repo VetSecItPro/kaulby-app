@@ -1,7 +1,7 @@
 import { inngest } from "../client";
 import { db } from "@/lib/db";
 import { webhooks, webhookDeliveries, users } from "@/lib/db/schema";
-import { eq, and, lt, lte, isNull, or } from "drizzle-orm";
+import { eq, and, lt, lte, or } from "drizzle-orm";
 import crypto from "crypto";
 
 // Exponential backoff delays in minutes: 1, 5, 15, 60, 240 (4 hours)

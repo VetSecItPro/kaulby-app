@@ -292,10 +292,9 @@ async function getBusinessMetrics() {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
 
   // Get current subscription counts
-  const [currentSubs, lastMonthSubs, monthlySignups, lastMonthSignups] = await Promise.all([
+  const [currentSubs, lastMonthSubs, monthlySignups] = await Promise.all([
     // Current subscription breakdown
     db.select({
       status: users.subscriptionStatus,
@@ -317,14 +316,6 @@ async function getBusinessMetrics() {
     db.select({ count: count() })
     .from(users)
     .where(gte(users.createdAt, startOfMonth)),
-
-    // New signups last month
-    db.select({ count: count() })
-    .from(users)
-    .where(and(
-      gte(users.createdAt, startOfLastMonth),
-      lt(users.createdAt, startOfMonth)
-    )),
   ]);
 
   // Calculate current MRR

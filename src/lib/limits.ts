@@ -587,7 +587,6 @@ export function getUpgradePrompt(
 ): UpgradePrompt {
   const suggestedPlan: PlanKey = currentPlan === "free" ? "pro" : "enterprise";
   const planName = PLANS[suggestedPlan].name;
-  const price = PLANS[suggestedPlan].price;
 
   const prompts: Record<UpgradeTrigger, {
     title: string;

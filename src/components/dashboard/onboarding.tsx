@@ -11,15 +11,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Radio,
-  MessageSquare,
   Bell,
   Activity,
   ArrowRight,
@@ -30,7 +28,6 @@ import {
   Zap,
   Search,
   Briefcase,
-  Users,
   Code,
   ShoppingCart,
   Sparkles,
@@ -529,45 +526,6 @@ function FeatureItem({
     <div className="flex items-start gap-3 rounded-lg border bg-card p-3">
       <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
         <Icon className="h-4 w-4 text-primary" />
-      </div>
-      <div>
-        <p className="font-medium text-sm">{title}</p>
-        <p className="text-xs text-muted-foreground">{description}</p>
-      </div>
-    </div>
-  );
-}
-
-function StepVisual({
-  label,
-  icon: Icon,
-}: {
-  label: string;
-  icon: React.ElementType;
-}) {
-  return (
-    <div className="flex flex-col items-center gap-1">
-      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-        <Icon className="h-6 w-6 text-primary" />
-      </div>
-      <span className="text-xs text-muted-foreground">{label}</span>
-    </div>
-  );
-}
-
-function HowItWorksItem({
-  number,
-  title,
-  description,
-}: {
-  number: number;
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="flex items-start gap-3">
-      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-        {number}
       </div>
       <div>
         <p className="font-medium text-sm">{title}</p>

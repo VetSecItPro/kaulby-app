@@ -4,14 +4,12 @@ import { useDevice } from "@/hooks/use-device";
 import { MobileManage } from "@/components/mobile/mobile-manage";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Users,
   Radio,
   MessageSquare,
   DollarSign,
   TrendingUp,
-  ArrowRight,
 } from "lucide-react";
 import Link from "next/link";
 import { AdminCharts } from "./admin-charts";

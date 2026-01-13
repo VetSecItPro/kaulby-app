@@ -1,5 +1,5 @@
 import { inngest } from "../client";
-import { db, alerts, results, users, monitors } from "@/lib/db";
+import { db, alerts, results } from "@/lib/db";
 import { eq, and, gte, inArray } from "drizzle-orm";
 import { sendAlertEmail, sendDigestEmail, type WeeklyInsights } from "@/lib/loops";
 import { getPlanLimits } from "@/lib/stripe";

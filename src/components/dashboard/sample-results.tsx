@@ -1,13 +1,11 @@
 "use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   MessageSquare,
   ThumbsUp,
-  ExternalLink,
-  TrendingUp,
   Sparkles,
   ArrowRight,
   Zap
@@ -74,7 +72,7 @@ export function SampleResultsPreview({ className }: SampleResultsPreviewProps) {
             Example Results Preview
           </h3>
           <p className="text-sm text-muted-foreground">
-            Here's what your dashboard will look like with real data
+            Here&apos;s what your dashboard will look like with real data
           </p>
         </div>
         <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
@@ -196,7 +194,7 @@ export function SampleResultsCompact() {
   return (
     <div className="space-y-2">
       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-        Preview: What you'll see
+        Preview: What you&apos;ll see
       </p>
       <div className="space-y-2">
         {SAMPLE_RESULTS.slice(0, 2).map((result) => (
