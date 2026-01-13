@@ -31,6 +31,7 @@ import {
   toggleResultSaved,
   toggleResultHidden,
 } from "@/app/(dashboard)/dashboard/results/actions";
+import { getPlatformBadgeColor } from "@/lib/platform-utils";
 
 interface ResultCardProps {
   result: {
@@ -59,12 +60,6 @@ const sentimentIcons = {
   neutral: <Minus className="h-4 w-4 text-gray-500" />,
 };
 
-const platformColors: Record<string, string> = {
-  reddit: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400",
-  hackernews: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
-  producthunt: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
-  devto: "bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-400",
-};
 
 export function ResultCard({ result, showHidden = false }: ResultCardProps) {
   const [isPending, startTransition] = useTransition();
@@ -132,7 +127,7 @@ export function ResultCard({ result, showHidden = false }: ResultCardProps) {
             <div className="flex items-center gap-2 flex-wrap">
               <Badge
                 variant="outline"
-                className={cn("capitalize", platformColors[result.platform])}
+                className={cn("capitalize", getPlatformBadgeColor(result.platform, "light"))}
               >
                 {result.platform}
               </Badge>
