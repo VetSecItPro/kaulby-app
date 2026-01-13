@@ -1,6 +1,8 @@
 import { inngest } from "../client";
-import { db, monitors, results } from "@/lib/db";
+import { db } from "@/lib/db";
+import { monitors, results } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { incrementResultsCount, canAccessPlatform } from "@/lib/limits";
 
 const HN_API_BASE = "https://hacker-news.firebaseio.com/v0";
 
@@ -58,8 +60,17 @@ export const monitorHackerNews = inngest.createFunction(
     });
 
     let totalResults = 0;
+    const monitorResults: Record<string, number> = {};
 
     for (const monitor of hnMonitors) {
+      // Check if user has access to Hacker News platform
+      const access = await canAccessPlatform(monitor.userId, "hackernews");
+      if (!access.hasAccess) {
+        continue; // Skip monitors for users without platform access
+      }
+
+      let monitorMatchCount = 0;
+
       // Check each story for keyword matches
       const matchingStories = stories.filter((story) => {
         if (!story || !story.title) return false;
@@ -83,7 +94,7 @@ export const monitorHackerNews = inngest.createFunction(
             });
 
             if (!existing) {
-              await db.insert(results).values({
+              const [newResult] = await db.insert(results).values({
                 monitorId: monitor.id,
                 platform: "hackernews",
                 sourceUrl,
@@ -96,15 +107,19 @@ export const monitorHackerNews = inngest.createFunction(
                   score: story.score,
                   numComments: story.descendants,
                 },
-              });
+              }).returning();
 
               totalResults++;
+              monitorMatchCount++;
+
+              // Increment usage count for the user
+              await incrementResultsCount(monitor.userId, 1);
 
               // Trigger content analysis
               await inngest.send({
                 name: "content/analyze",
                 data: {
-                  resultId: String(story.id),
+                  resultId: newResult.id,
                   userId: monitor.userId,
                 },
               });
@@ -112,11 +127,26 @@ export const monitorHackerNews = inngest.createFunction(
           }
         });
       }
+
+      // Update monitor stats
+      monitorResults[monitor.id] = monitorMatchCount;
+
+      await step.run(`update-monitor-stats-${monitor.id}`, async () => {
+        await db
+          .update(monitors)
+          .set({
+            lastCheckedAt: new Date(),
+            newMatchCount: monitorMatchCount,
+            updatedAt: new Date(),
+          })
+          .where(eq(monitors.id, monitor.id));
+      });
     }
 
     return {
       message: `Scanned Hacker News, found ${totalResults} new matching stories`,
       totalResults,
+      monitorResults,
     };
   }
 );

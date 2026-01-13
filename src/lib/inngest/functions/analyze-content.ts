@@ -1,7 +1,9 @@
 import { inngest } from "../client";
-import { db, results, aiLogs } from "@/lib/db";
+import { db } from "@/lib/db";
+import { results, aiLogs } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { analyzeSentiment, analyzePainPoints, summarizeContent, createTrace, flushAI } from "@/lib/ai";
+import { incrementAiCallsCount } from "@/lib/limits";
 
 // Analyze content with AI
 export const analyzeContent = inngest.createFunction(
@@ -92,6 +94,9 @@ export const analyzeContent = inngest.createFunction(
         latencyMs: totalLatency,
         traceId,
       });
+
+      // Increment AI calls count for usage tracking (3 calls: sentiment, pain points, summary)
+      await incrementAiCallsCount(userId, 3);
     });
 
     // Flush Langfuse events

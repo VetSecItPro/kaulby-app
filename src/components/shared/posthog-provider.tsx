@@ -4,9 +4,9 @@ import posthog from "posthog-js";
 import { PostHogProvider as PHProvider } from "posthog-js/react";
 import { useEffect, useState } from "react";
 import { useUser } from "@clerk/nextjs";
+import { hasAnalyticsConsent, getConsent } from "./cookie-consent";
 
 // PostHog project API keys start with 'phc_'
-// If you have a different prefix, you have the wrong key type
 const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
 const POSTHOG_HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST;
 
@@ -19,7 +19,7 @@ const isPostHogConfigured = (): boolean => {
     if (typeof window !== "undefined") {
       console.warn(
         "[PostHog] Invalid API key format. Project API keys start with 'phc_'. " +
-        "You may have copied the wrong key. Go to PostHog → Settings → Project API Key."
+          "You may have copied the wrong key. Go to PostHog → Settings → Project API Key."
       );
     }
     return false;
@@ -30,43 +30,73 @@ const isPostHogConfigured = (): boolean => {
 
 let posthogInitialized = false;
 
+function initPostHog() {
+  if (posthogInitialized || typeof window === "undefined") return;
+  if (!isPostHogConfigured()) return;
+  if (!hasAnalyticsConsent()) return;
+
+  try {
+    posthog.init(POSTHOG_KEY!, {
+      api_host: POSTHOG_HOST || "https://us.posthog.com",
+      capture_pageview: false,
+      capture_pageleave: true,
+      persistence: "localStorage",
+      autocapture: false,
+      disable_session_recording: true,
+      advanced_disable_feature_flags: true,
+      advanced_disable_feature_flags_on_first_load: true,
+      // Respect Do Not Track
+      respect_dnt: true,
+      // Only store essential data
+      property_denylist: ["$ip"],
+      loaded: (ph) => {
+        posthogInitialized = true;
+        if (process.env.NODE_ENV === "development") {
+          ph.debug();
+        }
+      },
+    });
+  } catch (error) {
+    console.warn("[PostHog] Failed to initialize:", error);
+  }
+}
+
 export function PostHogProvider({ children }: { children: React.ReactNode }) {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    // Only run on client and only once
-    if (typeof window === "undefined" || posthogInitialized) {
+    // Only run on client
+    if (typeof window === "undefined") {
       setIsReady(true);
       return;
     }
 
-    if (!isPostHogConfigured()) {
-      setIsReady(true);
-      return;
+    // Check for consent and initialize if allowed
+    if (hasAnalyticsConsent() && !posthogInitialized) {
+      initPostHog();
     }
 
-    try {
-      posthog.init(POSTHOG_KEY!, {
-        api_host: POSTHOG_HOST || "https://us.posthog.com",
-        capture_pageview: false,
-        capture_pageleave: true,
-        persistence: "localStorage",
-        autocapture: false,
-        disable_session_recording: true,
-        advanced_disable_feature_flags: true, // Disable feature flags to prevent 401
-        advanced_disable_feature_flags_on_first_load: true,
-        loaded: (ph) => {
-          posthogInitialized = true;
-          if (process.env.NODE_ENV === "development") {
-            ph.debug();
-          }
-        },
-      });
-    } catch (error) {
-      console.warn("[PostHog] Failed to initialize:", error);
-    }
+    // Listen for consent changes
+    const handleConsentChange = () => {
+      if (hasAnalyticsConsent() && !posthogInitialized) {
+        initPostHog();
+      } else if (!hasAnalyticsConsent() && posthogInitialized) {
+        // User revoked consent - opt out
+        try {
+          posthog.opt_out_capturing();
+          posthog.reset();
+        } catch (e) {
+          // Ignore errors
+        }
+      }
+    };
 
+    window.addEventListener("cookieConsentChange", handleConsentChange);
     setIsReady(true);
+
+    return () => {
+      window.removeEventListener("cookieConsentChange", handleConsentChange);
+    };
   }, []);
 
   // Always render children - PostHog is optional analytics
@@ -77,18 +107,19 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
   return <PHProvider client={posthog}>{children}</PHProvider>;
 }
 
-// Identify user with PostHog when signed in
+// Identify user with PostHog when signed in (only if consented)
 export function PostHogIdentify() {
   const { user, isLoaded } = useUser();
 
   useEffect(() => {
     if (!isPostHogConfigured() || !posthogInitialized) return;
+    if (!hasAnalyticsConsent()) return;
 
     if (isLoaded && user) {
       try {
+        // Only identify with minimal data
         posthog.identify(user.id, {
-          email: user.emailAddresses[0]?.emailAddress,
-          name: user.fullName,
+          // Don't send email or PII unless necessary
           createdAt: user.createdAt,
         });
       } catch (error) {

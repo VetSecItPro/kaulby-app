@@ -24,46 +24,123 @@ export const stripe = process.env.STRIPE_SECRET_KEY
     })
   : (null as unknown as Stripe);
 
+// Platform types
+export type Platform = "reddit" | "hackernews" | "producthunt" | "devto" | "twitter";
+
+// Digest frequency types
+export type DigestFrequency = "weekly" | "daily" | "realtime";
+
+// Plan limits interface
+export interface PlanLimits {
+  monitors: number; // -1 for unlimited
+  keywordsPerMonitor: number;
+  sourcesPerMonitor: number;
+  resultsHistoryDays: number; // -1 for unlimited
+  platforms: Platform[];
+  digestFrequencies: DigestFrequency[];
+  aiFeatures: {
+    sentiment: boolean;
+    painPointCategories: boolean;
+    askFeature: boolean;
+  };
+  alerts: {
+    email: boolean;
+    slack: boolean;
+    webhooks: boolean;
+  };
+  exports: {
+    csv: boolean;
+    api: boolean;
+  };
+}
+
+// Plan definition interface
+export interface PlanDefinition {
+  name: string;
+  description: string;
+  price: number;
+  priceId: string | null;
+  features: string[];
+  limits: PlanLimits;
+}
+
 // Price IDs for your subscription plans - update these with your actual Stripe price IDs
-export const PLANS = {
+export const PLANS: Record<"free" | "pro" | "enterprise", PlanDefinition> = {
   free: {
     name: "Free",
     description: "Get started with basic monitoring",
     price: 0,
     priceId: null,
     features: [
-      "3 monitors",
-      "2 platforms (Reddit, HN)",
-      "100 results/month",
+      "1 monitor",
+      "3 keywords per monitor",
+      "2 sources per monitor",
+      "Reddit only",
       "7-day history",
-      "Daily email digest",
+      "Weekly email digest",
+      "Basic sentiment analysis",
     ],
     limits: {
-      monitors: 3,
-      resultsPerMonth: 100,
-      aiEnabled: false,
+      monitors: 1,
+      keywordsPerMonitor: 3,
+      sourcesPerMonitor: 2,
+      resultsHistoryDays: 7,
+      platforms: ["reddit"],
+      digestFrequencies: ["weekly"],
+      aiFeatures: {
+        sentiment: true,
+        painPointCategories: false,
+        askFeature: false,
+      },
+      alerts: {
+        email: false,
+        slack: false,
+        webhooks: false,
+      },
+      exports: {
+        csv: false,
+        api: false,
+      },
     },
   },
   pro: {
     name: "Pro",
-    description: "For power users and small teams",
+    description: "For power users and growing teams",
     price: 29,
     priceId: process.env.STRIPE_PRO_PRICE_ID || "",
     features: [
-      "20 monitors",
-      "All platforms",
-      "5,000 results/month",
-      "30-day history",
-      "Real-time alerts",
-      "Full AI features",
+      "10 monitors",
+      "20 keywords per monitor",
+      "10 sources per monitor",
+      "Reddit + Hacker News",
+      "90-day history",
+      "Daily + Weekly digests",
+      "Full AI analysis",
       "Pain point detection",
-      "Sentiment analysis",
-      "Priority support",
+      "Email + Slack alerts",
+      "CSV export",
     ],
     limits: {
-      monitors: 20,
-      resultsPerMonth: 5000,
-      aiEnabled: true,
+      monitors: 10,
+      keywordsPerMonitor: 20,
+      sourcesPerMonitor: 10,
+      resultsHistoryDays: 90,
+      platforms: ["reddit", "hackernews"],
+      digestFrequencies: ["daily", "weekly"],
+      aiFeatures: {
+        sentiment: true,
+        painPointCategories: true,
+        askFeature: false,
+      },
+      alerts: {
+        email: true,
+        slack: true,
+        webhooks: false,
+      },
+      exports: {
+        csv: true,
+        api: false,
+      },
     },
   },
   enterprise: {
@@ -73,19 +150,38 @@ export const PLANS = {
     priceId: process.env.STRIPE_ENTERPRISE_PRICE_ID || "",
     features: [
       "Unlimited monitors",
+      "50 keywords per monitor",
+      "25 sources per monitor",
       "All platforms",
-      "Unlimited results",
-      "Unlimited history",
-      "Full AI features",
-      "Team collaboration",
-      "API access",
-      "Custom integrations",
-      "Dedicated support",
+      "1-year history",
+      "Real-time alerts",
+      "Full AI + Ask feature",
+      "All alert channels",
+      "Webhooks",
+      "CSV + API access",
+      "Priority support",
     ],
     limits: {
       monitors: -1, // unlimited
-      resultsPerMonth: -1, // unlimited
-      aiEnabled: true,
+      keywordsPerMonitor: 50,
+      sourcesPerMonitor: 25,
+      resultsHistoryDays: 365,
+      platforms: ["reddit", "hackernews", "producthunt", "devto", "twitter"],
+      digestFrequencies: ["daily", "weekly", "realtime"],
+      aiFeatures: {
+        sentiment: true,
+        painPointCategories: true,
+        askFeature: true,
+      },
+      alerts: {
+        email: true,
+        slack: true,
+        webhooks: true,
+      },
+      exports: {
+        csv: true,
+        api: true,
+      },
     },
   },
 } as const;
@@ -97,4 +193,41 @@ export function getPlanFromPriceId(priceId: string): PlanKey {
   if (priceId === PLANS.pro.priceId) return "pro";
   if (priceId === PLANS.enterprise.priceId) return "enterprise";
   return "free";
+}
+
+// Get plan limits for a subscription status
+export function getPlanLimits(plan: PlanKey): PlanLimits {
+  return PLANS[plan].limits;
+}
+
+// Check if a platform is available for a plan
+export function isPlatformAvailable(plan: PlanKey, platform: Platform): boolean {
+  return PLANS[plan].limits.platforms.includes(platform);
+}
+
+// Check if a feature is available for a plan
+export function isFeatureAvailable(
+  plan: PlanKey,
+  feature: "sentiment" | "painPointCategories" | "askFeature" | "slack" | "webhooks" | "csv" | "api"
+): boolean {
+  const limits = PLANS[plan].limits;
+
+  switch (feature) {
+    case "sentiment":
+      return limits.aiFeatures.sentiment;
+    case "painPointCategories":
+      return limits.aiFeatures.painPointCategories;
+    case "askFeature":
+      return limits.aiFeatures.askFeature;
+    case "slack":
+      return limits.alerts.slack;
+    case "webhooks":
+      return limits.alerts.webhooks;
+    case "csv":
+      return limits.exports.csv;
+    case "api":
+      return limits.exports.api;
+    default:
+      return false;
+  }
 }

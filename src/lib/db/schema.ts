@@ -22,6 +22,8 @@ export const platformEnum = pgEnum("platform", [
   "reddit",
   "hackernews",
   "producthunt",
+  "devto",
+  "twitter",
 ]);
 
 export const alertChannelEnum = pgEnum("alert_channel", [
@@ -43,10 +45,12 @@ export const sentimentEnum = pgEnum("sentiment", [
 ]);
 
 export const painPointCategoryEnum = pgEnum("pain_point_category", [
-  "pain_anger",
+  "pain_point",
   "solution_request",
-  "recommendation",
   "question",
+  "feature_request",
+  "praise",
+  "discussion",
 ]);
 
 // Users table - synced with Clerk
@@ -54,9 +58,12 @@ export const users = pgTable("users", {
   id: text("id").primaryKey(), // Clerk user ID
   email: text("email").notNull(),
   name: text("name"),
+  isAdmin: boolean("is_admin").default(false).notNull(),
   stripeCustomerId: text("stripe_customer_id").unique(),
   subscriptionStatus: subscriptionStatusEnum("subscription_status").default("free").notNull(),
   subscriptionId: text("subscription_id"),
+  currentPeriodStart: timestamp("current_period_start"),
+  currentPeriodEnd: timestamp("current_period_end"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -94,9 +101,11 @@ export const monitors = pgTable("monitors", {
   audienceId: uuid("audience_id").references(() => audiences.id, { onDelete: "set null" }),
   name: text("name").notNull(),
   keywords: text("keywords").array().notNull(),
-  filters: jsonb("filters"), // pain_anger, solution_requests, etc.
+  filters: jsonb("filters"), // pain_point, solution_requests, etc.
   platforms: platformEnum("platforms").array().notNull(),
   isActive: boolean("is_active").default(true).notNull(),
+  lastCheckedAt: timestamp("last_checked_at"),
+  newMatchCount: integer("new_match_count").default(0).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -131,6 +140,13 @@ export const results = pgTable("results", {
   painPointCategory: painPointCategoryEnum("pain_point_category"),
   aiSummary: text("ai_summary"),
   metadata: jsonb("metadata"),
+  // User interaction tracking
+  isViewed: boolean("is_viewed").default(false).notNull(),
+  viewedAt: timestamp("viewed_at"),
+  isClicked: boolean("is_clicked").default(false).notNull(),
+  clickedAt: timestamp("clicked_at"),
+  isSaved: boolean("is_saved").default(false).notNull(),
+  isHidden: boolean("is_hidden").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -147,11 +163,41 @@ export const aiLogs = pgTable("ai_logs", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Usage - monthly usage tracking per billing period
+export const usage = pgTable("usage", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  periodStart: timestamp("period_start").notNull(),
+  periodEnd: timestamp("period_end").notNull(),
+  resultsCount: integer("results_count").default(0).notNull(),
+  aiCallsCount: integer("ai_calls_count").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Slack Integrations - workspace connections for alerts
+export const slackIntegrations = pgTable("slack_integrations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  workspaceId: text("workspace_id").notNull(),
+  workspaceName: text("workspace_name"),
+  accessToken: text("access_token").notNull(),
+  webhookUrl: text("webhook_url"),
+  channelId: text("channel_id"),
+  channelName: text("channel_name"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   audiences: many(audiences),
   monitors: many(monitors),
   aiLogs: many(aiLogs),
+  usage: many(usage),
+  slackIntegrations: many(slackIntegrations),
 }));
 
 export const audiencesRelations = relations(audiences, ({ one, many }) => ({
@@ -204,6 +250,20 @@ export const aiLogsRelations = relations(aiLogs, ({ one }) => ({
   }),
 }));
 
+export const usageRelations = relations(usage, ({ one }) => ({
+  user: one(users, {
+    fields: [usage.userId],
+    references: [users.id],
+  }),
+}));
+
+export const slackIntegrationsRelations = relations(slackIntegrations, ({ one }) => ({
+  user: one(users, {
+    fields: [slackIntegrations.userId],
+    references: [users.id],
+  }),
+}));
+
 // Type exports
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -219,3 +279,7 @@ export type Result = typeof results.$inferSelect;
 export type NewResult = typeof results.$inferInsert;
 export type AiLog = typeof aiLogs.$inferSelect;
 export type NewAiLog = typeof aiLogs.$inferInsert;
+export type Usage = typeof usage.$inferSelect;
+export type NewUsage = typeof usage.$inferInsert;
+export type SlackIntegration = typeof slackIntegrations.$inferSelect;
+export type NewSlackIntegration = typeof slackIntegrations.$inferInsert;

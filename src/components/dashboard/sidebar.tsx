@@ -12,6 +12,7 @@ import {
   Settings,
   CreditCard,
   PlusCircle,
+  ShieldCheck,
 } from "lucide-react";
 
 const sidebarLinks = [
@@ -38,7 +39,11 @@ const sidebarLinks = [
   },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+  isAdmin?: boolean;
+}
+
+export function Sidebar({ isAdmin = false }: SidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -46,7 +51,7 @@ export function Sidebar() {
       {/* Logo */}
       <div className="flex h-14 items-center border-b px-4">
         <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
-          <span className="text-xl">Kaulby</span>
+          <span className="text-xl gradient-text">Kaulby</span>
         </Link>
       </div>
 
@@ -75,6 +80,22 @@ export function Sidebar() {
               </Link>
             );
           })}
+
+          {/* Manage Link (Admin) */}
+          {isAdmin && (
+            <Link
+              href="/manage"
+              className={cn(
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors mt-2",
+                pathname === "/manage" || pathname.startsWith("/manage/")
+                  ? "bg-amber-500 text-white"
+                  : "text-amber-500 hover:bg-amber-500/10"
+              )}
+            >
+              <ShieldCheck className="h-4 w-4" />
+              Manage
+            </Link>
+          )}
         </nav>
 
         {/* Create Monitor Button */}

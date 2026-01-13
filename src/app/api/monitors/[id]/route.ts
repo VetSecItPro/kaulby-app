@@ -3,20 +3,28 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { monitors } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
+import {
+  checkKeywordsLimit,
+  getUserPlan,
+  filterAllowedPlatforms,
+  getUpgradePrompt,
+} from "@/lib/limits";
+import { Platform } from "@/lib/stripe";
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId } = await auth();
+    const { id } = await params;
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const monitor = await db.query.monitors.findFirst({
-      where: and(eq(monitors.id, params.id), eq(monitors.userId, userId)),
+      where: and(eq(monitors.id, id), eq(monitors.userId, userId)),
     });
 
     if (!monitor) {
@@ -32,10 +40,11 @@ export async function GET(
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId } = await auth();
+    const { id } = await params;
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -43,7 +52,7 @@ export async function PATCH(
 
     // Check ownership
     const existing = await db.query.monitors.findFirst({
-      where: and(eq(monitors.id, params.id), eq(monitors.userId, userId)),
+      where: and(eq(monitors.id, id), eq(monitors.userId, userId)),
     });
 
     if (!existing) {
@@ -68,11 +77,57 @@ export async function PATCH(
 
     // Validate platforms
     if (platforms) {
-      const validPlatforms = ["reddit", "hackernews", "producthunt"];
+      const validPlatforms = ["reddit", "hackernews", "producthunt", "devto"];
       const invalidPlatforms = platforms.filter((p: string) => !validPlatforms.includes(p));
       if (invalidPlatforms.length > 0) {
         return NextResponse.json({ error: `Invalid platforms: ${invalidPlatforms.join(", ")}` }, { status: 400 });
       }
+    }
+
+    // Get user's plan for limit checks
+    const plan = await getUserPlan(userId);
+
+    // Check keywords limit if updating keywords
+    if (keywords) {
+      const keywordCheck = checkKeywordsLimit(keywords, plan);
+      if (!keywordCheck.allowed) {
+        const prompt = getUpgradePrompt(plan, "keywords");
+        return NextResponse.json(
+          {
+            error: keywordCheck.message,
+            upgradePrompt: prompt,
+            current: keywordCheck.current,
+            limit: keywordCheck.limit,
+          },
+          { status: 403 }
+        );
+      }
+    }
+
+    // Filter platforms if updating
+    let finalPlatforms = existing.platforms;
+    let platformWarning: string | undefined;
+
+    if (platforms) {
+      const allowedPlatforms = await filterAllowedPlatforms(userId, platforms as Platform[]);
+
+      if (allowedPlatforms.length === 0) {
+        const prompt = getUpgradePrompt(plan, "platform", platforms[0]);
+        return NextResponse.json(
+          {
+            error: `Your plan doesn't have access to ${platforms.join(", ")}. ${prompt.description}`,
+            upgradePrompt: prompt,
+          },
+          { status: 403 }
+        );
+      }
+
+      const filteredOut = platforms.filter((p: string) => !allowedPlatforms.includes(p as Platform));
+      if (filteredOut.length > 0) {
+        platformWarning = `Some platforms (${filteredOut.join(", ")}) are not available on your plan and were not included.`;
+      }
+
+      finalPlatforms = allowedPlatforms;
     }
 
     // Update monitor
@@ -81,14 +136,17 @@ export async function PATCH(
       .set({
         ...(name !== undefined && { name: name.trim() }),
         ...(keywords !== undefined && { keywords }),
-        ...(platforms !== undefined && { platforms }),
+        ...(platforms !== undefined && { platforms: finalPlatforms }),
         ...(isActive !== undefined && { isActive }),
         updatedAt: new Date(),
       })
-      .where(eq(monitors.id, params.id))
+      .where(eq(monitors.id, id))
       .returning();
 
-    return NextResponse.json({ monitor: updatedMonitor });
+    return NextResponse.json({
+      monitor: updatedMonitor,
+      ...(platformWarning && { warning: platformWarning }),
+    });
   } catch (error) {
     console.error("Error updating monitor:", error);
     return NextResponse.json({ error: "Failed to update monitor" }, { status: 500 });
@@ -97,10 +155,11 @@ export async function PATCH(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId } = await auth();
+    const { id } = await params;
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -108,7 +167,7 @@ export async function DELETE(
 
     // Check ownership
     const existing = await db.query.monitors.findFirst({
-      where: and(eq(monitors.id, params.id), eq(monitors.userId, userId)),
+      where: and(eq(monitors.id, id), eq(monitors.userId, userId)),
     });
 
     if (!existing) {
@@ -116,7 +175,7 @@ export async function DELETE(
     }
 
     // Delete monitor (cascade will delete results and alerts)
-    await db.delete(monitors).where(eq(monitors.id, params.id));
+    await db.delete(monitors).where(eq(monitors.id, id));
 
     return NextResponse.json({ success: true });
   } catch (error) {
