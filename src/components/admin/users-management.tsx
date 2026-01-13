@@ -473,7 +473,7 @@ export function UsersManagement({
               onClick={() => {
                 if (actionDialog.type === "ban" && actionDialog.user) {
                   handleBan(actionDialog.user);
-                } else if (actionDialog.type && actionDialog.user) {
+                } else if ((actionDialog.type === "upgrade" || actionDialog.type === "downgrade") && actionDialog.user) {
                   handlePlanAction(actionDialog.type, actionDialog.user);
                 }
               }}
