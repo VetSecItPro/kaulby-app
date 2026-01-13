@@ -8,13 +8,19 @@ async function getClerkHandler() {
   if (!clerkHandler) {
     const { clerkMiddleware, createRouteMatcher } = await import("@clerk/nextjs/server");
 
+    const isDev = process.env.NODE_ENV === "development";
+
     const isPublicRoute = createRouteMatcher([
       "/",
       "/pricing",
+      "/privacy",
+      "/terms",
       "/sign-in(.*)",
       "/sign-up(.*)",
       "/api/webhooks(.*)",
       "/api/inngest(.*)",
+      // Allow dashboard and manage access in development without auth
+      ...(isDev ? ["/dashboard(.*)", "/manage(.*)"] : []),
     ]);
 
     clerkHandler = clerkMiddleware(async (auth, request) => {

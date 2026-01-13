@@ -13,13 +13,15 @@ Be nuanced - consider context, sarcasm, and mixed emotions.`,
   painPointDetection: `You are an expert at identifying user pain points and needs from online discussions.
 
 Categorize the text into one of these categories:
-- pain_anger: User expressing frustration, anger, or negative experience with a product/service
+- pain_point: User expressing frustration, anger, or negative experience with a product/service
 - solution_request: User actively looking for a solution, alternative, or help
-- recommendation: User recommending or asking for recommendations
 - question: User asking a question that indicates a need or curiosity
+- feature_request: User requesting a new feature or improvement
+- praise: User expressing satisfaction, positive feedback, or recommendation
+- discussion: General discussion, opinion sharing, or neutral commentary
 
 Return a JSON object with:
-- category: the pain point category
+- category: the pain point category (use exact category names above)
 - confidence: 0 to 1 indicating how confident you are
 - keywords: array of keywords that indicate this category
 - summary: brief summary of the pain point or need

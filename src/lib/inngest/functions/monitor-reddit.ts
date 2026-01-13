@@ -1,6 +1,8 @@
 import { inngest } from "../client";
-import { db, monitors, results } from "@/lib/db";
+import { db } from "@/lib/db";
+import { monitors, results } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { incrementResultsCount, canAccessPlatform } from "@/lib/limits";
 
 // Reddit RSS feed URL
 function getRedditRssUrl(subreddit: string): string {
@@ -52,8 +54,17 @@ export const monitorReddit = inngest.createFunction(
     }
 
     let totalResults = 0;
+    const monitorResults: Record<string, number> = {};
 
     for (const monitor of redditMonitors) {
+      // Check if user has access to Reddit platform
+      const access = await canAccessPlatform(monitor.userId, "reddit");
+      if (!access.hasAccess) {
+        continue; // Skip monitors for users without platform access
+      }
+
+      let monitorMatchCount = 0;
+
       // Get audience communities or use default subreddits
       const subreddits = await step.run(`get-subreddits-${monitor.id}`, async () => {
         if (monitor.audienceId) {
@@ -70,7 +81,7 @@ export const monitorReddit = inngest.createFunction(
       });
 
       for (const subreddit of subreddits) {
-        const posts = await step.run(`fetch-${subreddit}`, async () => {
+        const posts = await step.run(`fetch-${monitor.id}-${subreddit}`, async () => {
           try {
             const response = await fetch(getRedditRssUrl(subreddit), {
               headers: {
@@ -101,7 +112,7 @@ export const monitorReddit = inngest.createFunction(
 
         // Save matching posts as results
         if (matchingPosts.length > 0) {
-          await step.run(`save-results-${subreddit}`, async () => {
+          await step.run(`save-results-${monitor.id}-${subreddit}`, async () => {
             for (const post of matchingPosts) {
               // Check if we already have this result
               const existing = await db.query.results.findFirst({
@@ -109,7 +120,7 @@ export const monitorReddit = inngest.createFunction(
               });
 
               if (!existing) {
-                await db.insert(results).values({
+                const [newResult] = await db.insert(results).values({
                   monitorId: monitor.id,
                   platform: "reddit",
                   sourceUrl: `https://reddit.com${post.data.permalink}`,
@@ -122,15 +133,19 @@ export const monitorReddit = inngest.createFunction(
                     score: post.data.score,
                     numComments: post.data.num_comments,
                   },
-                });
+                }).returning();
 
                 totalResults++;
+                monitorMatchCount++;
+
+                // Increment usage count for the user
+                await incrementResultsCount(monitor.userId, 1);
 
                 // Trigger content analysis
                 await inngest.send({
                   name: "content/analyze",
                   data: {
-                    resultId: post.data.id,
+                    resultId: newResult.id,
                     userId: monitor.userId,
                   },
                 });
@@ -139,11 +154,26 @@ export const monitorReddit = inngest.createFunction(
           });
         }
       }
+
+      // Update monitor stats
+      monitorResults[monitor.id] = monitorMatchCount;
+
+      await step.run(`update-monitor-stats-${monitor.id}`, async () => {
+        await db
+          .update(monitors)
+          .set({
+            lastCheckedAt: new Date(),
+            newMatchCount: monitorMatchCount,
+            updatedAt: new Date(),
+          })
+          .where(eq(monitors.id, monitor.id));
+      });
     }
 
     return {
       message: `Scanned Reddit, found ${totalResults} new matching posts`,
       totalResults,
+      monitorResults,
     };
   }
 );

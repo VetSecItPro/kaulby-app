@@ -2,7 +2,7 @@ import { jsonCompletion } from "../openrouter";
 import { buildAnalysisPrompt } from "../prompts";
 
 export interface PainPointResult {
-  category: "pain_anger" | "solution_request" | "recommendation" | "question" | null;
+  category: "pain_point" | "solution_request" | "question" | "feature_request" | "praise" | "discussion" | null;
   confidence: number;
   keywords: string[];
   summary: string;

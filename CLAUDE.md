@@ -2,6 +2,21 @@
 
 AI-powered community monitoring SaaS. Tracks Reddit, Hacker News, Product Hunt for keywords, analyzes sentiment/pain points via AI, sends alerts.
 
+## Development Philosophy
+
+- **No shortcuts**: Always implement strategic, comprehensive fixes. Never apply band-aids or quick patches that defer the real problem.
+- **Error tracking**: When discovering pre-existing errors or issues while working on a task, note them in `kaulby-todo.md` under "Known Issues" and fix them after completing the current task.
+- **Complete solutions**: Fix root causes, not symptoms. Consider downstream effects and related code paths.
+- **No over-engineering**: Solve the current problem completely, but don't build for hypothetical future requirements.
+
+## Autonomous Work Authorization
+
+- **Pre-cleared for all operations**: No permission requests needed for file edits, database pushes, or shell commands.
+- **Validate work**: Ensure no TypeScript errors, test compilation before moving on.
+- **No git commits**: Do not commit or push to GitHub unless explicitly requested.
+- **Database operations allowed**: Can push schema changes to Neon freely.
+- **Strategic execution**: Work methodically, don't rush, ensure quality.
+
 ## Deployment
 
 - **Production URL**: https://kaulbyapp.com
@@ -34,19 +49,28 @@ AI-powered community monitoring SaaS. Tracks Reddit, Hacker News, Product Hunt f
 
 ## Subscription Limits
 
-| Tier | Monitors | Results/mo | AI | Alerts |
-|------|----------|------------|-----|--------|
-| free | 3 | 100 | No | No |
-| pro | 20 | 5,000 | Yes | Yes |
-| enterprise | Unlimited | Unlimited | Yes | Yes |
+| Tier | Monitors | Keywords/Monitor | Sources/Monitor | Results History | Platforms |
+|------|----------|------------------|-----------------|-----------------|-----------|
+| free | 1 | 3 | 2 | 7 days | Reddit only |
+| pro | 10 | 20 | 10 | 90 days | Reddit + HN |
+| enterprise | Unlimited | 50 | 25 | 1 year | All (Reddit, HN, PH, Dev.to) |
+
+| Tier | Email Digest | AI Features | Alerts | Export |
+|------|--------------|-------------|--------|--------|
+| free | Weekly only | Basic sentiment | None | None |
+| pro | Daily + Weekly | Sentiment + Pain point categories | Email + Slack | CSV |
+| enterprise | Real-time option | Full + "Ask" feature | All + Webhooks | CSV + API |
+
+*****s**: User hits monitor limit, tries to add more keywords, clicks locked feature, 7 days on free tier.
 
 ## Key Files
 
-- `src/lib/db/schema.ts` - Database schema
-- `src/lib/stripe.ts` - Plan definitions
+- `src/lib/db/schema.ts` - Database schema (source of truth)
+- `src/lib/stripe.ts` - Plan definitions and tier logic
 - `src/lib/inngest/functions/` - Background jobs
 - `src/lib/ai/prompts.ts` - AI prompts
 - `src/middleware.ts` - Route protection
+- `kaulby-todo.md` - Active gaps, migrations, and known issues
 
 ## Conventions
 

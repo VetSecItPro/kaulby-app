@@ -1,26 +1,56 @@
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { Sidebar } from "@/components/dashboard/sidebar";
+import { DashboardClientWrapper } from "@/components/dashboard/dashboard-client-wrapper";
+import { ResponsiveDashboardLayout } from "@/components/dashboard/responsive-dashboard-layout";
+import { db } from "@/lib/db";
+import { monitors, users } from "@/lib/db/schema";
+import { eq, count } from "drizzle-orm";
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const isDev = process.env.NODE_ENV === "development";
+
+  // In dev mode, skip auth for easy testing
+  if (isDev) {
+    return (
+      <ResponsiveDashboardLayout isAdmin={true}>
+        {children}
+      </ResponsiveDashboardLayout>
+    );
+  }
+
   const { userId } = await auth();
+  const user = await currentUser();
 
   if (!userId) {
     redirect("/sign-in");
   }
 
+  // Get user data and monitor count in parallel
+  const [dbUser, monitorsCountResult] = await Promise.all([
+    db.query.users.findFirst({
+      where: (users, { eq }) => eq(users.id, userId),
+      columns: { isAdmin: true },
+    }),
+    db
+      .select({ count: count() })
+      .from(monitors)
+      .where(eq(monitors.userId, userId)),
+  ]);
+
+  const hasMonitors = (monitorsCountResult[0]?.count || 0) > 0;
+  const isNewUser = !hasMonitors;
+  const isAdmin = dbUser?.isAdmin || false;
+  const userName = user?.firstName || user?.username || undefined;
+
   return (
-    <div className="flex min-h-screen">
-      <Sidebar />
-      <main className="flex-1 overflow-auto">
-        <div className="container py-6 px-4 md:px-8">
-          {children}
-        </div>
-      </main>
-    </div>
+    <ResponsiveDashboardLayout isAdmin={isAdmin}>
+      <DashboardClientWrapper isNewUser={isNewUser} userName={userName}>
+        {children}
+      </DashboardClientWrapper>
+    </ResponsiveDashboardLayout>
   );
 }
