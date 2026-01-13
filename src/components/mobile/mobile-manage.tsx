@@ -6,10 +6,8 @@ import {
   Radio,
   MessageSquare,
   DollarSign,
-  TrendingUp,
-  ChevronRight,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 interface Stats {
@@ -20,18 +18,6 @@ interface Stats {
   activeMonitors: number;
   usersToday: number;
   resultsToday: number;
-}
-
-interface UserGrowth {
-  date: string;
-  count: number;
-}
-
-interface AiCost {
-  date: string;
-  totalCost: string | number | null;
-  totalCalls: number;
-  totalTokens: string | number | null;
 }
 
 interface PlatformDist {
@@ -75,7 +61,7 @@ const itemVariants = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.3, ease: "easeOut" },
+    transition: { duration: 0.3, ease: "easeOut" as const },
   },
 };
 

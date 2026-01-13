@@ -4,7 +4,7 @@ import posthog from "posthog-js";
 import { PostHogProvider as PHProvider } from "posthog-js/react";
 import { useEffect, useState } from "react";
 import { useUser } from "@clerk/nextjs";
-import { hasAnalyticsConsent, getConsent } from "./cookie-consent";
+import { hasAnalyticsConsent } from "./cookie-consent";
 
 // PostHog project API keys start with 'phc_'
 const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
@@ -85,7 +85,7 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
         try {
           posthog.opt_out_capturing();
           posthog.reset();
-        } catch (e) {
+        } catch {
           // Ignore errors
         }
       }
