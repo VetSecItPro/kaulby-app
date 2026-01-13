@@ -1,15 +1,16 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { monitors, users } from "@/lib/db/schema";
-import { eq, count } from "drizzle-orm";
-
-// Plan limits
-const planLimits = {
-  free: { monitors: 3 },
-  pro: { monitors: 20 },
-  enterprise: { monitors: Infinity },
-};
+import { monitors } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
+import {
+  canCreateMonitor,
+  checkKeywordsLimit,
+  getUserPlan,
+  filterAllowedPlatforms,
+  getUpgradePrompt,
+} from "@/lib/limits";
+import { Platform } from "@/lib/stripe";
 
 export async function POST(request: Request) {
   try {
@@ -36,48 +37,80 @@ export async function POST(request: Request) {
     }
 
     // Validate platforms
-    const validPlatforms = ["reddit", "hackernews", "producthunt"];
+    const validPlatforms = ["reddit", "hackernews", "producthunt", "devto"];
     const invalidPlatforms = platforms.filter((p: string) => !validPlatforms.includes(p));
     if (invalidPlatforms.length > 0) {
       return NextResponse.json({ error: `Invalid platforms: ${invalidPlatforms.join(", ")}` }, { status: 400 });
     }
 
-    // Get user subscription status
-    const user = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-    });
-
-    const subscriptionStatus = user?.subscriptionStatus || "free";
-    const limit = planLimits[subscriptionStatus as keyof typeof planLimits];
+    // Get user's plan
+    const plan = await getUserPlan(userId);
 
     // Check monitor limit
-    const existingMonitors = await db
-      .select({ count: count() })
-      .from(monitors)
-      .where(eq(monitors.userId, userId));
-
-    const currentCount = existingMonitors[0]?.count || 0;
-
-    if (currentCount >= limit.monitors) {
+    const monitorCheck = await canCreateMonitor(userId);
+    if (!monitorCheck.allowed) {
+      const prompt = getUpgradePrompt(plan, "monitors");
       return NextResponse.json(
-        { error: `You've reached your monitor limit (${limit.monitors}). Upgrade to add more.` },
+        {
+          error: monitorCheck.message,
+          upgradePrompt: prompt,
+          current: monitorCheck.current,
+          limit: monitorCheck.limit,
+        },
         { status: 403 }
       );
     }
 
-    // Create monitor
+    // Check keywords limit
+    const keywordCheck = checkKeywordsLimit(keywords, plan);
+    if (!keywordCheck.allowed) {
+      const prompt = getUpgradePrompt(plan, "keywords");
+      return NextResponse.json(
+        {
+          error: keywordCheck.message,
+          upgradePrompt: prompt,
+          current: keywordCheck.current,
+          limit: keywordCheck.limit,
+        },
+        { status: 403 }
+      );
+    }
+
+    // Filter platforms to only allowed ones for user's plan
+    const allowedPlatforms = await filterAllowedPlatforms(userId, platforms as Platform[]);
+
+    if (allowedPlatforms.length === 0) {
+      const prompt = getUpgradePrompt(plan, "platform", platforms[0]);
+      return NextResponse.json(
+        {
+          error: `Your plan doesn't have access to ${platforms.join(", ")}. ${prompt.description}`,
+          upgradePrompt: prompt,
+        },
+        { status: 403 }
+      );
+    }
+
+    // Warn if some platforms were filtered out
+    const filteredOut = platforms.filter((p: string) => !allowedPlatforms.includes(p as Platform));
+
+    // Create monitor with allowed platforms only
     const [newMonitor] = await db
       .insert(monitors)
       .values({
         userId,
         name: name.trim(),
         keywords: keywords.map((k: string) => k.trim()),
-        platforms: platforms,
+        platforms: allowedPlatforms,
         isActive: true,
       })
       .returning();
 
-    return NextResponse.json({ monitor: newMonitor }, { status: 201 });
+    return NextResponse.json({
+      monitor: newMonitor,
+      ...(filteredOut.length > 0 && {
+        warning: `Some platforms (${filteredOut.join(", ")}) are not available on your plan and were not included.`,
+      }),
+    }, { status: 201 });
   } catch (error) {
     console.error("Error creating monitor:", error);
     return NextResponse.json({ error: "Failed to create monitor" }, { status: 500 });

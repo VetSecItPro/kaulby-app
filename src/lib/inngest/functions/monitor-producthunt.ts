@@ -1,6 +1,8 @@
 import { inngest } from "../client";
-import { db, monitors, results } from "@/lib/db";
+import { db } from "@/lib/db";
+import { monitors, results } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { incrementResultsCount, canAccessPlatform } from "@/lib/limits";
 
 const PH_API_BASE = "https://api.producthunt.com/v2/api/graphql";
 
@@ -108,8 +110,17 @@ export const monitorProductHunt = inngest.createFunction(
     }
 
     let totalResults = 0;
+    const monitorResults: Record<string, number> = {};
 
     for (const monitor of phMonitors) {
+      // Check if user has access to Product Hunt platform
+      const access = await canAccessPlatform(monitor.userId, "producthunt");
+      if (!access.hasAccess) {
+        continue; // Skip monitors for users without platform access
+      }
+
+      let monitorMatchCount = 0;
+
       // Check each post for keyword matches
       const matchingPosts = posts.filter((post) => {
         const text = `${post.name} ${post.tagline} ${post.description || ""}`.toLowerCase();
@@ -128,7 +139,7 @@ export const monitorProductHunt = inngest.createFunction(
             });
 
             if (!existing) {
-              await db.insert(results).values({
+              const [newResult] = await db.insert(results).values({
                 monitorId: monitor.id,
                 platform: "producthunt",
                 sourceUrl: post.url,
@@ -140,15 +151,19 @@ export const monitorProductHunt = inngest.createFunction(
                   phId: post.id,
                   votesCount: post.votesCount,
                 },
-              });
+              }).returning();
 
               totalResults++;
+              monitorMatchCount++;
+
+              // Increment usage count for the user
+              await incrementResultsCount(monitor.userId, 1);
 
               // Trigger content analysis
               await inngest.send({
                 name: "content/analyze",
                 data: {
-                  resultId: post.id,
+                  resultId: newResult.id,
                   userId: monitor.userId,
                 },
               });
@@ -156,11 +171,26 @@ export const monitorProductHunt = inngest.createFunction(
           }
         });
       }
+
+      // Update monitor stats
+      monitorResults[monitor.id] = monitorMatchCount;
+
+      await step.run(`update-monitor-stats-${monitor.id}`, async () => {
+        await db
+          .update(monitors)
+          .set({
+            lastCheckedAt: new Date(),
+            newMatchCount: monitorMatchCount,
+            updatedAt: new Date(),
+          })
+          .where(eq(monitors.id, monitor.id));
+      });
     }
 
     return {
       message: `Scanned Product Hunt, found ${totalResults} new matching posts`,
       totalResults,
+      monitorResults,
     };
   }
 );

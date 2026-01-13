@@ -4,6 +4,8 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { Toaster } from "@/components/ui/toaster";
 import { PostHogProvider, PostHogIdentify } from "@/components/shared/posthog-provider";
 import { PostHogPageView } from "@/components/shared/posthog-pageview";
+import { CookieConsentBanner } from "@/components/shared/cookie-consent";
+import { DeviceProvider } from "@/hooks/use-device";
 import "./globals.css";
 
 const geistSans = localFont({
@@ -31,16 +33,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const content = (
-    <html lang="en">
+    <html lang="en" className="dark">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background`}
       >
-        <PostHogProvider>
-          <PostHogPageView />
-          {isClerkConfigured && <PostHogIdentify />}
-          {children}
-          <Toaster />
-        </PostHogProvider>
+        <DeviceProvider>
+          <PostHogProvider>
+            <PostHogPageView />
+            {isClerkConfigured && <PostHogIdentify />}
+            {children}
+            <Toaster />
+            <CookieConsentBanner />
+          </PostHogProvider>
+        </DeviceProvider>
       </body>
     </html>
   );

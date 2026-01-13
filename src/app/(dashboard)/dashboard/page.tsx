@@ -9,20 +9,29 @@ import { Radio, MessageSquare, TrendingUp, PlusCircle } from "lucide-react";
 import Link from "next/link";
 
 export default async function DashboardPage() {
-  const { userId } = await auth();
+  const isDev = process.env.NODE_ENV === "development";
 
-  if (!userId) {
-    redirect("/sign-in");
+  let userId: string | null = null;
+
+  if (!isDev) {
+    const authResult = await auth();
+    userId = authResult.userId;
+
+    if (!userId) {
+      redirect("/sign-in");
+    }
   }
 
-  // Get user data
-  const user = await db.query.users.findFirst({
-    where: eq(users.id, userId),
-  });
+  // Get user data (or use mock data in dev)
+  const user = userId
+    ? await db.query.users.findFirst({
+        where: eq(users.id, userId),
+      })
+    : null;
 
   // If user doesn't exist in our DB yet, they need to complete signup via webhook
   // For now, show empty state
-  const monitorsCount = user
+  const monitorsCount = user && userId
     ? await db.select({ count: count() }).from(monitors).where(eq(monitors.userId, userId))
     : [{ count: 0 }];
 
@@ -30,7 +39,7 @@ export default async function DashboardPage() {
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
   // Get results count for user's monitors
-  const userMonitorIds = user
+  const userMonitorIds = user && userId
     ? await db.select({ id: monitors.id }).from(monitors).where(eq(monitors.userId, userId))
     : [];
 

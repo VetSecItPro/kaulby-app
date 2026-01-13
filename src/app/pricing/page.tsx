@@ -72,7 +72,7 @@ export default function PricingPage() {
       {/* Navigation */}
       <header className="border-b">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="text-2xl font-bold">
+          <Link href="/" className="text-2xl font-bold gradient-text">
             Kaulby
           </Link>
           <nav className="flex items-center gap-4">
@@ -208,17 +208,20 @@ export default function PricingPage() {
       {/* Footer */}
       <footer className="border-t py-8 px-4">
         <div className="container mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="text-sm text-muted-foreground">
-            &copy; {new Date().getFullYear()} Kaulby. All rights reserved.
+          <div className="flex items-center gap-2">
+            <span className="text-xl font-bold gradient-text">Kaulby</span>
+            <span className="text-sm text-muted-foreground">
+              &copy; {new Date().getFullYear()} All rights reserved.
+            </span>
           </div>
           <div className="flex gap-6">
             <Link href="/pricing" className="text-sm text-muted-foreground hover:text-foreground">
               Pricing
             </Link>
-            <Link href="#" className="text-sm text-muted-foreground hover:text-foreground">
+            <Link href="/privacy" className="text-sm text-muted-foreground hover:text-foreground">
               Privacy
             </Link>
-            <Link href="#" className="text-sm text-muted-foreground hover:text-foreground">
+            <Link href="/terms" className="text-sm text-muted-foreground hover:text-foreground">
               Terms
             </Link>
           </div>
