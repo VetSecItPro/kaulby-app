@@ -21,11 +21,6 @@ export default async function MonitorsPage() {
     orderBy: [desc(monitors.createdAt)],
   });
 
-  const platformColors: Record<string, string> = {
-    reddit: "bg-orange-500",
-    hackernews: "bg-orange-600",
-    producthunt: "bg-red-500",
-  };
 
   return (
     <div className="space-y-8">

@@ -166,7 +166,7 @@ export default function NewMonitorPage() {
                 </div>
               )}
               <p className="text-xs text-muted-foreground">
-                Add keywords or phrases to monitor. We'll track mentions across selected platforms.
+                Add keywords or phrases to monitor. Mentions will be tracked across selected platforms.
               </p>
             </div>
 
