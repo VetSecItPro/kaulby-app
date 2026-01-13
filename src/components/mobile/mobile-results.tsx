@@ -25,7 +25,7 @@ import { markAllResultsViewed } from "@/app/(dashboard)/dashboard/results/action
 
 interface Result {
   id: string;
-  platform: "reddit" | "hackernews" | "producthunt" | "devto";
+  platform: "reddit" | "hackernews" | "producthunt" | "devto" | "twitter";
   sourceUrl: string;
   title: string;
   content: string | null;
