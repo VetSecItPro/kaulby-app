@@ -5,9 +5,9 @@ import { Zap } from "lucide-react";
 
 interface AiCostData {
   date: string;
-  totalCost: string | null;
+  totalCost: string | number | null;
   totalCalls: number;
-  totalTokens: string | null;
+  totalTokens: string | number | null;
 }
 
 interface AiCostsTableProps {
@@ -23,8 +23,8 @@ export function AiCostsTable({ costs }: AiCostsTableProps) {
     });
   };
 
-  const formatNumber = (num: string | null) => {
-    if (!num) return "0";
+  const formatNumber = (num: string | number | null) => {
+    if (num === null || num === undefined) return "0";
     return Number(num).toLocaleString();
   };
 

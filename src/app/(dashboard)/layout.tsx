@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { DashboardClientWrapper } from "@/components/dashboard/dashboard-client-wrapper";
 import { ResponsiveDashboardLayout } from "@/components/dashboard/responsive-dashboard-layout";
 import { db } from "@/lib/db";
-import { monitors, users } from "@/lib/db/schema";
+import { monitors } from "@/lib/db/schema";
 import { eq, count } from "drizzle-orm";
 
 export default async function DashboardLayout({

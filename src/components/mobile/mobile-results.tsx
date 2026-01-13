@@ -7,8 +7,6 @@ import {
   ExternalLink,
   Bookmark,
   BookmarkCheck,
-  Eye,
-  EyeOff,
   ChevronDown,
   Filter,
   CheckCheck
@@ -27,7 +25,7 @@ import { markAllResultsViewed } from "@/app/(dashboard)/dashboard/results/action
 
 interface Result {
   id: string;
-  platform: "reddit" | "hackernews" | "producthunt" | "devto";
+  platform: "reddit" | "hackernews" | "producthunt" | "devto" | "twitter";
   sourceUrl: string;
   title: string;
   content: string | null;
@@ -63,7 +61,7 @@ const itemVariants = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.3, ease: "easeOut" },
+    transition: { duration: 0.3, ease: "easeOut" as const },
   },
 };
 

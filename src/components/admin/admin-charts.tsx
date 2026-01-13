@@ -21,9 +21,9 @@ interface UserGrowthData {
 
 interface AiCostData {
   date: string;
-  totalCost: string | null;
+  totalCost: string | number | null;
   totalCalls: number;
-  totalTokens: string | null;
+  totalTokens: string | number | null;
 }
 
 interface AdminChartsProps {
