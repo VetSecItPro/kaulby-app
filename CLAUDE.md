@@ -12,7 +12,7 @@ AI-powered community monitoring SaaS. Tracks Reddit, Hacker News, Product Hunt f
 ## Autonomous Work Authorization
 
 - **Pre-cleared for all operations**: No permission requests needed for file edits, database pushes, or shell commands.
-- **Validate work**: Ensure no TypeScript errors, test compilation before moving on.
+- **Validate before pushing**: Always run `npx tsc --noEmit` locally before pushing to GitHub to catch TypeScript errors and avoid wasted CI cycles.
 - **No git commits**: Do not commit or push to GitHub unless explicitly requested.
 - **Database operations allowed**: Can push schema changes to Neon freely.
 - **Strategic execution**: Work methodically, don't rush, ensure quality.
@@ -37,6 +37,7 @@ AI-powered community monitoring SaaS. Tracks Reddit, Hacker News, Product Hunt f
 - `npm run db:push` - Push schema to database
 - `npm run db:studio` - Open Drizzle Studio
 - `npx inngest-cli@latest dev` - Inngest dev server (separate terminal)
+- `npx tsc --noEmit` - **Run before pushing to GitHub** to catch TypeScript errors locally and avoid wasted CI cycles
 
 ## Architecture Rules
 
