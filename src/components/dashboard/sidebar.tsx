@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { UserButton } from "@clerk/nextjs";
 import {
   LayoutDashboard,
-  Bell,
+  Radio,
+  MessageSquare,
   Settings,
   CreditCard,
   PlusCircle,
@@ -15,24 +16,25 @@ import {
 
 const sidebarLinks = [
   {
-    title: "Dashboard",
+    title: "Overview",
     href: "/dashboard",
     icon: LayoutDashboard,
+    exact: true,
   },
   {
-    title: "Alerts",
-    href: "/dashboard/alerts",
-    icon: Bell,
+    title: "Monitors",
+    href: "/dashboard/monitors",
+    icon: Radio,
+  },
+  {
+    title: "Results",
+    href: "/dashboard/results",
+    icon: MessageSquare,
   },
   {
     title: "Settings",
-    href: "/settings",
+    href: "/dashboard/settings",
     icon: Settings,
-  },
-  {
-    title: "Billing",
-    href: "/settings/billing",
-    icon: CreditCard,
   },
 ];
 
@@ -53,7 +55,9 @@ export function Sidebar() {
         <nav className="grid gap-1 px-2">
           {sidebarLinks.map((link) => {
             const Icon = link.icon;
-            const isActive = pathname === link.href || pathname.startsWith(link.href + "/");
+            const isActive = link.exact
+              ? pathname === link.href
+              : pathname === link.href || pathname.startsWith(link.href + "/");
 
             return (
               <Link
@@ -75,11 +79,24 @@ export function Sidebar() {
 
         {/* Create Monitor Button */}
         <div className="mt-4 px-2">
-          <Button className="w-full gap-2" size="sm">
-            <PlusCircle className="h-4 w-4" />
-            New Monitor
-          </Button>
+          <Link href="/dashboard/monitors/new">
+            <Button className="w-full gap-2" size="sm">
+              <PlusCircle className="h-4 w-4" />
+              New Monitor
+            </Button>
+          </Link>
         </div>
+      </div>
+
+      {/* Billing Link */}
+      <div className="px-2 pb-2">
+        <Link
+          href="/dashboard/settings"
+          className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+        >
+          <CreditCard className="h-4 w-4" />
+          Upgrade Plan
+        </Link>
       </div>
 
       {/* User Section */}
