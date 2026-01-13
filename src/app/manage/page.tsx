@@ -291,7 +291,6 @@ async function getCostBreakdown() {
 async function getBusinessMetrics() {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
 
   // Get current subscription counts
   const [currentSubs, lastMonthSubs, monthlySignups] = await Promise.all([
