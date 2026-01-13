@@ -101,6 +101,21 @@ export async function sendAlertEmail(params: {
   });
 }
 
+// Weekly AI insights type
+export interface WeeklyInsights {
+  headline: string;
+  keyTrends: Array<{ trend: string; evidence: string }>;
+  sentimentBreakdown: {
+    positive: number;
+    negative: number;
+    neutral: number;
+    dominantSentiment: string;
+  };
+  topPainPoints: string[];
+  opportunities: string[];
+  recommendations: string[];
+}
+
 // Send digest email
 export async function sendDigestEmail(params: {
   to: string;
@@ -117,7 +132,56 @@ export async function sendDigestEmail(params: {
       summary?: string | null;
     }>;
   }>;
+  aiInsights?: WeeklyInsights;
 }) {
+  // Build AI insights section if available
+  let aiInsightsHtml = "";
+  if (params.aiInsights) {
+    const insights = params.aiInsights;
+    aiInsightsHtml = `
+      <div style="margin-bottom: 32px; padding: 20px; background: linear-gradient(135deg, #f0f9ff 0%, #faf5ff 100%); border-radius: 12px; border: 1px solid #e0e7ff;">
+        <h2 style="margin: 0 0 12px; font-size: 18px; font-weight: 700; color: #4f46e5;">Weekly AI Insights</h2>
+        <p style="margin: 0 0 16px; font-size: 16px; font-weight: 500; color: #1e293b;">${insights.headline}</p>
+
+        <div style="margin-bottom: 16px;">
+          <h4 style="margin: 0 0 8px; font-size: 14px; font-weight: 600; color: #475569;">Sentiment This Week</h4>
+          <div style="display: flex; gap: 12px;">
+            <span style="color: #16a34a;">Positive: ${insights.sentimentBreakdown.positive}</span>
+            <span style="color: #dc2626;">Negative: ${insights.sentimentBreakdown.negative}</span>
+            <span style="color: #64748b;">Neutral: ${insights.sentimentBreakdown.neutral}</span>
+          </div>
+        </div>
+
+        ${insights.keyTrends.length > 0 ? `
+        <div style="margin-bottom: 16px;">
+          <h4 style="margin: 0 0 8px; font-size: 14px; font-weight: 600; color: #475569;">Key Trends</h4>
+          <ul style="margin: 0; padding-left: 20px;">
+            ${insights.keyTrends.map(t => `<li style="margin-bottom: 4px;"><strong>${t.trend}</strong>: ${t.evidence}</li>`).join("")}
+          </ul>
+        </div>
+        ` : ""}
+
+        ${insights.opportunities.length > 0 ? `
+        <div style="margin-bottom: 16px;">
+          <h4 style="margin: 0 0 8px; font-size: 14px; font-weight: 600; color: #475569;">Opportunities</h4>
+          <ul style="margin: 0; padding-left: 20px;">
+            ${insights.opportunities.map(o => `<li style="margin-bottom: 4px;">${o}</li>`).join("")}
+          </ul>
+        </div>
+        ` : ""}
+
+        ${insights.recommendations.length > 0 ? `
+        <div>
+          <h4 style="margin: 0 0 8px; font-size: 14px; font-weight: 600; color: #475569;">Recommendations</h4>
+          <ul style="margin: 0; padding-left: 20px;">
+            ${insights.recommendations.map(r => `<li style="margin-bottom: 4px;">${r}</li>`).join("")}
+          </ul>
+        </div>
+        ` : ""}
+      </div>
+    `;
+  }
+
   const monitorsHtml = params.monitors
     .map(
       (m) => `
@@ -150,6 +214,7 @@ export async function sendDigestEmail(params: {
       userName: params.userName,
       frequency: params.frequency,
       totalResults: String(totalResults),
+      aiInsightsHtml,
       monitorsHtml,
     },
   });

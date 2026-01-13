@@ -23,6 +23,7 @@ import {
 import Link from "next/link";
 import { markAllResultsViewed } from "@/app/(dashboard)/dashboard/results/actions";
 import { getPlatformBadgeColor, getSentimentBadgeColor } from "@/lib/platform-utils";
+import type { PlanKey } from "@/lib/stripe";
 
 interface Result {
   id: string;
@@ -42,11 +43,22 @@ interface Result {
   monitor: { name: string } | null;
 }
 
+interface PlanInfo {
+  plan: PlanKey;
+  visibleLimit: number;
+  isLimited: boolean;
+  hiddenCount: number;
+  hasUnlimitedAi: boolean;
+  refreshDelayHours: number;
+  nextRefreshAt: Date | null;
+}
+
 interface MobileResultsProps {
   results: Result[];
   totalCount: number;
   page: number;
   totalPages: number;
+  planInfo?: PlanInfo;
 }
 
 const containerVariants = {
@@ -67,7 +79,7 @@ const itemVariants = {
 };
 
 
-export function MobileResults({ results, totalCount, page, totalPages }: MobileResultsProps) {
+export function MobileResults({ results, totalCount, page, totalPages, planInfo }: MobileResultsProps) {
   const [filter, setFilter] = useState<"all" | "unread" | "saved" | "hidden">("all");
   const [isPending, startTransition] = useTransition();
   const [allMarkedRead, setAllMarkedRead] = useState(false);

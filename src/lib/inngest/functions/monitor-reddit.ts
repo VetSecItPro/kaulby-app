@@ -2,7 +2,7 @@ import { inngest } from "../client";
 import { db } from "@/lib/db";
 import { monitors, results } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { incrementResultsCount, canAccessPlatform } from "@/lib/limits";
+import { incrementResultsCount, canAccessPlatform, shouldProcessMonitor } from "@/lib/limits";
 
 // Reddit RSS feed URL
 function getRedditRssUrl(subreddit: string): string {
@@ -61,6 +61,12 @@ export const monitorReddit = inngest.createFunction(
       const access = await canAccessPlatform(monitor.userId, "reddit");
       if (!access.hasAccess) {
         continue; // Skip monitors for users without platform access
+      }
+
+      // Check refresh delay for free tier users
+      const scheduleCheck = await shouldProcessMonitor(monitor.userId, monitor.lastCheckedAt);
+      if (!scheduleCheck.shouldProcess) {
+        continue; // Skip monitors that are within refresh delay period
       }
 
       let monitorMatchCount = 0;
