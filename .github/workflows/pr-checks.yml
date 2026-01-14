@@ -1,4 +1,4 @@
-name: PR Checks
+name: PR Checks (Parallel)
 
 on:
   pull_request:
@@ -7,15 +7,16 @@ on:
 env:
   NODE_OPTIONS: '--max_old_space_size=4096'
 
+# Cancel in-progress runs for same PR
 concurrency:
   group: pr-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
+  # Build once, share across all jobs
   build:
-    name: Build & Validate
+    name: Build & Type Check
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -42,22 +43,190 @@ jobs:
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
           NEXT_PUBLIC_CLERK_SIGN_IN_URL: /sign-in
           NEXT_PUBLIC_CLERK_SIGN_UP_URL: /sign-up
-          NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL: /dashboard
-          NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL: /dashboard
+          NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL: /dashboard
+          NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL: /dashboard
           NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
           NEXT_PUBLIC_POSTHOG_KEY: ${{ secrets.NEXT_PUBLIC_POSTHOG_KEY }}
-          NEXT_PUBLIC_POSTHOG_HOST: https://app.posthog.com
+          NEXT_PUBLIC_POSTHOG_HOST: https://us.posthog.com
+
+      - name: Prepare build artifact
+        run: |
+          if [ -d ".next" ]; then
+            rm -rf .next/cache
+            cp -r .next next-build
+          fi
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: next-build
+          retention-days: 1
+          if-no-files-found: error
+
+  # Security scanning (parallel with build)
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        run: |
+          echo "### 🔒 Security Audit" >> $GITHUB_STEP_SUMMARY
+          npm audit --audit-level=high || true
+
+          # Count vulnerabilities
+          HIGH=$(npm audit --json 2>/dev/null | jq '.metadata.vulnerabilities.high // 0')
+          CRITICAL=$(npm audit --json 2>/dev/null | jq '.metadata.vulnerabilities.critical // 0')
+
+          echo "| Severity | Count |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Critical | $CRITICAL |" >> $GITHUB_STEP_SUMMARY
+          echo "| High | $HIGH |" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$CRITICAL" -gt 0 ]; then
+            echo "::error::Critical vulnerabilities found!"
+            exit 1
+          fi
+
+      - name: Check for secrets in code
+        run: |
+          echo "### 🔑 Secret Scanning" >> $GITHUB_STEP_SUMMARY
+
+          # Check for common secret patterns
+          SECRETS_FOUND=0
+
+          # API keys, tokens, passwords in code (excluding .env files and node_modules)
+          if grep -rE "(api[_-]?key|api[_-]?secret|password|token|secret[_-]?key)\s*[:=]\s*['\"][^'\"]{10,}['\"]" \
+            --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" \
+            --exclude-dir=node_modules --exclude-dir=.next . 2>/dev/null; then
+            echo "⚠️ Potential secrets found in code" >> $GITHUB_STEP_SUMMARY
+            SECRETS_FOUND=1
+          fi
+
+          # AWS keys
+          if grep -rE "AKIA[0-9A-Z]{16}" --exclude-dir=node_modules --exclude-dir=.next . 2>/dev/null; then
+            echo "⚠️ Potential AWS key found" >> $GITHUB_STEP_SUMMARY
+            SECRETS_FOUND=1
+          fi
+
+          if [ "$SECRETS_FOUND" -eq 0 ]; then
+            echo "✅ No secrets detected in code" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: OWASP Dependency Check
+        uses: dependency-check/Dependency-Check_Action@main
+        id: depcheck
+        with:
+          project: 'kaulby-app'
+          path: '.'
+          format: 'HTML'
+          args: >
+            --failOnCVSS 9
+            --enableRetired
+        continue-on-error: true
+
+      - name: Upload OWASP report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dependency-check-report
+          path: reports/
+          retention-days: 7
+
+  # Bundle size check (parallel)
+  bundle-size:
+    name: Bundle Size
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: build-output
+          path: .next
 
       - name: Check bundle size
         run: |
           echo "### 📦 Bundle Size" >> $GITHUB_STEP_SUMMARY
           if [ -d ".next/static/chunks" ]; then
+            echo "#### Largest chunks:" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            find .next/static/chunks -name "*.js" -type f -exec du -h {} \; | sort -rh | head -10 >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
             TOTAL_JS=$(find .next/static/chunks -name "*.js" -type f -exec cat {} \; | wc -c)
             TOTAL_JS_KB=$((TOTAL_JS / 1024))
+            echo "" >> $GITHUB_STEP_SUMMARY
             echo "**Total JS:** ${TOTAL_JS_KB}KB" >> $GITHUB_STEP_SUMMARY
+
             if [ $TOTAL_JS_KB -gt 500 ]; then
-              echo "⚠️ JS bundle exceeds 500KB" >> $GITHUB_STEP_SUMMARY
+              echo "⚠️ JS bundle exceeds 500KB mobile budget" >> $GITHUB_STEP_SUMMARY
             else
               echo "✅ JS bundle within budget" >> $GITHUB_STEP_SUMMARY
             fi
           fi
+
+  # Code quality metrics
+  code-quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check for console.log statements
+        run: |
+          echo "### 🧹 Code Quality" >> $GITHUB_STEP_SUMMARY
+
+          CONSOLE_COUNT=$(grep -rE "console\.(log|debug|info)" \
+            --include="*.ts" --include="*.tsx" \
+            --exclude-dir=node_modules --exclude-dir=.next \
+            . 2>/dev/null | wc -l || echo "0")
+
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$CONSOLE_COUNT" -gt 5 ]; then
+            echo "| Console statements | ⚠️ $CONSOLE_COUNT found |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Console statements | ✅ Clean |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Check TODO/FIXME comments
+        run: |
+          TODO_COUNT=$(grep -rE "(TODO|FIXME|HACK|XXX):" \
+            --include="*.ts" --include="*.tsx" \
+            --exclude-dir=node_modules --exclude-dir=.next \
+            . 2>/dev/null | wc -l || echo "0")
+
+          echo "| TODO/FIXME comments | ℹ️ $TODO_COUNT found |" >> $GITHUB_STEP_SUMMARY
