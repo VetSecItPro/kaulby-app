@@ -43,7 +43,7 @@ export default function ArticlesPage() {
               Articles Coming Soon
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              We're working on helpful guides about community monitoring, brand tracking,
+              We&apos;re working on helpful guides about community monitoring, brand tracking,
               and making the most of online discussions. Check back soon!
             </p>
           </div>
