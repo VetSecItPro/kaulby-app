@@ -1,0 +1,133 @@
+name: Security (Weekly)
+
+on:
+  schedule:
+    # Sundays at 2am UTC
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          queries: security-extended
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@v3
+
+  dependency-check:
+    name: OWASP Dependency Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Full audit
+        run: |
+          echo "### 🔒 Weekly Security Audit" >> $GITHUB_STEP_SUMMARY
+
+          npm audit --json > audit.json 2>/dev/null || true
+
+          TOTAL=$(jq '.metadata.vulnerabilities.total // 0' audit.json)
+          CRITICAL=$(jq '.metadata.vulnerabilities.critical // 0' audit.json)
+          HIGH=$(jq '.metadata.vulnerabilities.high // 0' audit.json)
+          MODERATE=$(jq '.metadata.vulnerabilities.moderate // 0' audit.json)
+
+          echo "| Severity | Count |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 🔴 Critical | $CRITICAL |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🟠 High | $HIGH |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🟡 Moderate | $MODERATE |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Total** | **$TOTAL** |" >> $GITHUB_STEP_SUMMARY
+
+      - name: OWASP Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: 'kaulby-app'
+          path: '.'
+          format: 'HTML'
+          args: --failOnCVSS 9 --enableRetired
+        continue-on-error: true
+
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: owasp-report
+          path: reports/
+          retention-days: 30
+
+  license-check:
+    name: License Compliance
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check licenses
+        run: |
+          npm install -g license-checker
+
+          echo "### 📜 License Audit" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          license-checker --summary >> $GITHUB_STEP_SUMMARY || true
+
+  zap-scan:
+    name: OWASP ZAP
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: ZAP Baseline
+        uses: zaproxy/action-baseline@v0.12.0
+        with:
+          target: 'https://kaulbyapp.com'
+          rules_file_name: '.zap/rules.tsv'
+        continue-on-error: true
+
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zap-report
+          path: report_html.html
+          retention-days: 30

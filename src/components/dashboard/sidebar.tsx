@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -51,6 +52,15 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
       {/* Logo */}
       <div className="flex h-14 items-center border-b px-4">
         <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
+          <div className="w-7 h-7 rounded-lg overflow-hidden bg-black flex items-center justify-center">
+            <Image
+              src="/logo.jpg"
+              alt="Kaulby"
+              width={28}
+              height={28}
+              className="object-cover"
+            />
+          </div>
           <span className="text-xl gradient-text">Kaulby</span>
         </Link>
       </div>

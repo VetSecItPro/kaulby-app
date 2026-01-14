@@ -7,9 +7,17 @@ export interface SentimentResult {
   reasoning: string;
 }
 
+export interface AnalysisMeta {
+  model: string;
+  cost: number;
+  latencyMs: number;
+  promptTokens: number;
+  completionTokens: number;
+}
+
 export async function analyzeSentiment(
   content: string
-): Promise<{ result: SentimentResult; meta: { model: string; cost: number; latencyMs: number } }> {
+): Promise<{ result: SentimentResult; meta: AnalysisMeta }> {
   const { system, user } = buildAnalysisPrompt("sentimentAnalysis", content);
 
   const { data, meta } = await jsonCompletion<SentimentResult>({
@@ -25,6 +33,8 @@ export async function analyzeSentiment(
       model: meta.model,
       cost: meta.cost,
       latencyMs: meta.latencyMs,
+      promptTokens: meta.promptTokens,
+      completionTokens: meta.completionTokens,
     },
   };
 }

@@ -1,0 +1,29 @@
+# ZAP Scanning Rules Configuration
+# IGNORE = Ignore this alert
+# WARN = Warn but don't fail
+# FAIL = Fail the scan
+
+# Format: AlertID	Action	AlertDescription
+
+# Informational alerts - ignore these
+10021	IGNORE	X-Content-Type-Options Header Missing
+10036	IGNORE	Server Leaks Version Information
+10055	IGNORE	CSP: Wildcard Directive
+
+# Low risk - warn only
+10020	WARN	X-Frame-Options Header
+10038	WARN	Content Security Policy Header Not Set
+10098	WARN	Cross-Domain Misconfiguration
+
+# Medium risk - warn
+40014	WARN	Cross Site Scripting (Persistent)
+40016	WARN	Cross Site Scripting (Reflected)
+
+# High risk - fail the build
+10016	FAIL	Web Browser XSS Protection Not Enabled
+10017	FAIL	Cross-Domain JavaScript Source File Inclusion
+40012	FAIL	Cross Site Scripting (Reflected) in JSON Responses
+40018	FAIL	SQL Injection
+90019	FAIL	Server Side Include
+90020	FAIL	Remote OS Command Injection
+90023	FAIL	XML External Entity Attack

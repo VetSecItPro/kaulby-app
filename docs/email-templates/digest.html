@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your {{frequency}} Digest - Kaulby</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f4f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f4f4f5;">
+    <tr>
+      <td align="center" style="padding: 40px 20px;">
+        <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="background-color: #ffffff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+
+          <!-- Header -->
+          <tr>
+            <td style="padding: 32px 40px 24px;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td>
+                    <h1 style="margin: 0; font-size: 20px; font-weight: 700; color: #18181b;">Kaulby</h1>
+                  </td>
+                  <td align="right">
+                    <span style="font-size: 14px; color: #71717a; text-transform: capitalize;">{{frequency}} Digest</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td style="padding: 0 40px 32px;">
+              <h2 style="margin: 0 0 8px; font-size: 22px; font-weight: 600; color: #18181b;">Hey {{userName}}, here's your update</h2>
+              <p style="margin: 0 0 24px; font-size: 14px; color: #71717a;">
+                {{totalResults}} new mentions found across your monitors.
+              </p>
+
+              <!-- AI Insights (Pro+ only) -->
+              {{{aiInsightsHtml}}}
+
+              <!-- Monitors Results -->
+              {{{monitorsHtml}}}
+
+              <!-- CTA Button -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td align="center" style="padding: 24px 0 0;">
+                    <a href="https://kaulbyapp.com/dashboard" style="display: inline-block; padding: 12px 24px; background-color: #18181b; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 14px; border-radius: 8px;">Open Dashboard</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 24px 40px; background-color: #fafafa; border-top: 1px solid #e4e4e7; border-radius: 0 0 12px 12px;">
+              <p style="margin: 0; font-size: 12px; color: #71717a; text-align: center;">
+                You're receiving this {{frequency}} digest based on your alert settings<br>
+                <a href="https://kaulbyapp.com/dashboard/settings" style="color: #71717a;">Manage preferences</a>
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+
+<!--
+Variables needed in Loops:
+- userName (text)
+- frequency (text) - "daily" or "weekly"
+- totalResults (text)
+- aiInsightsHtml (text - allows HTML) - AI insights section, empty for non-Pro users
+- monitorsHtml (text - allows HTML) - Generated monitor results
+
+The aiInsightsHtml is generated with this format (when available):
+<div style="margin-bottom: 24px; padding: 20px; background: linear-gradient(135deg, #f0f9ff 0%, #faf5ff 100%); border-radius: 12px; border: 1px solid #e0e7ff;">
+  <h3 style="margin: 0 0 12px; font-size: 16px; font-weight: 700; color: #4f46e5;">AI Insights</h3>
+  <p style="margin: 0 0 16px; font-size: 15px; font-weight: 500; color: #18181b;">[HEADLINE]</p>
+  ...
+</div>
+
+The monitorsHtml is generated with this format:
+<div style="margin-bottom: 24px;">
+  <h3 style="margin: 0 0 12px; font-size: 16px; font-weight: 600; color: #18181b;">[MONITOR NAME] (X new)</h3>
+  <div style="margin-bottom: 12px; padding: 12px; border: 1px solid #e4e4e7; border-radius: 8px;">
+    ...result items...
+  </div>
+</div>
+-->
