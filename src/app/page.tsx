@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -38,8 +39,17 @@ export default function HomePage() {
       {/* Navigation */}
       <header className="sticky top-0 z-50 glass border-b safe-area-top">
         <div className="container mx-auto px-4 py-3 md:py-4 flex items-center justify-between">
-          <Link href="/" className="text-xl md:text-2xl font-bold gradient-text">
-            Kaulby
+          <Link href="/" className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg overflow-hidden bg-black flex items-center justify-center">
+              <Image
+                src="/logo.jpg"
+                alt="Kaulby"
+                width={32}
+                height={32}
+                className="object-cover"
+              />
+            </div>
+            <span className="text-xl md:text-2xl font-bold gradient-text">Kaulby</span>
           </Link>
           <nav className="flex items-center gap-3 md:gap-6">
             <Link
@@ -260,8 +270,19 @@ export default function HomePage() {
       <footer className="border-t py-8 md:py-12 px-4 bg-background safe-area-bottom">
         <div className="container mx-auto">
           <div className="flex flex-col gap-6 md:gap-0 md:flex-row justify-between items-center">
-            <div className="flex flex-col sm:flex-row items-center gap-2 text-center sm:text-left">
-              <span className="text-xl font-bold gradient-text">Kaulby</span>
+            <div className="flex flex-col sm:flex-row items-center gap-3 text-center sm:text-left">
+              <Link href="/" className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg overflow-hidden bg-black flex items-center justify-center">
+                  <Image
+                    src="/logo.jpg"
+                    alt="Kaulby"
+                    width={28}
+                    height={28}
+                    className="object-cover"
+                  />
+                </div>
+                <span className="text-xl font-bold gradient-text">Kaulby</span>
+              </Link>
               <span className="text-xs sm:text-sm text-muted-foreground">
                 &copy; {new Date().getFullYear()} All rights reserved.
               </span>
