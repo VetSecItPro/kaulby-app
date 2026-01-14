@@ -80,12 +80,15 @@ export default function PricingPage() {
                 alt="Kaulby"
                 width={32}
                 height={32}
-                className="object-cover"
+                className="object-cover w-full h-full"
               />
             </div>
             <span className="text-2xl font-bold gradient-text">Kaulby</span>
           </Link>
           <nav className="flex items-center gap-4">
+            <Link href="/articles" className="text-sm font-medium">
+              Articles
+            </Link>
             <Link href="/pricing" className="text-sm font-medium">
               Pricing
             </Link>
@@ -226,7 +229,7 @@ export default function PricingPage() {
                   alt="Kaulby"
                   width={28}
                   height={28}
-                  className="object-cover"
+                  className="object-cover w-full h-full"
                 />
               </div>
               <span className="text-xl font-bold gradient-text">Kaulby</span>
@@ -236,6 +239,9 @@ export default function PricingPage() {
             </span>
           </div>
           <div className="flex gap-6">
+            <Link href="/articles" className="text-sm text-muted-foreground hover:text-foreground">
+              Articles
+            </Link>
             <Link href="/pricing" className="text-sm text-muted-foreground hover:text-foreground">
               Pricing
             </Link>
