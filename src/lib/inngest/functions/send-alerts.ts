@@ -1,9 +1,64 @@
 import { inngest } from "../client";
-import { db, alerts, results } from "@/lib/db";
+import { db, alerts, results, users } from "@/lib/db";
 import { eq, and, gte, inArray } from "drizzle-orm";
-import { sendAlertEmail, sendDigestEmail, type WeeklyInsights } from "@/lib/loops";
+import { sendAlertEmail, sendDigestEmail, type WeeklyInsights } from "@/lib/email";
 import { getPlanLimits } from "@/lib/stripe";
 import { generateWeeklyInsights } from "@/lib/ai";
+
+// Supported timezones (IANA format for DST handling)
+const SUPPORTED_TIMEZONES = [
+  "America/New_York",
+  "America/Chicago",
+  "America/Denver",
+  "America/Los_Angeles",
+] as const;
+
+type SupportedTimezone = (typeof SUPPORTED_TIMEZONES)[number];
+
+// Get current hour in a timezone (handles DST automatically)
+function getCurrentHourInTimezone(timezone: string): number {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    hour: "numeric",
+    hour12: false,
+  });
+  return parseInt(formatter.format(new Date()), 10);
+}
+
+// Get current day of week in a timezone (0 = Sunday, 1 = Monday, etc.)
+function getCurrentDayInTimezone(timezone: string): number {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    weekday: "short",
+  });
+  const day = formatter.format(new Date());
+  const days: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  return days[day] ?? 0;
+}
+
+// Get timezones where it's currently the target hour
+function getTimezonesAtHour(targetHour: number): SupportedTimezone[] {
+  return SUPPORTED_TIMEZONES.filter(
+    (tz) => getCurrentHourInTimezone(tz) === targetHour
+  );
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type InngestStep = any;
+
+// Types for query results
+type UserWithMonitors = Awaited<ReturnType<typeof db.query.users.findMany>>[number] & {
+  monitors: Array<{
+    id: string;
+    name: string;
+    alerts: Array<{
+      channel: string;
+      frequency: string;
+    }>;
+  }>;
+};
+
+type ResultWithMonitor = Awaited<ReturnType<typeof db.query.results.findMany>>[number];
 
 // Send instant alert
 export const sendAlert = inngest.createFunction(
@@ -72,248 +127,323 @@ export const sendAlert = inngest.createFunction(
   }
 );
 
-// Send daily digest - Pro+ users only
-export const sendDigest = inngest.createFunction(
-  {
-    id: "send-daily-digest",
-    name: "Send Daily Digest Emails",
-    retries: 2,
-  },
-  { cron: "0 9 * * *" }, // Every day at 9 AM UTC
-  async ({ step }) => {
-    // Get all users with daily email alerts (Pro+ only can have daily)
-    const usersWithAlerts = await step.run("get-users", async () => {
-      return db.query.users.findMany({
-        with: {
-          monitors: {
-            with: {
-              alerts: {
-                where: and(
-                  eq(alerts.isActive, true),
-                  eq(alerts.frequency, "daily"),
-                  eq(alerts.channel, "email")
-                ),
-              },
+// Shared daily digest logic for a specific timezone
+async function sendDailyDigestForTimezone(
+  timezone: SupportedTimezone,
+  step: InngestStep
+) {
+  // Get all users with daily email alerts in this timezone
+  const usersWithAlerts: UserWithMonitors[] = await step.run(`get-users-${timezone}`, async () => {
+    return db.query.users.findMany({
+      where: eq(users.timezone, timezone),
+      with: {
+        monitors: {
+          with: {
+            alerts: {
+              where: and(
+                eq(alerts.isActive, true),
+                eq(alerts.frequency, "daily"),
+                eq(alerts.channel, "email")
+              ),
             },
           },
         },
+      },
+    });
+  });
+
+  let digestsSent = 0;
+  let skippedNoPlan = 0;
+  let skippedNoResults = 0;
+
+  for (const user of usersWithAlerts) {
+    // Check if user has Pro+ plan for daily digests
+    const limits = getPlanLimits(user.subscriptionStatus);
+    if (!limits.digestFrequencies.includes("daily")) {
+      skippedNoPlan++;
+      continue;
+    }
+
+    const hasEmailAlerts = user.monitors.some((m) =>
+      m.alerts.some((a) => a.channel === "email" && a.frequency === "daily")
+    );
+
+    if (!hasEmailAlerts) continue;
+
+    // Get results from last 24 hours
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const userResults: ResultWithMonitor[] = await step.run(`get-results-${user.id}`, async () => {
+      const monitorIds = user.monitors.map((m) => m.id);
+      if (monitorIds.length === 0) return [];
+
+      return db.query.results.findMany({
+        where: and(
+          inArray(results.monitorId, monitorIds),
+          gte(results.createdAt, yesterday)
+        ),
+        orderBy: (results, { desc }) => [desc(results.createdAt)],
       });
     });
 
-    let digestsSent = 0;
-    let skippedNoPlan = 0;
-    let skippedNoResults = 0;
+    if (userResults.length === 0) {
+      skippedNoResults++;
+      continue;
+    }
 
-    for (const user of usersWithAlerts) {
-      // Check if user has Pro+ plan for daily digests
-      const limits = getPlanLimits(user.subscriptionStatus);
-      if (!limits.digestFrequencies.includes("daily")) {
-        skippedNoPlan++;
-        continue;
-      }
+    // Group results by monitor
+    const resultsByMonitor = new Map<string, ResultWithMonitor[]>();
+    for (const result of userResults) {
+      const existing = resultsByMonitor.get(result.monitorId) || [];
+      existing.push(result);
+      resultsByMonitor.set(result.monitorId, existing);
+    }
 
-      const hasEmailAlerts = user.monitors.some((m) =>
-        m.alerts.some((a) => a.channel === "email" && a.frequency === "daily")
-      );
-
-      if (!hasEmailAlerts) continue;
-
-      // Get results from last 24 hours
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-
-      const userResults = await step.run(`get-results-${user.id}`, async () => {
-        const monitorIds = user.monitors.map((m) => m.id);
-        if (monitorIds.length === 0) return [];
-
-        return db.query.results.findMany({
-          where: and(
-            inArray(results.monitorId, monitorIds),
-            gte(results.createdAt, yesterday)
-          ),
-          orderBy: (results, { desc }) => [desc(results.createdAt)],
-        });
-      });
-
-      if (userResults.length === 0) {
-        skippedNoResults++;
-        continue;
-      }
-
-      // Group results by monitor
-      const resultsByMonitor = new Map<string, typeof userResults>();
-      for (const result of userResults) {
-        const existing = resultsByMonitor.get(result.monitorId) || [];
-        existing.push(result);
-        resultsByMonitor.set(result.monitorId, existing);
-      }
-
-      await step.run(`send-digest-${user.id}`, async () => {
-        const monitorsData = user.monitors
-          .filter((m) => resultsByMonitor.has(m.id))
-          .map((m) => {
-            const monitorResults = resultsByMonitor.get(m.id) || [];
-            return {
-              name: m.name,
-              resultsCount: monitorResults.length,
-              topResults: monitorResults.slice(0, 5).map((r) => ({
-                title: r.title,
-                url: r.sourceUrl,
-                platform: r.platform,
-                sentiment: r.sentiment,
-                summary: r.aiSummary,
-              })),
-            };
-          });
-
-        await sendDigestEmail({
-          to: user.email,
-          userName: user.name || "there",
-          frequency: "daily",
-          monitors: monitorsData,
+    await step.run(`send-digest-${user.id}`, async () => {
+      const monitorsData = user.monitors
+        .filter((m) => resultsByMonitor.has(m.id))
+        .map((m) => {
+          const monitorResults = resultsByMonitor.get(m.id) || [];
+          return {
+            name: m.name,
+            resultsCount: monitorResults.length,
+            topResults: monitorResults.slice(0, 5).map((r) => ({
+              title: r.title,
+              url: r.sourceUrl,
+              platform: r.platform,
+              sentiment: r.sentiment,
+              summary: r.aiSummary,
+            })),
+          };
         });
 
-        digestsSent++;
+      await sendDigestEmail({
+        to: user.email,
+        userName: user.name || "there",
+        frequency: "daily",
+        monitors: monitorsData,
       });
+
+      digestsSent++;
+    });
+  }
+
+  return {
+    timezone,
+    digestsSent,
+    skippedNoPlan,
+    skippedNoResults,
+  };
+}
+
+// Shared weekly digest logic for a specific timezone
+async function sendWeeklyDigestForTimezone(
+  timezone: SupportedTimezone,
+  step: InngestStep
+) {
+  // Get all users with weekly email alerts in this timezone
+  const usersWithAlerts: UserWithMonitors[] = await step.run(`get-users-${timezone}`, async () => {
+    return db.query.users.findMany({
+      where: eq(users.timezone, timezone),
+      with: {
+        monitors: {
+          with: {
+            alerts: {
+              where: and(
+                eq(alerts.isActive, true),
+                eq(alerts.frequency, "weekly"),
+                eq(alerts.channel, "email")
+              ),
+            },
+          },
+        },
+      },
+    });
+  });
+
+  let digestsSent = 0;
+  let skippedNoResults = 0;
+
+  for (const user of usersWithAlerts) {
+    const hasEmailAlerts = user.monitors.some((m) =>
+      m.alerts.some((a) => a.channel === "email" && a.frequency === "weekly")
+    );
+
+    if (!hasEmailAlerts) continue;
+
+    // Get results from last 7 days
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+
+    const userResults: ResultWithMonitor[] = await step.run(`get-results-${user.id}`, async () => {
+      const monitorIds = user.monitors.map((m) => m.id);
+      if (monitorIds.length === 0) return [];
+
+      return db.query.results.findMany({
+        where: and(
+          inArray(results.monitorId, monitorIds),
+          gte(results.createdAt, weekAgo)
+        ),
+        orderBy: (results, { desc }) => [desc(results.createdAt)],
+      });
+    });
+
+    if (userResults.length === 0) {
+      skippedNoResults++;
+      continue;
+    }
+
+    // Group results by monitor
+    const resultsByMonitor = new Map<string, ResultWithMonitor[]>();
+    for (const result of userResults) {
+      const existing = resultsByMonitor.get(result.monitorId) || [];
+      existing.push(result);
+      resultsByMonitor.set(result.monitorId, existing);
+    }
+
+    // Check if user has Pro+ plan for AI insights
+    const limits = getPlanLimits(user.subscriptionStatus);
+    const includeAiInsights = limits.aiFeatures.unlimitedAiAnalysis;
+
+    // Generate AI insights for Pro+ users
+    let aiInsights: WeeklyInsights | undefined;
+    if (includeAiInsights && userResults.length >= 5) {
+      try {
+        const insightsResult = await step.run(`generate-insights-${user.id}`, async () => {
+          const analysisResults = userResults.map(r => ({
+            title: r.title,
+            content: r.content,
+            platform: r.platform,
+            sentiment: r.sentiment,
+            painPointCategory: r.painPointCategory,
+            aiSummary: r.aiSummary,
+          }));
+          return generateWeeklyInsights(analysisResults);
+        });
+        aiInsights = insightsResult.result;
+      } catch (error) {
+        console.error(`Failed to generate AI insights for user ${user.id}:`, error);
+        // Continue without AI insights
+      }
+    }
+
+    await step.run(`send-digest-${user.id}`, async () => {
+      const monitorsData = user.monitors
+        .filter((m) => resultsByMonitor.has(m.id))
+        .map((m) => {
+          const monitorResults = resultsByMonitor.get(m.id) || [];
+          return {
+            name: m.name,
+            resultsCount: monitorResults.length,
+            topResults: monitorResults.slice(0, 10).map((r) => ({
+              title: r.title,
+              url: r.sourceUrl,
+              platform: r.platform,
+              sentiment: r.sentiment,
+              summary: r.aiSummary,
+            })),
+          };
+        });
+
+      await sendDigestEmail({
+        to: user.email,
+        userName: user.name || "there",
+        frequency: "weekly",
+        monitors: monitorsData,
+        aiInsights,
+      });
+
+      digestsSent++;
+    });
+  }
+
+  return {
+    timezone,
+    digestsSent,
+    skippedNoResults,
+  };
+}
+
+// Daily digest - runs at hours when 9 AM occurs in US timezones
+// UTC 13-17 covers 9 AM for all US timezones during both DST and standard time
+export const sendDailyDigest = inngest.createFunction(
+  {
+    id: "send-daily-digest",
+    name: "Daily Digest (DST-aware)",
+    retries: 2,
+  },
+  { cron: "0 13,14,15,16,17 * * *" }, // 5 runs/day instead of 24
+  async ({ step }) => {
+    const TARGET_HOUR = 9; // 9 AM local time
+
+    // Find which timezones are currently at 9 AM
+    const timezonesAt9AM = getTimezonesAtHour(TARGET_HOUR);
+
+    if (timezonesAt9AM.length === 0) {
+      return {
+        message: "No timezones at 9 AM right now",
+        checkedTimezones: SUPPORTED_TIMEZONES.map(tz => ({
+          timezone: tz,
+          currentHour: getCurrentHourInTimezone(tz),
+        })),
+      };
+    }
+
+    const results = [];
+    for (const timezone of timezonesAt9AM) {
+      const result = await sendDailyDigestForTimezone(timezone, step);
+      results.push(result);
     }
 
     return {
       message: "Daily digest completed",
-      digestsSent,
-      skippedNoPlan,
-      skippedNoResults,
+      processedTimezones: timezonesAt9AM,
+      results,
     };
   }
 );
 
-// Send weekly digest - All users (including free tier)
+// Weekly digest - runs at hours when 9 AM Monday occurs in US timezones
 export const sendWeeklyDigest = inngest.createFunction(
   {
     id: "send-weekly-digest",
-    name: "Send Weekly Digest Emails",
+    name: "Weekly Digest (DST-aware)",
     retries: 2,
   },
-  { cron: "0 9 * * 1" }, // Every Monday at 9 AM UTC
+  { cron: "0 13,14,15,16,17 * * 1" }, // 5 runs on Mondays
   async ({ step }) => {
-    // Get all users with weekly email alerts
-    const usersWithAlerts = await step.run("get-users", async () => {
-      return db.query.users.findMany({
-        with: {
-          monitors: {
-            with: {
-              alerts: {
-                where: and(
-                  eq(alerts.isActive, true),
-                  eq(alerts.frequency, "weekly"),
-                  eq(alerts.channel, "email")
-                ),
-              },
-            },
-          },
-        },
-      });
-    });
+    const TARGET_HOUR = 9; // 9 AM local time
 
-    let digestsSent = 0;
-    let skippedNoResults = 0;
+    // Find which timezones are currently at 9 AM
+    const timezonesAt9AM = getTimezonesAtHour(TARGET_HOUR);
 
-    for (const user of usersWithAlerts) {
-      const hasEmailAlerts = user.monitors.some((m) =>
-        m.alerts.some((a) => a.channel === "email" && a.frequency === "weekly")
-      );
+    // Double-check it's Monday in those timezones (edge case around midnight)
+    const timezonesAt9AMOnMonday = timezonesAt9AM.filter(
+      tz => getCurrentDayInTimezone(tz) === 1
+    );
 
-      if (!hasEmailAlerts) continue;
+    if (timezonesAt9AMOnMonday.length === 0) {
+      return {
+        message: "No timezones at 9 AM Monday right now",
+        checkedTimezones: SUPPORTED_TIMEZONES.map(tz => ({
+          timezone: tz,
+          currentHour: getCurrentHourInTimezone(tz),
+          currentDay: getCurrentDayInTimezone(tz),
+        })),
+      };
+    }
 
-      // Get results from last 7 days
-      const weekAgo = new Date();
-      weekAgo.setDate(weekAgo.getDate() - 7);
-
-      const userResults = await step.run(`get-results-${user.id}`, async () => {
-        const monitorIds = user.monitors.map((m) => m.id);
-        if (monitorIds.length === 0) return [];
-
-        return db.query.results.findMany({
-          where: and(
-            inArray(results.monitorId, monitorIds),
-            gte(results.createdAt, weekAgo)
-          ),
-          orderBy: (results, { desc }) => [desc(results.createdAt)],
-        });
-      });
-
-      if (userResults.length === 0) {
-        skippedNoResults++;
-        continue;
-      }
-
-      // Group results by monitor
-      const resultsByMonitor = new Map<string, typeof userResults>();
-      for (const result of userResults) {
-        const existing = resultsByMonitor.get(result.monitorId) || [];
-        existing.push(result);
-        resultsByMonitor.set(result.monitorId, existing);
-      }
-
-      // Check if user has Pro+ plan for AI insights
-      const limits = getPlanLimits(user.subscriptionStatus);
-      const includeAiInsights = limits.aiFeatures.unlimitedAiAnalysis;
-
-      // Generate AI insights for Pro+ users
-      let aiInsights: WeeklyInsights | undefined;
-      if (includeAiInsights && userResults.length >= 5) {
-        try {
-          const insightsResult = await step.run(`generate-insights-${user.id}`, async () => {
-            const analysisResults = userResults.map(r => ({
-              title: r.title,
-              content: r.content,
-              platform: r.platform,
-              sentiment: r.sentiment,
-              painPointCategory: r.painPointCategory,
-              aiSummary: r.aiSummary,
-            }));
-            return generateWeeklyInsights(analysisResults);
-          });
-          aiInsights = insightsResult.result;
-        } catch (error) {
-          console.error(`Failed to generate AI insights for user ${user.id}:`, error);
-          // Continue without AI insights
-        }
-      }
-
-      await step.run(`send-digest-${user.id}`, async () => {
-        const monitorsData = user.monitors
-          .filter((m) => resultsByMonitor.has(m.id))
-          .map((m) => {
-            const monitorResults = resultsByMonitor.get(m.id) || [];
-            return {
-              name: m.name,
-              resultsCount: monitorResults.length,
-              topResults: monitorResults.slice(0, 10).map((r) => ({
-                title: r.title,
-                url: r.sourceUrl,
-                platform: r.platform,
-                sentiment: r.sentiment,
-                summary: r.aiSummary,
-              })),
-            };
-          });
-
-        await sendDigestEmail({
-          to: user.email,
-          userName: user.name || "there",
-          frequency: "weekly",
-          monitors: monitorsData,
-          aiInsights,
-        });
-
-        digestsSent++;
-      });
+    const results = [];
+    for (const timezone of timezonesAt9AMOnMonday) {
+      const result = await sendWeeklyDigestForTimezone(timezone, step);
+      results.push(result);
     }
 
     return {
       message: "Weekly digest completed",
-      digestsSent,
-      skippedNoResults,
+      processedTimezones: timezonesAt9AMOnMonday,
+      results,
     };
   }
 );

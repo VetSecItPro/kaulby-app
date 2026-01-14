@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { stripe, getPlanFromPriceId } from "@/lib/stripe";
 import { db, users } from "@/lib/db";
 import { eq } from "drizzle-orm";
-import { upsertContact, sendSubscriptionEmail, sendPaymentFailedEmail } from "@/lib/loops";
+import { upsertContact, sendSubscriptionEmail, sendPaymentFailedEmail } from "@/lib/email";
 import { captureEvent } from "@/lib/posthog";
 import Stripe from "stripe";
 
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
           });
 
           if (user) {
-            // Update Loops contact
+            // Update contact info
             await upsertContact({
               email: user.email,
               userId: user.id,

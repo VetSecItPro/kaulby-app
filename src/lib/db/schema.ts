@@ -53,11 +53,20 @@ export const painPointCategoryEnum = pgEnum("pain_point_category", [
   "discussion",
 ]);
 
+// IANA timezone strings for proper DST handling
+export const timezoneEnum = pgEnum("timezone", [
+  "America/New_York",      // Eastern
+  "America/Chicago",       // Central
+  "America/Denver",        // Mountain
+  "America/Los_Angeles",   // Pacific
+]);
+
 // Users table - synced with Clerk
 export const users = pgTable("users", {
   id: text("id").primaryKey(), // Clerk user ID
   email: text("email").notNull(),
   name: text("name"),
+  timezone: timezoneEnum("timezone").default("America/New_York").notNull(),
   isAdmin: boolean("is_admin").default(false).notNull(),
   stripeCustomerId: text("stripe_customer_id").unique(),
   subscriptionStatus: subscriptionStatusEnum("subscription_status").default("free").notNull(),
