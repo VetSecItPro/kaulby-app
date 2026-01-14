@@ -46,12 +46,18 @@ export default function HomePage() {
                 alt="Kaulby"
                 width={32}
                 height={32}
-                className="object-cover"
+                className="object-cover w-full h-full"
               />
             </div>
             <span className="text-xl md:text-2xl font-bold gradient-text">Kaulby</span>
           </Link>
           <nav className="flex items-center gap-3 md:gap-6">
+            <Link
+              href="/articles"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors hidden sm:block"
+            >
+              Articles
+            </Link>
             <Link
               href="/pricing"
               className="text-sm text-muted-foreground hover:text-foreground transition-colors hidden sm:block"
@@ -278,7 +284,7 @@ export default function HomePage() {
                     alt="Kaulby"
                     width={28}
                     height={28}
-                    className="object-cover"
+                    className="object-cover w-full h-full"
                   />
                 </div>
                 <span className="text-xl font-bold gradient-text">Kaulby</span>
@@ -288,6 +294,12 @@ export default function HomePage() {
               </span>
             </div>
             <nav className="flex items-center gap-6 md:gap-8">
+              <Link
+                href="/articles"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Articles
+              </Link>
               <Link
                 href="/pricing"
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
