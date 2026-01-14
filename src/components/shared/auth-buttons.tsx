@@ -4,9 +4,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { SignedIn, SignedOut, useAuth } from "@clerk/nextjs";
-import { useEffect, useState } from "react";
 
-// Wrapper that shows fallback when Clerk isn't working or takes too long
+// Wrapper that shows buttons immediately, using Clerk when loaded
 function ClerkFallback({
   signedOutContent,
   signedInContent
@@ -14,19 +13,7 @@ function ClerkFallback({
   signedOutContent: React.ReactNode;
   signedInContent: React.ReactNode;
 }) {
-  const [showFallback, setShowFallback] = useState(false);
-  const { isLoaded, isSignedIn } = useAuth();
-
-  useEffect(() => {
-    // If Clerk doesn't load within 1.5 seconds, show fallback
-    const timeout = setTimeout(() => {
-      if (!isLoaded) {
-        setShowFallback(true);
-      }
-    }, 1500);
-
-    return () => clearTimeout(timeout);
-  }, [isLoaded]);
+  const { isLoaded } = useAuth();
 
   // Clerk is working - use normal SignedIn/SignedOut
   if (isLoaded) {
@@ -38,13 +25,9 @@ function ClerkFallback({
     );
   }
 
-  // Clerk timed out - show signed out content as fallback
-  if (showFallback) {
-    return <>{signedOutContent}</>;
-  }
-
-  // Still waiting for Clerk - render nothing to avoid flash
-  return null;
+  // Clerk not loaded yet - show signed out content immediately as default
+  // This ensures buttons appear instantly on page load
+  return <>{signedOutContent}</>;
 }
 
 // Navigation auth buttons
