@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { SignedIn, SignedOut } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import {
@@ -72,8 +73,17 @@ export default function PricingPage() {
       {/* Navigation */}
       <header className="border-b">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="text-2xl font-bold gradient-text">
-            Kaulby
+          <Link href="/" className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg overflow-hidden bg-black flex items-center justify-center">
+              <Image
+                src="/logo.jpg"
+                alt="Kaulby"
+                width={32}
+                height={32}
+                className="object-cover"
+              />
+            </div>
+            <span className="text-2xl font-bold gradient-text">Kaulby</span>
           </Link>
           <nav className="flex items-center gap-4">
             <Link href="/pricing" className="text-sm font-medium">
@@ -208,8 +218,19 @@ export default function PricingPage() {
       {/* Footer */}
       <footer className="border-t py-8 px-4">
         <div className="container mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-xl font-bold gradient-text">Kaulby</span>
+          <div className="flex items-center gap-3">
+            <Link href="/" className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg overflow-hidden bg-black flex items-center justify-center">
+                <Image
+                  src="/logo.jpg"
+                  alt="Kaulby"
+                  width={28}
+                  height={28}
+                  className="object-cover"
+                />
+              </div>
+              <span className="text-xl font-bold gradient-text">Kaulby</span>
+            </Link>
             <span className="text-sm text-muted-foreground">
               &copy; {new Date().getFullYear()} All rights reserved.
             </span>

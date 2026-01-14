@@ -1,5 +1,6 @@
 import { jsonCompletion } from "../openrouter";
 import { buildAnalysisPrompt } from "../prompts";
+import { type AnalysisMeta } from "./sentiment";
 
 export interface SummaryResult {
   summary: string;
@@ -9,7 +10,7 @@ export interface SummaryResult {
 
 export async function summarizeContent(
   content: string
-): Promise<{ result: SummaryResult; meta: { model: string; cost: number; latencyMs: number } }> {
+): Promise<{ result: SummaryResult; meta: AnalysisMeta }> {
   const { system, user } = buildAnalysisPrompt("summarize", content);
 
   const { data, meta } = await jsonCompletion<SummaryResult>({
@@ -25,6 +26,8 @@ export async function summarizeContent(
       model: meta.model,
       cost: meta.cost,
       latencyMs: meta.latencyMs,
+      promptTokens: meta.promptTokens,
+      completionTokens: meta.completionTokens,
     },
   };
 }

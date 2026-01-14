@@ -116,11 +116,21 @@ export const analyzeContent = inngest.createFunction(
         painPointResult.meta.latencyMs +
         summaryResult.meta.latencyMs;
 
+      const totalPromptTokens =
+        sentimentResult.meta.promptTokens +
+        painPointResult.meta.promptTokens +
+        summaryResult.meta.promptTokens;
+
+      const totalCompletionTokens =
+        sentimentResult.meta.completionTokens +
+        painPointResult.meta.completionTokens +
+        summaryResult.meta.completionTokens;
+
       await db.insert(aiLogs).values({
         userId,
         model: sentimentResult.meta.model, // Use primary model as reference
-        promptTokens: 0, // Aggregated
-        completionTokens: 0, // Aggregated
+        promptTokens: totalPromptTokens,
+        completionTokens: totalCompletionTokens,
         costUsd: totalCost,
         latencyMs: totalLatency,
         traceId,

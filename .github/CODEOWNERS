@@ -1,0 +1,19 @@
+# Code Owners - Require review for security-sensitive files
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owner for everything
+* @VetSecItPro
+
+# Security-sensitive files require explicit review
+/.env* @VetSecItPro
+/src/middleware.ts @VetSecItPro
+/src/app/api/webhooks/ @VetSecItPro
+/src/lib/db/schema.ts @VetSecItPro
+/src/lib/stripe.ts @VetSecItPro
+
+# CI/CD configuration
+/.github/ @VetSecItPro
+
+# Package dependencies
+package.json @VetSecItPro
+package-lock.json @VetSecItPro

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useDevice } from "@/hooks/use-device";
 import { MobileResults } from "@/components/mobile/mobile-results";
 import { ResultsList } from "./results-list";
@@ -7,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { HiddenResultsBanner, RefreshDelayBanner } from "./upgrade-prompt";
+import { Download, Lock } from "lucide-react";
 import Link from "next/link";
 import type { PlanKey } from "@/lib/stripe";
 
@@ -56,11 +58,38 @@ export function ResponsiveResults({
   planInfo,
 }: ResponsiveResultsProps) {
   const { isMobile, isTablet } = useDevice();
+  const [isExporting, setIsExporting] = useState(false);
 
   // Filter results based on visibility limit for free tier
   const visibleResults = planInfo?.isLimited
     ? results.slice(0, planInfo.visibleLimit)
     : results;
+
+  const canExport = planInfo?.plan === "pro" || planInfo?.plan === "enterprise";
+
+  const handleExport = async () => {
+    if (!canExport) return;
+
+    setIsExporting(true);
+    try {
+      const response = await fetch("/api/results/export");
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `kaulby-results-${new Date().toISOString().split("T")[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        a.remove();
+      }
+    } catch (error) {
+      console.error("Export failed:", error);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   if (isMobile || isTablet) {
     if (results.length === 0 && !hasMonitors) {
@@ -107,11 +136,31 @@ export function ResponsiveResults({
             Mentions and discussions found by your monitors.
           </p>
         </div>
-        {totalCount > 0 && (
-          <Badge variant="outline" className="text-sm">
-            {totalCount} total results
-          </Badge>
-        )}
+        <div className="flex items-center gap-3">
+          {totalCount > 0 && (
+            <Badge variant="outline" className="text-sm">
+              {totalCount} total results
+            </Badge>
+          )}
+          {totalCount > 0 && (
+            canExport ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExport}
+                disabled={isExporting}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                {isExporting ? "Exporting..." : "Export CSV"}
+              </Button>
+            ) : (
+              <Button variant="outline" size="sm" disabled className="gap-2">
+                <Lock className="h-4 w-4" />
+                Export (Pro)
+              </Button>
+            )
+          )}
+        </div>
       </div>
 
       {/* Refresh Delay Banner (for free tier) */}
