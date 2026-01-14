@@ -58,7 +58,7 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
               alt="Kaulby"
               width={28}
               height={28}
-              className="object-cover"
+              className="object-cover w-full h-full"
             />
           </div>
           <span className="text-xl gradient-text">Kaulby</span>
