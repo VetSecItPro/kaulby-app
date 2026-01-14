@@ -1,0 +1,286 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+env:
+  NODE_OPTIONS: '--max_old_space_size=4096'
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ============================================
+  # Stage 1: Build (required by all other jobs)
+  # ============================================
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    outputs:
+      build-success: ${{ steps.build.outcome == 'success' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Build
+        id: build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_APP_URL: http://localhost:3000
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || 'pk_test_placeholder' }}
+          NEXT_PUBLIC_CLERK_SIGN_IN_URL: /sign-in
+          NEXT_PUBLIC_CLERK_SIGN_UP_URL: /sign-up
+          NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL: /dashboard
+          NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL: /dashboard
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'pk_test_placeholder' }}
+          NEXT_PUBLIC_POSTHOG_KEY: ${{ secrets.NEXT_PUBLIC_POSTHOG_KEY || 'placeholder' }}
+          NEXT_PUBLIC_POSTHOG_HOST: https://us.posthog.com
+
+      - name: Prepare artifact
+        run: |
+          rm -rf .next/cache
+          cp -r .next next-build
+
+      - name: Upload build
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: next-build
+          retention-days: 1
+
+  # ============================================
+  # Stage 2: Parallel checks (all depend on build)
+  # ============================================
+
+  security:
+    name: Security
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: npm audit
+        run: |
+          echo "### 🔒 Security" >> $GITHUB_STEP_SUMMARY
+
+          npm audit --json > audit.json 2>/dev/null || true
+          CRITICAL=$(jq '.metadata.vulnerabilities.critical // 0' audit.json)
+          HIGH=$(jq '.metadata.vulnerabilities.high // 0' audit.json)
+
+          echo "| Severity | Count |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Critical | $CRITICAL |" >> $GITHUB_STEP_SUMMARY
+          echo "| High | $HIGH |" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$CRITICAL" -gt 0 ]; then
+            echo "::error::Critical vulnerabilities found"
+            exit 1
+          fi
+          echo "✅ No critical vulnerabilities" >> $GITHUB_STEP_SUMMARY
+
+      - name: Secret scan
+        run: |
+          echo "### 🔑 Secrets" >> $GITHUB_STEP_SUMMARY
+
+          # Check for hardcoded secrets
+          if grep -rE "(sk_live_|pk_live_)[a-zA-Z0-9]{20,}" \
+            --include="*.ts" --include="*.tsx" \
+            --exclude-dir=node_modules . 2>/dev/null; then
+            echo "❌ Stripe key in code" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          if grep -rE "AKIA[0-9A-Z]{16}" \
+            --exclude-dir=node_modules . 2>/dev/null; then
+            echo "❌ AWS key in code" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          echo "✅ No secrets detected" >> $GITHUB_STEP_SUMMARY
+
+  bundle:
+    name: Bundle Size
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download build
+        uses: actions/download-artifact@v4
+        with:
+          name: build-output
+          path: .next
+
+      - name: Analyze
+        run: |
+          echo "### 📦 Bundle" >> $GITHUB_STEP_SUMMARY
+
+          if [ -d ".next/static/chunks" ]; then
+            TOTAL=$(find .next/static/chunks -name "*.js" -exec cat {} \; | wc -c)
+            KB=$((TOTAL / 1024))
+
+            echo "**Total JS:** ${KB}KB" >> $GITHUB_STEP_SUMMARY
+
+            if [ $KB -gt 500 ]; then
+              echo "⚠️ Exceeds 500KB budget" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "✅ Within budget" >> $GITHUB_STEP_SUMMARY
+            fi
+
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Largest chunks:**" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            find .next/static/chunks -name "*.js" -exec du -h {} \; | sort -rh | head -5 >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  lighthouse:
+    name: Performance
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download build
+        uses: actions/download-artifact@v4
+        with:
+          name: build-output
+          path: .next
+
+      - name: Install Lighthouse
+        run: npm install -g @lhci/cli@0.13.x
+
+      - name: Run Lighthouse
+        run: |
+          npm run start &
+          sleep 12
+
+          lhci autorun \
+            --collect.settings.formFactor=mobile \
+            --collect.settings.screenEmulation.mobile=true \
+            --collect.url=http://localhost:3000/ \
+            --collect.numberOfRuns=1 \
+            --upload.target=temporary-public-storage || true
+
+          pkill -f "next start" || true
+        env:
+          NEXT_PUBLIC_APP_URL: http://localhost:3000
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "### 📱 Lighthouse" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Target |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Performance | ≥70 |" >> $GITHUB_STEP_SUMMARY
+          echo "| Accessibility | ≥90 |" >> $GITHUB_STEP_SUMMARY
+          echo "| Best Practices | ≥80 |" >> $GITHUB_STEP_SUMMARY
+          echo "| SEO | ≥90 |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📊 Results in artifacts" >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lighthouse-results
+          path: .lighthouseci
+          retention-days: 7
+
+  quality:
+    name: Code Quality
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Analyze
+        run: |
+          echo "### 🧹 Quality" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+
+          # Console logs
+          CONSOLE=$(grep -rE "console\.(log|debug)" \
+            --include="*.ts" --include="*.tsx" \
+            --exclude-dir=node_modules . 2>/dev/null | wc -l || echo 0)
+
+          if [ "$CONSOLE" -gt 5 ]; then
+            echo "| Console logs | ⚠️ $CONSOLE |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Console logs | ✅ $CONSOLE |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # TODOs
+          TODO=$(grep -rE "(TODO|FIXME):" \
+            --include="*.ts" --include="*.tsx" \
+            --exclude-dir=node_modules . 2>/dev/null | wc -l || echo 0)
+          echo "| TODOs | ℹ️ $TODO |" >> $GITHUB_STEP_SUMMARY
+
+  # ============================================
+  # Stage 3: Summary (runs after all checks)
+  # ============================================
+  summary:
+    name: Summary
+    needs: [build, security, bundle, quality]
+    if: always()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check results
+        run: |
+          echo "### ✅ CI Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Build | ${{ needs.build.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Security | ${{ needs.security.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Bundle | ${{ needs.bundle.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Quality | ${{ needs.quality.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
