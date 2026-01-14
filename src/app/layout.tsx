@@ -20,8 +20,41 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://kaulbyapp.com"),
   title: "Kaulby - AI-Powered Community Monitoring",
   description: "Track discussions across Reddit, Hacker News, and online communities. AI-powered pain point detection, sentiment analysis, and natural language querying.",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon-16.png", sizes: "16x16", type: "image/png" },
+      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+    ],
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
+  },
+  openGraph: {
+    title: "Kaulby - AI-Powered Community Monitoring",
+    description: "Track discussions across Reddit, Hacker News, and online communities. Get AI-powered insights and instant alerts.",
+    url: "https://kaulbyapp.com",
+    siteName: "Kaulby",
+    images: [
+      {
+        url: "/icon-512.png",
+        width: 512,
+        height: 512,
+        alt: "Kaulby Logo",
+      },
+    ],
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "Kaulby - AI-Powered Community Monitoring",
+    description: "Track discussions across Reddit, Hacker News, and online communities.",
+    images: ["/icon-512.png"],
+  },
+  manifest: "/manifest.json",
 };
 
 // Check if Clerk is configured (only check public key - available on both client/server)

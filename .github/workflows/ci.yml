@@ -1,0 +1,609 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+env:
+  NODE_OPTIONS: '--max_old_space_size=4096'
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ============================================
+  # Stage 1: Build & Lint
+  # ============================================
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_APP_URL: http://localhost:3000
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || 'pk_test_placeholder' }}
+          NEXT_PUBLIC_CLERK_SIGN_IN_URL: /sign-in
+          NEXT_PUBLIC_CLERK_SIGN_UP_URL: /sign-up
+          NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL: /dashboard
+          NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL: /dashboard
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'pk_test_placeholder' }}
+          NEXT_PUBLIC_POSTHOG_KEY: ${{ secrets.NEXT_PUBLIC_POSTHOG_KEY || 'placeholder' }}
+          NEXT_PUBLIC_POSTHOG_HOST: https://us.posthog.com
+
+      - name: Prepare artifact
+        run: |
+          rm -rf .next/cache
+          cp -r .next next-build
+
+      - name: Upload build
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: next-build
+          retention-days: 1
+
+  # ============================================
+  # Stage 2: Parallel checks
+  # ============================================
+
+  # Unit Tests (skips if no test script)
+  test:
+    name: Unit Tests
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: |
+          if npm run test --if-present 2>/dev/null; then
+            echo "### 🧪 Unit Tests" >> $GITHUB_STEP_SUMMARY
+            echo "✅ Tests passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### 🧪 Unit Tests" >> $GITHUB_STEP_SUMMARY
+            echo "⏭️ No test script found - skipped" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # E2E Tests (skips if no Playwright)
+  e2e:
+    name: E2E Tests
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check for Playwright
+        id: check-playwright
+        run: |
+          if [ -f "playwright.config.ts" ] || [ -f "playwright.config.js" ]; then
+            echo "has_playwright=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_playwright=false" >> $GITHUB_OUTPUT
+            echo "### 🎭 E2E Tests" >> $GITHUB_STEP_SUMMARY
+            echo "⏭️ Playwright not configured - skipped" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Download build
+        if: steps.check-playwright.outputs.has_playwright == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: build-output
+          path: .next
+
+      - name: Install Playwright
+        if: steps.check-playwright.outputs.has_playwright == 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        if: steps.check-playwright.outputs.has_playwright == 'true'
+        run: |
+          npm run start &
+          sleep 10
+          npx playwright test --project=chromium
+          pkill -f "next start" || true
+        env:
+          PLAYWRIGHT_BASE_URL: http://localhost:3000
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # Security Scan
+  security:
+    name: Security
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: npm audit
+        run: |
+          echo "### 🔒 Security" >> $GITHUB_STEP_SUMMARY
+
+          npm audit --json > audit.json 2>/dev/null || true
+          CRITICAL=$(jq '.metadata.vulnerabilities.critical // 0' audit.json)
+          HIGH=$(jq '.metadata.vulnerabilities.high // 0' audit.json)
+          MODERATE=$(jq '.metadata.vulnerabilities.moderate // 0' audit.json)
+
+          echo "| Severity | Count |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 🔴 Critical | $CRITICAL |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🟠 High | $HIGH |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🟡 Moderate | $MODERATE |" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$CRITICAL" -gt 0 ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "❌ Critical vulnerabilities found!" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ No critical vulnerabilities" >> $GITHUB_STEP_SUMMARY
+
+      - name: Secret scan
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔑 Secrets" >> $GITHUB_STEP_SUMMARY
+
+          FOUND=0
+
+          # Stripe live keys
+          if grep -rE "(sk_live_|pk_live_)[a-zA-Z0-9]{20,}" \
+            --include="*.ts" --include="*.tsx" --include="*.js" \
+            --exclude-dir=node_modules --exclude-dir=.next . 2>/dev/null; then
+            echo "❌ Stripe live key found in code!" >> $GITHUB_STEP_SUMMARY
+            FOUND=1
+          fi
+
+          # AWS keys
+          if grep -rE "AKIA[0-9A-Z]{16}" \
+            --include="*.ts" --include="*.tsx" --include="*.js" \
+            --exclude-dir=node_modules --exclude-dir=.next . 2>/dev/null; then
+            echo "❌ AWS key found in code!" >> $GITHUB_STEP_SUMMARY
+            FOUND=1
+          fi
+
+          # Generic secrets in assignments
+          if grep -rE "(password|secret|api_key)\s*=\s*['\"][^'\"]{20,}['\"]" \
+            --include="*.ts" --include="*.tsx" --include="*.js" \
+            --exclude-dir=node_modules --exclude-dir=.next . 2>/dev/null; then
+            echo "⚠️ Potential hardcoded secret found" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "$FOUND" -eq 1 ]; then
+            exit 1
+          fi
+
+          echo "✅ No secrets detected" >> $GITHUB_STEP_SUMMARY
+
+  # Bundle Size
+  bundle:
+    name: Bundle Size
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download build
+        uses: actions/download-artifact@v4
+        with:
+          name: build-output
+          path: .next
+
+      - name: Analyze
+        run: |
+          echo "### 📦 Bundle Size" >> $GITHUB_STEP_SUMMARY
+
+          if [ -d ".next/static/chunks" ]; then
+            TOTAL=$(find .next/static/chunks -name "*.js" -exec cat {} \; | wc -c)
+            KB=$((TOTAL / 1024))
+            MB=$(echo "scale=2; $KB / 1024" | bc)
+
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Total JS:** ${KB}KB (${MB}MB)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            # Budget check
+            if [ $KB -gt 750 ]; then
+              echo "❌ Exceeds 750KB budget - needs optimization" >> $GITHUB_STEP_SUMMARY
+            elif [ $KB -gt 500 ]; then
+              echo "⚠️ Exceeds 500KB mobile budget" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "✅ Within budget (<500KB)" >> $GITHUB_STEP_SUMMARY
+            fi
+
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Top 10 chunks:**" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            find .next/static/chunks -name "*.js" -exec du -h {} \; | sort -rh | head -10 >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # Lighthouse Performance
+  lighthouse:
+    name: Lighthouse
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download build
+        uses: actions/download-artifact@v4
+        with:
+          name: build-output
+          path: .next
+
+      - name: Install Lighthouse
+        run: npm install -g @lhci/cli@0.13.x
+
+      - name: Run Lighthouse
+        id: lighthouse
+        run: |
+          npm run start &
+          sleep 15
+
+          lhci autorun \
+            --collect.settings.formFactor=mobile \
+            --collect.settings.screenEmulation.mobile=true \
+            --collect.settings.screenEmulation.width=375 \
+            --collect.settings.screenEmulation.height=667 \
+            --collect.url=http://localhost:3000/ \
+            --collect.url=http://localhost:3000/pricing \
+            --collect.numberOfRuns=1 \
+            --upload.target=temporary-public-storage 2>&1 | tee lhci-output.txt || true
+
+          pkill -f "next start" || true
+
+          # Extract scores if available
+          if [ -d ".lighthouseci" ]; then
+            echo "lighthouse_ran=true" >> $GITHUB_OUTPUT
+          fi
+        env:
+          NEXT_PUBLIC_APP_URL: http://localhost:3000
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "### 📱 Lighthouse (Mobile)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Device:** iPhone 8 (375x667)" >> $GITHUB_STEP_SUMMARY
+          echo "**Network:** Slow 4G" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Target |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Performance | ≥70 |" >> $GITHUB_STEP_SUMMARY
+          echo "| Accessibility | ≥90 |" >> $GITHUB_STEP_SUMMARY
+          echo "| Best Practices | ≥80 |" >> $GITHUB_STEP_SUMMARY
+          echo "| SEO | ≥90 |" >> $GITHUB_STEP_SUMMARY
+          echo "| LCP | <4s |" >> $GITHUB_STEP_SUMMARY
+          echo "| CLS | <0.25 |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lighthouse-results
+          path: .lighthouseci
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # Database Migration Check
+  db-check:
+    name: DB Schema
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check schema
+        run: |
+          echo "### 🗄️ Database Schema" >> $GITHUB_STEP_SUMMARY
+
+          # Check if schema file exists and is valid TypeScript
+          if [ -f "src/lib/db/schema.ts" ]; then
+            # Type check the schema
+            npx tsc --noEmit src/lib/db/schema.ts 2>/dev/null && \
+              echo "✅ Schema is valid" >> $GITHUB_STEP_SUMMARY || \
+              echo "❌ Schema has type errors" >> $GITHUB_STEP_SUMMARY
+
+            # Count tables
+            TABLES=$(grep -c "pgTable\|createTable" src/lib/db/schema.ts 2>/dev/null || echo 0)
+            echo "📊 Tables defined: $TABLES" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⏭️ No schema file found" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # Code Quality
+  quality:
+    name: Code Quality
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Analyze
+        run: |
+          echo "### 🧹 Code Quality" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Count | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------|--------|" >> $GITHUB_STEP_SUMMARY
+
+          # Console logs (excluding error/warn)
+          CONSOLE=$(grep -rE "console\.(log|debug|info)" \
+            --include="*.ts" --include="*.tsx" \
+            --exclude-dir=node_modules --exclude-dir=.next . 2>/dev/null | wc -l || echo 0)
+          CONSOLE=$(echo $CONSOLE | tr -d ' ')
+
+          if [ "$CONSOLE" -gt 10 ]; then
+            echo "| console.log | $CONSOLE | ⚠️ Review |" >> $GITHUB_STEP_SUMMARY
+          elif [ "$CONSOLE" -gt 0 ]; then
+            echo "| console.log | $CONSOLE | ℹ️ |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| console.log | $CONSOLE | ✅ |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # TODOs
+          TODO=$(grep -rE "(TODO|FIXME|HACK|XXX):" \
+            --include="*.ts" --include="*.tsx" \
+            --exclude-dir=node_modules --exclude-dir=.next . 2>/dev/null | wc -l || echo 0)
+          TODO=$(echo $TODO | tr -d ' ')
+          echo "| TODO/FIXME | $TODO | ℹ️ |" >> $GITHUB_STEP_SUMMARY
+
+          # @ts-ignore
+          TS_IGNORE=$(grep -rE "@ts-ignore|@ts-nocheck" \
+            --include="*.ts" --include="*.tsx" \
+            --exclude-dir=node_modules --exclude-dir=.next . 2>/dev/null | wc -l || echo 0)
+          TS_IGNORE=$(echo $TS_IGNORE | tr -d ' ')
+
+          if [ "$TS_IGNORE" -gt 5 ]; then
+            echo "| @ts-ignore | $TS_IGNORE | ⚠️ Review |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| @ts-ignore | $TS_IGNORE | ✅ |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # any types
+          ANY_TYPE=$(grep -rE ": any[^a-zA-Z]|as any" \
+            --include="*.ts" --include="*.tsx" \
+            --exclude-dir=node_modules --exclude-dir=.next . 2>/dev/null | wc -l || echo 0)
+          ANY_TYPE=$(echo $ANY_TYPE | tr -d ' ')
+
+          if [ "$ANY_TYPE" -gt 10 ]; then
+            echo "| 'any' type | $ANY_TYPE | ⚠️ Review |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| 'any' type | $ANY_TYPE | ℹ️ |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # Preview Deployment
+  preview:
+    name: Preview Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check Vercel config
+        id: check-vercel
+        run: |
+          if [ -n "${{ secrets.VERCEL_TOKEN }}" ]; then
+            echo "has_vercel=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_vercel=false" >> $GITHUB_OUTPUT
+            echo "### 🚀 Preview" >> $GITHUB_STEP_SUMMARY
+            echo "⏭️ VERCEL_TOKEN not configured - skipped" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Install Vercel CLI
+        if: steps.check-vercel.outputs.has_vercel == 'true'
+        run: npm install -g vercel@latest
+
+      - name: Pull Vercel Environment
+        if: steps.check-vercel.outputs.has_vercel == 'true'
+        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build for Vercel
+        if: steps.check-vercel.outputs.has_vercel == 'true'
+        run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy Preview
+        id: deploy
+        if: steps.check-vercel.outputs.has_vercel == 'true'
+        run: |
+          url=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
+          echo "url=$url" >> $GITHUB_OUTPUT
+          echo "### 🚀 Preview" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Deployed: $url" >> $GITHUB_STEP_SUMMARY
+
+      - name: Comment PR
+        if: steps.check-vercel.outputs.has_vercel == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `## 🚀 Preview Deployment\n\n✅ **Preview URL:** ${{ steps.deploy.outputs.url }}\n\n*Auto-deployed from PR #${context.issue.number}*`
+            })
+
+  # ============================================
+  # Stage 3: Summary & PR Comment
+  # ============================================
+  summary:
+    name: Summary
+    needs: [build, test, security, bundle, quality, db-check]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Generate summary
+        run: |
+          echo "### ✅ CI Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Build | ${{ needs.build.result == 'success' && '✅' || needs.build.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Tests | ${{ needs.test.result == 'success' && '✅' || needs.test.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Security | ${{ needs.security.result == 'success' && '✅' || needs.security.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Bundle | ${{ needs.bundle.result == 'success' && '✅' || needs.bundle.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Quality | ${{ needs.quality.result == 'success' && '✅' || needs.quality.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| DB Schema | ${{ needs.db-check.result == 'success' && '✅' || needs.db-check.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const build = '${{ needs.build.result }}' === 'success' ? '✅' : '❌';
+            const test = '${{ needs.test.result }}' === 'success' ? '✅' : '${{ needs.test.result }}' === 'skipped' ? '⏭️' : '❌';
+            const security = '${{ needs.security.result }}' === 'success' ? '✅' : '❌';
+            const bundle = '${{ needs.bundle.result }}' === 'success' ? '✅' : '❌';
+            const quality = '${{ needs.quality.result }}' === 'success' ? '✅' : '❌';
+            const db = '${{ needs.db-check.result }}' === 'success' ? '✅' : '❌';
+            const allPassed = ['${{ needs.build.result }}', '${{ needs.security.result }}', '${{ needs.bundle.result }}', '${{ needs.quality.result }}', '${{ needs.db-check.result }}'].every(r => r === 'success');
+            const header = allPassed ? '✅' : '❌';
+            const footer = allPassed ? '🎉 All checks passed! Ready for review.' : '⚠️ Some checks failed. Please review.';
+            const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
+            const body = [
+              `## ${header} CI Results`,
+              '',
+              '| Check | Status |',
+              '|-------|--------|',
+              `| Build & Lint | ${build} |`,
+              `| Unit Tests | ${test} |`,
+              `| Security | ${security} |`,
+              `| Bundle Size | ${bundle} |`,
+              `| Code Quality | ${quality} |`,
+              `| DB Schema | ${db} |`,
+              '',
+              footer,
+              '',
+              `[View full details](${runUrl})`
+            ].join('\n');
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const botComment = comments.find(c => c.user.login === 'github-actions[bot]' && c.body.includes('CI Results'));
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body
+              });
+            }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

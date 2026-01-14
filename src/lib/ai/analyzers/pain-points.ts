@@ -1,5 +1,6 @@
 import { jsonCompletion } from "../openrouter";
 import { buildAnalysisPrompt } from "../prompts";
+import { type AnalysisMeta } from "./sentiment";
 
 export interface PainPointResult {
   category: "pain_point" | "solution_request" | "question" | "feature_request" | "praise" | "discussion" | null;
@@ -10,7 +11,7 @@ export interface PainPointResult {
 
 export async function analyzePainPoints(
   content: string
-): Promise<{ result: PainPointResult; meta: { model: string; cost: number; latencyMs: number } }> {
+): Promise<{ result: PainPointResult; meta: AnalysisMeta }> {
   const { system, user } = buildAnalysisPrompt("painPointDetection", content);
 
   const { data, meta } = await jsonCompletion<PainPointResult>({
@@ -26,6 +27,8 @@ export async function analyzePainPoints(
       model: meta.model,
       cost: meta.cost,
       latencyMs: meta.latencyMs,
+      promptTokens: meta.promptTokens,
+      completionTokens: meta.completionTokens,
     },
   };
 }

@@ -1,10 +1,28 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Check, Zap, User, CreditCard, ChevronRight } from "lucide-react";
+import { Check, Zap, User, CreditCard, Brain, Database, Download, Trash2, AlertTriangle, Clock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface Plan {
   name: string;
@@ -16,11 +34,41 @@ interface Plan {
   recommended?: boolean;
 }
 
+interface AiUsage {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  totalCost: number;
+  callCount: number;
+  periodStart: Date;
+}
+
+interface DataStats {
+  monitors: number;
+  results: number;
+  aiCalls: number;
+}
+
+interface TimezoneOption {
+  value: string;
+  label: string;
+}
+
 interface MobileSettingsProps {
   email: string;
   name: string;
   subscriptionStatus: string;
+  timezone: string;
+  timezoneOptions: readonly TimezoneOption[];
+  onTimezoneChange: (timezone: string) => void;
+  isSavingTimezone: boolean;
   plans: Plan[];
+  aiUsage: AiUsage;
+  dataStats: DataStats;
+  onExportData: () => void;
+  onDeleteAccount: () => void;
+  isExporting: boolean;
+  isDeleting: boolean;
 }
 
 const containerVariants = {
@@ -40,7 +88,28 @@ const itemVariants = {
   },
 };
 
-export function MobileSettings({ email, name, subscriptionStatus, plans }: MobileSettingsProps) {
+export function MobileSettings({
+  email,
+  name,
+  subscriptionStatus,
+  timezone,
+  timezoneOptions,
+  onTimezoneChange,
+  isSavingTimezone,
+  plans,
+  aiUsage,
+  dataStats,
+  onExportData,
+  onDeleteAccount,
+  isExporting,
+  isDeleting,
+}: MobileSettingsProps) {
+  const formatNumber = (num: number) => {
+    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+    if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+    return num.toString();
+  };
+
   return (
     <motion.div
       variants={containerVariants}
@@ -71,7 +140,6 @@ export function MobileSettings({ email, name, subscriptionStatus, plans }: Mobil
                 <p className="font-medium">{name}</p>
                 <p className="text-sm text-muted-foreground">{email}</p>
               </div>
-              <ChevronRight className="h-5 w-5 text-muted-foreground" />
             </div>
             <div className="flex items-center gap-4 p-4">
               <div className="p-2 rounded-full bg-muted">
@@ -86,7 +154,140 @@ export function MobileSettings({ email, name, subscriptionStatus, plans }: Mobil
                   {subscriptionStatus}
                 </Badge>
               </div>
-              <ChevronRight className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <div className="flex items-center gap-4 p-4">
+              <div className="p-2 rounded-full bg-muted">
+                <Clock className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium mb-2">Timezone</p>
+                <Select
+                  value={timezone}
+                  onValueChange={onTimezoneChange}
+                  disabled={isSavingTimezone}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {timezoneOptions.map((tz) => (
+                      <SelectItem key={tz.value} value={tz.value}>
+                        {tz.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Digest emails sent at 9 AM local time
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* AI Usage Section */}
+      <motion.div variants={itemVariants} className="space-y-3">
+        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+          <Brain className="h-4 w-4" />
+          AI Usage
+        </h2>
+        <Card>
+          <CardContent className="p-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs text-muted-foreground">Total Tokens</p>
+                <p className="text-lg font-bold">{formatNumber(aiUsage.totalTokens)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">AI Cost</p>
+                <p className="text-lg font-bold">${aiUsage.totalCost.toFixed(4)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Input Tokens</p>
+                <p className="text-lg font-bold">{formatNumber(aiUsage.promptTokens)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Output Tokens</p>
+                <p className="text-lg font-bold">{formatNumber(aiUsage.completionTokens)}</p>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground mt-3">
+              {aiUsage.callCount} AI calls this period
+            </p>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Data & Storage Section */}
+      <motion.div variants={itemVariants} className="space-y-3">
+        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+          <Database className="h-4 w-4" />
+          Data & Storage
+        </h2>
+        <Card>
+          <CardContent className="p-4 space-y-4">
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <p className="text-xs text-muted-foreground">Monitors</p>
+                <p className="text-lg font-bold">{dataStats.monitors}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Results</p>
+                <p className="text-lg font-bold">{formatNumber(dataStats.results)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">AI Calls</p>
+                <p className="text-lg font-bold">{formatNumber(dataStats.aiCalls)}</p>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2 pt-3 border-t">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onExportData}
+                disabled={isExporting}
+                className="w-full flex items-center justify-center gap-2"
+              >
+                <Download className="h-4 w-4" />
+                {isExporting ? "Exporting..." : "Export All Data"}
+              </Button>
+
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="w-full flex items-center justify-center gap-2"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete Account
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center gap-2">
+                      <AlertTriangle className="h-5 w-5 text-destructive" />
+                      Delete Account
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This action cannot be undone. This will permanently delete your
+                      account and all your data.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={onDeleteAccount}
+                      disabled={isDeleting}
+                      className="bg-destructive text-destructive-foreground"
+                    >
+                      {isDeleting ? "Deleting..." : "Delete"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </CardContent>
         </Card>

@@ -4,7 +4,7 @@ import { Webhook } from "svix";
 import { WebhookEvent } from "@clerk/nextjs/server";
 import { db, users } from "@/lib/db";
 import { eq } from "drizzle-orm";
-import { upsertContact, sendWelcomeEmail } from "@/lib/loops";
+import { upsertContact, sendWelcomeEmail } from "@/lib/email";
 import { identifyUser } from "@/lib/posthog";
 
 export async function POST(request: NextRequest) {
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
           name,
         });
 
-        // Add to Loops
+        // Send welcome email
         try {
           await upsertContact({
             email,
@@ -74,13 +74,12 @@ export async function POST(request: NextRequest) {
             subscriptionStatus: "free",
           });
 
-          // Send welcome email
           await sendWelcomeEmail({
             email,
             name: first_name || undefined,
           });
-        } catch (loopsError) {
-          console.error("Loops error:", loopsError);
+        } catch (emailError) {
+          console.error("Email error:", emailError);
         }
 
         // Identify in PostHog
@@ -114,7 +113,7 @@ export async function POST(request: NextRequest) {
           })
           .where(eq(users.id, id));
 
-        // Update in Loops
+        // Update contact info
         try {
           await upsertContact({
             email,
@@ -122,8 +121,8 @@ export async function POST(request: NextRequest) {
             lastName: last_name || undefined,
             userId: id,
           });
-        } catch (loopsError) {
-          console.error("Loops error:", loopsError);
+        } catch (emailError) {
+          console.error("Email error:", emailError);
         }
 
         break;

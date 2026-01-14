@@ -23,8 +23,12 @@ Everything we build serves this purpose. The product must be so valuable and the
 ## Autonomous Work Authorization
 
 - **Pre-cleared for all operations**: No permission requests needed for file edits, database pushes, or shell commands.
-- **Validate before pushing**: Always run `npx tsc --noEmit` locally before pushing to GitHub to catch TypeScript errors and avoid wasted CI cycles.
-- **No git commits**: Do not commit or push to GitHub unless explicitly requested.
+- **MANDATORY local validation before pushing**: Always run ALL validation checks locally before saying ready to push:
+  1. `npm run lint` - Fix all ESLint errors
+  2. `npx tsc --noEmit` - Fix all TypeScript errors
+  3. `npm run build` - Ensure build succeeds
+  Never announce "ready to push" until all checks pass locally.
+- **NEVER push to GitHub**: Do not commit or push to GitHub unless explicitly requested. Always explain what you plan to do and wait for user confirmation before any git push. The user will specify when to push and act without requiring permission.
 - **Database operations allowed**: Can push schema changes to Neon freely.
 - **Strategic execution**: Work methodically, don't rush, ensure quality.
 
