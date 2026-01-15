@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useDevice } from "@/hooks/use-device";
 import { MobileSettings } from "@/components/mobile/mobile-settings";
+import { TeamSettings } from "@/components/dashboard/team-settings";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -238,6 +239,9 @@ export function ResponsiveSettings({
           </div>
         </CardContent>
       </Card>
+
+      {/* Team Settings - Enterprise only */}
+      <TeamSettings subscriptionStatus={subscriptionStatus} />
 
       {/* AI Usage */}
       <Card>

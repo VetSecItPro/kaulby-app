@@ -12,6 +12,28 @@ import {
 } from "@/lib/limits";
 import { Platform } from "@/lib/stripe";
 
+// Sanitize user input to prevent XSS and injection attacks
+function sanitizeInput(input: string): string {
+  return input
+    .trim()
+    // Remove HTML tags
+    .replace(/<[^>]*>/g, "")
+    // Remove script injection attempts
+    .replace(/javascript:/gi, "")
+    .replace(/on\w+=/gi, "")
+    // Remove null bytes
+    .replace(/\0/g, "")
+    // Limit length to 100 characters
+    .slice(0, 100);
+}
+
+// Validate keyword format
+function isValidKeyword(keyword: string): boolean {
+  const sanitized = sanitizeInput(keyword);
+  // Must be 1-100 chars, no empty after sanitization
+  return sanitized.length >= 1 && sanitized.length <= 100;
+}
+
 export async function POST(request: Request) {
   try {
     const { userId } = await auth();
@@ -32,12 +54,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "At least one keyword is required" }, { status: 400 });
     }
 
+    // Sanitize and validate keywords
+    const sanitizedKeywords = keywords
+      .map((k: string) => (typeof k === "string" ? sanitizeInput(k) : ""))
+      .filter((k) => isValidKeyword(k));
+
+    if (sanitizedKeywords.length === 0) {
+      return NextResponse.json({ error: "No valid keywords provided" }, { status: 400 });
+    }
+
     if (!platforms || !Array.isArray(platforms) || platforms.length === 0) {
       return NextResponse.json({ error: "At least one platform is required" }, { status: 400 });
     }
 
     // Validate platforms
-    const validPlatforms = ["reddit", "hackernews", "producthunt", "devto"];
+    const validPlatforms = ["reddit", "hackernews", "producthunt", "devto", "googlereviews", "trustpilot", "appstore", "playstore", "quora"];
     const invalidPlatforms = platforms.filter((p: string) => !validPlatforms.includes(p));
     if (invalidPlatforms.length > 0) {
       return NextResponse.json({ error: `Invalid platforms: ${invalidPlatforms.join(", ")}` }, { status: 400 });
@@ -62,7 +93,7 @@ export async function POST(request: Request) {
     }
 
     // Check keywords limit
-    const keywordCheck = checkKeywordsLimit(keywords, plan);
+    const keywordCheck = checkKeywordsLimit(sanitizedKeywords, plan);
     if (!keywordCheck.allowed) {
       const prompt = getUpgradePrompt(plan, "keywords");
       return NextResponse.json(
@@ -98,8 +129,8 @@ export async function POST(request: Request) {
       .insert(monitors)
       .values({
         userId,
-        name: name.trim(),
-        keywords: keywords.map((k: string) => k.trim()),
+        name: sanitizeInput(name),
+        keywords: sanitizedKeywords,
         platforms: allowedPlatforms,
         isActive: true,
       })

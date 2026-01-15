@@ -1,6 +1,6 @@
 # CLAUDE.md - Kaulby
 
-AI-powered community monitoring SaaS. Tracks Reddit, Hacker News, Product Hunt for keywords, analyzes sentiment/pain points via AI, sends alerts.
+AI-powered community monitoring SaaS. Tracks 9 platforms (Reddit, Hacker News, Product Hunt, Google Reviews, Trustpilot, App Store, Play Store, Quora, Dev.to) for keywords, analyzes sentiment/pain points via AI, sends alerts.
 
 ## Business Objective
 
@@ -13,10 +13,33 @@ Everything we build serves this purpose. The product must be so valuable and the
 - Show free users exactly what they're missing (tasteful, not annoying)
 - Make upgrading feel like unlocking superpowers, not removing restrictions
 
+## User Experience Philosophy
+
+**Everything must be easy, intuitive, and professional.**
+
+Every feature, every interaction, every screen must feel effortless:
+- Minimize friction at every step - if something requires explanation, redesign it
+- Professional polish in every detail - no rough edges, no "good enough"
+- Entice users with value, don't frustrate them with complexity
+- Test the "can my mom use this?" standard for every new feature
+
+## Platform Sustainability
+
+**Never become dependent on or vulnerable to platform shutdowns.**
+
+Learn from GummySearch's fate with Reddit. Every integration decision must consider:
+- Use official APIs where available, even if limited
+- For scraping: use reputable third-party services (Apify) rather than direct scraping
+- Maintain respectful rate limits - never abuse platform resources
+- Diversify platform coverage - don't over-rely on any single source
+- Store historical data so users retain value even if a platform cuts access
+- Build relationships, not dependencies - be a good citizen of each platform's ecosystem
+- Have contingency plans for each platform's potential API changes or shutdowns
+
 ## Development Philosophy
 
 - **No shortcuts**: Always implement strategic, comprehensive fixes. Never apply band-aids or quick patches that defer the real problem.
-- **Error tracking**: When discovering pre-existing errors or issues while working on a task, note them in `kaulby-todo.md` under "Known Issues" and fix them after completing the current task.
+- **Error tracking**: When discovering pre-existing errors or issues while working on a task, note them in `docs/todo.md` under "Known Issues" and fix them after completing the current task.
 - **Complete solutions**: Fix root causes, not symptoms. Consider downstream effects and related code paths.
 - **No over-engineering**: Solve the current problem completely, but don't build for hypothetical future requirements.
 
@@ -44,7 +67,7 @@ Everything we build serves this purpose. The product must be so valuable and the
 - Next.js 14 (App Router), TypeScript, Tailwind, shadcn/ui
 - Neon (Postgres) + Drizzle ORM
 - Clerk (auth), Stripe (payments), Inngest (background jobs)
-- OpenRouter (AI) + Langfuse (observability), Loops (email), PostHog (analytics)
+- OpenRouter (AI) + Langfuse (observability), Resend (email), PostHog (analytics)
 
 ## Commands
 
@@ -67,9 +90,9 @@ Everything we build serves this purpose. The product must be so valuable and the
 
 | Tier | Monitors | Keywords | Results Visible | History | Platforms | Refresh |
 |------|----------|----------|-----------------|---------|-----------|---------|
-| free | 1 | 3 | Last 3 | 3 days | Reddit | 24hr delay |
-| pro | 10 | 20 | Unlimited | 90 days | Reddit + HN + PH | Real-time |
-| enterprise | Unlimited | 50 | Unlimited | 1 year | All platforms | Real-time |
+| free | 1 | 3 | Last 3 | 3 days | Reddit only | 24hr delay |
+| pro | 10 | 20 | Unlimited | 90 days | 8 platforms (Reddit, HN, PH, Google Reviews, Trustpilot, App Store, Play Store, Quora) | Real-time |
+| enterprise | Unlimited | 50 | Unlimited | 1 year | All 9 platforms (includes Dev.to) | Real-time |
 
 | Tier | AI Analysis | Email Digest | Alerts | Export |
 |------|-------------|--------------|--------|--------|
@@ -92,7 +115,8 @@ Everything we build serves this purpose. The product must be so valuable and the
 - `src/lib/inngest/functions/` - Background jobs
 - `src/lib/ai/prompts.ts` - AI prompts
 - `src/middleware.ts` - Route protection
-- `kaulby-todo.md` - Active gaps, migrations, and known issues
+- `docs/todo.md` - Active gaps, migrations, and known issues
+- `docs/platforms-research.md` - Platform API research and recommendations
 
 ## Conventions
 

@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
+import { useState } from "react";
 import { SignedIn, SignedOut } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,18 +15,22 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Check } from "lucide-react";
+import { CheckoutModal } from "@/components/checkout-modal";
 
 const plans = [
   {
     name: "Free",
+    key: "free" as const,
     description: "Get started with basic monitoring",
     price: "$0",
     period: "forever",
     features: [
       "1 monitor",
-      "2 platforms (Reddit, HN)",
-      "Daily email digest",
-      "7-day alert history",
+      "Reddit only",
+      "3 keywords per monitor",
+      "View last 3 results",
+      "3-day history",
+      "Basic AI analysis",
     ],
     cta: "Get Started",
     href: "/sign-up",
@@ -31,43 +38,61 @@ const plans = [
   },
   {
     name: "Pro",
-    description: "For power users and small teams",
-    price: "$19",
+    key: "pro" as const,
+    description: "For power users and professionals",
+    price: "$29",
     period: "per month",
     features: [
       "10 monitors",
-      "All platforms",
-      "Real-time alerts",
-      "30-day alert history",
-      "Email notifications",
-      "Priority support",
+      "8 platforms (Reddit, HN, PH, Google Reviews, Trustpilot, App Store, Play Store, Quora)",
+      "20 keywords per monitor",
+      "Unlimited results",
+      "90-day history",
+      "Real-time monitoring",
+      "Full AI analysis with pain point detection",
+      "Email + Slack alerts",
+      "Daily & weekly digests",
+      "CSV export",
     ],
     cta: "Start Free Trial",
     href: "/sign-up?plan=pro",
     popular: true,
   },
   {
-    name: "Business",
+    name: "Enterprise",
+    key: "enterprise" as const,
     description: "For teams and agencies",
-    price: "$49",
+    price: "$99",
     period: "per month",
     features: [
       "Unlimited monitors",
-      "All platforms",
-      "Real-time alerts",
-      "Unlimited history",
-      "Team collaboration",
-      "API access",
-      "Custom integrations",
-      "Dedicated support",
+      "All 9 platforms (includes Dev.to)",
+      "50 keywords per monitor",
+      "Unlimited results",
+      "1-year history",
+      "Real-time monitoring",
+      "Full AI + Ask feature",
+      "All alert channels + webhooks",
+      "CSV + API access",
+      "Priority support",
     ],
     cta: "Contact Sales",
-    href: "/sign-up?plan=business",
+    href: "/sign-up?plan=enterprise",
     popular: false,
   },
 ];
 
 export default function PricingPage() {
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<"pro" | "enterprise">("pro");
+  const [selectedPlanName, setSelectedPlanName] = useState("Pro");
+
+  const handleUpgrade = (planKey: "pro" | "enterprise", planName: string) => {
+    setSelectedPlan(planKey);
+    setSelectedPlanName(planName);
+    setCheckoutOpen(true);
+  };
+
   return (
     <div className="flex flex-col min-h-screen">
       {/* Navigation */}
@@ -164,21 +189,18 @@ export default function PricingPage() {
                     </Link>
                   </SignedOut>
                   <SignedIn>
-                    {plan.name === "Free" ? (
+                    {plan.key === "free" ? (
                       <Button className="w-full" variant="outline" disabled>
                         Current Plan
                       </Button>
                     ) : (
-                      <form action="/api/stripe/checkout" method="POST" className="w-full">
-                        <input type="hidden" name="plan" value={plan.name.toLowerCase()} />
-                        <Button
-                          type="submit"
-                          className="w-full"
-                          variant={plan.popular ? "default" : "outline"}
-                        >
-                          Upgrade to {plan.name}
-                        </Button>
-                      </form>
+                      <Button
+                        className="w-full"
+                        variant={plan.popular ? "default" : "outline"}
+                        onClick={() => handleUpgrade(plan.key as "pro" | "enterprise", plan.name)}
+                      >
+                        Upgrade to {plan.name}
+                      </Button>
                     )}
                   </SignedIn>
                 </CardFooter>
@@ -202,8 +224,8 @@ export default function PricingPage() {
               <div>
                 <h3 className="font-semibold mb-2">What platforms do you monitor?</h3>
                 <p className="text-muted-foreground text-sm">
-                  We currently monitor Reddit, Hacker News, Product Hunt, and Twitter/X.
-                  More platforms are coming soon.
+                  We monitor Reddit, Hacker News, Product Hunt, Google Reviews, Trustpilot,
+                  App Store, Play Store, Quora, and Dev.to. Platform availability varies by plan.
                 </p>
               </div>
               <div>
@@ -254,6 +276,14 @@ export default function PricingPage() {
           </div>
         </div>
       </footer>
+
+      {/* Checkout Modal */}
+      <CheckoutModal
+        open={checkoutOpen}
+        onOpenChange={setCheckoutOpen}
+        plan={selectedPlan}
+        planName={selectedPlanName}
+      />
     </div>
   );
 }

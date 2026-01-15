@@ -25,7 +25,7 @@ export const stripe = process.env.STRIPE_SECRET_KEY
   : (null as unknown as Stripe);
 
 // Platform types
-export type Platform = "reddit" | "hackernews" | "producthunt" | "devto" | "twitter";
+export type Platform = "reddit" | "hackernews" | "producthunt" | "devto" | "googlereviews" | "trustpilot" | "appstore" | "playstore" | "quora";
 
 // Digest frequency types
 export type DigestFrequency = "weekly" | "daily" | "realtime";
@@ -111,20 +111,19 @@ export const PLANS: Record<"free" | "pro" | "enterprise", PlanDefinition> = {
   },
   pro: {
     name: "Pro",
-    description: "For power users and growing teams",
+    description: "For power users and professionals",
     price: 29,
     priceId: process.env.STRIPE_PRO_PRICE_ID || "",
     features: [
       "10 monitors",
       "20 keywords per monitor",
       "Unlimited results",
-      "Reddit + HN + Product Hunt",
+      "8 platforms (Reddit, HN, PH, Google Reviews, Trustpilot, App Store, Play Store, Quora)",
       "90-day history",
-      "Real-time monitoring",
+      "2-hour refresh cycle",
       "Full AI analysis",
       "Pain point detection",
-      "Email + Slack alerts",
-      "Daily & weekly digests",
+      "Slack alerts + Daily email digest",
       "CSV export",
     ],
     limits: {
@@ -133,9 +132,9 @@ export const PLANS: Record<"free" | "pro" | "enterprise", PlanDefinition> = {
       sourcesPerMonitor: 10,
       resultsHistoryDays: 90,
       resultsVisible: -1, // unlimited
-      refreshDelayHours: 0, // real-time
-      platforms: ["reddit", "hackernews", "producthunt"],
-      digestFrequencies: ["daily", "weekly"],
+      refreshDelayHours: 2, // 2-hour refresh cycle
+      platforms: ["reddit", "hackernews", "producthunt", "googlereviews", "trustpilot", "appstore", "playstore", "quora"],
+      digestFrequencies: ["daily"], // Pro only gets daily digest
       aiFeatures: {
         sentiment: true,
         painPointCategories: true,
@@ -162,13 +161,13 @@ export const PLANS: Record<"free" | "pro" | "enterprise", PlanDefinition> = {
       "Unlimited monitors",
       "50 keywords per monitor",
       "Unlimited results",
-      "All 5 platforms",
+      "All 9 platforms (includes Dev.to)",
       "1-year history",
       "Real-time monitoring",
       "Full AI + Ask feature",
-      "All alert channels",
-      "Webhooks",
-      "CSV + API access",
+      "Configurable alerts (immediate/daily/weekly)",
+      "Webhooks + API access",
+      "Up to 5 team seats (+$15/user)",
       "Priority support",
     ],
     limits: {
@@ -178,7 +177,7 @@ export const PLANS: Record<"free" | "pro" | "enterprise", PlanDefinition> = {
       resultsHistoryDays: 365,
       resultsVisible: -1, // unlimited
       refreshDelayHours: 0, // real-time
-      platforms: ["reddit", "hackernews", "producthunt", "devto", "twitter"],
+      platforms: ["reddit", "hackernews", "producthunt", "devto", "googlereviews", "trustpilot", "appstore", "playstore", "quora"],
       digestFrequencies: ["daily", "weekly", "realtime"],
       aiFeatures: {
         sentiment: true,

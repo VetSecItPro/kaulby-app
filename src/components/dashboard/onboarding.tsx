@@ -682,7 +682,7 @@ export function QuickStartGuide({ hasMonitors, hasResults, hasAlerts = false, on
                 size="sm"
                 variant={step.completed ? "ghost" : "default"}
                 onClick={step.action}
-                className="shrink-0"
+                className="shrink-0 w-[110px] justify-center rounded-full"
               >
                 {step.actionLabel}
                 <ArrowRight className="h-3 w-3 ml-1" />
