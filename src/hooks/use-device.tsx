@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useMemo, useRef, ReactNode } from "react";
 
 type DeviceType = "mobile" | "tablet" | "desktop";
 
@@ -18,8 +18,18 @@ const DeviceContext = createContext<DeviceContextType>({
   deviceType: "desktop",
 });
 
+// Debounce helper to prevent excessive state updates during resize
+function debounce<T extends (...args: unknown[]) => void>(fn: T, ms: number): T {
+  let timeoutId: ReturnType<typeof setTimeout>;
+  return ((...args: unknown[]) => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => fn(...args), ms);
+  }) as T;
+}
+
 export function DeviceProvider({ children }: { children: ReactNode }) {
   const [deviceType, setDeviceType] = useState<DeviceType>("desktop");
+  const isInitialized = useRef(false);
 
   useEffect(() => {
     const checkDevice = () => {
@@ -33,17 +43,25 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    checkDevice();
-    window.addEventListener("resize", checkDevice);
-    return () => window.removeEventListener("resize", checkDevice);
+    // Initial check (immediate, no debounce)
+    if (!isInitialized.current) {
+      checkDevice();
+      isInitialized.current = true;
+    }
+
+    // Debounced resize handler (300ms delay)
+    const debouncedCheck = debounce(checkDevice, 300);
+    window.addEventListener("resize", debouncedCheck);
+    return () => window.removeEventListener("resize", debouncedCheck);
   }, []);
 
-  const value: DeviceContextType = {
+  // Memoize context value to prevent unnecessary re-renders of consumers
+  const value = useMemo<DeviceContextType>(() => ({
     isMobile: deviceType === "mobile",
     isTablet: deviceType === "tablet",
     isDesktop: deviceType === "desktop",
     deviceType,
-  };
+  }), [deviceType]);
 
   return (
     <DeviceContext.Provider value={value}>

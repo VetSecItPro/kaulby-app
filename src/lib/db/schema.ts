@@ -8,6 +8,7 @@ import {
   integer,
   real,
   jsonb,
+  index,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -23,7 +24,7 @@ export const platformEnum = pgEnum("platform", [
   "hackernews",
   "producthunt",
   "devto",
-  "twitter",
+  // "twitter" - DEPRECATED: removed from active platforms, kept in DB enum for historical data
   "googlereviews",
   "trustpilot",
   "appstore",
@@ -150,7 +151,10 @@ export const monitors = pgTable("monitors", {
   newMatchCount: integer("new_match_count").default(0).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("monitors_user_id_idx").on(table.userId),
+  index("monitors_is_active_idx").on(table.isActive),
+]);
 
 // Alerts - notification settings
 export const alerts = pgTable("alerts", {
@@ -190,7 +194,12 @@ export const results = pgTable("results", {
   isSaved: boolean("is_saved").default(false).notNull(),
   isHidden: boolean("is_hidden").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("results_monitor_id_idx").on(table.monitorId),
+  index("results_created_at_idx").on(table.createdAt),
+  index("results_platform_idx").on(table.platform),
+  index("results_sentiment_idx").on(table.sentiment),
+]);
 
 // AI Logs - for cost tracking
 export const aiLogs = pgTable("ai_logs", {
@@ -203,7 +212,10 @@ export const aiLogs = pgTable("ai_logs", {
   latencyMs: integer("latency_ms"),
   traceId: text("trace_id"), // Langfuse trace ID
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("ai_logs_user_id_idx").on(table.userId),
+  index("ai_logs_created_at_idx").on(table.createdAt),
+]);
 
 // Usage - monthly usage tracking per billing period
 export const usage = pgTable("usage", {

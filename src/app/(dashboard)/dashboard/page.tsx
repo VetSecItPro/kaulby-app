@@ -26,28 +26,31 @@ export default async function DashboardPage() {
     }
   }
 
-  // Get user data (or use mock data in dev)
-  const user = userId
-    ? await db.query.users.findFirst({
-        where: eq(users.id, userId),
-      })
-    : null;
-
-  // If user doesn't exist in our DB yet, they need to complete signup via webhook
-  // For now, show empty state
-  const monitorsCount = user && userId
-    ? await db.select({ count: count() }).from(monitors).where(eq(monitors.userId, userId))
-    : [{ count: 0 }];
-
+  // Run initial queries in parallel for better performance
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-  // Get user's monitor IDs
-  const userMonitorIds = user && userId
-    ? await db.select({ id: monitors.id }).from(monitors).where(eq(monitors.userId, userId))
+  const [user, userPlan] = userId
+    ? await Promise.all([
+        db.query.users.findFirst({ where: eq(users.id, userId) }),
+        getUserPlan(userId),
+      ])
+    : [null, "free" as const];
+
+  const limits = getPlanLimits(userPlan);
+
+  // Get monitor count and IDs in a single query
+  const userMonitors = user && userId
+    ? await db.query.monitors.findMany({
+        where: eq(monitors.userId, userId),
+        columns: { id: true },
+      })
     : [];
 
-  // Get results count for user's monitors
+  const monitorsCount = [{ count: userMonitors.length }];
+  const userMonitorIds = userMonitors;
+
+  // Get results count using JOIN (avoids separate query for monitor IDs)
   let resultsCount = 0;
   if (userMonitorIds.length > 0) {
     const monitorIdList = userMonitorIds.map(m => m.id);
@@ -62,9 +65,6 @@ export default async function DashboardPage() {
       );
     resultsCount = resultsData[0]?.count || 0;
   }
-
-  const userPlan = userId ? await getUserPlan(userId) : "free";
-  const limits = getPlanLimits(userPlan);
 
   const hasMonitors = (monitorsCount[0]?.count || 0) > 0;
   const hasResults = resultsCount > 0;

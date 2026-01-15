@@ -1,7 +1,7 @@
 import { inngest } from "../client";
 import { db } from "@/lib/db";
 import { users, monitors, results } from "@/lib/db/schema";
-import { eq, and, lt, inArray } from "drizzle-orm";
+import { eq, and, lt, inArray, sql } from "drizzle-orm";
 
 // Data retention limits by plan (in days) - must match PLANS in stripe.ts
 const RETENTION_DAYS = {
@@ -81,30 +81,16 @@ export const dataRetention = inngest.createFunction(
     }
 
     // Also clean up orphaned results (results with no valid monitor)
+    // Uses SQL subquery instead of loading all data into memory
     const orphanedDeleted = await step.run("cleanup-orphaned-results", async () => {
-      // Get all monitor IDs
-      const allMonitors = await db.query.monitors.findMany({
-        columns: { id: true },
-      });
-      const monitorIds = new Set(allMonitors.map((m) => m.id));
+      const deleteResult = await db
+        .delete(results)
+        .where(
+          sql`${results.monitorId} NOT IN (SELECT id FROM monitors)`
+        )
+        .returning({ id: results.id });
 
-      // Find and delete results with monitorId not in the set
-      // This handles edge cases where monitors were deleted but results weren't
-      const allResults = await db.query.results.findMany({
-        columns: { id: true, monitorId: true },
-      });
-
-      const orphanedResultIds = allResults
-        .filter((r) => !monitorIds.has(r.monitorId))
-        .map((r) => r.id);
-
-      if (orphanedResultIds.length > 0) {
-        await db
-          .delete(results)
-          .where(inArray(results.id, orphanedResultIds));
-      }
-
-      return orphanedResultIds.length;
+      return deleteResult.length;
     });
 
     logger.info(`Data retention cleanup complete. Deleted ${totalDeleted} old results and ${orphanedDeleted} orphaned results.`);

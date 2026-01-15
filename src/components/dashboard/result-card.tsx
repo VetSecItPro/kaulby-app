@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, memo, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -62,57 +62,59 @@ const sentimentIcons = {
   neutral: <Minus className="h-4 w-4 text-gray-500" />,
 };
 
+// Move outside component to avoid recreation on every render
+const formatCategory = (category: string) => {
+  return category
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (l) => l.toUpperCase());
+};
 
-export function ResultCard({ result, showHidden = false, isAiBlurred = false }: ResultCardProps) {
+// Memoize to prevent re-renders when parent updates but props haven't changed
+export const ResultCard = memo(function ResultCard({ result, showHidden = false, isAiBlurred = false }: ResultCardProps) {
   const [isPending, startTransition] = useTransition();
   const [isSaved, setIsSaved] = useState(result.isSaved);
   const [isHidden, setIsHidden] = useState(result.isHidden);
   const [isViewed, setIsViewed] = useState(result.isViewed);
 
-  // Hide card if hidden and not showing hidden
-  if (isHidden && !showHidden) {
-    return null;
-  }
-
-  const handleClick = () => {
+  // All hooks must be called before any conditional returns
+  const handleClick = useCallback(() => {
     startTransition(async () => {
       await markResultClicked(result.id);
       setIsViewed(true);
     });
-  };
+  }, [result.id]);
 
-  const handleView = () => {
+  const handleView = useCallback(() => {
     if (!isViewed) {
       startTransition(async () => {
         await markResultViewed(result.id);
         setIsViewed(true);
       });
     }
-  };
+  }, [result.id, isViewed]);
 
-  const handleToggleSaved = () => {
+  const handleToggleSaved = useCallback(() => {
     startTransition(async () => {
       const response = await toggleResultSaved(result.id);
       if (response.success) {
         setIsSaved(response.isSaved ?? !isSaved);
       }
     });
-  };
+  }, [result.id, isSaved]);
 
-  const handleToggleHidden = () => {
+  const handleToggleHidden = useCallback(() => {
     startTransition(async () => {
       const response = await toggleResultHidden(result.id);
       if (response.success) {
         setIsHidden(response.isHidden ?? !isHidden);
       }
     });
-  };
+  }, [result.id, isHidden]);
 
-  const formatCategory = (category: string) => {
-    return category
-      .replace(/_/g, " ")
-      .replace(/\b\w/g, (l) => l.toUpperCase());
-  };
+  // Hide card if hidden and not showing hidden (after all hooks)
+  if (isHidden && !showHidden) {
+    return null;
+  }
 
   return (
     <Card
@@ -265,7 +267,7 @@ export function ResultCard({ result, showHidden = false, isAiBlurred = false }: 
       )}
     </Card>
   );
-}
+});
 
 interface ResultsFilterBarProps {
   totalCount: number;
@@ -278,7 +280,8 @@ interface ResultsFilterBarProps {
   isPending?: boolean;
 }
 
-export function ResultsFilterBar({
+// Memoize filter bar - pure presentational component
+export const ResultsFilterBar = memo(function ResultsFilterBar({
   totalCount,
   unviewedCount,
   savedCount,
@@ -356,4 +359,4 @@ export function ResultsFilterBar({
       )}
     </div>
   );
-}
+});

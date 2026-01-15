@@ -31,47 +31,45 @@ export default async function ResultsPage({ searchParams }: ResultsPageProps) {
   const page = parseInt(params.page || "1", 10);
   const offset = (page - 1) * RESULTS_PER_PAGE;
 
-  // Get user's plan and limits
-  const userPlan = userId ? await getUserPlan(userId) : "free";
+  // Run initial queries in parallel for better performance
+  const [userPlan, refreshInfo, userMonitors] = userId
+    ? await Promise.all([
+        getUserPlan(userId),
+        getRefreshDelay(userId),
+        db.query.monitors.findMany({
+          where: eq(monitors.userId, userId),
+        }),
+      ])
+    : ["free" as const, null, []];
+
   const planLimits = getPlanLimits(userPlan);
-  const refreshInfo = userId ? await getRefreshDelay(userId) : null;
-
-  // Get user's monitors (empty in dev mode without auth)
-  const userMonitors = userId
-    ? await db.query.monitors.findMany({
-        where: eq(monitors.userId, userId),
-      })
-    : [];
-
   const monitorIds = userMonitors.map((m) => m.id);
 
-  // Get results for user's monitors with pagination
-  const userResults = monitorIds.length > 0
-    ? await db.query.results.findMany({
-        where: inArray(results.monitorId, monitorIds),
-        orderBy: [desc(results.createdAt)],
-        limit: RESULTS_PER_PAGE,
-        offset,
-        with: {
-          monitor: {
-            columns: { name: true },
+  // Run results and count queries in parallel
+  const [userResults, totalCountResult] = monitorIds.length > 0
+    ? await Promise.all([
+        db.query.results.findMany({
+          where: inArray(results.monitorId, monitorIds),
+          orderBy: [desc(results.createdAt)],
+          limit: RESULTS_PER_PAGE,
+          offset,
+          with: {
+            monitor: {
+              columns: { name: true },
+            },
           },
-        },
-      })
-    : [];
-
-  // Get total count for pagination
-  const totalCountResult = monitorIds.length > 0
-    ? await db
-        .select({ count: count() })
-        .from(results)
-        .where(
-          and(
-            inArray(results.monitorId, monitorIds),
-            eq(results.isHidden, false)
-          )
-        )
-    : [{ count: 0 }];
+        }),
+        db
+          .select({ count: count() })
+          .from(results)
+          .where(
+            and(
+              inArray(results.monitorId, monitorIds),
+              eq(results.isHidden, false)
+            )
+          ),
+      ])
+    : [[], [{ count: 0 }]];
 
   const totalCount = totalCountResult[0]?.count || 0;
   const totalPages = Math.ceil(totalCount / RESULTS_PER_PAGE);
