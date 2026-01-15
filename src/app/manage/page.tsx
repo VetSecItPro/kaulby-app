@@ -4,6 +4,9 @@ import { count, sum, desc, sql, gte, and, lt, eq } from "drizzle-orm";
 import { ResponsiveManage } from "@/components/admin/responsive-manage";
 import { PLANS } from "@/lib/stripe";
 
+// Force dynamic rendering - this page requires database access
+export const dynamic = "force-dynamic";
+
 async function getAdminStats() {
   const [
     totalUsers,
