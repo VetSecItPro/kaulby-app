@@ -71,9 +71,20 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Check for consent and initialize if allowed
-    if (hasAnalyticsConsent() && !posthogInitialized) {
-      initPostHog();
+    // Delay PostHog initialization to not block main thread
+    // Use requestIdleCallback for non-critical analytics
+    const initAnalytics = () => {
+      if (hasAnalyticsConsent() && !posthogInitialized) {
+        initPostHog();
+      }
+    };
+
+    // Initialize after page is idle, or after 2 seconds max
+    if ('requestIdleCallback' in window) {
+      (window as Window & { requestIdleCallback: (cb: () => void, opts?: { timeout: number }) => void })
+        .requestIdleCallback(initAnalytics, { timeout: 2000 });
+    } else {
+      setTimeout(initAnalytics, 1000);
     }
 
     // Listen for consent changes
