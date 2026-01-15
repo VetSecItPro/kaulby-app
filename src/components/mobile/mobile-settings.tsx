@@ -360,10 +360,6 @@ function MobilePlanCard({ plan }: { plan: Plan }) {
             <Button variant="outline" className="w-full" disabled>
               Current Plan
             </Button>
-          ) : plan.name === "Enterprise" ? (
-            <Button variant="outline" className="w-full">
-              Contact Sales
-            </Button>
           ) : (
             <Button className="w-full">
               Upgrade to {plan.name}

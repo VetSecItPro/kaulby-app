@@ -161,7 +161,7 @@ export function MobileManage({
               color="bg-primary"
             />
             <SubscriptionBar
-              label="Enterprise"
+              label="Team"
               value={enterpriseUsers}
               total={stats.totalUsers}
               color="bg-amber-500"
