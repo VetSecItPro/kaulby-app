@@ -86,7 +86,7 @@ const planFilters = [
   { value: "all", label: "All Plans", icon: Users },
   { value: "free", label: "Free", icon: User },
   { value: "pro", label: "Pro", icon: Crown },
-  { value: "enterprise", label: "Enterprise", icon: Building2 },
+  { value: "enterprise", label: "Team", icon: Building2 },
 ];
 
 export function UsersManagement({

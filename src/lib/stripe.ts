@@ -153,8 +153,8 @@ export const PLANS: Record<"free" | "pro" | "enterprise", PlanDefinition> = {
     },
   },
   enterprise: {
-    name: "Enterprise",
-    description: "For teams and agencies",
+    name: "Team",
+    description: "For growing teams and agencies",
     price: 99,
     priceId: process.env.STRIPE_ENTERPRISE_PRICE_ID || "",
     features: [
