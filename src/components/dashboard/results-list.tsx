@@ -6,7 +6,7 @@ import { markAllResultsViewed } from "@/app/(dashboard)/dashboard/results/action
 
 interface Result {
   id: string;
-  platform: "reddit" | "hackernews" | "producthunt" | "devto" | "twitter";
+  platform: "reddit" | "hackernews" | "producthunt" | "devto" | "twitter" | "googlereviews" | "trustpilot" | "appstore" | "playstore" | "quora";
   sourceUrl: string;
   title: string;
   content: string | null;

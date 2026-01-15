@@ -2,9 +2,34 @@
 
 import posthog from "posthog-js";
 import { PostHogProvider as PHProvider } from "posthog-js/react";
-import { useEffect, useState } from "react";
-import { useUser } from "@clerk/nextjs";
+import { Component, useEffect, useState, type ReactNode } from "react";
 import { hasAnalyticsConsent } from "./cookie-consent";
+
+// Error boundary for PostHog - silently fails without breaking app
+class PostHogErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error) {
+    console.warn("[PostHog] Error boundary caught:", error.message);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.children;
+    }
+    return this.props.children;
+  }
+}
 
 // PostHog project API keys start with 'phc_'
 const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
@@ -115,29 +140,16 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  return <PHProvider client={posthog}>{children}</PHProvider>;
+  return (
+    <PostHogErrorBoundary>
+      <PHProvider client={posthog}>{children}</PHProvider>
+    </PostHogErrorBoundary>
+  );
 }
 
 // Identify user with PostHog when signed in (only if consented)
+// TODO: Re-enable with proper Clerk integration after Clerk is stable
 export function PostHogIdentify() {
-  const { user, isLoaded } = useUser();
-
-  useEffect(() => {
-    if (!isPostHogConfigured() || !posthogInitialized) return;
-    if (!hasAnalyticsConsent()) return;
-
-    if (isLoaded && user) {
-      try {
-        // Only identify with minimal data
-        posthog.identify(user.id, {
-          // Don't send email or PII unless necessary
-          createdAt: user.createdAt,
-        });
-      } catch (error) {
-        console.warn("[PostHog] Failed to identify user:", error);
-      }
-    }
-  }, [user, isLoaded]);
-
+  // Disabled for now - will re-enable when Clerk integration is stable
   return null;
 }

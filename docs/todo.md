@@ -1,8 +1,8 @@
 # Kaulby TODO
 
-Active gaps, migrations, and known issues. Reference: `kaulby-project-bible.md` in Downloads.
+Active gaps, migrations, and known issues. See also: `docs/platforms-research.md` for platform API research.
 
-**Last updated:** January 13, 2026
+**Last updated:** January 15, 2026
 
 ---
 
@@ -28,6 +28,11 @@ Comparing current `schema.ts` against Project Bible requirements.
 
 - [ ] **Team workspaces** - Enterprise feature, not in MVP
 - [ ] **API key management** - Enterprise feature, not in MVP
+- [ ] **X/Twitter monitoring** - Enterprise-only feature. Options:
+  - Official X API ($100+/month) - Most reliable, full access
+  - SerpAPI (~$50/month) - Good middle ground, search without X API
+  - Social Searcher (~$9-29/month) - Budget option for testing demand
+  - Only implement if Enterprise customers specifically request it
 
 ---
 

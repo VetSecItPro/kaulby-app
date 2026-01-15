@@ -1,15 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
-import { ClerkProvider } from "@clerk/nextjs";
 import { Toaster } from "@/components/ui/toaster";
-import { PostHogProvider, PostHogIdentify } from "@/components/shared/posthog-provider";
-import { PostHogPageView } from "@/components/shared/posthog-pageview";
-import { CookieConsentBanner } from "@/components/shared/cookie-consent";
 import { DeviceProvider } from "@/hooks/use-device";
-import { ServiceWorkerRegister } from "@/components/shared/service-worker-register";
+import { ResilientClerkProvider } from "@/components/shared/clerk-provider";
 import "./globals.css";
 
-// Optimize font loading with display swap for faster text rendering
+// Font configuration
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
   variable: "--font-geist-sans",
@@ -17,6 +13,7 @@ const geistSans = localFont({
   display: "swap",
   preload: true,
 });
+
 const geistMono = localFont({
   src: "./fonts/GeistMonoVF.woff",
   variable: "--font-geist-mono",
@@ -25,7 +22,7 @@ const geistMono = localFont({
   preload: true,
 });
 
-// Viewport configuration for optimal mobile rendering
+// Viewport configuration
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
@@ -33,6 +30,7 @@ export const viewport: Viewport = {
   themeColor: "#0a0a0a",
 };
 
+// Metadata
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://kaulbyapp.com"),
   title: "Kaulby - AI-Powered Community Monitoring",
@@ -70,51 +68,28 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
 };
 
-// Check if Clerk is configured (only check public key - available on both client/server)
-const isClerkConfigured = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const content = (
+  return (
     <html lang="en" className="dark">
       <head>
-        {/* Preconnect to critical third-party origins for faster loading */}
-        <link rel="preconnect" href="https://clerk.kaulbyapp.com" crossOrigin="anonymous" />
-        <link rel="preconnect" href="https://us.posthog.com" crossOrigin="anonymous" />
+        {/* Preconnect for performance */}
         <link rel="preconnect" href="https://fonts.googleapis.com" crossOrigin="anonymous" />
-
-        {/* DNS prefetch for faster resolution */}
-        <link rel="dns-prefetch" href="https://clerk.kaulbyapp.com" />
-        <link rel="dns-prefetch" href="https://us.posthog.com" />
         <link rel="dns-prefetch" href="https://api.stripe.com" />
-
-        {/* Preload critical assets */}
-        <link rel="preload" href="/logo.jpg" as="image" type="image/jpeg" />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background`}
       >
-        <DeviceProvider>
-          <PostHogProvider>
-            <PostHogPageView />
-            {isClerkConfigured && <PostHogIdentify />}
+        <ResilientClerkProvider>
+          <DeviceProvider>
             {children}
             <Toaster />
-            <CookieConsentBanner />
-            <ServiceWorkerRegister />
-          </PostHogProvider>
-        </DeviceProvider>
+          </DeviceProvider>
+        </ResilientClerkProvider>
       </body>
     </html>
   );
-
-  // Only wrap with ClerkProvider if fully configured
-  if (isClerkConfigured) {
-    return <ClerkProvider>{content}</ClerkProvider>;
-  }
-
-  return content;
 }
