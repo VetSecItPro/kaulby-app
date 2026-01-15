@@ -251,6 +251,37 @@ jobs:
 
           echo "✅ No secrets detected" >> $GITHUB_STEP_SUMMARY
 
+  # Semgrep SAST
+  semgrep:
+    name: Semgrep SAST
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Run Semgrep
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: >-
+            p/default
+            p/security-audit
+            p/owasp-top-ten
+        env:
+          SEMGREP_RULES: p/default p/security-audit p/owasp-top-ten
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "### 🔍 Semgrep SAST" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Scanned for:" >> $GITHUB_STEP_SUMMARY
+          echo "- OWASP Top 10 vulnerabilities" >> $GITHUB_STEP_SUMMARY
+          echo "- Security anti-patterns" >> $GITHUB_STEP_SUMMARY
+          echo "- Code quality issues" >> $GITHUB_STEP_SUMMARY
+
   # Bundle Size
   bundle:
     name: Bundle Size

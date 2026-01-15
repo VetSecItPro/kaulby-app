@@ -44,41 +44,30 @@ async function getAiUsageStats(userId: string) {
 }
 
 async function getDataStats(userId: string) {
-  // Get monitor count
-  const [monitorCount] = await db
-    .select({ count: count() })
-    .from(monitors)
-    .where(eq(monitors.userId, userId));
+  // Run all queries in parallel for better performance
+  const [monitorCountResult, resultsCountResult, usageRecord] = await Promise.all([
+    // Get monitor count
+    db.select({ count: count() })
+      .from(monitors)
+      .where(eq(monitors.userId, userId)),
 
-  // Get results count
-  const userMonitors = await db.query.monitors.findMany({
-    where: eq(monitors.userId, userId),
-    columns: { id: true },
-  });
+    // Get total results count across all user's monitors in a single query
+    // Uses a subquery to avoid N+1 problem
+    db.select({ count: count() })
+      .from(results)
+      .innerJoin(monitors, eq(results.monitorId, monitors.id))
+      .where(eq(monitors.userId, userId)),
 
-  const monitorIds = userMonitors.map(m => m.id);
-  let resultsCount = 0;
-
-  if (monitorIds.length > 0) {
-    // Sum all results across monitors
-    for (const monitorId of monitorIds) {
-      const [rc] = await db
-        .select({ count: count() })
-        .from(results)
-        .where(eq(results.monitorId, monitorId));
-      resultsCount += rc?.count || 0;
-    }
-  }
-
-  // Get usage record
-  const usageRecord = await db.query.usage.findFirst({
-    where: eq(usage.userId, userId),
-    orderBy: (usage, { desc }) => [desc(usage.createdAt)],
-  });
+    // Get usage record
+    db.query.usage.findFirst({
+      where: eq(usage.userId, userId),
+      orderBy: (usage, { desc }) => [desc(usage.createdAt)],
+    }),
+  ]);
 
   return {
-    monitors: monitorCount?.count || 0,
-    results: resultsCount,
+    monitors: monitorCountResult[0]?.count || 0,
+    results: resultsCountResult[0]?.count || 0,
     aiCalls: usageRecord?.aiCallsCount || 0,
   };
 }
