@@ -20,8 +20,9 @@ async function getClerkHandler() {
       "/sign-up(.*)",
       "/api/webhooks(.*)",
       "/api/inngest(.*)",
-      // Allow dashboard and manage access in development without auth
-      ...(isDev ? ["/dashboard(.*)", "/manage(.*)"] : []),
+      "/invite(.*)", // Public invite acceptance page
+      // Allow dashboard, manage, and test endpoints in development
+      ...(isDev ? ["/dashboard(.*)", "/manage(.*)", "/api/test-emails(.*)", "/api/test-single-email(.*)"] : []),
     ]);
 
     clerkHandler = clerkMiddleware(async (auth, request) => {
