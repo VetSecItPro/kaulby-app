@@ -150,7 +150,7 @@ export function UsageSidebar({ plan, monitors }: UsageSidebarProps) {
       {plan !== "enterprise" && (
         <Button size="sm" variant="outline" className="w-full text-xs" asChild>
           <Link href="/pricing">
-            Upgrade to {plan === "free" ? "Pro" : "Enterprise"}
+            Upgrade to {plan === "free" ? "Pro" : "Team"}
             <ArrowRight className="ml-1 h-3 w-3" />
           </Link>
         </Button>

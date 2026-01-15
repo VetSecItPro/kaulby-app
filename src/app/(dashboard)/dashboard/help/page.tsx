@@ -139,7 +139,7 @@ export default function HelpPage() {
             </ul>
             <div className="p-3 rounded-lg bg-muted/50 mt-4">
               <p className="text-xs">
-                Pro and Enterprise users get unlimited AI analysis. Free users see analysis on the first result.
+                Pro and Team users get unlimited AI analysis. Free users see analysis on the first result.
               </p>
             </div>
           </CardContent>
@@ -158,7 +158,7 @@ export default function HelpPage() {
             <ul className="list-disc list-inside space-y-1">
               <li><strong>Email Digest:</strong> Daily summaries at 9 AM your time</li>
               <li><strong>Slack:</strong> Instant notifications to your channel</li>
-              <li><strong>Webhooks:</strong> Custom integrations (Enterprise)</li>
+              <li><strong>Webhooks:</strong> Custom integrations (Team)</li>
             </ul>
             <div className="p-3 rounded-lg bg-muted/50 mt-4">
               <p className="text-xs">
@@ -182,7 +182,7 @@ export default function HelpPage() {
             <div className="p-4 rounded-lg border bg-card">
               <h4 className="font-medium mb-2">How often are results updated?</h4>
               <p className="text-sm text-muted-foreground">
-                Pro users get results every 2 hours. Enterprise users get real-time monitoring.
+                Pro users get results every 2 hours. Team users get real-time monitoring.
                 Free users have a 24-hour delay.
               </p>
             </div>
@@ -190,13 +190,13 @@ export default function HelpPage() {
               <h4 className="font-medium mb-2">How many keywords can I track?</h4>
               <p className="text-sm text-muted-foreground">
                 Free: 3 keywords per monitor. Pro: 20 keywords.
-                Enterprise: 50 keywords. Use quotes for exact phrases.
+                Team: 50 keywords. Use quotes for exact phrases.
               </p>
             </div>
             <div className="p-4 rounded-lg border bg-card">
               <h4 className="font-medium mb-2">How long are results stored?</h4>
               <p className="text-sm text-muted-foreground">
-                Free: 3 days. Pro: 90 days. Enterprise: 1 year.
+                Free: 3 days. Pro: 90 days. Team: 1 year.
                 Export anytime from Settings to keep a permanent copy.
               </p>
             </div>
@@ -210,14 +210,14 @@ export default function HelpPage() {
             <div className="p-4 rounded-lg border bg-card">
               <h4 className="font-medium mb-2">Can I add team members?</h4>
               <p className="text-sm text-muted-foreground">
-                Enterprise plan includes 5 team seats (+$15/user after).
+                Team plan includes 5 team seats (+$15/user after).
                 Go to Settings → Team to invite members.
               </p>
             </div>
             <div className="p-4 rounded-lg border bg-card">
               <h4 className="font-medium mb-2">Can I export my data?</h4>
               <p className="text-sm text-muted-foreground">
-                Pro and Enterprise users can export to CSV. Enterprise
+                Pro and Team users can export to CSV. Team
                 also has API access for custom integrations.
               </p>
             </div>
@@ -258,7 +258,7 @@ export default function HelpPage() {
                   <th className="text-left py-3 pr-4 font-medium">Feature</th>
                   <th className="text-center py-3 px-4 font-medium">Free</th>
                   <th className="text-center py-3 px-4 font-medium">Pro</th>
-                  <th className="text-center py-3 px-4 font-medium">Enterprise</th>
+                  <th className="text-center py-3 px-4 font-medium">Team</th>
                 </tr>
               </thead>
               <tbody className="text-muted-foreground">
@@ -348,7 +348,7 @@ export default function HelpPage() {
               support@kaulbyapp.com
             </a>
             <p className="text-xs">
-              Enterprise customers get priority support with faster response times.
+              Team customers get priority support with faster response times.
             </p>
           </div>
         </CardContent>
