@@ -255,6 +255,37 @@ export async function sendPaymentFailedEmail(params: {
   });
 }
 
+// Send workspace invite email
+export async function sendWorkspaceInviteEmail(params: {
+  email: string;
+  workspaceName: string;
+  inviterName: string;
+  inviteToken: string;
+}) {
+  const inviteUrl = `${APP_URL}/invite/${params.inviteToken}`;
+
+  await getResend().emails.send({
+    from: FROM_EMAIL,
+    to: params.email,
+    subject: `You've been invited to join ${params.workspaceName} on Kaulby`,
+    html: getWorkspaceInviteEmailHtml(params.workspaceName, params.inviterName, inviteUrl),
+  });
+}
+
+// Send invite accepted notification to workspace owner
+export async function sendInviteAcceptedEmail(params: {
+  ownerEmail: string;
+  memberName: string;
+  workspaceName: string;
+}) {
+  await getResend().emails.send({
+    from: FROM_EMAIL,
+    to: params.ownerEmail,
+    subject: `${params.memberName} joined ${params.workspaceName}`,
+    html: getInviteAcceptedEmailHtml(params.memberName, params.workspaceName),
+  });
+}
+
 // Helper to escape HTML
 function escapeHtml(text: string): string {
   return text
@@ -402,7 +433,7 @@ function getWelcomeEmailHtml(name: string): string {
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
           <tr>
             <td align="center">
-              <a href="${APP_URL}/dashboard" style="display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, ${COLORS.accent}, ${COLORS.accentGold}); color: ${COLORS.bg}; text-decoration: none; font-weight: 600; font-size: 15px; border-radius: 8px;">Create Your First Monitor</a>
+              <a href="${APP_URL}/dashboard" style="display: inline-block; padding: 14px 36px; background-color: ${COLORS.accent}; color: ${COLORS.bg}; text-decoration: none; font-weight: 600; font-size: 15px; border-radius: 50px;">Create Your First Monitor</a>
             </td>
           </tr>
         </table>
@@ -446,7 +477,7 @@ function getAlertEmailHtml(monitorName: string, resultsCount: number, resultsHtm
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
           <tr>
             <td align="center">
-              <a href="${APP_URL}/dashboard/results" style="display: inline-block; padding: 12px 28px; background: ${COLORS.text}; color: ${COLORS.bg}; text-decoration: none; font-weight: 600; font-size: 14px; border-radius: 8px;">View All Results</a>
+              <a href="${APP_URL}/dashboard/results" style="display: inline-block; padding: 12px 32px; background-color: ${COLORS.accent}; color: ${COLORS.bg}; text-decoration: none; font-weight: 600; font-size: 14px; border-radius: 50px;">View All Results</a>
             </td>
           </tr>
         </table>
@@ -485,7 +516,7 @@ function getDigestEmailHtml(userName: string, frequency: string, totalResults: n
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
           <tr>
             <td align="center">
-              <a href="${APP_URL}/dashboard" style="display: inline-block; padding: 12px 28px; background: ${COLORS.text}; color: ${COLORS.bg}; text-decoration: none; font-weight: 600; font-size: 14px; border-radius: 8px;">Open Dashboard</a>
+              <a href="${APP_URL}/dashboard" style="display: inline-block; padding: 12px 32px; background-color: ${COLORS.accent}; color: ${COLORS.bg}; text-decoration: none; font-weight: 600; font-size: 14px; border-radius: 50px;">Open Dashboard</a>
             </td>
           </tr>
         </table>
@@ -554,7 +585,7 @@ function getSubscriptionEmailHtml(name: string, plan: string): string {
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
           <tr>
             <td align="center">
-              <a href="${APP_URL}/dashboard" style="display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, ${COLORS.accent}, ${COLORS.accentGold}); color: ${COLORS.bg}; text-decoration: none; font-weight: 600; font-size: 15px; border-radius: 8px;">Go to Dashboard</a>
+              <a href="${APP_URL}/dashboard" style="display: inline-block; padding: 14px 36px; background-color: ${COLORS.accent}; color: ${COLORS.bg}; text-decoration: none; font-weight: 600; font-size: 15px; border-radius: 50px;">Go to Dashboard</a>
             </td>
           </tr>
         </table>
@@ -596,7 +627,105 @@ function getPaymentFailedEmailHtml(name: string): string {
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
           <tr>
             <td align="center">
-              <a href="${APP_URL}/dashboard/settings" style="display: inline-block; padding: 14px 32px; background: ${COLORS.error}; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 15px; border-radius: 8px;">Update Payment Method</a>
+              <a href="${APP_URL}/api/stripe/portal" style="display: inline-block; padding: 14px 36px; background-color: ${COLORS.error}; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 15px; border-radius: 50px;">Update Payment Method</a>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  `;
+  return getEmailWrapper(content);
+}
+
+function getWorkspaceInviteEmailHtml(workspaceName: string, inviterName: string, inviteUrl: string): string {
+  const content = `
+    <tr>
+      <td style="padding: 40px 32px 24px; text-align: center;">
+        <div style="display: inline-block; width: 64px; height: 64px; background: linear-gradient(135deg, rgba(94, 234, 212, 0.2), rgba(212, 165, 116, 0.2)); border-radius: 50%; line-height: 64px; margin-bottom: 20px;">
+          <span style="font-size: 32px;">👋</span>
+        </div>
+        <h1 style="margin: 0 0 8px; font-size: 24px; font-weight: 700; color: ${COLORS.text};">You're Invited</h1>
+        <p style="margin: 0; font-size: 15px; color: ${COLORS.textMuted};">Join your team on Kaulby</p>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 0 32px 24px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: ${COLORS.bg}; border: 1px solid ${COLORS.cardBorder}; border-radius: 12px;">
+          <tr>
+            <td style="padding: 24px; text-align: center;">
+              <p style="margin: 0 0 8px; font-size: 14px; color: ${COLORS.textDim};">
+                <strong style="color: ${COLORS.text};">${escapeHtml(inviterName)}</strong> has invited you to join
+              </p>
+              <p style="margin: 0; font-size: 22px; font-weight: 600; color: ${COLORS.accent};">
+                ${escapeHtml(workspaceName)}
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 0 32px 24px;">
+        <p style="margin: 0; font-size: 14px; line-height: 1.7; color: ${COLORS.textMuted}; text-align: center;">
+          As a team member, you'll have access to all monitors, results, and insights. Click below to accept the invitation.
+        </p>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 0 32px 40px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+          <tr>
+            <td align="center">
+              <a href="${inviteUrl}" style="display: inline-block; padding: 14px 36px; background-color: ${COLORS.accent}; color: ${COLORS.bg}; text-decoration: none; font-weight: 600; font-size: 15px; border-radius: 50px;">Accept Invitation</a>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding-top: 16px;">
+              <p style="margin: 0; font-size: 12px; color: ${COLORS.textDim};">
+                This invitation expires in 7 days
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  `;
+  return getEmailWrapper(content);
+}
+
+function getInviteAcceptedEmailHtml(memberName: string, workspaceName: string): string {
+  const content = `
+    <tr>
+      <td style="padding: 40px 32px 24px; text-align: center;">
+        <div style="display: inline-block; width: 64px; height: 64px; background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(34, 197, 94, 0.1)); border-radius: 50%; line-height: 64px; margin-bottom: 20px;">
+          <span style="font-size: 32px;">🎉</span>
+        </div>
+        <h1 style="margin: 0 0 8px; font-size: 24px; font-weight: 700; color: ${COLORS.text};">New Team Member</h1>
+        <p style="margin: 0; font-size: 15px; color: ${COLORS.textMuted};">Your team just got bigger</p>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 0 32px 24px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(34, 197, 94, 0.05) 100%); border: 1px solid rgba(34, 197, 94, 0.2); border-radius: 12px;">
+          <tr>
+            <td style="padding: 24px; text-align: center;">
+              <p style="margin: 0 0 4px; font-size: 18px; font-weight: 600; color: ${COLORS.text};">
+                ${escapeHtml(memberName)}
+              </p>
+              <p style="margin: 0; font-size: 14px; color: ${COLORS.success};">
+                joined ${escapeHtml(workspaceName)}
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 0 32px 40px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+          <tr>
+            <td align="center">
+              <a href="${APP_URL}/dashboard/settings" style="display: inline-block; padding: 12px 32px; background-color: ${COLORS.accent}; color: ${COLORS.bg}; text-decoration: none; font-weight: 600; font-size: 14px; border-radius: 50px;">Manage Team</a>
             </td>
           </tr>
         </table>

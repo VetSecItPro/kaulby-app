@@ -17,9 +17,9 @@
     --card-foreground: 240 10% 3.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 240 10% 3.9%;
-    /* Primary: Teal */
+    /* Primary: Teal with dark text for elegance */
     --primary: 172 66% 50%;
-    --primary-foreground: 0 0% 100%;
+    --primary-foreground: 0 0% 5%;
     --secondary: 240 5% 96%;
     --secondary-foreground: 240 6% 10%;
     --muted: 240 5% 96%;
@@ -51,9 +51,9 @@
     --card-foreground: 0 0% 98%;
     --popover: 0 0% 4%;
     --popover-foreground: 0 0% 98%;
-    /* Primary: Teal */
+    /* Primary: Teal with dark text for elegance */
     --primary: 172 66% 50%;
-    --primary-foreground: 0 0% 100%;
+    --primary-foreground: 0 0% 5%;
     --secondary: 0 0% 10%;
     --secondary-foreground: 0 0% 98%;
     --muted: 0 0% 10%;

@@ -3,7 +3,7 @@
  * All platform-related colors and styling should be defined here
  */
 
-export const platforms = ["reddit", "hackernews", "producthunt", "devto", "twitter"] as const;
+export const platforms = ["reddit", "hackernews", "producthunt", "devto", "googlereviews", "trustpilot", "appstore", "playstore", "quora"] as const;
 export type Platform = (typeof platforms)[number];
 
 /**
@@ -34,11 +34,35 @@ export const platformColors = {
     bar: "bg-violet-500",
     icon: "text-purple-500",
   },
-  twitter: {
-    badge: "bg-sky-500/10 text-sky-500",
-    badgeLight: "bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-400",
-    bar: "bg-sky-500",
-    icon: "text-sky-500",
+  googlereviews: {
+    badge: "bg-blue-500/10 text-blue-500",
+    badgeLight: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+    bar: "bg-blue-500",
+    icon: "text-blue-500",
+  },
+  trustpilot: {
+    badge: "bg-emerald-500/10 text-emerald-500",
+    badgeLight: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400",
+    bar: "bg-emerald-500",
+    icon: "text-emerald-500",
+  },
+  appstore: {
+    badge: "bg-pink-500/10 text-pink-500",
+    badgeLight: "bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-400",
+    bar: "bg-pink-500",
+    icon: "text-pink-500",
+  },
+  playstore: {
+    badge: "bg-green-500/10 text-green-500",
+    badgeLight: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+    bar: "bg-green-500",
+    icon: "text-green-500",
+  },
+  quora: {
+    badge: "bg-red-600/10 text-red-600",
+    badgeLight: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+    bar: "bg-red-600",
+    icon: "text-red-600",
   },
 } as const;
 

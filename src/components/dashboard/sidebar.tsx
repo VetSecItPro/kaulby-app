@@ -4,7 +4,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { UserButton } from "@clerk/nextjs";
 import {
   LayoutDashboard,
@@ -12,8 +11,8 @@ import {
   MessageSquare,
   Settings,
   CreditCard,
-  PlusCircle,
   ShieldCheck,
+  HelpCircle,
 } from "lucide-react";
 
 const sidebarLinks = [
@@ -37,6 +36,11 @@ const sidebarLinks = [
     title: "Settings",
     href: "/dashboard/settings",
     icon: Settings,
+  },
+  {
+    title: "Help",
+    href: "/dashboard/help",
+    icon: HelpCircle,
   },
 ];
 
@@ -79,7 +83,7 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
                 key={link.href}
                 href={link.href}
                 className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                  "inline-flex w-fit items-center gap-2 rounded-full px-3 py-1.5 text-sm transition-colors",
                   isActive
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -96,34 +100,25 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
             <Link
               href="/manage"
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors mt-2",
+                "inline-flex w-fit items-center gap-2 rounded-full px-3 py-1.5 text-sm transition-colors mt-2",
                 pathname === "/manage" || pathname.startsWith("/manage/")
                   ? "bg-amber-500 text-white"
                   : "text-amber-500 hover:bg-amber-500/10"
               )}
             >
               <ShieldCheck className="h-4 w-4" />
-              Manage
+              Admin Dashboard
             </Link>
           )}
         </nav>
 
-        {/* Create Monitor Button */}
-        <div className="mt-4 px-2">
-          <Link href="/dashboard/monitors/new">
-            <Button className="w-full gap-2" size="sm">
-              <PlusCircle className="h-4 w-4" />
-              New Monitor
-            </Button>
-          </Link>
-        </div>
       </div>
 
       {/* Billing Link */}
       <div className="px-2 pb-2">
         <Link
           href="/dashboard/settings"
-          className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          className="inline-flex w-fit items-center gap-2 rounded-full px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
         >
           <CreditCard className="h-4 w-4" />
           Upgrade Plan

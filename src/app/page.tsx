@@ -13,8 +13,12 @@ import {
   Target,
   BarChart3,
   Activity,
-  Twitter,
+  Star,
+  Smartphone,
+  Code2,
+  HelpCircle,
 } from "lucide-react";
+
 import { AuthButtons, AuthCTA, HeroCTA } from "@/components/shared/auth-buttons";
 import {
   HomeAnimations,
@@ -98,7 +102,7 @@ export default function HomePage() {
             </h1>
 
             <p className="text-base md:text-lg lg:text-xl text-muted-foreground mb-8 md:mb-10 max-w-2xl mx-auto animate-fade-up px-2" style={{ animationDelay: "0.2s" }}>
-              Track discussions across Reddit, Hacker News, and Product Hunt.
+              Track discussions across Reddit, Hacker News, Product Hunt, Google Reviews, Trustpilot, App Store, Play Store, Quora, and Dev.to.
               Get AI-powered insights and instant alerts when topics you care about are mentioned.
             </p>
 
@@ -128,20 +132,39 @@ export default function HomePage() {
         <AnimatedSection className="py-12 md:py-16 px-4 border-y bg-muted/30">
           <div className="container mx-auto text-center">
             <TextReveal>
-              <p className="text-xs md:text-sm text-muted-foreground mb-6 md:mb-8">Monitor conversations across major platforms</p>
+              <p className="text-xs md:text-sm text-muted-foreground mb-6 md:mb-8">Monitor conversations across 9 major platforms</p>
             </TextReveal>
-            <div className="grid grid-cols-2 sm:flex sm:flex-wrap justify-center gap-6 md:gap-12 items-center">
+            {/* Row 1: 5 platforms */}
+            <div className="flex flex-wrap justify-center gap-6 md:gap-10 items-center mb-6">
               <AnimatedBadge delay={0}>
                 <PlatformBadge icon={MessageSquare} name="Reddit" color="text-orange-500" />
               </AnimatedBadge>
-              <AnimatedBadge delay={0.1}>
+              <AnimatedBadge delay={0.05}>
                 <PlatformBadge icon={TrendingUp} name="Hacker News" color="text-amber-500" />
               </AnimatedBadge>
-              <AnimatedBadge delay={0.2}>
+              <AnimatedBadge delay={0.1}>
                 <PlatformBadge icon={Globe} name="Product Hunt" color="text-red-500" />
               </AnimatedBadge>
+              <AnimatedBadge delay={0.15}>
+                <PlatformBadge icon={Star} name="Google Reviews" color="text-blue-500" />
+              </AnimatedBadge>
+              <AnimatedBadge delay={0.2}>
+                <PlatformBadge icon={Star} name="Trustpilot" color="text-emerald-500" />
+              </AnimatedBadge>
+            </div>
+            {/* Row 2: 4 platforms */}
+            <div className="flex flex-wrap justify-center gap-6 md:gap-10 items-center">
+              <AnimatedBadge delay={0.25}>
+                <PlatformBadge icon={Smartphone} name="App Store" color="text-pink-500" />
+              </AnimatedBadge>
               <AnimatedBadge delay={0.3}>
-                <PlatformBadge icon={Twitter} name="X" color="text-sky-500" />
+                <PlatformBadge icon={Smartphone} name="Play Store" color="text-green-500" />
+              </AnimatedBadge>
+              <AnimatedBadge delay={0.35}>
+                <PlatformBadge icon={HelpCircle} name="Quora" color="text-red-600" />
+              </AnimatedBadge>
+              <AnimatedBadge delay={0.4}>
+                <PlatformBadge icon={Code2} name="Dev.to" color="text-violet-500" />
               </AnimatedBadge>
             </div>
           </div>
@@ -199,7 +222,7 @@ export default function HomePage() {
                 <FeatureCard
                   icon={Globe}
                   title="Multi-Platform"
-                  description="One dashboard for Reddit, Hacker News, Product Hunt, X, and more platforms."
+                  description="One dashboard for all 9 platforms: Reddit, HN, Product Hunt, reviews, Q&A, and more."
                 />
               </StaggerItem>
               <StaggerItem>

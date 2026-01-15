@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome to {{plan}} - Kaulby</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f4f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f4f4f5;">
+    <tr>
+      <td align="center" style="padding: 40px 20px;">
+        <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="background-color: #ffffff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+
+          <!-- Header with celebration -->
+          <tr>
+            <td style="padding: 40px 40px 20px; text-align: center;">
+              <div style="font-size: 48px; margin-bottom: 16px;">🎉</div>
+              <h1 style="margin: 0; font-size: 28px; font-weight: 700; color: #18181b;">You're on {{plan}}!</h1>
+            </td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td style="padding: 20px 40px 40px;">
+              <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46; text-align: center;">
+                Thanks for upgrading, {{name}}! Your account now has access to all {{plan}} features.
+              </p>
+
+              <!-- What's unlocked -->
+              <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 24px; margin-bottom: 24px;">
+                <h3 style="margin: 0 0 16px; font-size: 16px; font-weight: 600; color: #166534;">What's now unlocked:</h3>
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                  <tr>
+                    <td style="padding: 6px 0; font-size: 14px; color: #166534;">
+                      ✓ AI-powered sentiment analysis on all results
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 6px 0; font-size: 14px; color: #166534;">
+                      ✓ Pain point detection and categorization
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 6px 0; font-size: 14px; color: #166534;">
+                      ✓ Real-time monitoring (no delays)
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 6px 0; font-size: 14px; color: #166534;">
+                      ✓ Email and Slack alerts
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 6px 0; font-size: 14px; color: #166534;">
+                      ✓ CSV export for your data
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 6px 0; font-size: 14px; color: #166534;">
+                      ✓ Extended data retention (90 days)
+                    </td>
+                  </tr>
+                </table>
+              </div>
+
+              <!-- CTA Button -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td align="center">
+                    <a href="https://kaulbyapp.com/dashboard" style="display: inline-block; padding: 14px 32px; background-color: #18181b; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 16px; border-radius: 8px;">Go to Dashboard</a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin: 24px 0 0; font-size: 14px; color: #71717a; text-align: center;">
+                Questions about your plan? Just reply to this email.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 24px 40px; background-color: #fafafa; border-top: 1px solid #e4e4e7; border-radius: 0 0 12px 12px;">
+              <p style="margin: 0; font-size: 12px; color: #71717a; text-align: center;">
+                Kaulby - Community Intelligence Platform<br>
+                <a href="https://kaulbyapp.com/dashboard/settings" style="color: #71717a;">Manage subscription</a>
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+
+<!--
+Variables needed in Loops:
+- name (text) - User's name
+- plan (text) - "Pro" or "Enterprise"
+-->

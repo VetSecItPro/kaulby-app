@@ -24,6 +24,11 @@ export const platformEnum = pgEnum("platform", [
   "producthunt",
   "devto",
   "twitter",
+  "googlereviews",
+  "trustpilot",
+  "appstore",
+  "playstore",
+  "quora",
 ]);
 
 export const alertChannelEnum = pgEnum("alert_channel", [
@@ -61,6 +66,30 @@ export const timezoneEnum = pgEnum("timezone", [
   "America/Los_Angeles",   // Pacific
 ]);
 
+// Workspace role enum
+export const workspaceRoleEnum = pgEnum("workspace_role", [
+  "owner",   // Can manage billing, invite/remove members
+  "member",  // Can view/create/edit monitors and results
+]);
+
+// Invite status enum
+export const inviteStatusEnum = pgEnum("invite_status", [
+  "pending",
+  "accepted",
+  "expired",
+]);
+
+// Workspaces - team containers for Enterprise users
+export const workspaces = pgTable("workspaces", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  ownerId: text("owner_id").notNull(), // Clerk user ID of workspace owner
+  seatLimit: integer("seat_limit").default(5).notNull(),
+  seatCount: integer("seat_count").default(1).notNull(), // Current number of members
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Users table - synced with Clerk
 export const users = pgTable("users", {
   id: text("id").primaryKey(), // Clerk user ID
@@ -68,6 +97,10 @@ export const users = pgTable("users", {
   name: text("name"),
   timezone: timezoneEnum("timezone").default("America/New_York").notNull(),
   isAdmin: boolean("is_admin").default(false).notNull(),
+  // Workspace membership (Enterprise feature)
+  workspaceId: uuid("workspace_id").references(() => workspaces.id, { onDelete: "set null" }),
+  workspaceRole: workspaceRoleEnum("workspace_role"),
+  // Stripe/subscription fields
   stripeCustomerId: text("stripe_customer_id").unique(),
   subscriptionStatus: subscriptionStatusEnum("subscription_status").default("free").notNull(),
   subscriptionId: text("subscription_id"),
@@ -243,8 +276,39 @@ export const webhookDeliveries = pgTable("webhook_deliveries", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Workspace Invites - pending team invitations for Enterprise
+export const workspaceInvites = pgTable("workspace_invites", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  email: text("email").notNull(), // Email of the person being invited
+  invitedBy: text("invited_by").notNull(), // Clerk user ID of the inviter
+  token: text("token").notNull().unique(), // Unique token for invite link
+  status: inviteStatusEnum("status").default("pending").notNull(),
+  expiresAt: timestamp("expires_at").notNull(), // Invite expires after 7 days
+  acceptedAt: timestamp("accepted_at"), // When the invite was accepted
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Relations
-export const usersRelations = relations(users, ({ many }) => ({
+export const workspacesRelations = relations(workspaces, ({ many }) => ({
+  members: many(users),
+  invites: many(workspaceInvites),
+}));
+
+export const workspaceInvitesRelations = relations(workspaceInvites, ({ one }) => ({
+  workspace: one(workspaces, {
+    fields: [workspaceInvites.workspaceId],
+    references: [workspaces.id],
+  }),
+}));
+
+export const usersRelations = relations(users, ({ one, many }) => ({
+  workspace: one(workspaces, {
+    fields: [users.workspaceId],
+    references: [workspaces.id],
+  }),
   audiences: many(audiences),
   monitors: many(monitors),
   aiLogs: many(aiLogs),
@@ -355,3 +419,7 @@ export type Webhook = typeof webhooks.$inferSelect;
 export type NewWebhook = typeof webhooks.$inferInsert;
 export type WebhookDelivery = typeof webhookDeliveries.$inferSelect;
 export type NewWebhookDelivery = typeof webhookDeliveries.$inferInsert;
+export type Workspace = typeof workspaces.$inferSelect;
+export type NewWorkspace = typeof workspaces.$inferInsert;
+export type WorkspaceInvite = typeof workspaceInvites.$inferSelect;
+export type NewWorkspaceInvite = typeof workspaceInvites.$inferInsert;
