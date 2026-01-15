@@ -49,10 +49,19 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Filter to specific monitor if requested
+    // Filter to specific monitor if requested (validate ownership)
+    const userMonitorIds = userMonitors.map(m => m.id);
     const monitorIds = monitorId
-      ? [monitorId]
-      : userMonitors.map(m => m.id);
+      ? (userMonitorIds.includes(monitorId) ? [monitorId] : [])
+      : userMonitorIds;
+
+    // Reject if monitorId was provided but user doesn't own it
+    if (monitorId && monitorIds.length === 0) {
+      return NextResponse.json(
+        { error: "Monitor not found or access denied" },
+        { status: 403 }
+      );
+    }
 
     // Get results
     const userResults = await db.query.results.findMany({

@@ -1,22 +1,6 @@
 import Stripe from "stripe";
 
-// Stripe client - initialized lazily to avoid build-time errors
-let stripeClient: Stripe | null = null;
-
-export function getStripe(): Stripe {
-  if (!stripeClient) {
-    if (!process.env.STRIPE_SECRET_KEY) {
-      throw new Error("STRIPE_SECRET_KEY is not set");
-    }
-    stripeClient = new Stripe(process.env.STRIPE_SECRET_KEY, {
-      apiVersion: "2025-12-15.clover",
-      typescript: true,
-    });
-  }
-  return stripeClient;
-}
-
-// For backwards compatibility
+// Stripe client - initialized at module load for server-side usage
 export const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY, {
       apiVersion: "2025-12-15.clover",
@@ -210,36 +194,4 @@ export function getPlanFromPriceId(priceId: string): PlanKey {
 // Get plan limits for a subscription status
 export function getPlanLimits(plan: PlanKey): PlanLimits {
   return PLANS[plan].limits;
-}
-
-// Check if a platform is available for a plan
-export function isPlatformAvailable(plan: PlanKey, platform: Platform): boolean {
-  return PLANS[plan].limits.platforms.includes(platform);
-}
-
-// Check if a feature is available for a plan
-export function isFeatureAvailable(
-  plan: PlanKey,
-  feature: "sentiment" | "painPointCategories" | "askFeature" | "slack" | "webhooks" | "csv" | "api"
-): boolean {
-  const limits = PLANS[plan].limits;
-
-  switch (feature) {
-    case "sentiment":
-      return limits.aiFeatures.sentiment;
-    case "painPointCategories":
-      return limits.aiFeatures.painPointCategories;
-    case "askFeature":
-      return limits.aiFeatures.askFeature;
-    case "slack":
-      return limits.alerts.slack;
-    case "webhooks":
-      return limits.alerts.webhooks;
-    case "csv":
-      return limits.exports.csv;
-    case "api":
-      return limits.exports.api;
-    default:
-      return false;
-  }
 }

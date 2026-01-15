@@ -11,6 +11,30 @@ import {
 } from "@/lib/limits";
 import { Platform } from "@/lib/stripe";
 
+// All valid platforms (must match POST route)
+const VALID_PLATFORMS = ["reddit", "hackernews", "producthunt", "devto", "googlereviews", "trustpilot", "appstore", "playstore", "quora"];
+
+// Sanitize user input to prevent XSS and injection attacks
+function sanitizeInput(input: string): string {
+  return input
+    .trim()
+    // Remove HTML tags
+    .replace(/<[^>]*>/g, "")
+    // Remove script injection attempts
+    .replace(/javascript:/gi, "")
+    .replace(/on\w+=/gi, "")
+    // Remove null bytes
+    .replace(/\0/g, "")
+    // Limit length to 100 characters
+    .slice(0, 100);
+}
+
+// Validate keyword format
+function isValidKeyword(keyword: string): boolean {
+  const sanitized = sanitizeInput(keyword);
+  return sanitized.length >= 1 && sanitized.length <= 100;
+}
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -77,19 +101,35 @@ export async function PATCH(
 
     // Validate platforms
     if (platforms) {
-      const validPlatforms = ["reddit", "hackernews", "producthunt", "devto"];
-      const invalidPlatforms = platforms.filter((p: string) => !validPlatforms.includes(p));
+      const invalidPlatforms = platforms.filter((p: string) => !VALID_PLATFORMS.includes(p));
       if (invalidPlatforms.length > 0) {
         return NextResponse.json({ error: `Invalid platforms: ${invalidPlatforms.join(", ")}` }, { status: 400 });
       }
+    }
+
+    // Sanitize name if provided
+    const sanitizedName = name !== undefined ? sanitizeInput(name) : undefined;
+    if (name !== undefined && (!sanitizedName || sanitizedName.length === 0)) {
+      return NextResponse.json({ error: "Invalid name after sanitization" }, { status: 400 });
+    }
+
+    // Sanitize keywords if provided
+    const sanitizedKeywords: string[] | undefined = keywords
+      ? keywords
+          .map((k: string) => (typeof k === "string" ? sanitizeInput(k) : ""))
+          .filter((k: string) => isValidKeyword(k))
+      : undefined;
+
+    if (keywords && (!sanitizedKeywords || sanitizedKeywords.length === 0)) {
+      return NextResponse.json({ error: "No valid keywords after sanitization" }, { status: 400 });
     }
 
     // Get user's plan for limit checks
     const plan = await getUserPlan(userId);
 
     // Check keywords limit if updating keywords
-    if (keywords) {
-      const keywordCheck = checkKeywordsLimit(keywords, plan);
+    if (sanitizedKeywords) {
+      const keywordCheck = checkKeywordsLimit(sanitizedKeywords, plan);
       if (!keywordCheck.allowed) {
         const prompt = getUpgradePrompt(plan, "keywords");
         return NextResponse.json(
@@ -130,12 +170,12 @@ export async function PATCH(
       finalPlatforms = allowedPlatforms;
     }
 
-    // Update monitor
+    // Update monitor with sanitized values
     const [updatedMonitor] = await db
       .update(monitors)
       .set({
-        ...(name !== undefined && { name: name.trim() }),
-        ...(keywords !== undefined && { keywords }),
+        ...(sanitizedName !== undefined && { name: sanitizedName }),
+        ...(sanitizedKeywords !== undefined && { keywords: sanitizedKeywords }),
         ...(platforms !== undefined && { platforms: finalPlatforms }),
         ...(isActive !== undefined && { isActive }),
         updatedAt: new Date(),

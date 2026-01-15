@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useMemo, useCallback } from "react";
 import { ResultCard, ResultsFilterBar } from "./result-card";
 import { markAllResultsViewed } from "@/app/(dashboard)/dashboard/results/actions";
 
@@ -32,33 +32,38 @@ export function ResultsList({ results, hasUnlimitedAi = true }: ResultsListProps
   const [isPending, startTransition] = useTransition();
   const [allMarkedRead, setAllMarkedRead] = useState(false);
 
-  // Calculate counts
-  const unviewedCount = results.filter((r) => !r.isViewed && !allMarkedRead).length;
-  const savedCount = results.filter((r) => r.isSaved).length;
-  const hiddenCount = results.filter((r) => r.isHidden).length;
-  const totalCount = results.filter((r) => !r.isHidden).length;
+  // Memoize count calculations - only recalculate when results or allMarkedRead changes
+  const { unviewedCount, savedCount, hiddenCount, totalCount } = useMemo(() => ({
+    unviewedCount: results.filter((r) => !r.isViewed && !allMarkedRead).length,
+    savedCount: results.filter((r) => r.isSaved).length,
+    hiddenCount: results.filter((r) => r.isHidden).length,
+    totalCount: results.filter((r) => !r.isHidden).length,
+  }), [results, allMarkedRead]);
 
-  // Filter results based on selected filter
-  const filteredResults = results.filter((result) => {
-    switch (filter) {
-      case "unread":
-        return !result.isViewed && !allMarkedRead && !result.isHidden;
-      case "saved":
-        return result.isSaved && !result.isHidden;
-      case "hidden":
-        return result.isHidden;
-      case "all":
-      default:
-        return !result.isHidden;
-    }
-  });
+  // Memoize filtered results - only recalculate when dependencies change
+  const filteredResults = useMemo(() => {
+    return results.filter((result) => {
+      switch (filter) {
+        case "unread":
+          return !result.isViewed && !allMarkedRead && !result.isHidden;
+        case "saved":
+          return result.isSaved && !result.isHidden;
+        case "hidden":
+          return result.isHidden;
+        case "all":
+        default:
+          return !result.isHidden;
+      }
+    });
+  }, [results, filter, allMarkedRead]);
 
-  const handleMarkAllRead = () => {
+  // Memoize callback to prevent unnecessary re-renders of child components
+  const handleMarkAllRead = useCallback(() => {
     startTransition(async () => {
       await markAllResultsViewed();
       setAllMarkedRead(true);
     });
-  };
+  }, []);
 
   return (
     <div className="space-y-4">
