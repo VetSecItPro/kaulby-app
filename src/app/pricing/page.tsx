@@ -20,7 +20,15 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Check } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Check, X } from "lucide-react";
 import { CheckoutModal } from "@/components/checkout-modal";
 import { DayPassCard } from "@/components/day-pass-card";
 import { cn } from "@/lib/utils";
@@ -111,6 +119,26 @@ const plans: Plan[] = [
     href: "/sign-up?plan=enterprise",
     popular: false,
   },
+];
+
+// Feature comparison table data
+const featureComparison = [
+  { feature: "Monitors", free: "1", pro: "10", team: "Unlimited" },
+  { feature: "Keywords per monitor", free: "3", pro: "20", team: "50" },
+  { feature: "Platforms", free: "Reddit only", pro: "All 9 platforms", team: "All 9 platforms" },
+  { feature: "Results visible", free: "Last 3", pro: "Unlimited", team: "Unlimited" },
+  { feature: "History retention", free: "3 days", pro: "90 days", team: "1 year" },
+  { feature: "Refresh cycle", free: "24 hours", pro: "4 hours", team: "Real-time" },
+  { feature: "AI sentiment analysis", free: true, pro: true, team: true },
+  { feature: "AI pain point detection", free: false, pro: true, team: true },
+  { feature: "Comprehensive AI analysis", free: false, pro: false, team: true },
+  { feature: "Email digests", free: false, pro: "Daily", team: "Real-time" },
+  { feature: "Slack/Discord alerts", free: false, pro: true, team: true },
+  { feature: "Webhooks", free: false, pro: false, team: true },
+  { feature: "CSV export", free: false, pro: true, team: true },
+  { feature: "API access", free: false, pro: false, team: "Coming soon" },
+  { feature: "Team seats", free: "-", pro: "1", team: "5 (+$15/user)" },
+  { feature: "Priority support", free: false, pro: false, team: true },
 ];
 
 export default function PricingPage() {
@@ -344,6 +372,72 @@ export default function PricingPage() {
                 </CardFooter>
               </Card>
             ))}
+          </div>
+
+          {/* Feature Comparison Table */}
+          <div className="mt-20 max-w-4xl mx-auto">
+            <h2 className="text-2xl font-bold text-center mb-8">
+              Compare Plans
+            </h2>
+            <div className="rounded-lg border overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="w-[200px]">Feature</TableHead>
+                    <TableHead className="text-center">Free</TableHead>
+                    <TableHead className="text-center bg-primary/5">
+                      <div className="flex items-center justify-center gap-1">
+                        Pro
+                        <Badge variant="secondary" className="text-[10px]">Popular</Badge>
+                      </div>
+                    </TableHead>
+                    <TableHead className="text-center">Team</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {featureComparison.map((row) => (
+                    <TableRow key={row.feature}>
+                      <TableCell className="font-medium">{row.feature}</TableCell>
+                      <TableCell className="text-center">
+                        {typeof row.free === "boolean" ? (
+                          row.free ? (
+                            <Check className="h-4 w-4 text-green-500 mx-auto" />
+                          ) : (
+                            <X className="h-4 w-4 text-muted-foreground/50 mx-auto" />
+                          )
+                        ) : (
+                          <span className="text-sm">{row.free}</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center bg-primary/5">
+                        {typeof row.pro === "boolean" ? (
+                          row.pro ? (
+                            <Check className="h-4 w-4 text-green-500 mx-auto" />
+                          ) : (
+                            <X className="h-4 w-4 text-muted-foreground/50 mx-auto" />
+                          )
+                        ) : (
+                          <span className="text-sm">{row.pro}</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {typeof row.team === "boolean" ? (
+                          row.team ? (
+                            <Check className="h-4 w-4 text-green-500 mx-auto" />
+                          ) : (
+                            <X className="h-4 w-4 text-muted-foreground/50 mx-auto" />
+                          )
+                        ) : row.team === "Coming soon" ? (
+                          <span className="text-xs text-muted-foreground">{row.team}</span>
+                        ) : (
+                          <span className="text-sm">{row.team}</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </div>
 
           {/* Day Pass Section - Only for signed-in users */}
