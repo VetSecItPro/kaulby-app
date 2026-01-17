@@ -4,11 +4,16 @@ import Stripe from "stripe";
 import { db, users } from "@/lib/db";
 import { eq } from "drizzle-orm";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-12-15.clover",
-});
-
-const DAY_PASS_PRICE_ID = process.env.STRIPE_DAY_PASS_PRICE_ID;
+// Lazy initialization to avoid build-time errors when env vars are missing
+function getStripe() {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) {
+    throw new Error("STRIPE_SECRET_KEY not configured");
+  }
+  return new Stripe(key, {
+    apiVersion: "2025-12-15.clover",
+  });
+}
 
 /**
  * POST /api/stripe/day-pass
@@ -23,12 +28,16 @@ export async function POST() {
     }
 
     // Check if price ID is configured
-    if (!DAY_PASS_PRICE_ID || DAY_PASS_PRICE_ID.includes("PLACEHOLDER")) {
+    const dayPassPriceId = process.env.STRIPE_DAY_PASS_PRICE_ID;
+    if (!dayPassPriceId || dayPassPriceId.includes("PLACEHOLDER")) {
       return NextResponse.json(
         { error: "Day Pass not yet configured. Please check back soon!" },
         { status: 503 }
       );
     }
+
+    // Get Stripe client (lazy initialization)
+    const stripe = getStripe();
 
     // Get user's email for Stripe
     const user = await db.query.users.findFirst({
@@ -59,7 +68,7 @@ export async function POST() {
       payment_method_types: ["card"],
       line_items: [
         {
-          price: DAY_PASS_PRICE_ID,
+          price: dayPassPriceId,
           quantity: 1,
         },
       ],
