@@ -76,7 +76,7 @@ export async function POST(request: Request) {
     await ensureDevUserExists(userId);
 
     const body = await request.json();
-    const { name, companyName, keywords, platforms } = body;
+    const { name, companyName, keywords, searchQuery, platforms } = body;
 
     // Validate input
     if (!name || typeof name !== "string") {
@@ -157,6 +157,11 @@ export async function POST(request: Request) {
     // Warn if some platforms were filtered out
     const filteredOut = platforms.filter((p: string) => !allowedPlatforms.includes(p as Platform));
 
+    // Sanitize search query if provided (Pro feature)
+    const sanitizedSearchQuery = searchQuery && typeof searchQuery === "string"
+      ? searchQuery.trim().slice(0, 500) // Max 500 chars for search query
+      : undefined;
+
     // Create monitor with allowed platforms only
     const [newMonitor] = await db
       .insert(monitors)
@@ -165,6 +170,7 @@ export async function POST(request: Request) {
         name: sanitizeInput(name),
         companyName: sanitizeInput(companyName),
         keywords: sanitizedKeywords,
+        searchQuery: sanitizedSearchQuery,
         platforms: allowedPlatforms,
         isActive: true,
       })

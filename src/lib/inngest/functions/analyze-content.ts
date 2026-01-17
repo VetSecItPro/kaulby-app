@@ -7,6 +7,7 @@ import {
   analyzePainPoints,
   summarizeContent,
   analyzeComprehensive,
+  categorizeConversation,
   createTrace,
   flushAI,
   type ComprehensiveAnalysisContext,
@@ -109,11 +110,22 @@ export const analyzeContent = inngest.createFunction(
         subreddit: (metadata?.subreddit as string) || undefined,
       };
 
-      const comprehensiveResult = await step.run("analyze-comprehensive", async () => {
-        return analyzeComprehensive(contentToAnalyze, context);
-      });
+      // Run comprehensive analysis and conversation categorization in parallel
+      const [comprehensiveResult, categoryResult] = await Promise.all([
+        step.run("analyze-comprehensive", async () => {
+          return analyzeComprehensive(contentToAnalyze, context);
+        }),
+        step.run("categorize-conversation-team", async () => {
+          const metadata = result.metadata as Record<string, unknown> | null;
+          return categorizeConversation(contentToAnalyze, {
+            upvotes: (metadata?.upvotes as number) || (metadata?.score as number) || undefined,
+            commentCount: (metadata?.commentCount as number) || (metadata?.numComments as number) || undefined,
+          });
+        }),
+      ]);
 
       const analysis = comprehensiveResult.result;
+      const category = categoryResult.result;
 
       // Update result with comprehensive AI analysis
       await step.run("update-result-team", async () => {
@@ -123,12 +135,15 @@ export const analyzeContent = inngest.createFunction(
             sentiment: analysis.sentiment.label,
             sentimentScore: analysis.sentiment.score,
             painPointCategory: analysis.classification.category,
+            conversationCategory: category.category,
+            conversationCategoryConfidence: category.confidence,
             aiSummary: analysis.executiveSummary,
             // Store full analysis as JSON metadata
             aiAnalysis: JSON.stringify({
               tier: "team",
               sentiment: analysis.sentiment,
               classification: analysis.classification,
+              conversationCategory: category,
               opportunity: analysis.opportunity,
               competitive: analysis.competitive,
               actions: analysis.actions,
@@ -142,19 +157,24 @@ export const analyzeContent = inngest.createFunction(
           .where(eq(results.id, resultId));
       });
 
-      // Log AI usage for Team tier
+      // Log AI usage for Team tier (comprehensive + categorization)
       await step.run("log-ai-usage-team", async () => {
+        const totalCost = comprehensiveResult.meta.cost + categoryResult.meta.cost;
+        const totalPromptTokens = comprehensiveResult.meta.promptTokens + categoryResult.meta.promptTokens;
+        const totalCompletionTokens = comprehensiveResult.meta.completionTokens + categoryResult.meta.completionTokens;
+        const totalLatency = comprehensiveResult.meta.latencyMs + categoryResult.meta.latencyMs;
+
         await db.insert(aiLogs).values({
           userId,
           model: comprehensiveResult.meta.model,
-          promptTokens: comprehensiveResult.meta.promptTokens,
-          completionTokens: comprehensiveResult.meta.completionTokens,
-          costUsd: comprehensiveResult.meta.cost,
-          latencyMs: comprehensiveResult.meta.latencyMs,
+          promptTokens: totalPromptTokens,
+          completionTokens: totalCompletionTokens,
+          costUsd: totalCost,
+          latencyMs: totalLatency,
           traceId,
         });
 
-        await incrementAiCallsCount(userId, 1);
+        await incrementAiCallsCount(userId, 2); // 2 AI calls: comprehensive + categorization
       });
 
       await step.run("flush-langfuse", async () => {
@@ -164,7 +184,8 @@ export const analyzeContent = inngest.createFunction(
       return {
         tier: "team",
         analysis: comprehensiveResult.result,
-        totalCost: comprehensiveResult.meta.cost,
+        conversationCategory: categoryResult.result,
+        totalCost: comprehensiveResult.meta.cost + categoryResult.meta.cost,
         model: comprehensiveResult.meta.model,
       };
     }
@@ -173,20 +194,27 @@ export const analyzeContent = inngest.createFunction(
     // PRO TIER: Standard Analysis (Gemini 2.5 Flash)
     // =========================================================================
 
-    // Run sentiment analysis
-    const sentimentResult = await step.run("analyze-sentiment", async () => {
-      return analyzeSentiment(contentToAnalyze);
-    });
+    // Type assertion for metadata
+    const metadata = result.metadata as Record<string, unknown> | null;
 
-    // Run pain point detection
-    const painPointResult = await step.run("analyze-pain-points", async () => {
-      return analyzePainPoints(contentToAnalyze);
-    });
-
-    // Run summarization
-    const summaryResult = await step.run("summarize-content", async () => {
-      return summarizeContent(contentToAnalyze);
-    });
+    // Run all analyses in parallel
+    const [sentimentResult, painPointResult, summaryResult, categoryResult] = await Promise.all([
+      step.run("analyze-sentiment", async () => {
+        return analyzeSentiment(contentToAnalyze);
+      }),
+      step.run("analyze-pain-points", async () => {
+        return analyzePainPoints(contentToAnalyze);
+      }),
+      step.run("summarize-content", async () => {
+        return summarizeContent(contentToAnalyze);
+      }),
+      step.run("categorize-conversation", async () => {
+        return categorizeConversation(contentToAnalyze, {
+          upvotes: (metadata?.upvotes as number) || (metadata?.score as number) || undefined,
+          commentCount: (metadata?.commentCount as number) || (metadata?.numComments as number) || undefined,
+        });
+      }),
+    ]);
 
     // Update result with AI analysis
     await step.run("update-result", async () => {
@@ -196,6 +224,8 @@ export const analyzeContent = inngest.createFunction(
           sentiment: sentimentResult.result.sentiment,
           sentimentScore: sentimentResult.result.score,
           painPointCategory: painPointResult.result.category,
+          conversationCategory: categoryResult.result.category,
+          conversationCategoryConfidence: categoryResult.result.confidence,
           aiSummary: summaryResult.result.summary,
           // Store Pro tier analysis as JSON metadata
           aiAnalysis: JSON.stringify({
@@ -203,6 +233,7 @@ export const analyzeContent = inngest.createFunction(
             sentiment: sentimentResult.result,
             painPoint: painPointResult.result,
             summary: summaryResult.result,
+            conversationCategory: categoryResult.result,
             analyzedAt: new Date().toISOString(),
           }),
         })
@@ -214,22 +245,26 @@ export const analyzeContent = inngest.createFunction(
       const totalCost =
         sentimentResult.meta.cost +
         painPointResult.meta.cost +
-        summaryResult.meta.cost;
+        summaryResult.meta.cost +
+        categoryResult.meta.cost;
 
       const totalLatency =
         sentimentResult.meta.latencyMs +
         painPointResult.meta.latencyMs +
-        summaryResult.meta.latencyMs;
+        summaryResult.meta.latencyMs +
+        categoryResult.meta.latencyMs;
 
       const totalPromptTokens =
         sentimentResult.meta.promptTokens +
         painPointResult.meta.promptTokens +
-        summaryResult.meta.promptTokens;
+        summaryResult.meta.promptTokens +
+        categoryResult.meta.promptTokens;
 
       const totalCompletionTokens =
         sentimentResult.meta.completionTokens +
         painPointResult.meta.completionTokens +
-        summaryResult.meta.completionTokens;
+        summaryResult.meta.completionTokens +
+        categoryResult.meta.completionTokens;
 
       await db.insert(aiLogs).values({
         userId,
@@ -241,7 +276,7 @@ export const analyzeContent = inngest.createFunction(
         traceId,
       });
 
-      await incrementAiCallsCount(userId, 3);
+      await incrementAiCallsCount(userId, 4); // 4 AI calls: sentiment + pain point + summary + category
     });
 
     // Flush Langfuse events
@@ -254,10 +289,12 @@ export const analyzeContent = inngest.createFunction(
       sentiment: sentimentResult.result,
       painPoint: painPointResult.result,
       summary: summaryResult.result,
+      conversationCategory: categoryResult.result,
       totalCost:
         sentimentResult.meta.cost +
         painPointResult.meta.cost +
-        summaryResult.meta.cost,
+        summaryResult.meta.cost +
+        categoryResult.meta.cost,
     };
   }
 );

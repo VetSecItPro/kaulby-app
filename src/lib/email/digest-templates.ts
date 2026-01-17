@@ -30,6 +30,8 @@ export interface DigestMention {
   intentScore?: number;
   shouldRespond?: boolean;
   monitorName: string;
+  // Keywords that matched this result (for highlighting)
+  matchedKeywords?: string[];
 }
 
 export interface DailyDigestData {
@@ -106,6 +108,53 @@ const SENTIMENT_DISPLAY: Record<string, { emoji: string; color: string }> = {
   neutral: { emoji: "🟡", color: "#F59E0B" },
 };
 
+/**
+ * Highlight matched keywords in text for HTML emails
+ * Wraps keywords in a styled span with background highlight
+ */
+function highlightKeywordsHtml(text: string, keywords?: string[]): string {
+  if (!keywords || keywords.length === 0 || !text) return text;
+
+  let result = text;
+  // Sort by length descending to match longer phrases first
+  const sortedKeywords = [...keywords].sort((a, b) => b.length - a.length);
+
+  for (const keyword of sortedKeywords) {
+    // Escape special regex characters in keyword
+    const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // Case-insensitive match, preserve original casing
+    const regex = new RegExp(`(${escapedKeyword})`, "gi");
+    result = result.replace(
+      regex,
+      '<span style="background-color: #fef08a; color: #854d0e; padding: 1px 4px; border-radius: 3px; font-weight: 500;">$1</span>'
+    );
+  }
+
+  return result;
+}
+
+/**
+ * Highlight matched keywords in plain text
+ * Wraps keywords in **asterisks** for emphasis
+ */
+function highlightKeywordsText(text: string, keywords?: string[]): string {
+  if (!keywords || keywords.length === 0 || !text) return text;
+
+  let result = text;
+  // Sort by length descending to match longer phrases first
+  const sortedKeywords = [...keywords].sort((a, b) => b.length - a.length);
+
+  for (const keyword of sortedKeywords) {
+    // Escape special regex characters in keyword
+    const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // Case-insensitive match, preserve original casing
+    const regex = new RegExp(`(${escapedKeyword})`, "gi");
+    result = result.replace(regex, "**$1**");
+  }
+
+  return result;
+}
+
 // ============================================================================
 // DAILY DIGEST (PRO TIER) - TEXT VERSION
 // ============================================================================
@@ -147,13 +196,16 @@ in the last 24 hours.
     const urgencyLabel = mention.urgency === "high" ? "⚡ High Priority" :
                          mention.urgency === "medium" ? "📌 Medium" : "";
 
+    const highlightedTitle = highlightKeywordsText(mention.title, mention.matchedKeywords);
+    const highlightedSummary = highlightKeywordsText(mention.summary || "No summary available.", mention.matchedKeywords);
+
     digest += `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  #${index + 1} │ ${mention.title.substring(0, 50).toUpperCase()}
+  #${index + 1} │ ${highlightedTitle.substring(0, 50).toUpperCase()}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       ${urgencyLabel ? urgencyLabel + " • " : ""}${categoryInfo.emoji} ${categoryInfo.label}
 
-      ${mention.summary || "No summary available."}
+      ${highlightedSummary}
 
       ${sentimentInfo.emoji} ${mention.sentiment?.toUpperCase() || "Unknown"} • ${mention.platform}${mention.subreddit ? ` • ${mention.subreddit}` : ""}
       → View mention: ${mention.url}
@@ -266,12 +318,15 @@ ${trend.implication ? `\n     💡 Implication: ${trend.implication}` : ""}
                            mention.category === "positive_feedback" ? "⭐ TESTIMONIAL OPPORTUNITY" :
                            mention.category === "competitor_mention" ? "💼 SALES LEAD" : "";
 
+      const highlightedTitle = highlightKeywordsText(mention.title, mention.matchedKeywords);
+      const highlightedSummary = highlightKeywordsText(mention.summary || "View full analysis for details.", mention.matchedKeywords);
+
       report += `
 #${index + 1} │ ${urgencyLabel}
 ───┴──────────────────────────────────────────────────────────────────────────
-    "${mention.title.substring(0, 60)}"
+    "${highlightedTitle.substring(0, 60)}"
 
-    ${mention.summary || "View full analysis for details."}
+    ${highlightedSummary}
 ${mention.intentScore ? `\n    Intent Score: ${mention.intentScore}/100` : ""}
 
     📍 ${mention.platform}${mention.subreddit ? ` • ${mention.subreddit}` : ""} • ${categoryInfo.label}
@@ -424,6 +479,8 @@ export function generateDailyDigestHtml(data: DailyDigestData): string {
             const categoryInfo = CATEGORY_DISPLAY[mention.category || "general_discussion"];
             const sentimentInfo = SENTIMENT_DISPLAY[mention.sentiment || "neutral"];
             const isHighPriority = mention.urgency === "high";
+            const highlightedTitle = highlightKeywordsHtml(mention.title, mention.matchedKeywords);
+            const highlightedSummary = highlightKeywordsHtml(mention.summary || "Click to view full analysis.", mention.matchedKeywords);
 
             return `
           <tr>
@@ -442,8 +499,8 @@ export function generateDailyDigestHtml(data: DailyDigestData): string {
                         </td>
                       </tr>
                     </table>
-                    <h3 style="margin: 12px 0 8px 0; font-size: 16px; font-weight: 600; color: #18181b; line-height: 1.4;">${mention.title.substring(0, 80)}${mention.title.length > 80 ? "..." : ""}</h3>
-                    <p style="margin: 0 0 16px 0; font-size: 14px; color: #52525b; line-height: 1.5;">${mention.summary || "Click to view full analysis."}</p>
+                    <h3 style="margin: 12px 0 8px 0; font-size: 16px; font-weight: 600; color: #18181b; line-height: 1.4;">${highlightedTitle.substring(0, 80)}${mention.title.length > 80 ? "..." : ""}</h3>
+                    <p style="margin: 0 0 16px 0; font-size: 14px; color: #52525b; line-height: 1.5;">${highlightedSummary}</p>
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                       <tr>
                         <td>
@@ -631,6 +688,8 @@ export function generateWeeklyReportHtml(data: WeeklyReportData): string {
                 const priorityColor = mention.urgency === "high" ? "#dc2626" :
                                      mention.category === "positive_feedback" ? "#10b981" :
                                      mention.category === "competitor_mention" ? "#6366f1" : "#6b7280";
+                const highlightedTitle = highlightKeywordsHtml(mention.title, mention.matchedKeywords);
+                const highlightedSummary = highlightKeywordsHtml(mention.summary || "View full analysis for details.", mention.matchedKeywords);
 
                 return `
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 16px; border: 1px solid #e5e7eb; border-radius: 8px; border-left: 4px solid ${priorityColor};">
@@ -643,8 +702,8 @@ export function generateWeeklyReportHtml(data: WeeklyReportData): string {
                         </td>
                       </tr>
                     </table>
-                    <h3 style="margin: 12px 0 8px 0; font-size: 15px; font-weight: 600; color: #18181b; line-height: 1.4;">"${mention.title.substring(0, 70)}${mention.title.length > 70 ? "..." : ""}"</h3>
-                    <p style="margin: 0 0 12px 0; font-size: 14px; color: #52525b; line-height: 1.5;">${mention.summary || "View full analysis for details."}</p>
+                    <h3 style="margin: 12px 0 8px 0; font-size: 15px; font-weight: 600; color: #18181b; line-height: 1.4;">"${highlightedTitle.substring(0, 70)}${mention.title.length > 70 ? "..." : ""}"</h3>
+                    <p style="margin: 0 0 12px 0; font-size: 14px; color: #52525b; line-height: 1.5;">${highlightedSummary}</p>
                     ${mention.intentScore ? `<p style="margin: 0 0 12px 0; font-size: 13px; color: #18181b;"><strong>Intent Score:</strong> ${mention.intentScore}/100</p>` : ""}
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                       <tr>
