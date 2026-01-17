@@ -778,6 +778,88 @@ export async function shouldProcessMonitor(
 }
 
 // ============================================================================
+// MANUAL SCAN RATE LIMITING
+// ============================================================================
+
+/**
+ * Manual scan limits by tier
+ * Free: 1 scan/day with 24hr cooldown
+ * Pro: 3 scans/day with 4hr cooldown
+ * Enterprise: 12 scans/day with 1hr cooldown
+ */
+const MANUAL_SCAN_LIMITS: Record<PlanKey, { cooldownHours: number; dailyLimit: number }> = {
+  free: { cooldownHours: 24, dailyLimit: 1 },
+  pro: { cooldownHours: 4, dailyLimit: 3 },
+  enterprise: { cooldownHours: 1, dailyLimit: 12 },
+};
+
+export interface ManualScanCheckResult {
+  canScan: boolean;
+  cooldownRemaining: number | null; // milliseconds until next scan allowed
+  reason: string;
+  nextScanAt: Date | null;
+}
+
+/**
+ * Check if user can trigger a manual scan for a monitor
+ */
+export async function canTriggerManualScan(
+  userId: string,
+  lastManualScanAt: Date | string | null
+): Promise<ManualScanCheckResult> {
+  const plan = await getUserPlan(userId);
+  const limits = MANUAL_SCAN_LIMITS[plan];
+
+  // Check cooldown period
+  if (lastManualScanAt) {
+    const lastScanDate = typeof lastManualScanAt === "string" ? new Date(lastManualScanAt) : lastManualScanAt;
+    const now = new Date();
+    const timeSinceLastScan = now.getTime() - lastScanDate.getTime();
+    const cooldownMs = limits.cooldownHours * 60 * 60 * 1000;
+
+    if (timeSinceLastScan < cooldownMs) {
+      const cooldownRemaining = cooldownMs - timeSinceLastScan;
+      const nextScanAt = new Date(lastScanDate.getTime() + cooldownMs);
+
+      return {
+        canScan: false,
+        cooldownRemaining,
+        reason: `Please wait ${formatCooldown(cooldownRemaining)} before scanning again`,
+        nextScanAt,
+      };
+    }
+  }
+
+  return {
+    canScan: true,
+    cooldownRemaining: null,
+    reason: "Ready to scan",
+    nextScanAt: null,
+  };
+}
+
+/**
+ * Format cooldown time for display
+ */
+function formatCooldown(ms: number): string {
+  const hours = Math.floor(ms / (1000 * 60 * 60));
+  const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+  return `${minutes}m`;
+}
+
+/**
+ * Get manual scan cooldown hours for a user's plan
+ */
+export async function getManualScanCooldown(userId: string): Promise<number> {
+  const plan = await getUserPlan(userId);
+  return MANUAL_SCAN_LIMITS[plan].cooldownHours;
+}
+
+// ============================================================================
 // ADMIN HELPERS
 // ============================================================================
 

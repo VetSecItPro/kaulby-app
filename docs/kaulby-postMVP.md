@@ -16,6 +16,15 @@ Track features and improvements to implement after MVP launch.
 - [ ] **Empty state improvements** - Better illustrations and CTAs when no data
 - [ ] **Dark mode toggle** - User preference for light/dark theme
 
+## Monitor Management
+
+- [ ] **Monitor actions dropdown** - Add 3-dot menu on monitor cards with:
+  - Pause/Resume monitor toggle
+  - Delete monitor (with confirmation dialog)
+  - Duplicate monitor
+- [ ] **Bulk monitor actions** - Select multiple monitors for bulk pause/delete
+- [ ] **Monitor scheduling** - Set active hours for monitoring
+
 ## Analytics & Tracking
 
 - [ ] **PostHog event tracking** - Track key conversion events (upgrade clicks, feature usage)

@@ -1,7 +1,7 @@
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { monitors } from "@/lib/db/schema";
+import { monitors, users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import {
   canCreateMonitor,
@@ -11,6 +11,36 @@ import {
   getUpgradePrompt,
 } from "@/lib/limits";
 import { Platform } from "@/lib/stripe";
+
+// In development, ensure user exists in database
+async function ensureDevUserExists(userId: string): Promise<void> {
+  const isLocalDev = process.env.NODE_ENV === "development" &&
+                     !process.env.VERCEL &&
+                     !process.env.VERCEL_ENV;
+
+  if (!isLocalDev) return;
+
+  // Check if user exists
+  const existingUser = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+    columns: { id: true },
+  });
+
+  if (existingUser) return;
+
+  // Get user info from Clerk
+  const clerkUser = await currentUser();
+  const email = clerkUser?.emailAddresses?.[0]?.emailAddress || `dev-${userId}@localhost`;
+  const name = [clerkUser?.firstName, clerkUser?.lastName].filter(Boolean).join(" ") || "Dev User";
+
+  // Create dev user
+  await db.insert(users).values({
+    id: userId,
+    email,
+    name,
+    subscriptionStatus: "enterprise", // Give full access in dev mode
+  }).onConflictDoNothing();
+}
 
 // Sanitize user input to prevent XSS and injection attacks
 function sanitizeInput(input: string): string {
@@ -42,26 +72,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // In dev mode, auto-create user if not exists
+    await ensureDevUserExists(userId);
+
     const body = await request.json();
-    const { name, keywords, platforms } = body;
+    const { name, companyName, keywords, platforms } = body;
 
     // Validate input
     if (!name || typeof name !== "string") {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
 
-    if (!keywords || !Array.isArray(keywords) || keywords.length === 0) {
-      return NextResponse.json({ error: "At least one keyword is required" }, { status: 400 });
+    if (!companyName || typeof companyName !== "string") {
+      return NextResponse.json({ error: "Company/brand name is required" }, { status: 400 });
     }
 
-    // Sanitize and validate keywords
-    const sanitizedKeywords = keywords
-      .map((k: string) => (typeof k === "string" ? sanitizeInput(k) : ""))
-      .filter((k) => isValidKeyword(k));
-
-    if (sanitizedKeywords.length === 0) {
-      return NextResponse.json({ error: "No valid keywords provided" }, { status: 400 });
-    }
+    // Keywords are now optional - sanitize if provided
+    const sanitizedKeywords = Array.isArray(keywords)
+      ? keywords
+          .map((k: string) => (typeof k === "string" ? sanitizeInput(k) : ""))
+          .filter((k) => isValidKeyword(k))
+      : [];
 
     if (!platforms || !Array.isArray(platforms) || platforms.length === 0) {
       return NextResponse.json({ error: "At least one platform is required" }, { status: 400 });
@@ -92,19 +123,21 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check keywords limit
-    const keywordCheck = checkKeywordsLimit(sanitizedKeywords, plan);
-    if (!keywordCheck.allowed) {
-      const prompt = getUpgradePrompt(plan, "keywords");
-      return NextResponse.json(
-        {
-          error: keywordCheck.message,
-          upgradePrompt: prompt,
-          current: keywordCheck.current,
-          limit: keywordCheck.limit,
-        },
-        { status: 403 }
-      );
+    // Check keywords limit (only if keywords provided)
+    if (sanitizedKeywords.length > 0) {
+      const keywordCheck = checkKeywordsLimit(sanitizedKeywords, plan);
+      if (!keywordCheck.allowed) {
+        const prompt = getUpgradePrompt(plan, "keywords");
+        return NextResponse.json(
+          {
+            error: keywordCheck.message,
+            upgradePrompt: prompt,
+            current: keywordCheck.current,
+            limit: keywordCheck.limit,
+          },
+          { status: 403 }
+        );
+      }
     }
 
     // Filter platforms to only allowed ones for user's plan
@@ -130,6 +163,7 @@ export async function POST(request: Request) {
       .values({
         userId,
         name: sanitizeInput(name),
+        companyName: sanitizeInput(companyName),
         keywords: sanitizedKeywords,
         platforms: allowedPlatforms,
         isActive: true,

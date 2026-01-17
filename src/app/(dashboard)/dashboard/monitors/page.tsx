@@ -6,20 +6,19 @@ import { eq, desc } from "drizzle-orm";
 import { ResponsiveMonitors } from "@/components/dashboard/responsive-monitors";
 
 export default async function MonitorsPage() {
-  const isDev = process.env.NODE_ENV === "development";
+  const { userId } = await auth();
 
-  let userId: string | null = null;
+  // In production, redirect to sign-in if not authenticated
+  // In dev mode, userId may be null but we still query (returns empty)
+  const isProduction = process.env.NODE_ENV === "production" ||
+                       process.env.VERCEL ||
+                       process.env.VERCEL_ENV;
 
-  if (!isDev) {
-    const authResult = await auth();
-    userId = authResult.userId;
-
-    if (!userId) {
-      redirect("/sign-in");
-    }
+  if (!userId && isProduction) {
+    redirect("/sign-in");
   }
 
-  // In dev mode, show empty list or mock data
+  // Fetch monitors for the authenticated user
   const userMonitors = userId
     ? await db.query.monitors.findMany({
         where: eq(monitors.userId, userId),

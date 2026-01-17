@@ -12,10 +12,16 @@ import { Switch } from "@/components/ui/switch";
 import { ArrowLeft, X, Loader2, Trash2 } from "lucide-react";
 import Link from "next/link";
 
-const platforms = [
+const ALL_PLATFORMS = [
   { id: "reddit", name: "Reddit", description: "Track subreddits and discussions" },
   { id: "hackernews", name: "Hacker News", description: "Tech and startup discussions" },
   { id: "producthunt", name: "Product Hunt", description: "Product launches and reviews" },
+  { id: "devto", name: "Dev.to", description: "Developer community articles" },
+  { id: "googlereviews", name: "Google Reviews", description: "Business reviews on Google" },
+  { id: "trustpilot", name: "Trustpilot", description: "Customer reviews and ratings" },
+  { id: "appstore", name: "App Store", description: "iOS app reviews" },
+  { id: "playstore", name: "Play Store", description: "Android app reviews" },
+  { id: "quora", name: "Quora", description: "Q&A discussions" },
 ];
 
 interface EditMonitorPageProps {
@@ -28,6 +34,7 @@ export default function EditMonitorPage({ params }: EditMonitorPageProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [name, setName] = useState("");
+  const [companyName, setCompanyName] = useState("");
   const [keywordInput, setKeywordInput] = useState("");
   const [keywords, setKeywords] = useState<string[]>([]);
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
@@ -41,7 +48,8 @@ export default function EditMonitorPage({ params }: EditMonitorPageProps) {
         if (!response.ok) throw new Error("Failed to load monitor");
         const data = await response.json();
         setName(data.monitor.name);
-        setKeywords(data.monitor.keywords);
+        setCompanyName(data.monitor.companyName || "");
+        setKeywords(data.monitor.keywords || []);
         setSelectedPlatforms(data.monitor.platforms);
         setIsActive(data.monitor.isActive);
       } catch {
@@ -88,8 +96,8 @@ export default function EditMonitorPage({ params }: EditMonitorPageProps) {
       setError("Please enter a monitor name");
       return;
     }
-    if (keywords.length === 0) {
-      setError("Please add at least one keyword");
+    if (!companyName.trim()) {
+      setError("Please enter the company/brand name to monitor");
       return;
     }
     if (selectedPlatforms.length === 0) {
@@ -105,7 +113,8 @@ export default function EditMonitorPage({ params }: EditMonitorPageProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name.trim(),
-          keywords,
+          companyName: companyName.trim(),
+          keywords, // Now optional
           platforms: selectedPlatforms,
           isActive,
         }),
@@ -189,10 +198,27 @@ export default function EditMonitorPage({ params }: EditMonitorPageProps) {
               <Label htmlFor="name">Monitor Name</Label>
               <Input
                 id="name"
-                placeholder="e.g., Brand Mentions, Competitor Tracking"
+                placeholder="e.g., Brand Reputation, Customer Feedback"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
+              <p className="text-xs text-muted-foreground">
+                A friendly name to identify this monitor in your dashboard.
+              </p>
+            </div>
+
+            {/* Company/Brand Name */}
+            <div className="space-y-2">
+              <Label htmlFor="companyName">Company/Brand Name</Label>
+              <Input
+                id="companyName"
+                placeholder="e.g., High Rise Coffee, Acme Corp"
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                The company or brand you want to monitor. We&apos;ll search for this name across selected platforms.
+              </p>
             </div>
 
             {/* Active Toggle */}
@@ -210,21 +236,24 @@ export default function EditMonitorPage({ params }: EditMonitorPageProps) {
               />
             </div>
 
-            {/* Keywords */}
+            {/* Keywords (Optional) */}
             <div className="space-y-2">
-              <Label htmlFor="keywords">Keywords</Label>
+              <Label htmlFor="keywords">Additional Keywords <span className="text-muted-foreground font-normal">(optional)</span></Label>
               <div className="flex gap-2">
                 <Input
                   id="keywords"
-                  placeholder="Add a keyword and press Enter"
+                  placeholder="e.g., customer service, pricing, alternative"
                   value={keywordInput}
                   onChange={(e) => setKeywordInput(e.target.value)}
                   onKeyDown={handleKeyDown}
                 />
-                <Button type="button" variant="outline" onClick={addKeyword}>
+                <Button type="button" onClick={addKeyword} className="bg-teal-500 text-black hover:bg-teal-600">
                   Add
                 </Button>
               </div>
+              <p className="text-xs text-muted-foreground">
+                Add additional keywords to find mentions like &quot;{companyName || "your company"} customer service&quot;.
+              </p>
               {keywords.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-2">
                   {keywords.map((keyword) => (
@@ -246,28 +275,33 @@ export default function EditMonitorPage({ params }: EditMonitorPageProps) {
             {/* Platforms */}
             <div className="space-y-2">
               <Label>Platforms</Label>
-              <div className="grid gap-3">
-                {platforms.map((platform) => (
-                  <div
-                    key={platform.id}
-                    className="flex items-center space-x-3 rounded-lg border p-4 cursor-pointer hover:bg-muted/50"
-                    onClick={() => togglePlatform(platform.id)}
-                  >
-                    <Checkbox
-                      id={platform.id}
-                      checked={selectedPlatforms.includes(platform.id)}
-                      onCheckedChange={() => togglePlatform(platform.id)}
-                    />
-                    <div className="flex-1">
-                      <Label htmlFor={platform.id} className="cursor-pointer font-medium">
-                        {platform.name}
-                      </Label>
-                      <p className="text-sm text-muted-foreground">
-                        {platform.description}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {ALL_PLATFORMS.map((platform) => {
+                  const isSelected = selectedPlatforms.includes(platform.id);
+                  return (
+                    <label
+                      key={platform.id}
+                      htmlFor={`platform-${platform.id}`}
+                      className={`flex items-start space-x-3 rounded-lg border p-4 cursor-pointer hover:bg-muted/50 transition-colors ${
+                        isSelected ? "border-primary bg-primary/5" : ""
+                      }`}
+                    >
+                      <Checkbox
+                        id={`platform-${platform.id}`}
+                        checked={isSelected}
+                        onCheckedChange={() => togglePlatform(platform.id)}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <span className="font-medium text-sm cursor-pointer">
+                          {platform.name}
+                        </span>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {platform.description}
+                        </p>
+                      </div>
+                    </label>
+                  );
+                })}
               </div>
             </div>
 

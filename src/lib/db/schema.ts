@@ -149,13 +149,17 @@ export const monitors = pgTable("monitors", {
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   audienceId: uuid("audience_id").references(() => audiences.id, { onDelete: "set null" }),
-  name: text("name").notNull(),
-  keywords: text("keywords").array().notNull(),
+  name: text("name").notNull(), // Display name for the monitor
+  companyName: text("company_name"), // The company/brand to monitor (required for brand monitoring)
+  keywords: text("keywords").array().notNull(), // Additional keywords to track alongside company name
   filters: jsonb("filters"), // pain_point, solution_requests, etc.
   platforms: platformEnum("platforms").array().notNull(),
   isActive: boolean("is_active").default(true).notNull(),
   lastCheckedAt: timestamp("last_checked_at"),
   newMatchCount: integer("new_match_count").default(0).notNull(),
+  // Manual scan tracking
+  lastManualScanAt: timestamp("last_manual_scan_at"), // When the user last triggered a manual scan
+  isScanning: boolean("is_scanning").default(false).notNull(), // Whether a scan is currently in progress
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
