@@ -32,33 +32,68 @@ interface ResultsListProps {
 
 export function ResultsList({ results, hasUnlimitedAi = true }: ResultsListProps) {
   const [filter, setFilter] = useState<"all" | "unread" | "saved" | "hidden">("all");
+  const [categoryFilter, setCategoryFilter] = useState<ConversationCategory | null>(null);
   const [isPending, startTransition] = useTransition();
   const [allMarkedRead, setAllMarkedRead] = useState(false);
 
   // Memoize count calculations - only recalculate when results or allMarkedRead changes
-  const { unviewedCount, savedCount, hiddenCount, totalCount } = useMemo(() => ({
-    unviewedCount: results.filter((r) => !r.isViewed && !allMarkedRead).length,
-    savedCount: results.filter((r) => r.isSaved).length,
-    hiddenCount: results.filter((r) => r.isHidden).length,
-    totalCount: results.filter((r) => !r.isHidden).length,
-  }), [results, allMarkedRead]);
+  const { unviewedCount, savedCount, hiddenCount, totalCount, categoryCounts } = useMemo(() => {
+    const visibleResults = results.filter((r) => !r.isHidden);
+
+    // Calculate category counts from visible (non-hidden) results
+    const counts: Record<ConversationCategory, number> = {
+      pain_point: 0,
+      solution_request: 0,
+      advice_request: 0,
+      money_talk: 0,
+      hot_discussion: 0,
+    };
+
+    visibleResults.forEach((r) => {
+      if (r.conversationCategory && counts[r.conversationCategory] !== undefined) {
+        counts[r.conversationCategory]++;
+      }
+    });
+
+    return {
+      unviewedCount: results.filter((r) => !r.isViewed && !allMarkedRead && !r.isHidden).length,
+      savedCount: results.filter((r) => r.isSaved && !r.isHidden).length,
+      hiddenCount: results.filter((r) => r.isHidden).length,
+      totalCount: visibleResults.length,
+      categoryCounts: counts,
+    };
+  }, [results, allMarkedRead]);
 
   // Memoize filtered results - only recalculate when dependencies change
   const filteredResults = useMemo(() => {
     return results.filter((result) => {
+      // First apply status filter (all, unread, saved, hidden)
+      let passesStatusFilter = false;
       switch (filter) {
         case "unread":
-          return !result.isViewed && !allMarkedRead && !result.isHidden;
+          passesStatusFilter = !result.isViewed && !allMarkedRead && !result.isHidden;
+          break;
         case "saved":
-          return result.isSaved && !result.isHidden;
+          passesStatusFilter = result.isSaved && !result.isHidden;
+          break;
         case "hidden":
-          return result.isHidden;
+          passesStatusFilter = result.isHidden;
+          break;
         case "all":
         default:
-          return !result.isHidden;
+          passesStatusFilter = !result.isHidden;
       }
+
+      if (!passesStatusFilter) return false;
+
+      // Then apply category filter if set
+      if (categoryFilter) {
+        return result.conversationCategory === categoryFilter;
+      }
+
+      return true;
     });
-  }, [results, filter, allMarkedRead]);
+  }, [results, filter, categoryFilter, allMarkedRead]);
 
   // Memoize callback to prevent unnecessary re-renders of child components
   const handleMarkAllRead = useCallback(() => {
@@ -77,6 +112,9 @@ export function ResultsList({ results, hasUnlimitedAi = true }: ResultsListProps
         hiddenCount={hiddenCount}
         filter={filter}
         onFilterChange={setFilter}
+        categoryFilter={categoryFilter}
+        onCategoryFilterChange={setCategoryFilter}
+        categoryCounts={categoryCounts}
         onMarkAllRead={handleMarkAllRead}
         isPending={isPending}
       />
@@ -84,10 +122,11 @@ export function ResultsList({ results, hasUnlimitedAi = true }: ResultsListProps
       <div className="grid gap-4">
         {filteredResults.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
-            {filter === "unread" && "No unread results"}
-            {filter === "saved" && "No saved results"}
-            {filter === "hidden" && "No hidden results"}
-            {filter === "all" && "No results found"}
+            {categoryFilter && `No ${categoryFilter.replace("_", " ")} results`}
+            {!categoryFilter && filter === "unread" && "No unread results"}
+            {!categoryFilter && filter === "saved" && "No saved results"}
+            {!categoryFilter && filter === "hidden" && "No hidden results"}
+            {!categoryFilter && filter === "all" && "No results found"}
           </div>
         ) : (
           filteredResults.map((result, index) => (

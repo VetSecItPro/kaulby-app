@@ -295,9 +295,21 @@ interface ResultsFilterBarProps {
   hiddenCount: number;
   filter: "all" | "unread" | "saved" | "hidden";
   onFilterChange: (filter: "all" | "unread" | "saved" | "hidden") => void;
+  categoryFilter: ConversationCategory | null;
+  onCategoryFilterChange: (category: ConversationCategory | null) => void;
+  categoryCounts: Record<ConversationCategory, number>;
   onMarkAllRead?: () => void;
   isPending?: boolean;
 }
+
+// Category filter chips - GummySearch-style quick filtering
+const categoryFilterOptions: { key: ConversationCategory; label: string; Icon: typeof Target }[] = [
+  { key: "solution_request", label: "Solutions", Icon: Target },
+  { key: "money_talk", label: "Budget", Icon: DollarSign },
+  { key: "pain_point", label: "Pain Points", Icon: AlertTriangle },
+  { key: "advice_request", label: "Advice", Icon: HelpCircle },
+  { key: "hot_discussion", label: "Trending", Icon: TrendingUp },
+];
 
 // Memoize filter bar - pure presentational component
 export const ResultsFilterBar = memo(function ResultsFilterBar({
@@ -307,75 +319,130 @@ export const ResultsFilterBar = memo(function ResultsFilterBar({
   hiddenCount,
   filter,
   onFilterChange,
+  categoryFilter,
+  onCategoryFilterChange,
+  categoryCounts,
   onMarkAllRead,
   isPending,
 }: ResultsFilterBarProps) {
   return (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-2">
-        <Button
-          variant={filter === "all" ? "default" : "ghost"}
-          size="sm"
-          onClick={() => onFilterChange("all")}
-        >
-          All
-          <Badge variant="secondary" className="ml-1.5">
-            {totalCount}
-          </Badge>
-        </Button>
-        <Button
-          variant={filter === "unread" ? "default" : "ghost"}
-          size="sm"
-          onClick={() => onFilterChange("unread")}
-        >
-          Unread
-          {unviewedCount > 0 && (
-            <Badge variant="secondary" className="ml-1.5 bg-primary text-primary-foreground">
-              {unviewedCount}
-            </Badge>
-          )}
-        </Button>
-        <Button
-          variant={filter === "saved" ? "default" : "ghost"}
-          size="sm"
-          onClick={() => onFilterChange("saved")}
-        >
-          Saved
-          {savedCount > 0 && (
+    <div className="space-y-3">
+      {/* Primary filters (All, Unread, Saved, Hidden) */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Button
+            variant={filter === "all" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => onFilterChange("all")}
+          >
+            All
             <Badge variant="secondary" className="ml-1.5">
-              {savedCount}
+              {totalCount}
             </Badge>
-          )}
-        </Button>
-        <Button
-          variant={filter === "hidden" ? "default" : "ghost"}
-          size="sm"
-          onClick={() => onFilterChange("hidden")}
-        >
-          Hidden
-          {hiddenCount > 0 && (
-            <Badge variant="secondary" className="ml-1.5">
-              {hiddenCount}
-            </Badge>
-          )}
-        </Button>
+          </Button>
+          <Button
+            variant={filter === "unread" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => onFilterChange("unread")}
+          >
+            Unread
+            {unviewedCount > 0 && (
+              <Badge variant="secondary" className="ml-1.5 bg-primary text-primary-foreground">
+                {unviewedCount}
+              </Badge>
+            )}
+          </Button>
+          <Button
+            variant={filter === "saved" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => onFilterChange("saved")}
+          >
+            Saved
+            {savedCount > 0 && (
+              <Badge variant="secondary" className="ml-1.5">
+                {savedCount}
+              </Badge>
+            )}
+          </Button>
+          <Button
+            variant={filter === "hidden" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => onFilterChange("hidden")}
+          >
+            Hidden
+            {hiddenCount > 0 && (
+              <Badge variant="secondary" className="ml-1.5">
+                {hiddenCount}
+              </Badge>
+            )}
+          </Button>
+        </div>
+
+        {unviewedCount > 0 && onMarkAllRead && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onMarkAllRead}
+            disabled={isPending}
+          >
+            {isPending ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Check className="h-4 w-4 mr-2" />
+            )}
+            Mark all as read
+          </Button>
+        )}
       </div>
 
-      {unviewedCount > 0 && onMarkAllRead && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onMarkAllRead}
-          disabled={isPending}
-        >
-          {isPending ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          ) : (
-            <Check className="h-4 w-4 mr-2" />
-          )}
-          Mark all as read
-        </Button>
-      )}
+      {/* Category filter chips - GummySearch-style */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs text-muted-foreground font-medium">Filter by type:</span>
+        {categoryFilterOptions.map(({ key, label, Icon }) => {
+          const count = categoryCounts[key] || 0;
+          const isActive = categoryFilter === key;
+          const style = conversationCategoryStyles[key];
+
+          return (
+            <Button
+              key={key}
+              variant="ghost"
+              size="sm"
+              onClick={() => onCategoryFilterChange(isActive ? null : key)}
+              className={cn(
+                "h-7 px-2 text-xs gap-1 transition-all",
+                isActive && cn(style.bg, style.text, "hover:opacity-90"),
+                !isActive && count === 0 && "opacity-50"
+              )}
+              disabled={count === 0 && !isActive}
+            >
+              <Icon className="h-3 w-3" />
+              {label}
+              {count > 0 && (
+                <Badge
+                  variant="secondary"
+                  className={cn(
+                    "ml-1 h-4 px-1 text-[10px]",
+                    isActive && "bg-white/20 text-current"
+                  )}
+                >
+                  {count}
+                </Badge>
+              )}
+            </Button>
+          );
+        })}
+        {categoryFilter && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onCategoryFilterChange(null)}
+            className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+          >
+            Clear filter
+          </Button>
+        )}
+      </div>
     </div>
   );
 });

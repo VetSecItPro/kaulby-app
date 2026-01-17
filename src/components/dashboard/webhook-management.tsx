@@ -38,7 +38,33 @@ import {
   Copy,
   Lock,
   Zap,
+  HelpCircle,
+  MessageSquare,
+  Hash,
 } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+
+// Detect webhook type from URL
+function detectWebhookType(url: string): "slack" | "discord" | "generic" {
+  if (url.includes("hooks.slack.com") || url.includes("slack.com/services")) {
+    return "slack";
+  }
+  if (url.includes("discord.com/api/webhooks") || url.includes("discordapp.com/api/webhooks")) {
+    return "discord";
+  }
+  return "generic";
+}
+
+// Webhook type badges
+const webhookTypeBadges = {
+  slack: { label: "Slack", color: "bg-[#4A154B] text-white", icon: Hash },
+  discord: { label: "Discord", color: "bg-[#5865F2] text-white", icon: MessageSquare },
+  generic: { label: "Generic", color: "bg-gray-500 text-white", icon: Webhook },
+};
 
 interface WebhookData {
   id: string;
@@ -220,11 +246,11 @@ export function WebhookManagement({
               Add Webhook
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-lg">
             <DialogHeader>
               <DialogTitle>Create Webhook</DialogTitle>
               <DialogDescription>
-                Add a new webhook endpoint to receive notifications.
+                Add a new webhook endpoint to receive notifications. Supports Slack, Discord, and custom endpoints.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
@@ -242,11 +268,69 @@ export function WebhookManagement({
                 <Input
                   id="url"
                   type="url"
-                  placeholder="https://example.com/webhook"
+                  placeholder="https://hooks.slack.com/services/..."
                   value={newWebhook.url}
                   onChange={(e) => setNewWebhook({ ...newWebhook, url: e.target.value })}
                 />
+                {newWebhook.url && (() => {
+                  const type = detectWebhookType(newWebhook.url);
+                  const badge = webhookTypeBadges[type];
+                  const Icon = badge.icon;
+                  return (
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge className={badge.color}>
+                        <Icon className="h-3 w-3 mr-1" />
+                        {badge.label}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {type === "slack" && "Rich Slack Block Kit formatting"}
+                        {type === "discord" && "Rich Discord embed formatting"}
+                        {type === "generic" && "JSON payload format"}
+                      </span>
+                    </div>
+                  );
+                })()}
               </div>
+
+              {/* Setup Help */}
+              <Collapsible>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
+                    <HelpCircle className="h-4 w-4" />
+                    How to get a webhook URL
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-4 pt-4">
+                  {/* Slack Instructions */}
+                  <div className="p-3 rounded-lg bg-muted/50 border">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Hash className="h-4 w-4 text-[#4A154B]" />
+                      <span className="font-medium text-sm">Slack</span>
+                    </div>
+                    <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
+                      <li>Go to <a href="https://api.slack.com/apps" target="_blank" rel="noopener noreferrer" className="text-primary underline">api.slack.com/apps</a></li>
+                      <li>Create an app or select existing</li>
+                      <li>Go to &quot;Incoming Webhooks&quot; → Enable</li>
+                      <li>Click &quot;Add New Webhook to Workspace&quot;</li>
+                      <li>Select channel and copy the URL</li>
+                    </ol>
+                  </div>
+
+                  {/* Discord Instructions */}
+                  <div className="p-3 rounded-lg bg-muted/50 border">
+                    <div className="flex items-center gap-2 mb-2">
+                      <MessageSquare className="h-4 w-4 text-[#5865F2]" />
+                      <span className="font-medium text-sm">Discord</span>
+                    </div>
+                    <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
+                      <li>Open channel settings (gear icon)</li>
+                      <li>Go to &quot;Integrations&quot; → &quot;Webhooks&quot;</li>
+                      <li>Click &quot;New Webhook&quot;</li>
+                      <li>Set name and channel, then &quot;Copy Webhook URL&quot;</li>
+                    </ol>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
             </div>
             <DialogFooter>
               <Button
@@ -284,6 +368,17 @@ export function WebhookManagement({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <CardTitle className="text-lg">{webhook.name}</CardTitle>
+                    {(() => {
+                      const type = detectWebhookType(webhook.url);
+                      const badge = webhookTypeBadges[type];
+                      const Icon = badge.icon;
+                      return (
+                        <Badge className={badge.color}>
+                          <Icon className="h-3 w-3 mr-1" />
+                          {badge.label}
+                        </Badge>
+                      );
+                    })()}
                     <Badge variant={webhook.isActive ? "default" : "secondary"}>
                       {webhook.isActive ? "Active" : "Inactive"}
                     </Badge>
