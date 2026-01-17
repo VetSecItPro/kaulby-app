@@ -2,13 +2,16 @@ import { auth } from "@clerk/nextjs/server";
 import { redirect, notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { monitors, results } from "@/lib/db/schema";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, count } from "drizzle-orm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ExternalLink, ThumbsUp, ThumbsDown, Minus } from "lucide-react";
 import Link from "next/link";
 import { getPlatformDisplayName } from "@/lib/platform-utils";
+import { getUserPlan, getRefreshDelay } from "@/lib/limits";
+import { getPlanLimits } from "@/lib/stripe";
+import { HiddenResultsBanner, RefreshDelayBanner, BlurredAiAnalysis } from "@/components/dashboard/upgrade-prompt";
 
 interface MonitorPageProps {
   params: { id: string };
@@ -35,22 +38,36 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
   const page = parseInt(searchParams.page || "1", 10);
   const offset = (page - 1) * RESULTS_PER_PAGE;
 
+  // Get user's plan and limits in parallel
+  const [userPlan, refreshInfo] = await Promise.all([
+    getUserPlan(userId),
+    getRefreshDelay(userId),
+  ]);
+  const planLimits = getPlanLimits(userPlan);
+
   // Get results for this monitor with pagination
-  const monitorResults = await db.query.results.findMany({
-    where: eq(results.monitorId, monitor.id),
-    orderBy: [desc(results.createdAt)],
-    limit: RESULTS_PER_PAGE,
-    offset,
-  });
+  const [monitorResults, totalCountResult] = await Promise.all([
+    db.query.results.findMany({
+      where: eq(results.monitorId, monitor.id),
+      orderBy: [desc(results.createdAt)],
+      limit: RESULTS_PER_PAGE,
+      offset,
+    }),
+    db
+      .select({ count: count() })
+      .from(results)
+      .where(and(eq(results.monitorId, monitor.id), eq(results.isHidden, false))),
+  ]);
 
-  // Get total count for pagination
-  const totalResults = await db
-    .select({ count: results.id })
-    .from(results)
-    .where(eq(results.monitorId, monitor.id));
-
-  const totalCount = totalResults.length;
+  const totalCount = totalCountResult[0]?.count || 0;
   const totalPages = Math.ceil(totalCount / RESULTS_PER_PAGE);
+
+  // Calculate visibility limits for tier enforcement
+  const visibleLimit = planLimits.resultsVisible;
+  const isLimited = visibleLimit !== -1;
+  const visibleResults = isLimited ? monitorResults.slice(0, visibleLimit) : monitorResults;
+  const hiddenCount = isLimited ? Math.max(0, totalCount - visibleLimit) : 0;
+  const hasUnlimitedAi = planLimits.aiFeatures.unlimitedAiAnalysis;
 
   const sentimentIcons = {
     positive: <ThumbsUp className="h-4 w-4 text-green-500" />,
@@ -129,11 +146,19 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
         </Card>
       </div>
 
+      {/* Refresh Delay Banner (for free tier) */}
+      {planLimits.refreshDelayHours > 0 && (
+        <RefreshDelayBanner
+          delayHours={planLimits.refreshDelayHours}
+          nextRefreshAt={refreshInfo?.nextRefreshAt || null}
+        />
+      )}
+
       {/* Results List */}
       <div className="space-y-4">
         <h2 className="text-xl font-semibold">Results</h2>
 
-        {monitorResults.length === 0 ? (
+        {visibleResults.length === 0 ? (
           <Card>
             <CardHeader>
               <CardTitle>No results yet</CardTitle>
@@ -145,59 +170,80 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
         ) : (
           <>
             <div className="grid gap-4">
-              {monitorResults.map((result) => (
-                <Card key={result.id}>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="space-y-1 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <Badge className="bg-teal-500/10 text-teal-500 border-teal-500/20">
-                            {getPlatformDisplayName(result.platform)}
-                          </Badge>
-                          {result.sentiment && sentimentIcons[result.sentiment]}
-                          {result.painPointCategory && (
-                            <Badge variant="secondary" className="text-xs">
-                              {result.painPointCategory.replace("_", " ")}
+              {visibleResults.map((result, index) => {
+                // For free tier, only show full AI analysis on first result
+                const showAiAnalysis = hasUnlimitedAi || index === 0;
+
+                return (
+                  <Card key={result.id}>
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="space-y-1 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Badge className="bg-teal-500/10 text-teal-500 border-teal-500/20">
+                              {getPlatformDisplayName(result.platform)}
                             </Badge>
-                          )}
+                            {showAiAnalysis && result.sentiment && sentimentIcons[result.sentiment]}
+                            {showAiAnalysis && result.painPointCategory && (
+                              <Badge variant="secondary" className="text-xs">
+                                {result.painPointCategory.replace("_", " ")}
+                              </Badge>
+                            )}
+                          </div>
+                          <CardTitle className="text-base line-clamp-2">
+                            {result.title}
+                          </CardTitle>
+                          <CardDescription className="text-xs">
+                            {result.author && `by ${result.author} • `}
+                            {result.postedAt && new Date(result.postedAt).toLocaleDateString()}
+                          </CardDescription>
                         </div>
-                        <CardTitle className="text-base line-clamp-2">
-                          {result.title}
-                        </CardTitle>
-                        <CardDescription className="text-xs">
-                          {result.author && `by ${result.author} • `}
-                          {result.postedAt && new Date(result.postedAt).toLocaleDateString()}
-                        </CardDescription>
+                        <a
+                          href={result.sourceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <Button variant="outline" size="sm" className="gap-1">
+                            <ExternalLink className="h-3 w-3" />
+                            View
+                          </Button>
+                        </a>
                       </div>
-                      <a
-                        href={result.sourceUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <Button variant="outline" size="sm" className="gap-1">
-                          <ExternalLink className="h-3 w-3" />
-                          View
-                        </Button>
-                      </a>
-                    </div>
-                  </CardHeader>
-                  {(result.content || result.aiSummary) && (
-                    <CardContent className="pt-0">
-                      {result.aiSummary ? (
-                        <div className="space-y-2">
-                          <p className="text-sm text-muted-foreground font-medium">AI Summary:</p>
-                          <p className="text-sm">{result.aiSummary}</p>
-                        </div>
-                      ) : result.content ? (
-                        <p className="text-sm text-muted-foreground line-clamp-3">
-                          {result.content}
-                        </p>
-                      ) : null}
-                    </CardContent>
-                  )}
-                </Card>
-              ))}
+                    </CardHeader>
+                    {(result.content || result.aiSummary) && (
+                      <CardContent className="pt-0">
+                        {showAiAnalysis ? (
+                          result.aiSummary ? (
+                            <div className="space-y-2">
+                              <p className="text-sm text-muted-foreground font-medium">AI Summary:</p>
+                              <p className="text-sm">{result.aiSummary}</p>
+                            </div>
+                          ) : result.content ? (
+                            <p className="text-sm text-muted-foreground line-clamp-3">
+                              {result.content}
+                            </p>
+                          ) : null
+                        ) : (
+                          <BlurredAiAnalysis
+                            aiSummary={result.aiSummary || undefined}
+                            sentiment={result.sentiment || undefined}
+                            painPointCategory={result.painPointCategory || undefined}
+                          />
+                        )}
+                      </CardContent>
+                    )}
+                  </Card>
+                );
+              })}
             </div>
+
+            {/* Hidden Results Banner */}
+            {hiddenCount > 0 && (
+              <HiddenResultsBanner
+                hiddenCount={hiddenCount}
+                totalCount={totalCount}
+              />
+            )}
 
             {/* Pagination */}
             {totalPages > 1 && (
