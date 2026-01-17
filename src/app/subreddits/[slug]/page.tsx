@@ -14,6 +14,8 @@ import {
   Search,
   Zap,
 } from "lucide-react";
+import { MarketingHeader } from "@/components/shared/marketing-header";
+import { MarketingFooter } from "@/components/shared/marketing-footer";
 
 // Popular subreddits with metadata for SEO pages
 const subredditData: Record<string, {
@@ -142,25 +144,7 @@ export default function SubredditPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Navigation */}
-      <nav className="border-b">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-sm">K</span>
-            </div>
-            <span className="font-semibold text-lg">Kaulby</span>
-          </Link>
-          <div className="flex items-center gap-4">
-            <Link href="/pricing">
-              <Button variant="ghost">Pricing</Button>
-            </Link>
-            <Link href={`/sign-up?ref=subreddit-${slug}`}>
-              <Button>Start Monitoring Free</Button>
-            </Link>
-          </div>
-        </div>
-      </nav>
+      <MarketingHeader />
 
       {/* Hero Section */}
       <section className="py-20 px-4">
@@ -319,24 +303,7 @@ export default function SubredditPage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="py-8 px-4 border-t">
-        <div className="container mx-auto max-w-6xl flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-2">
-            <div className="h-6 w-6 rounded bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-xs">K</span>
-            </div>
-            <span className="text-sm text-muted-foreground">
-              Kaulby - Community Intelligence Platform
-            </span>
-          </div>
-          <div className="flex items-center gap-6 text-sm text-muted-foreground">
-            <Link href="/pricing" className="hover:text-foreground">Pricing</Link>
-            <Link href="/privacy" className="hover:text-foreground">Privacy</Link>
-            <Link href="/terms" className="hover:text-foreground">Terms</Link>
-          </div>
-        </div>
-      </footer>
+      <MarketingFooter />
     </div>
   );
 }
