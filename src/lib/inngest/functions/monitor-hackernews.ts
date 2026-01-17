@@ -3,22 +3,11 @@ import { db } from "@/lib/db";
 import { monitors, results } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { incrementResultsCount, canAccessPlatform, shouldProcessMonitor } from "@/lib/limits";
-
-const HN_API_BASE = "https://hacker-news.firebaseio.com/v0";
-
-interface HNItem {
-  id: number;
-  type: string;
-  title?: string;
-  text?: string;
-  by: string;
-  time: number;
-  url?: string;
-  score?: number;
-  descendants?: number;
-}
+import { contentMatchesMonitor } from "@/lib/content-matcher";
+import { searchMultipleKeywords, getStoryUrl, type HNAlgoliaStory } from "@/lib/hackernews";
 
 // Scan Hacker News for new posts matching monitor keywords
+// Uses Algolia HN Search API for efficient keyword-based searching
 export const monitorHackerNews = inngest.createFunction(
   {
     id: "monitor-hackernews",
@@ -42,23 +31,6 @@ export const monitorHackerNews = inngest.createFunction(
       return { message: "No active Hacker News monitors" };
     }
 
-    // Get latest stories
-    const storyIds = await step.run("fetch-new-stories", async () => {
-      const response = await fetch(`${HN_API_BASE}/newstories.json`);
-      const ids: number[] = await response.json();
-      return ids.slice(0, 100); // Last 100 stories
-    });
-
-    // Fetch story details
-    const stories = await step.run("fetch-story-details", async () => {
-      const storyPromises = storyIds.map(async (id) => {
-        const response = await fetch(`${HN_API_BASE}/item/${id}.json`);
-        return response.json() as Promise<HNItem>;
-      });
-
-      return Promise.all(storyPromises);
-    });
-
     let totalResults = 0;
     const monitorResults: Record<string, number> = {};
 
@@ -66,24 +38,61 @@ export const monitorHackerNews = inngest.createFunction(
       // Check if user has access to Hacker News platform
       const access = await canAccessPlatform(monitor.userId, "hackernews");
       if (!access.hasAccess) {
-        continue; // Skip monitors for users without platform access
+        continue;
       }
 
       // Check refresh delay for free tier users
       const scheduleCheck = await shouldProcessMonitor(monitor.userId, monitor.lastCheckedAt);
       if (!scheduleCheck.shouldProcess) {
-        continue; // Skip monitors that are within refresh delay period
+        continue;
       }
 
       let monitorMatchCount = 0;
 
-      // Check each story for keyword matches
-      const matchingStories = stories.filter((story) => {
+      // Build search keywords from monitor config
+      const searchKeywords: string[] = [];
+      if (monitor.companyName) {
+        searchKeywords.push(monitor.companyName);
+      }
+      searchKeywords.push(...monitor.keywords);
+
+      if (searchKeywords.length === 0) {
+        continue; // No keywords to search for
+      }
+
+      // Use Algolia API to search for stories matching keywords (last 24 hours)
+      const stories = await step.run(`search-hn-${monitor.id}`, async () => {
+        try {
+          return await searchMultipleKeywords(searchKeywords, 24);
+        } catch (error) {
+          console.error(`[HN Algolia] Search failed for monitor ${monitor.id}:`, error);
+          return [];
+        }
+      });
+
+      // Apply additional content matching for advanced search queries
+      const matchingStories = stories.filter((story: HNAlgoliaStory) => {
         if (!story || !story.title) return false;
-        const text = `${story.title} ${story.text || ""}`.toLowerCase();
-        return monitor.keywords.some((keyword) =>
-          text.includes(keyword.toLowerCase())
-        );
+
+        // If monitor has an advanced search query, apply additional filtering
+        if (monitor.searchQuery) {
+          const matchResult = contentMatchesMonitor(
+            {
+              title: story.title,
+              body: story.story_text || undefined,
+              author: story.author,
+            },
+            {
+              companyName: monitor.companyName,
+              keywords: monitor.keywords,
+              searchQuery: monitor.searchQuery,
+            }
+          );
+          return matchResult.matches;
+        }
+
+        // Otherwise, the Algolia search already matched the keywords
+        return true;
       });
 
       // Save matching stories as results
@@ -92,26 +101,31 @@ export const monitorHackerNews = inngest.createFunction(
           for (const story of matchingStories) {
             if (!story) continue;
 
-            const sourceUrl = story.url || `https://news.ycombinator.com/item?id=${story.id}`;
+            // HN discussion URL (always use this as the primary source URL)
+            const hnDiscussionUrl = getStoryUrl(story.objectID);
 
             // Check if we already have this result
             const existing = await db.query.results.findFirst({
-              where: eq(results.sourceUrl, sourceUrl),
+              where: eq(results.sourceUrl, hnDiscussionUrl),
             });
 
             if (!existing) {
               const [newResult] = await db.insert(results).values({
                 monitorId: monitor.id,
                 platform: "hackernews",
-                sourceUrl,
+                sourceUrl: hnDiscussionUrl,
                 title: story.title || "",
-                content: story.text || null,
-                author: story.by,
-                postedAt: new Date(story.time * 1000),
+                content: story.story_text || null,
+                author: story.author,
+                postedAt: new Date(story.created_at_i * 1000),
                 metadata: {
-                  hnId: story.id,
-                  score: story.score,
-                  numComments: story.descendants,
+                  hnId: story.objectID,
+                  score: story.points,
+                  numComments: story.num_comments,
+                  externalUrl: story.url,
+                  tags: story._tags,
+                  isAskHN: story._tags?.includes("ask_hn"),
+                  isShowHN: story._tags?.includes("show_hn"),
                 },
               }).returning();
 

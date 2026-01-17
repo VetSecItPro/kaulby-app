@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
-import { SignedIn, SignedOut } from "@clerk/nextjs";
+import { useState, useEffect } from "react";
+import { SignedIn, SignedOut, useAuth } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/accordion";
 import { Check } from "lucide-react";
 import { CheckoutModal } from "@/components/checkout-modal";
+import { DayPassCard } from "@/components/day-pass-card";
 import { cn } from "@/lib/utils";
 import type { BillingInterval } from "@/lib/stripe";
 
@@ -113,10 +114,51 @@ const plans: Plan[] = [
 ];
 
 export default function PricingPage() {
+  const { isSignedIn } = useAuth();
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<"pro" | "enterprise">("pro");
   const [selectedPlanName, setSelectedPlanName] = useState("Pro");
   const [billingInterval, setBillingInterval] = useState<BillingInterval>("monthly");
+  const [dayPassStatus, setDayPassStatus] = useState<{
+    active: boolean;
+    expiresAt: string | null;
+  } | null>(null);
+  const [isPurchasingDayPass, setIsPurchasingDayPass] = useState(false);
+
+  // Fetch day pass status for signed-in users
+  useEffect(() => {
+    if (isSignedIn) {
+      fetch("/api/user/day-pass")
+        .then((res) => res.json())
+        .then((data) => {
+          setDayPassStatus({
+            active: data.active,
+            expiresAt: data.expiresAt,
+          });
+        })
+        .catch(console.error);
+    }
+  }, [isSignedIn]);
+
+  const handleDayPassPurchase = async () => {
+    setIsPurchasingDayPass(true);
+    try {
+      const response = await fetch("/api/stripe/day-pass", {
+        method: "POST",
+      });
+      const data = await response.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else if (data.error) {
+        alert(data.error);
+      }
+    } catch (error) {
+      console.error("Day pass purchase error:", error);
+      alert("Failed to start checkout. Please try again.");
+    } finally {
+      setIsPurchasingDayPass(false);
+    }
+  };
 
   const handleUpgrade = (planKey: "pro" | "enterprise", planName: string) => {
     setSelectedPlan(planKey);
@@ -304,6 +346,23 @@ export default function PricingPage() {
             ))}
           </div>
 
+          {/* Day Pass Section - Only for signed-in users */}
+          <SignedIn>
+            <div className="mt-16 max-w-md mx-auto">
+              <div className="text-center mb-6">
+                <h2 className="text-xl font-semibold mb-2">Need Pro Features Just for Today?</h2>
+                <p className="text-sm text-muted-foreground">
+                  Try our 24-hour Day Pass for instant Pro access without a subscription.
+                </p>
+              </div>
+              <DayPassCard
+                dayPassExpiresAt={dayPassStatus?.expiresAt || null}
+                onPurchase={handleDayPassPurchase}
+                isPurchasing={isPurchasingDayPass}
+              />
+            </div>
+          </SignedIn>
+
           {/* FAQ Section */}
           <div className="mt-20 max-w-2xl mx-auto">
             <h2 className="text-2xl font-bold text-center mb-8">
@@ -360,6 +419,14 @@ export default function PricingPage() {
                 <AccordionContent>
                   Free plans refresh once per day. Pro plans refresh every 4 hours (6x faster).
                   Team plans get real-time monitoring for immediate updates.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="day-pass">
+                <AccordionTrigger>What is the Day Pass?</AccordionTrigger>
+                <AccordionContent>
+                  The Day Pass gives you full Pro access for 24 hours with a one-time $10 payment.
+                  Perfect for when you need to quickly check all platforms or do intensive research
+                  without committing to a subscription. You can purchase multiple Day Passes whenever needed.
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
