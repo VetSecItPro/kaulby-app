@@ -1,6 +1,5 @@
 "use client";
 
-import { useDevice } from "@/hooks/use-device";
 import { MobileManage } from "@/components/mobile/mobile-manage";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -134,6 +133,8 @@ interface ResponsiveManageProps {
 }
 
 
+// CSS-based responsive - renders both layouts, CSS handles visibility
+// This prevents hydration mismatch from JS device detection
 export function ResponsiveManage({
   stats,
   freeUsers,
@@ -148,27 +149,25 @@ export function ResponsiveManage({
   costBreakdown,
   systemHealth,
 }: ResponsiveManageProps) {
-  const { isMobile, isTablet } = useDevice();
-
-  if (isMobile || isTablet) {
-    return (
-      <MobileManage
-        stats={stats}
-        freeUsers={freeUsers}
-        proUsers={proUsers}
-        enterpriseUsers={enterpriseUsers}
-        platformDist={platformDist}
-        sentimentDist={sentimentDist}
-        recentUsers={recentUsers}
-        businessMetrics={businessMetrics}
-      />
-    );
-  }
-
-  // Desktop view
   return (
-    <div className="flex-1 space-y-6 p-6">
-      <div className="flex items-center justify-between">
+    <>
+      {/* Mobile/Tablet view - hidden on lg and above */}
+      <div className="lg:hidden">
+        <MobileManage
+          stats={stats}
+          freeUsers={freeUsers}
+          proUsers={proUsers}
+          enterpriseUsers={enterpriseUsers}
+          platformDist={platformDist}
+          sentimentDist={sentimentDist}
+          recentUsers={recentUsers}
+          businessMetrics={businessMetrics}
+        />
+      </div>
+
+      {/* Desktop view - hidden below lg */}
+      <div className="hidden lg:flex flex-1 flex-col space-y-6 p-6">
+        <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
           <p className="text-muted-foreground">Platform analytics and management</p>
@@ -357,6 +356,7 @@ export function ResponsiveManage({
         <AiCostsTable costs={aiCosts} />
       </div>
     </div>
+    </>
   );
 }
 

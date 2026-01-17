@@ -6,8 +6,9 @@ import { eq, desc, and } from "drizzle-orm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ExternalLink, ThumbsUp, ThumbsDown, Minus, Settings } from "lucide-react";
+import { ArrowLeft, ExternalLink, ThumbsUp, ThumbsDown, Minus } from "lucide-react";
 import Link from "next/link";
+import { getPlatformDisplayName } from "@/lib/platform-utils";
 
 interface MonitorPageProps {
   params: { id: string };
@@ -81,8 +82,7 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
         </div>
         <div className="flex gap-2">
           <Link href={`/dashboard/monitors/${monitor.id}/edit`}>
-            <Button variant="outline" className="gap-2">
-              <Settings className="h-4 w-4" />
+            <Button className="bg-teal-500 text-black hover:bg-teal-600">
               Edit
             </Button>
           </Link>
@@ -104,10 +104,10 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
             <CardTitle className="text-sm font-medium">Platforms</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex gap-1">
+            <div className="flex flex-wrap gap-1">
               {monitor.platforms.map((platform) => (
-                <Badge key={platform} variant="outline" className="capitalize">
-                  {platform}
+                <Badge key={platform} className="bg-teal-500/10 text-teal-500 border-teal-500/20">
+                  {getPlatformDisplayName(platform)}
                 </Badge>
               ))}
             </div>
@@ -118,8 +118,12 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
             <CardTitle className="text-sm font-medium">Keywords</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-sm text-muted-foreground">
-              {monitor.keywords.length} keywords tracked
+            <div className="flex flex-wrap gap-1">
+              {monitor.keywords.map((keyword) => (
+                <Badge key={keyword} variant="secondary" className="text-xs">
+                  {keyword}
+                </Badge>
+              ))}
             </div>
           </CardContent>
         </Card>
@@ -147,8 +151,8 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
                     <div className="flex items-start justify-between gap-4">
                       <div className="space-y-1 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <Badge variant="outline" className="capitalize">
-                            {result.platform}
+                          <Badge className="bg-teal-500/10 text-teal-500 border-teal-500/20">
+                            {getPlatformDisplayName(result.platform)}
                           </Badge>
                           {result.sentiment && sentimentIcons[result.sentiment]}
                           {result.painPointCategory && (

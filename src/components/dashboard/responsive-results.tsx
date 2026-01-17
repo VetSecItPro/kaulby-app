@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useDevice } from "@/hooks/use-device";
 import { MobileResults } from "@/components/mobile/mobile-results";
 import { ResultsList } from "./results-list";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -49,6 +48,8 @@ interface ResponsiveResultsProps {
   planInfo?: PlanInfo;
 }
 
+// CSS-based responsive - renders both layouts, CSS handles visibility
+// This prevents hydration mismatch from JS device detection
 export function ResponsiveResults({
   results,
   totalCount,
@@ -57,14 +58,104 @@ export function ResponsiveResults({
   hasMonitors,
   planInfo,
 }: ResponsiveResultsProps) {
-  const { isMobile, isTablet } = useDevice();
-  const [isExporting, setIsExporting] = useState(false);
-
   // Filter results based on visibility limit for free tier
   const visibleResults = planInfo?.isLimited
     ? results.slice(0, planInfo.visibleLimit)
     : results;
 
+  return (
+    <>
+      {/* Mobile/Tablet view - hidden on lg and above */}
+      <div className="lg:hidden">
+        <MobileResultsView
+          results={results}
+          visibleResults={visibleResults}
+          totalCount={totalCount}
+          page={page}
+          totalPages={totalPages}
+          hasMonitors={hasMonitors}
+          planInfo={planInfo}
+        />
+      </div>
+
+      {/* Desktop view - hidden below lg */}
+      <div className="hidden lg:block">
+        <DesktopResultsView
+          results={results}
+          visibleResults={visibleResults}
+          totalCount={totalCount}
+          page={page}
+          totalPages={totalPages}
+          hasMonitors={hasMonitors}
+          planInfo={planInfo}
+        />
+      </div>
+    </>
+  );
+}
+
+interface ViewProps {
+  results: Result[];
+  visibleResults: Result[];
+  totalCount: number;
+  page: number;
+  totalPages: number;
+  hasMonitors: boolean;
+  planInfo?: PlanInfo;
+}
+
+function MobileResultsView({
+  results,
+  visibleResults,
+  totalCount,
+  page,
+  totalPages,
+  hasMonitors,
+  planInfo,
+}: ViewProps) {
+  if (results.length === 0 && !hasMonitors) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold">Results</h1>
+          <p className="text-muted-foreground text-sm">Mentions found by your monitors</p>
+        </div>
+        <Card className="border-dashed">
+          <CardContent className="p-6 text-center">
+            <h3 className="font-semibold mb-2">No results yet</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Create a monitor to start tracking
+            </p>
+            <Link href="/dashboard/monitors/new">
+              <Button className="w-full">Create Monitor</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <MobileResults
+      results={visibleResults}
+      totalCount={totalCount}
+      page={page}
+      totalPages={totalPages}
+      planInfo={planInfo}
+    />
+  );
+}
+
+function DesktopResultsView({
+  results,
+  visibleResults,
+  totalCount,
+  page,
+  totalPages,
+  hasMonitors,
+  planInfo,
+}: ViewProps) {
+  const [isExporting, setIsExporting] = useState(false);
   const canExport = planInfo?.plan === "pro" || planInfo?.plan === "enterprise";
 
   const handleExport = async () => {
@@ -91,41 +182,6 @@ export function ResponsiveResults({
     }
   };
 
-  if (isMobile || isTablet) {
-    if (results.length === 0 && !hasMonitors) {
-      return (
-        <div className="space-y-6">
-          <div>
-            <h1 className="text-2xl font-bold">Results</h1>
-            <p className="text-muted-foreground text-sm">Mentions found by your monitors</p>
-          </div>
-          <Card className="border-dashed">
-            <CardContent className="p-6 text-center">
-              <h3 className="font-semibold mb-2">No results yet</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Create a monitor to start tracking
-              </p>
-              <Link href="/dashboard/monitors/new">
-                <Button className="w-full">Create Monitor</Button>
-              </Link>
-            </CardContent>
-          </Card>
-        </div>
-      );
-    }
-
-    return (
-      <MobileResults
-        results={visibleResults}
-        totalCount={totalCount}
-        page={page}
-        totalPages={totalPages}
-        planInfo={planInfo}
-      />
-    );
-  }
-
-  // Desktop view
   return (
     <div className="space-y-6">
       {/* Header */}

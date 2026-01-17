@@ -84,15 +84,20 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const { name, keywords, platforms, isActive } = body;
+    const { name, companyName, keywords, platforms, isActive } = body;
 
     // Validate input
     if (name !== undefined && (typeof name !== "string" || !name.trim())) {
       return NextResponse.json({ error: "Invalid name" }, { status: 400 });
     }
 
-    if (keywords !== undefined && (!Array.isArray(keywords) || keywords.length === 0)) {
-      return NextResponse.json({ error: "At least one keyword is required" }, { status: 400 });
+    if (companyName !== undefined && (typeof companyName !== "string" || !companyName.trim())) {
+      return NextResponse.json({ error: "Invalid company name" }, { status: 400 });
+    }
+
+    // Keywords are now optional
+    if (keywords !== undefined && !Array.isArray(keywords)) {
+      return NextResponse.json({ error: "Keywords must be an array" }, { status: 400 });
     }
 
     if (platforms !== undefined && (!Array.isArray(platforms) || platforms.length === 0)) {
@@ -113,22 +118,24 @@ export async function PATCH(
       return NextResponse.json({ error: "Invalid name after sanitization" }, { status: 400 });
     }
 
-    // Sanitize keywords if provided
+    // Sanitize company name if provided
+    const sanitizedCompanyName = companyName !== undefined ? sanitizeInput(companyName) : undefined;
+    if (companyName !== undefined && (!sanitizedCompanyName || sanitizedCompanyName.length === 0)) {
+      return NextResponse.json({ error: "Invalid company name after sanitization" }, { status: 400 });
+    }
+
+    // Sanitize keywords if provided (keywords are now optional)
     const sanitizedKeywords: string[] | undefined = keywords
       ? keywords
           .map((k: string) => (typeof k === "string" ? sanitizeInput(k) : ""))
           .filter((k: string) => isValidKeyword(k))
       : undefined;
 
-    if (keywords && (!sanitizedKeywords || sanitizedKeywords.length === 0)) {
-      return NextResponse.json({ error: "No valid keywords after sanitization" }, { status: 400 });
-    }
-
     // Get user's plan for limit checks
     const plan = await getUserPlan(userId);
 
-    // Check keywords limit if updating keywords
-    if (sanitizedKeywords) {
+    // Check keywords limit if updating keywords (and keywords are not empty)
+    if (sanitizedKeywords && sanitizedKeywords.length > 0) {
       const keywordCheck = checkKeywordsLimit(sanitizedKeywords, plan);
       if (!keywordCheck.allowed) {
         const prompt = getUpgradePrompt(plan, "keywords");
@@ -175,6 +182,7 @@ export async function PATCH(
       .update(monitors)
       .set({
         ...(sanitizedName !== undefined && { name: sanitizedName }),
+        ...(sanitizedCompanyName !== undefined && { companyName: sanitizedCompanyName }),
         ...(sanitizedKeywords !== undefined && { keywords: sanitizedKeywords }),
         ...(platforms !== undefined && { platforms: finalPlatforms }),
         ...(isActive !== undefined && { isActive }),

@@ -10,8 +10,12 @@ import { fetchGoogleReviews, isApifyConfigured, type GoogleReviewItem } from "@/
  *
  * For Google Reviews monitors, the "keywords" field stores Google Maps URLs
  * or business identifiers to monitor (e.g., "https://maps.google.com/?cid=123")
+ * If no URL is provided, companyName is used as a search term.
  *
- * Runs every 6 hours since reviews don't update as frequently as social media
+ * Runs every hour - shouldProcessMonitor() handles tier-based delays:
+ * - Enterprise: every hour (real-time)
+ * - Pro: every 4 hours
+ * - Free: every 24 hours
  */
 export const monitorGoogleReviews = inngest.createFunction(
   {
@@ -19,7 +23,7 @@ export const monitorGoogleReviews = inngest.createFunction(
     name: "Monitor Google Reviews",
     retries: 2,
   },
-  { cron: "0 */6 * * *" }, // Every 6 hours
+  { cron: "0 * * * *" }, // Every hour
   async ({ step }) => {
     // Check if Apify is configured
     if (!isApifyConfigured()) {
@@ -59,13 +63,28 @@ export const monitorGoogleReviews = inngest.createFunction(
 
       let monitorMatchCount = 0;
 
-      // For Google Reviews, keywords are actually business URLs to monitor
-      // Each keyword should be a Google Maps URL or place ID
-      for (const businessUrl of monitor.keywords) {
-        // Skip if it doesn't look like a Google URL or place reference
-        if (!businessUrl.includes("google") && !businessUrl.includes("maps") && !businessUrl.startsWith("ChI")) {
-          continue;
-        }
+      // For Google Reviews, we need Google Maps URLs or place IDs
+      // Check keywords first, then fall back to companyName as search term
+      let businessUrls: string[] = [];
+
+      // If keywords contain Google URLs, use them
+      if (monitor.keywords && monitor.keywords.length > 0) {
+        businessUrls = monitor.keywords.filter(
+          (k) => k.includes("google") || k.includes("maps") || k.startsWith("ChI")
+        );
+      }
+
+      // If no valid Google URLs and companyName exists, use it as a search term
+      // (The Apify scraper can search by business name)
+      if (businessUrls.length === 0 && monitor.companyName) {
+        businessUrls = [monitor.companyName];
+      }
+
+      if (businessUrls.length === 0) {
+        continue; // No valid business identifier
+      }
+
+      for (const businessUrl of businessUrls) {
 
         const reviews = await step.run(`fetch-reviews-${monitor.id}-${businessUrl.slice(0, 20)}`, async () => {
           try {

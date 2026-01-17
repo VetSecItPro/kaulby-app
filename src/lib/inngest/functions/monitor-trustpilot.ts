@@ -19,7 +19,7 @@ export const monitorTrustpilot = inngest.createFunction(
     name: "Monitor Trustpilot",
     retries: 2,
   },
-  { cron: "0 */4 * * *" }, // Every 4 hours
+  { cron: "0 * * * *" }, // Every hour (tier-based delays apply)
   async ({ step }) => {
     // Check if Apify is configured
     if (!isApifyConfigured()) {

@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { monitors, results } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { incrementResultsCount, canAccessPlatform, shouldProcessMonitor } from "@/lib/limits";
+import { findRelevantSubredditsCached } from "@/lib/ai";
 
 // Reddit RSS feed URL
 function getRedditRssUrl(subreddit: string): string {
@@ -71,19 +72,42 @@ export const monitorReddit = inngest.createFunction(
 
       let monitorMatchCount = 0;
 
-      // Get audience communities or use default subreddits
+      // Get audience communities, use AI to find relevant subreddits, or fall back to defaults
       const subreddits = await step.run(`get-subreddits-${monitor.id}`, async () => {
+        // First, check for user-defined audience
         if (monitor.audienceId) {
           const audience = await db.query.audiences.findFirst({
             where: eq(monitors.id, monitor.audienceId),
             with: { communities: true },
           });
-          return audience?.communities
+          const audienceSubreddits = audience?.communities
             .filter((c) => c.platform === "reddit")
             .map((c) => c.identifier) || [];
+          if (audienceSubreddits.length > 0) {
+            return audienceSubreddits;
+          }
         }
-        // Default to popular subreddits if no audience defined
-        return ["technology", "programming", "webdev", "startups", "SaaS"];
+
+        // Use AI to find relevant subreddits based on company name
+        if (monitor.companyName) {
+          try {
+            console.log(`[Reddit] Using AI to find subreddits for "${monitor.companyName}"`);
+            const aiSubreddits = await findRelevantSubredditsCached(
+              monitor.companyName,
+              monitor.keywords,
+              10
+            );
+            if (aiSubreddits.length > 0) {
+              console.log(`[Reddit] AI suggested: ${aiSubreddits.join(", ")}`);
+              return aiSubreddits;
+            }
+          } catch (error) {
+            console.error("[Reddit] AI subreddit finder failed:", error);
+          }
+        }
+
+        // Fallback to generic business subreddits
+        return ["AskReddit", "smallbusiness", "Entrepreneur", "business"];
       });
 
       for (const subreddit of subreddits) {
@@ -108,12 +132,35 @@ export const monitorReddit = inngest.createFunction(
           }
         });
 
-        // Check each post for keyword matches
+        // Check each post for matches
+        // Priority: company name mentions, then company + keyword combos
         const matchingPosts = posts.filter((post) => {
           const text = `${post.data.title} ${post.data.selftext}`.toLowerCase();
-          return monitor.keywords.some((keyword) =>
-            text.includes(keyword.toLowerCase())
-          );
+
+          // If company name exists, search for it
+          if (monitor.companyName) {
+            const companyLower = monitor.companyName.toLowerCase();
+            // Direct company name mention
+            if (text.includes(companyLower)) {
+              return true;
+            }
+            // Company name + keyword combination (if keywords exist)
+            if (monitor.keywords && monitor.keywords.length > 0) {
+              return monitor.keywords.some((keyword) =>
+                text.includes(companyLower) ||
+                (text.includes(keyword.toLowerCase()) && text.includes(companyLower))
+              );
+            }
+          }
+
+          // Fallback: keyword-only search (for backwards compatibility with old monitors)
+          if (monitor.keywords && monitor.keywords.length > 0) {
+            return monitor.keywords.some((keyword) =>
+              text.includes(keyword.toLowerCase())
+            );
+          }
+
+          return false;
         });
 
         // Save matching posts as results
