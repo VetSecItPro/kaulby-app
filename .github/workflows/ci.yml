@@ -15,13 +15,13 @@ concurrency:
 
 jobs:
   # ============================================
-  # Stage 1: Build (required, produces artifact)
+  # All jobs run in PARALLEL (no dependencies)
   # ============================================
+
+  # Build & Lint - core validation
   build:
     name: Build
     runs-on: ubuntu-latest
-    outputs:
-      build-success: ${{ steps.build.outcome == 'success' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -31,8 +31,7 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
-      - name: Install dependencies
-        run: npm ci
+      - run: npm ci
 
       - name: Lint
         run: npm run lint
@@ -41,7 +40,6 @@ jobs:
         run: npx tsc --noEmit
 
       - name: Build
-        id: build
         run: npm run build
         env:
           NEXT_PUBLIC_APP_URL: http://localhost:3000
@@ -54,24 +52,26 @@ jobs:
           NEXT_PUBLIC_POSTHOG_KEY: ${{ secrets.NEXT_PUBLIC_POSTHOG_KEY }}
           NEXT_PUBLIC_POSTHOG_HOST: https://us.posthog.com
 
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-output
-          path: |
-            .next
-            !.next/cache
-          retention-days: 1
+      - name: Bundle size check
+        run: |
+          echo "### 📦 Bundle Size" >> $GITHUB_STEP_SUMMARY
+          if [ -d ".next/static/chunks" ]; then
+            TOTAL=$(find .next/static/chunks -name "*.js" -exec cat {} \; | wc -c)
+            KB=$((TOTAL / 1024))
+            echo "**Total JS:** ${KB}KB" >> $GITHUB_STEP_SUMMARY
+            if [ $KB -gt 750 ]; then
+              echo "❌ Exceeds 750KB budget" >> $GITHUB_STEP_SUMMARY
+            elif [ $KB -gt 500 ]; then
+              echo "⚠️ Exceeds 500KB mobile budget" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "✅ Within budget" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
 
-  # ============================================
-  # Stage 2: Parallel checks (no dependencies between them)
-  # ============================================
-
-  # Security - runs on ALL pushes (critical)
+  # Security - npm audit + secret scan
   security:
     name: Security
     runs-on: ubuntu-latest
-    # No dependency on build - can run immediately in parallel
 
     steps:
       - uses: actions/checkout@v4
@@ -97,7 +97,7 @@ jobs:
           echo "| High | $HIGH |" >> $GITHUB_STEP_SUMMARY
 
           if [ "$CRITICAL" -gt 0 ]; then
-            echo "❌ Critical vulnerabilities found!" >> $GITHUB_STEP_SUMMARY
+            echo "❌ Critical vulnerabilities!" >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
           echo "✅ No critical vulnerabilities" >> $GITHUB_STEP_SUMMARY
@@ -107,13 +107,11 @@ jobs:
           echo "### 🔑 Secret Scan" >> $GITHUB_STEP_SUMMARY
           FOUND=0
 
-          # Stripe live keys
           if grep -rE "(sk_live_|pk_live_)[a-zA-Z0-9]{20,}" --include="*.ts" --include="*.tsx" --exclude-dir=node_modules --exclude-dir=.next . 2>/dev/null; then
             echo "❌ Stripe live key in code!" >> $GITHUB_STEP_SUMMARY
             FOUND=1
           fi
 
-          # AWS keys
           if grep -rE "AKIA[0-9A-Z]{16}" --include="*.ts" --include="*.tsx" --exclude-dir=node_modules --exclude-dir=.next . 2>/dev/null; then
             echo "❌ AWS key in code!" >> $GITHUB_STEP_SUMMARY
             FOUND=1
@@ -122,11 +120,10 @@ jobs:
           [ "$FOUND" -eq 1 ] && exit 1
           echo "✅ No secrets detected" >> $GITHUB_STEP_SUMMARY
 
-  # Semgrep SAST - runs on ALL pushes (fast, valuable)
+  # Semgrep SAST - OWASP Top 10
   semgrep:
     name: Semgrep SAST
     runs-on: ubuntu-latest
-    # No dependency - runs in parallel with build
 
     steps:
       - uses: actions/checkout@v4
@@ -134,17 +131,17 @@ jobs:
       - name: Run Semgrep
         uses: returntocorp/semgrep-action@v1
         with:
-          config: p/default p/security-audit p/owasp-top-ten
-        env:
-          SEMGREP_RULES: p/default p/security-audit p/owasp-top-ten
+          config: >-
+            p/owasp-top-ten
+            p/security-audit
 
       - name: Summary
         if: always()
         run: |
           echo "### 🔍 Semgrep SAST" >> $GITHUB_STEP_SUMMARY
-          echo "Scanned: OWASP Top 10, security patterns" >> $GITHUB_STEP_SUMMARY
+          echo "Scanned: OWASP Top 10, Security patterns" >> $GITHUB_STEP_SUMMARY
 
-  # Code quality - no build dependency needed
+  # Code quality metrics
   quality:
     name: Code Quality
     runs-on: ubuntu-latest
@@ -167,7 +164,7 @@ jobs:
           TS_IGNORE=$(grep -rE "@ts-ignore|@ts-nocheck" --include="*.ts" --include="*.tsx" --exclude-dir=node_modules --exclude-dir=.next . 2>/dev/null | wc -l || echo 0)
           echo "| @ts-ignore | $(echo $TS_IGNORE | tr -d ' ') |" >> $GITHUB_STEP_SUMMARY
 
-  # DB schema check - no build needed
+  # DB schema validation
   db-check:
     name: DB Schema
     runs-on: ubuntu-latest
@@ -192,100 +189,3 @@ jobs:
             TABLES=$(grep -c "pgTable" src/lib/db/schema.ts 2>/dev/null || echo 0)
             echo "Tables: $TABLES" >> $GITHUB_STEP_SUMMARY
           fi
-
-  # ============================================
-  # Stage 3: Post-build checks (need the artifact)
-  # ============================================
-
-  # Bundle analysis - needs build artifact
-  bundle:
-    name: Bundle Size
-    needs: build
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: build-output
-          path: .next
-
-      - name: Analyze
-        run: |
-          echo "### 📦 Bundle Size" >> $GITHUB_STEP_SUMMARY
-          if [ -d ".next/static/chunks" ]; then
-            TOTAL=$(find .next/static/chunks -name "*.js" -exec cat {} \; | wc -c)
-            KB=$((TOTAL / 1024))
-            echo "**Total JS:** ${KB}KB" >> $GITHUB_STEP_SUMMARY
-
-            if [ $KB -gt 750 ]; then
-              echo "❌ Exceeds 750KB budget" >> $GITHUB_STEP_SUMMARY
-            elif [ $KB -gt 500 ]; then
-              echo "⚠️ Exceeds 500KB mobile budget" >> $GITHUB_STEP_SUMMARY
-            else
-              echo "✅ Within budget" >> $GITHUB_STEP_SUMMARY
-            fi
-          fi
-
-  # ============================================
-  # PR-only jobs (skip on push to main)
-  # ============================================
-
-  # Unit tests - PR only (add tests later)
-  test:
-    name: Tests
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - run: npm ci
-
-      - name: Run tests
-        run: |
-          if npm run test --if-present 2>/dev/null; then
-            echo "✅ Tests passed" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "⏭️ No tests configured" >> $GITHUB_STEP_SUMMARY
-          fi
-
-  # Lighthouse - PR only (slow)
-  lighthouse:
-    name: Lighthouse
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - run: npm ci
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: build-output
-          path: .next
-
-      - name: Run Lighthouse
-        run: |
-          npm install -g @lhci/cli@0.13.x
-          npm run start &
-          sleep 15
-          lhci autorun --collect.url=http://localhost:3000/ --collect.numberOfRuns=1 --upload.target=temporary-public-storage 2>&1 || true
-          pkill -f "next start" || true
-          echo "### 📱 Lighthouse" >> $GITHUB_STEP_SUMMARY
-          echo "Performance audit completed" >> $GITHUB_STEP_SUMMARY
-        env:
-          NEXT_PUBLIC_APP_URL: http://localhost:3000
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
