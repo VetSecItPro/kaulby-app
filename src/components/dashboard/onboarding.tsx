@@ -221,7 +221,7 @@ export function OnboardingWizard({ isOpen, onClose, userName, userPlan = "free" 
   const template = MONITOR_TEMPLATES.find((t) => t.id === selectedTemplate);
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-xl">
         <Progress value={progress} className="h-1 absolute top-0 left-0 right-0 rounded-t-lg" />
 
@@ -450,35 +450,32 @@ export function OnboardingWizard({ isOpen, onClose, userName, userPlan = "free" 
               ) : (
                 <div className="grid gap-2 max-h-[200px] overflow-y-auto">
                   {availablePlatforms.map((platform) => (
-                    <div
+                    <label
                       key={platform.id}
+                      htmlFor={`onboarding-platform-${platform.id}`}
                       className={cn(
                         "flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-all hover:bg-muted/50",
                         selectedPlatforms.includes(platform.id) && "border-primary bg-primary/5"
                       )}
-                      onClick={() => {
-                        setSelectedPlatforms((prev) =>
-                          prev.includes(platform.id)
-                            ? prev.filter((p) => p !== platform.id)
-                            : [...prev, platform.id]
-                        );
-                      }}
                     >
                       <Checkbox
+                        id={`onboarding-platform-${platform.id}`}
                         checked={selectedPlatforms.includes(platform.id)}
-                        onCheckedChange={() => {
-                          setSelectedPlatforms((prev) =>
-                            prev.includes(platform.id)
-                              ? prev.filter((p) => p !== platform.id)
-                              : [...prev, platform.id]
-                          );
+                        onCheckedChange={(checked) => {
+                          if (typeof checked === "boolean") {
+                            setSelectedPlatforms((prev) =>
+                              checked
+                                ? [...prev, platform.id]
+                                : prev.filter((p) => p !== platform.id)
+                            );
+                          }
                         }}
                       />
                       <div>
                         <p className="font-medium text-sm">{platform.name}</p>
                         <p className="text-xs text-muted-foreground">{platform.description}</p>
                       </div>
-                    </div>
+                    </label>
                   ))}
                 </div>
               )}

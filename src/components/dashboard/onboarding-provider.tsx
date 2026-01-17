@@ -21,6 +21,34 @@ interface OnboardingProviderProps {
   userName?: string;
 }
 
+// Safe localStorage helper to handle errors gracefully
+function safeLocalStorage() {
+  return {
+    getItem: (key: string): string | null => {
+      try {
+        return localStorage.getItem(key);
+      } catch {
+        // localStorage may be unavailable (private browsing, storage quota, etc.)
+        return null;
+      }
+    },
+    setItem: (key: string, value: string): void => {
+      try {
+        localStorage.setItem(key, value);
+      } catch {
+        // Silently fail - not critical for app functionality
+      }
+    },
+    removeItem: (key: string): void => {
+      try {
+        localStorage.removeItem(key);
+      } catch {
+        // Silently fail
+      }
+    },
+  };
+}
+
 export function OnboardingProvider({ children, isNewUser, userName }: OnboardingProviderProps) {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(true);
@@ -29,27 +57,36 @@ export function OnboardingProvider({ children, isNewUser, userName }: Onboarding
   // Check localStorage on mount
   useEffect(() => {
     setMounted(true);
-    const completed = localStorage.getItem(ONBOARDING_STORAGE_KEY);
+    const storage = safeLocalStorage();
+    const completed = storage.getItem(ONBOARDING_STORAGE_KEY);
     const hasCompleted = completed === "true";
     setHasCompletedOnboarding(hasCompleted);
 
     // Show onboarding for new users who haven't completed it
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
     if (isNewUser && !hasCompleted) {
       // Small delay to let the page render first
-      setTimeout(() => {
+      timeoutId = setTimeout(() => {
         setShowOnboarding(true);
       }, 500);
     }
+
+    // Cleanup timeout on unmount
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
   }, [isNewUser]);
 
   const dismissOnboarding = () => {
     setShowOnboarding(false);
-    localStorage.setItem(ONBOARDING_STORAGE_KEY, "true");
+    safeLocalStorage().setItem(ONBOARDING_STORAGE_KEY, "true");
     setHasCompletedOnboarding(true);
   };
 
   const resetOnboarding = () => {
-    localStorage.removeItem(ONBOARDING_STORAGE_KEY);
+    safeLocalStorage().removeItem(ONBOARDING_STORAGE_KEY);
     setHasCompletedOnboarding(false);
     setShowOnboarding(true);
   };
