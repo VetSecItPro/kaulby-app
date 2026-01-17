@@ -368,7 +368,7 @@ function escapeHtml(text: string): string {
     .replace(/'/g, "&#039;");
 }
 
-// Base email wrapper - elegant black theme
+// Base email wrapper - elegant black theme with logo header
 function getEmailWrapper(content: string): string {
   return `
 <!DOCTYPE html>
@@ -394,16 +394,25 @@ function getEmailWrapper(content: string): string {
     <tr>
       <td align="center" style="padding: 40px 16px;">
         <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px; width: 100%;">
-          <!-- Logo Header -->
-          <tr>
-            <td align="center" style="padding: 0 0 32px;">
-              <img src="${LOGO_URL}" alt="Kaulby" width="120" height="auto" style="display: block; max-width: 120px; height: auto;" />
-            </td>
-          </tr>
           <!-- Main Content Card -->
           <tr>
             <td>
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: ${COLORS.card}; border: 1px solid ${COLORS.cardBorder}; border-radius: 16px; overflow: hidden;">
+                <!-- Logo Header Row -->
+                <tr>
+                  <td style="padding: 20px 32px; border-bottom: 1px solid ${COLORS.cardBorder};">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                      <tr>
+                        <td width="48" style="vertical-align: middle;">
+                          <img src="${LOGO_URL}" alt="Kaulby" width="40" height="40" style="display: block; border-radius: 8px;" />
+                        </td>
+                        <td style="vertical-align: middle; padding-left: 12px;">
+                          <span style="font-size: 16px; font-weight: 600; color: ${COLORS.text};">Kaulby</span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
                 ${content}
               </table>
             </td>

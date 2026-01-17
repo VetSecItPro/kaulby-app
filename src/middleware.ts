@@ -8,7 +8,11 @@ async function getClerkHandler() {
   if (!clerkHandler) {
     const { clerkMiddleware, createRouteMatcher } = await import("@clerk/nextjs/server");
 
-    const isDev = process.env.NODE_ENV === "development";
+    // SECURITY: Only truly public routes - NEVER add dashboard/manage here
+    // Test email endpoints only available in verified local development
+    const isLocalDev = process.env.NODE_ENV === "development" &&
+                       !process.env.VERCEL &&
+                       !process.env.VERCEL_ENV;
 
     const isPublicRoute = createRouteMatcher([
       "/",
@@ -21,8 +25,8 @@ async function getClerkHandler() {
       "/api/webhooks(.*)",
       "/api/inngest(.*)",
       "/invite(.*)", // Public invite acceptance page
-      // Allow dashboard, manage, and test endpoints in development
-      ...(isDev ? ["/dashboard(.*)", "/manage(.*)", "/api/test-emails(.*)", "/api/test-single-email(.*)"] : []),
+      // Test endpoints only in verified local development (not Vercel preview/prod)
+      ...(isLocalDev ? ["/api/test-emails(.*)", "/api/test-single-email(.*)"] : []),
     ]);
 
     clerkHandler = clerkMiddleware(async (auth, request) => {
