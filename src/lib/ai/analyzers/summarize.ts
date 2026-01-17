@@ -6,6 +6,7 @@ export interface SummaryResult {
   summary: string;
   topics: string[];
   actionable: boolean;
+  urgency?: "high" | "medium" | "low";
 }
 
 export async function summarizeContent(

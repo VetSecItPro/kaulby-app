@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
+import type { BillingInterval } from "@/lib/stripe";
 
 // Initialize Stripe
 const stripePromise = loadStripe(
@@ -24,6 +25,7 @@ interface CheckoutModalProps {
   onOpenChange: (open: boolean) => void;
   plan: "pro" | "enterprise";
   planName: string;
+  billingInterval?: BillingInterval;
 }
 
 export function CheckoutModal({
@@ -31,6 +33,7 @@ export function CheckoutModal({
   onOpenChange,
   plan,
   planName,
+  billingInterval = "monthly",
 }: CheckoutModalProps) {
   const [error, setError] = useState<string | null>(null);
 
@@ -42,7 +45,7 @@ export function CheckoutModal({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ plan }),
+        body: JSON.stringify({ plan, billingInterval }),
       });
 
       if (!response.ok) {
@@ -56,7 +59,7 @@ export function CheckoutModal({
       setError(err instanceof Error ? err.message : "Something went wrong");
       throw err;
     }
-  }, [plan]);
+  }, [plan, billingInterval]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

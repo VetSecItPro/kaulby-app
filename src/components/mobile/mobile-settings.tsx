@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Check, Zap, User, CreditCard, Brain, Database, Download, Trash2, AlertTriangle, Clock } from "lucide-react";
+import { Check, Zap, User, CreditCard, Database, Download, Trash2, AlertTriangle, Clock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,15 +34,6 @@ interface Plan {
   recommended?: boolean;
 }
 
-interface AiUsage {
-  promptTokens: number;
-  completionTokens: number;
-  totalTokens: number;
-  totalCost: number;
-  callCount: number;
-  periodStart: Date;
-}
-
 interface DataStats {
   monitors: number;
   results: number;
@@ -63,7 +54,6 @@ interface MobileSettingsProps {
   onTimezoneChange: (timezone: string) => void;
   isSavingTimezone: boolean;
   plans: Plan[];
-  aiUsage: AiUsage;
   dataStats: DataStats;
   onExportData: () => void;
   onDeleteAccount: () => void;
@@ -88,6 +78,16 @@ const itemVariants = {
   },
 };
 
+// Helper to convert internal plan names to display names
+function getPlanDisplayName(status: string): string {
+  const displayNames: Record<string, string> = {
+    enterprise: "Team",
+    pro: "Pro",
+    free: "Free",
+  };
+  return displayNames[status] || status;
+}
+
 export function MobileSettings({
   email,
   name,
@@ -97,13 +97,13 @@ export function MobileSettings({
   onTimezoneChange,
   isSavingTimezone,
   plans,
-  aiUsage,
   dataStats,
   onExportData,
   onDeleteAccount,
   isExporting,
   isDeleting,
 }: MobileSettingsProps) {
+  const planDisplayName = getPlanDisplayName(subscriptionStatus);
   const formatNumber = (num: number) => {
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
     if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
@@ -149,9 +149,9 @@ export function MobileSettings({
                 <p className="font-medium">Current Plan</p>
                 <Badge
                   variant={subscriptionStatus === "free" ? "secondary" : "default"}
-                  className="capitalize mt-1"
+                  className="mt-1"
                 >
-                  {subscriptionStatus}
+                  {planDisplayName}
                 </Badge>
               </div>
             </div>
@@ -186,59 +186,22 @@ export function MobileSettings({
         </Card>
       </motion.div>
 
-      {/* AI Usage Section */}
-      <motion.div variants={itemVariants} className="space-y-3">
-        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-          <Brain className="h-4 w-4" />
-          AI Usage
-        </h2>
-        <Card>
-          <CardContent className="p-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs text-muted-foreground">Total Tokens</p>
-                <p className="text-lg font-bold">{formatNumber(aiUsage.totalTokens)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">AI Cost</p>
-                <p className="text-lg font-bold">${aiUsage.totalCost.toFixed(4)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Input Tokens</p>
-                <p className="text-lg font-bold">{formatNumber(aiUsage.promptTokens)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Output Tokens</p>
-                <p className="text-lg font-bold">{formatNumber(aiUsage.completionTokens)}</p>
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground mt-3">
-              {aiUsage.callCount} AI calls this period
-            </p>
-          </CardContent>
-        </Card>
-      </motion.div>
-
       {/* Data & Storage Section */}
       <motion.div variants={itemVariants} className="space-y-3">
         <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
           <Database className="h-4 w-4" />
-          Data & Storage
+          Your Data
         </h2>
         <Card>
           <CardContent className="p-4 space-y-4">
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-xs text-muted-foreground">Monitors</p>
                 <p className="text-lg font-bold">{dataStats.monitors}</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Results</p>
+                <p className="text-xs text-muted-foreground">Results Stored</p>
                 <p className="text-lg font-bold">{formatNumber(dataStats.results)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">AI Calls</p>
-                <p className="text-lg font-bold">{formatNumber(dataStats.aiCalls)}</p>
               </div>
             </div>
 

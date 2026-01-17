@@ -2,10 +2,13 @@ import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { stripe, getPlanFromPriceId } from "@/lib/stripe";
 import { db, users } from "@/lib/db";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { upsertContact, sendSubscriptionEmail, sendPaymentFailedEmail } from "@/lib/email";
 import { captureEvent } from "@/lib/posthog";
 import Stripe from "stripe";
+
+// Maximum number of founding members who lock in price forever
+const FOUNDING_MEMBER_LIMIT = 1000;
 
 export async function POST(request: NextRequest) {
   const body = await request.text();
@@ -49,6 +52,25 @@ export async function POST(request: NextRequest) {
           const priceId = subscription.items.data[0]?.price.id;
           const plan = getPlanFromPriceId(priceId || "");
 
+          // Check founding member eligibility (only for paid plans)
+          let isFoundingMember = false;
+          let foundingMemberNumber: number | null = null;
+
+          if (plan === "pro" || plan === "enterprise") {
+            // Count existing founding members
+            const countResult = await db
+              .select({ count: sql<number>`count(*)::int` })
+              .from(users)
+              .where(eq(users.isFoundingMember, true));
+
+            const currentCount = countResult[0]?.count || 0;
+
+            if (currentCount < FOUNDING_MEMBER_LIMIT) {
+              isFoundingMember = true;
+              foundingMemberNumber = currentCount + 1;
+            }
+          }
+
           // Update user in database
           await db
             .update(users)
@@ -56,6 +78,10 @@ export async function POST(request: NextRequest) {
               stripeCustomerId: customerId,
               subscriptionId: subscriptionId,
               subscriptionStatus: plan,
+              // Founding member fields
+              isFoundingMember,
+              foundingMemberNumber,
+              foundingMemberPriceId: isFoundingMember ? priceId : null,
               updatedAt: new Date(),
             })
             .where(eq(users.id, userId));
@@ -88,6 +114,8 @@ export async function POST(request: NextRequest) {
                 plan,
                 priceId,
                 subscriptionId,
+                isFoundingMember,
+                foundingMemberNumber,
               },
             });
           }

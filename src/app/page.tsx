@@ -29,6 +29,7 @@ import {
   AnimatedStepCard,
   TextReveal,
 } from "@/components/shared/home-animations-lazy";
+import { PWAInstallBanner } from "@/components/shared/pwa-install-banner";
 
 export default function HomePage() {
   return (
@@ -208,7 +209,7 @@ export default function HomePage() {
                 <FeatureCard
                   icon={Bell}
                   title="Instant Alerts"
-                  description="Get real-time notifications via email, Slack, or in-app when keywords are mentioned."
+                  description="Get real-time notifications via email when keywords are mentioned."
                 />
               </StaggerItem>
               <StaggerItem>
@@ -297,6 +298,9 @@ export default function HomePage() {
           </div>
         </AnimatedSection>
       </HomeAnimations>
+
+      {/* PWA Install Banner */}
+      <PWAInstallBanner />
 
       {/* Footer */}
       <footer className="border-t py-8 md:py-12 px-4 bg-background safe-area-bottom">

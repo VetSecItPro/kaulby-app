@@ -16,7 +16,7 @@ export default async function DashboardLayout({
   // In dev mode, skip auth for easy testing
   if (isDev) {
     return (
-      <ResponsiveDashboardLayout isAdmin={true}>
+      <ResponsiveDashboardLayout isAdmin={true} subscriptionStatus="enterprise">
         {children}
       </ResponsiveDashboardLayout>
     );
@@ -33,7 +33,7 @@ export default async function DashboardLayout({
   const [dbUser, monitorsCountResult] = await Promise.all([
     db.query.users.findFirst({
       where: (users, { eq }) => eq(users.id, userId),
-      columns: { isAdmin: true },
+      columns: { isAdmin: true, subscriptionStatus: true },
     }),
     db
       .select({ count: count() })
@@ -44,10 +44,11 @@ export default async function DashboardLayout({
   const hasMonitors = (monitorsCountResult[0]?.count || 0) > 0;
   const isNewUser = !hasMonitors;
   const isAdmin = dbUser?.isAdmin || false;
+  const subscriptionStatus = dbUser?.subscriptionStatus || "free";
   const userName = user?.firstName || user?.username || undefined;
 
   return (
-    <ResponsiveDashboardLayout isAdmin={isAdmin}>
+    <ResponsiveDashboardLayout isAdmin={isAdmin} subscriptionStatus={subscriptionStatus}>
       <DashboardClientWrapper isNewUser={isNewUser} userName={userName}>
         {children}
       </DashboardClientWrapper>

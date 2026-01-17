@@ -8,7 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Radio, MessageSquare, TrendingUp, PlusCircle, ArrowRight, Eye } from "lucide-react";
 import Link from "next/link";
 import { QuickStartGuide } from "@/components/dashboard/onboarding";
+import { OnboardingTrigger } from "@/components/dashboard/onboarding-trigger";
 import { SampleResultsPreview } from "@/components/dashboard/sample-results";
+import { UpgradeBanner } from "@/components/dashboard/upgrade-banner";
 import { getPlanLimits } from "@/lib/stripe";
 import { getUserPlan } from "@/lib/limits";
 
@@ -30,12 +32,13 @@ export default async function DashboardPage() {
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
+  // In dev mode, default to enterprise (Team) for full feature testing
   const [user, userPlan] = userId
     ? await Promise.all([
         db.query.users.findFirst({ where: eq(users.id, userId) }),
         getUserPlan(userId),
       ])
-    : [null, "free" as const];
+    : [null, isDev ? "enterprise" as const : "free" as const];
 
   const limits = getPlanLimits(userPlan);
 
@@ -70,6 +73,9 @@ export default async function DashboardPage() {
   const hasResults = resultsCount > 0;
   const showGettingStarted = !hasMonitors || !hasResults;
 
+  // Show onboarding wizard for new users who haven't completed it
+  const showOnboarding = user ? !user.onboardingCompleted && !hasMonitors : false;
+
   // Get recent results for quick preview
   let recentResults: { title: string; platform: string; createdAt: Date }[] = [];
   if (hasResults && userMonitorIds.length > 0) {
@@ -88,6 +94,13 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      {/* Onboarding Wizard - shows automatically for new users */}
+      <OnboardingTrigger
+        showOnboarding={showOnboarding}
+        userName={user?.name || undefined}
+        userPlan={userPlan}
+      />
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -103,6 +116,11 @@ export default async function DashboardPage() {
           </Button>
         </Link>
       </div>
+
+      {/* Upgrade Banner - shown for free users who have monitors */}
+      {hasMonitors && (
+        <UpgradeBanner plan={userPlan} variant="full" context="dashboard" />
+      )}
 
       {/* Getting Started Guide - shown prominently for new users */}
       {showGettingStarted && (

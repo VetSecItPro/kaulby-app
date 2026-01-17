@@ -3,19 +3,27 @@ import { SYSTEM_PROMPTS } from "../prompts";
 
 export interface WeeklyInsightsResult {
   headline: string;
+  executiveSummary?: string; // 1-2 sentence summary for executives
   keyTrends: Array<{
     trend: string;
     evidence: string;
+    implication?: string;
   }>;
   sentimentBreakdown: {
     positive: number;
     negative: number;
     neutral: number;
     dominantSentiment: "positive" | "negative" | "neutral" | "mixed";
+    change?: string;
   };
   topPainPoints: string[];
-  opportunities: string[];
+  opportunities: Array<{
+    type?: "engagement" | "content" | "product" | "sales";
+    description: string;
+    suggestedAction?: string;
+  }> | string[];
   recommendations: string[];
+  alertItems?: string[];
 }
 
 export interface ResultForAnalysis {
