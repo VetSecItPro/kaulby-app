@@ -6,7 +6,13 @@ import { TeamSettings } from "@/components/dashboard/team-settings";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, Zap, Download, Trash2, Database, AlertTriangle, Clock } from "lucide-react";
+import { Check, Zap, Download, Trash2, Database, AlertTriangle, Clock, FileJson, FileSpreadsheet, Settings2 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -101,18 +107,18 @@ export function ResponsiveSettings({
     }
   };
 
-  const handleExportData = async () => {
+  const handleExportData = async (format: "json" | "csv" | "monitors" = "json") => {
     setIsExporting(true);
     try {
-      const response = await fetch("/api/user/export", {
-        method: "POST",
-      });
+      const response = await fetch(`/api/export?format=${format}`);
       if (response.ok) {
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `kaulby-data-export-${new Date().toISOString().split("T")[0]}.json`;
+        const extension = format === "csv" ? "csv" : "json";
+        const type = format === "monitors" ? "monitors" : format === "csv" ? "results" : "export";
+        a.download = `kaulby-${type}-${new Date().toISOString().split("T")[0]}.${extension}`;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
@@ -162,7 +168,7 @@ export function ResponsiveSettings({
           isSavingTimezone={isSavingTimezone}
           plans={plans}
           dataStats={dataStats}
-          onExportData={handleExportData}
+          onExportData={() => handleExportData("json")}
           onDeleteAccount={handleDeleteAccount}
           isExporting={isExporting}
           isDeleting={isDeleting}
@@ -264,15 +270,32 @@ export function ResponsiveSettings({
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
-            <Button
-              variant="outline"
-              onClick={handleExportData}
-              disabled={isExporting}
-              className="flex items-center gap-2"
-            >
-              <Download className="h-4 w-4" />
-              {isExporting ? "Exporting..." : "Export All Data"}
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  disabled={isExporting}
+                  className="flex items-center gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  {isExporting ? "Exporting..." : "Export Data"}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem onClick={() => handleExportData("json")} className="flex items-center gap-2">
+                  <FileJson className="h-4 w-4" />
+                  Full Export (JSON)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExportData("csv")} className="flex items-center gap-2">
+                  <FileSpreadsheet className="h-4 w-4" />
+                  Results Only (CSV)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExportData("monitors")} className="flex items-center gap-2">
+                  <Settings2 className="h-4 w-4" />
+                  Monitors Only (JSON)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             <AlertDialog>
               <AlertDialogTrigger asChild>

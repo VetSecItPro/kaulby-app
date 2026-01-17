@@ -4,6 +4,7 @@ import { eq, and, gte, inArray } from "drizzle-orm";
 import { sendAlertEmail, sendDigestEmail, type WeeklyInsights } from "@/lib/email";
 import { getPlanLimits } from "@/lib/stripe";
 import { generateWeeklyInsights } from "@/lib/ai";
+import { sendWebhookNotification, type NotificationResult } from "@/lib/notifications";
 
 // Supported timezones (IANA format for DST handling)
 const SUPPORTED_TIMEZONES = [
@@ -117,7 +118,44 @@ export const sendAlert = inngest.createFunction(
       });
     }
 
-    // TODO: Implement Slack and in-app notifications
+    // Slack webhook notifications (works for both Slack and Discord)
+    if (alert.channel === "slack") {
+      const webhookResult = await step.run("send-webhook", async () => {
+        // Format results for webhook notification
+        const notificationResults: NotificationResult[] = matchingResults.map((r) => ({
+          id: r.id,
+          title: r.title,
+          content: r.content,
+          sourceUrl: r.sourceUrl,
+          platform: r.platform,
+          author: r.author,
+          postedAt: r.postedAt,
+          sentiment: r.sentiment,
+          conversationCategory: r.conversationCategory as NotificationResult["conversationCategory"],
+          aiSummary: r.aiSummary,
+        }));
+
+        return sendWebhookNotification(alert.destination, {
+          monitorName: alert.monitor.name,
+          results: notificationResults,
+          dashboardUrl: `https://kaulbyapp.com/dashboard/monitors/${alert.monitor.id}`,
+        });
+      });
+
+      if (!webhookResult.success) {
+        console.error(`Webhook notification failed for alert ${alertId}: ${webhookResult.error}`);
+      }
+
+      return {
+        sent: webhookResult.success,
+        channel: alert.channel,
+        webhookType: webhookResult.type,
+        resultsCount: matchingResults.length,
+        error: webhookResult.error,
+      };
+    }
+
+    // TODO: Implement in-app notifications
 
     return {
       sent: true,

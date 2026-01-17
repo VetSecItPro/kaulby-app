@@ -11,6 +11,8 @@ import { Download, Lock } from "lucide-react";
 import Link from "next/link";
 import type { PlanKey } from "@/lib/stripe";
 
+type ConversationCategory = "pain_point" | "solution_request" | "advice_request" | "money_talk" | "hot_discussion";
+
 interface Result {
   id: string;
   platform: "reddit" | "hackernews" | "producthunt" | "devto" | "twitter" | "googlereviews" | "trustpilot" | "appstore" | "playstore" | "quora";
@@ -21,6 +23,7 @@ interface Result {
   postedAt: Date | null;
   sentiment: "positive" | "negative" | "neutral" | null;
   painPointCategory: string | null;
+  conversationCategory: ConversationCategory | null;
   aiSummary: string | null;
   isViewed: boolean;
   isClicked: boolean;

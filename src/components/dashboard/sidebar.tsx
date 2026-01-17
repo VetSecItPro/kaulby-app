@@ -13,6 +13,9 @@ import {
   CreditCard,
   ShieldCheck,
   HelpCircle,
+  Users,
+  BarChart3,
+  Lightbulb,
 } from "lucide-react";
 
 const sidebarLinks = [
@@ -28,9 +31,24 @@ const sidebarLinks = [
     icon: Radio,
   },
   {
+    title: "Audiences",
+    href: "/dashboard/audiences",
+    icon: Users,
+  },
+  {
     title: "Results",
     href: "/dashboard/results",
     icon: MessageSquare,
+  },
+  {
+    title: "Analytics",
+    href: "/dashboard/analytics",
+    icon: BarChart3,
+  },
+  {
+    title: "Insights",
+    href: "/dashboard/insights",
+    icon: Lightbulb,
   },
   {
     title: "Settings",
