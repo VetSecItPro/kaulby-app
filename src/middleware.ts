@@ -20,6 +20,8 @@ async function getClerkHandler() {
       "/privacy",
       "/terms",
       "/gummysearch", // GummySearch migration landing page
+      "/subreddits(.*)", // Programmatic SEO - subreddit landing pages
+      "/alternatives(.*)", // Programmatic SEO - competitor comparison pages
       "/articles(.*)",
       "/sign-in(.*)",
       "/sign-up(.*)",
