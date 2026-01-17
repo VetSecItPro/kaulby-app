@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { monitors, results } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { incrementResultsCount, canAccessPlatform, shouldProcessMonitor } from "@/lib/limits";
+import { contentMatchesMonitor } from "@/lib/content-matcher";
 
 const HN_API_BASE = "https://hacker-news.firebaseio.com/v0";
 
@@ -77,13 +78,22 @@ export const monitorHackerNews = inngest.createFunction(
 
       let monitorMatchCount = 0;
 
-      // Check each story for keyword matches
+      // Check each story for matches using content matcher
       const matchingStories = stories.filter((story) => {
         if (!story || !story.title) return false;
-        const text = `${story.title} ${story.text || ""}`.toLowerCase();
-        return monitor.keywords.some((keyword) =>
-          text.includes(keyword.toLowerCase())
+        const matchResult = contentMatchesMonitor(
+          {
+            title: story.title,
+            body: story.text || undefined,
+            author: story.by,
+          },
+          {
+            companyName: monitor.companyName,
+            keywords: monitor.keywords,
+            searchQuery: monitor.searchQuery,
+          }
         );
+        return matchResult.matches;
       });
 
       // Save matching stories as results

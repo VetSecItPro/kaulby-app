@@ -4,6 +4,7 @@ import { monitors, results } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { incrementResultsCount, canAccessPlatform, shouldProcessMonitor } from "@/lib/limits";
 import { findRelevantSubredditsCached } from "@/lib/ai";
+import { contentMatchesMonitor } from "@/lib/content-matcher";
 
 // Reddit RSS feed URL
 function getRedditRssUrl(subreddit: string): string {
@@ -132,35 +133,23 @@ export const monitorReddit = inngest.createFunction(
           }
         });
 
-        // Check each post for matches
-        // Priority: company name mentions, then company + keyword combos
+        // Check each post for matches using content matcher
+        // Supports: company name, keywords, and advanced boolean search
         const matchingPosts = posts.filter((post) => {
-          const text = `${post.data.title} ${post.data.selftext}`.toLowerCase();
-
-          // If company name exists, search for it
-          if (monitor.companyName) {
-            const companyLower = monitor.companyName.toLowerCase();
-            // Direct company name mention
-            if (text.includes(companyLower)) {
-              return true;
+          const matchResult = contentMatchesMonitor(
+            {
+              title: post.data.title,
+              body: post.data.selftext,
+              author: post.data.author,
+              subreddit: post.data.subreddit,
+            },
+            {
+              companyName: monitor.companyName,
+              keywords: monitor.keywords,
+              searchQuery: monitor.searchQuery,
             }
-            // Company name + keyword combination (if keywords exist)
-            if (monitor.keywords && monitor.keywords.length > 0) {
-              return monitor.keywords.some((keyword) =>
-                text.includes(companyLower) ||
-                (text.includes(keyword.toLowerCase()) && text.includes(companyLower))
-              );
-            }
-          }
-
-          // Fallback: keyword-only search (for backwards compatibility with old monitors)
-          if (monitor.keywords && monitor.keywords.length > 0) {
-            return monitor.keywords.some((keyword) =>
-              text.includes(keyword.toLowerCase())
-            );
-          }
-
-          return false;
+          );
+          return matchResult.matches;
         });
 
         // Save matching posts as results

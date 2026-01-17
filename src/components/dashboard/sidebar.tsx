@@ -13,6 +13,7 @@ import {
   CreditCard,
   ShieldCheck,
   HelpCircle,
+  Users,
 } from "lucide-react";
 
 const sidebarLinks = [
@@ -26,6 +27,11 @@ const sidebarLinks = [
     title: "Monitors",
     href: "/dashboard/monitors",
     icon: Radio,
+  },
+  {
+    title: "Audiences",
+    href: "/dashboard/audiences",
+    icon: Users,
   },
   {
     title: "Results",

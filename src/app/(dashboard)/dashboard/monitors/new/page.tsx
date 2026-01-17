@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, X, Loader2, Sparkles, Lock } from "lucide-react";
 import Link from "next/link";
+import { SearchQueryInput } from "@/components/search-query-input";
 
 // All available platforms
 const ALL_PLATFORMS = [
@@ -68,6 +69,7 @@ export default function NewMonitorPage() {
   const [companyName, setCompanyName] = useState("");
   const [keywordInput, setKeywordInput] = useState("");
   const [keywords, setKeywords] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [error, setError] = useState("");
 
@@ -125,6 +127,7 @@ export default function NewMonitorPage() {
           name: name.trim(),
           companyName: companyName.trim(),
           keywords, // Keywords are now optional additional terms
+          searchQuery: searchQuery.trim() || undefined, // Advanced boolean search (Pro feature)
           platforms: selectedPlatforms,
         }),
       });
@@ -270,6 +273,15 @@ export default function NewMonitorPage() {
               <p className="text-xs text-muted-foreground">
                 Add additional keywords to find mentions like &quot;{companyName || "your company"} customer service&quot; or &quot;{companyName || "your company"} alternative&quot;.
               </p>
+            </div>
+
+            {/* Advanced Search Query (Pro feature) */}
+            <div className="space-y-2">
+              <SearchQueryInput
+                value={searchQuery}
+                onChange={setSearchQuery}
+                isPro={isPaidUser}
+              />
             </div>
 
             {/* Platforms */}

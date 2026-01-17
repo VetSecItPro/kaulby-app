@@ -42,6 +42,7 @@ export const alertFrequencyEnum = pgEnum("alert_frequency", [
   "instant",
   "daily",
   "weekly",
+  "monthly",
 ]);
 
 export const sentimentEnum = pgEnum("sentiment", [
@@ -58,6 +59,16 @@ export const painPointCategoryEnum = pgEnum("pain_point_category", [
   "negative_experience",
   "positive_feedback",
   "general_discussion",
+]);
+
+// Conversation category - GummySearch-style content classification
+// Helps users quickly filter for the most valuable discussions
+export const conversationCategoryEnum = pgEnum("conversation_category", [
+  "pain_point",       // Frustration, complaint, problem description
+  "solution_request", // Actively seeking recommendations/alternatives
+  "advice_request",   // Looking for guidance, how-to questions
+  "money_talk",       // Budget discussions, pricing questions, ROI talk
+  "hot_discussion",   // Trending/viral threads with high engagement
 ]);
 
 // IANA timezone strings for proper DST handling
@@ -114,11 +125,15 @@ export const users = pgTable("users", {
   isFoundingMember: boolean("is_founding_member").default(false).notNull(),
   foundingMemberNumber: integer("founding_member_number"), // 1-1000
   foundingMemberPriceId: text("founding_member_price_id"), // Stripe price ID they locked in
+  // Day Pass - 24hr Pro access for $10
+  dayPassExpiresAt: timestamp("day_pass_expires_at"), // When the day pass expires (null = no active pass)
+  dayPassPurchaseCount: integer("day_pass_purchase_count").default(0).notNull(), // Track repeat buyers
+  lastDayPassPurchasedAt: timestamp("last_day_pass_purchased_at"), // Last purchase timestamp
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// Audiences - collections of communities to monitor
+// Audiences - collections of monitors grouped by topic/project (GummySearch-style)
 export const audiences = pgTable("audiences", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: text("user_id")
@@ -126,9 +141,27 @@ export const audiences = pgTable("audiences", {
     .references(() => users.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   description: text("description"),
+  color: text("color"), // Hex color for UI (e.g., "#3b82f6")
+  icon: text("icon"), // Lucide icon name (e.g., "briefcase", "rocket")
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("audiences_user_id_idx").on(table.userId),
+]);
+
+// Audience-Monitor junction table - links monitors to audiences
+export const audienceMonitors = pgTable("audience_monitors", {
+  audienceId: uuid("audience_id")
+    .notNull()
+    .references(() => audiences.id, { onDelete: "cascade" }),
+  monitorId: uuid("monitor_id")
+    .notNull()
+    .references(() => monitors.id, { onDelete: "cascade" }),
+  addedAt: timestamp("added_at").defaultNow().notNull(),
+}, (table) => [
+  index("audience_monitors_audience_idx").on(table.audienceId),
+  index("audience_monitors_monitor_idx").on(table.monitorId),
+]);
 
 // Communities - subreddits, HN, etc.
 export const communities = pgTable("communities", {
@@ -152,6 +185,9 @@ export const monitors = pgTable("monitors", {
   name: text("name").notNull(), // Display name for the monitor
   companyName: text("company_name"), // The company/brand to monitor (required for brand monitoring)
   keywords: text("keywords").array().notNull(), // Additional keywords to track alongside company name
+  // Advanced boolean search query (Pro feature)
+  // Supports: "exact phrase", title:, body:, author:, subreddit:, NOT, OR, AND
+  searchQuery: text("search_query"),
   filters: jsonb("filters"), // pain_point, solution_requests, etc.
   platforms: platformEnum("platforms").array().notNull(),
   isActive: boolean("is_active").default(true).notNull(),
@@ -195,7 +231,13 @@ export const results = pgTable("results", {
   sentiment: sentimentEnum("sentiment"),
   sentimentScore: real("sentiment_score"),
   painPointCategory: painPointCategoryEnum("pain_point_category"),
+  // Conversation category - GummySearch-style classification for quick filtering
+  conversationCategory: conversationCategoryEnum("conversation_category"),
+  conversationCategoryConfidence: real("conversation_category_confidence"), // 0.0 to 1.0
+  engagementScore: integer("engagement_score"), // For hot_discussion detection (upvotes + comments)
   aiSummary: text("ai_summary"),
+  // Digest tracking - prevent sending same result multiple times
+  lastSentInDigestAt: timestamp("last_sent_in_digest_at"),
   aiAnalysis: jsonb("ai_analysis"), // Full AI analysis JSON (Pro: sentiment+painpoint+summary, Team: comprehensive)
   metadata: jsonb("metadata"),
   // User interaction tracking
@@ -211,6 +253,7 @@ export const results = pgTable("results", {
   index("results_created_at_idx").on(table.createdAt),
   index("results_platform_idx").on(table.platform),
   index("results_sentiment_idx").on(table.sentiment),
+  index("results_conversation_category_idx").on(table.conversationCategory),
 ]);
 
 // AI Logs - for cost tracking
@@ -348,6 +391,18 @@ export const audiencesRelations = relations(audiences, ({ one, many }) => ({
   }),
   communities: many(communities),
   monitors: many(monitors),
+  audienceMonitors: many(audienceMonitors),
+}));
+
+export const audienceMonitorsRelations = relations(audienceMonitors, ({ one }) => ({
+  audience: one(audiences, {
+    fields: [audienceMonitors.audienceId],
+    references: [audiences.id],
+  }),
+  monitor: one(monitors, {
+    fields: [audienceMonitors.monitorId],
+    references: [monitors.id],
+  }),
 }));
 
 export const communitiesRelations = relations(communities, ({ one }) => ({
@@ -368,6 +423,7 @@ export const monitorsRelations = relations(monitors, ({ one, many }) => ({
   }),
   alerts: many(alerts),
   results: many(results),
+  audienceMonitors: many(audienceMonitors),
 }));
 
 export const alertsRelations = relations(alerts, ({ one }) => ({
@@ -425,6 +481,8 @@ export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Audience = typeof audiences.$inferSelect;
 export type NewAudience = typeof audiences.$inferInsert;
+export type AudienceMonitor = typeof audienceMonitors.$inferSelect;
+export type NewAudienceMonitor = typeof audienceMonitors.$inferInsert;
 export type Community = typeof communities.$inferSelect;
 export type NewCommunity = typeof communities.$inferInsert;
 export type Monitor = typeof monitors.$inferSelect;

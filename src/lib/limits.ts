@@ -31,15 +31,59 @@ export interface FeatureAccess {
 
 /**
  * Get the user's current subscription plan
+ * Checks for active day pass first - day pass grants Pro-level access for 24 hours
  */
 export async function getUserPlan(userId: string): Promise<PlanKey> {
   const user = await db.query.users.findFirst({
     where: eq(users.id, userId),
-    columns: { subscriptionStatus: true },
+    columns: {
+      subscriptionStatus: true,
+      dayPassExpiresAt: true,
+    },
   });
 
   if (!user) return "free";
+
+  // Check for active day pass - grants Pro-level access
+  if (user.dayPassExpiresAt && new Date(user.dayPassExpiresAt) > new Date()) {
+    return "pro";
+  }
+
   return (user.subscriptionStatus as PlanKey) || "free";
+}
+
+/**
+ * Check if user has an active day pass
+ */
+export async function hasActiveDayPass(userId: string): Promise<{
+  active: boolean;
+  expiresAt: Date | null;
+  hoursRemaining: number | null;
+}> {
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+    columns: { dayPassExpiresAt: true },
+  });
+
+  if (!user?.dayPassExpiresAt) {
+    return { active: false, expiresAt: null, hoursRemaining: null };
+  }
+
+  const expiresAt = new Date(user.dayPassExpiresAt);
+  const now = new Date();
+
+  if (expiresAt <= now) {
+    return { active: false, expiresAt: null, hoursRemaining: null };
+  }
+
+  const msRemaining = expiresAt.getTime() - now.getTime();
+  const hoursRemaining = Math.ceil(msRemaining / (1000 * 60 * 60));
+
+  return {
+    active: true,
+    expiresAt,
+    hoursRemaining,
+  };
 }
 
 /**

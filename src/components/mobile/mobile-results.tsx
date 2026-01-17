@@ -9,7 +9,12 @@ import {
   BookmarkCheck,
   ChevronDown,
   Filter,
-  CheckCheck
+  CheckCheck,
+  Target,
+  DollarSign,
+  AlertTriangle,
+  HelpCircle,
+  TrendingUp,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +30,17 @@ import { markAllResultsViewed } from "@/app/(dashboard)/dashboard/results/action
 import { getPlatformBadgeColor, getSentimentBadgeColor } from "@/lib/platform-utils";
 import type { PlanKey } from "@/lib/stripe";
 
+type ConversationCategory = "pain_point" | "solution_request" | "advice_request" | "money_talk" | "hot_discussion";
+
+// Conversation category styling - using Lucide icons for professional B2B appearance
+const conversationCategoryStyles: Record<ConversationCategory, { bg: string; text: string; label: string; Icon: typeof Target }> = {
+  solution_request: { bg: "bg-green-100 dark:bg-green-900/30", text: "text-green-700 dark:text-green-300", label: "Solution", Icon: Target },
+  money_talk: { bg: "bg-amber-100 dark:bg-amber-900/30", text: "text-amber-700 dark:text-amber-300", label: "Budget", Icon: DollarSign },
+  pain_point: { bg: "bg-red-100 dark:bg-red-900/30", text: "text-red-700 dark:text-red-300", label: "Pain Point", Icon: AlertTriangle },
+  advice_request: { bg: "bg-blue-100 dark:bg-blue-900/30", text: "text-blue-700 dark:text-blue-300", label: "Advice", Icon: HelpCircle },
+  hot_discussion: { bg: "bg-purple-100 dark:bg-purple-900/30", text: "text-purple-700 dark:text-purple-300", label: "Trending", Icon: TrendingUp },
+};
+
 interface Result {
   id: string;
   platform: "reddit" | "hackernews" | "producthunt" | "devto" | "twitter" | "googlereviews" | "trustpilot" | "appstore" | "playstore" | "quora";
@@ -35,6 +51,7 @@ interface Result {
   postedAt: Date | null;
   sentiment: "positive" | "negative" | "neutral" | null;
   painPointCategory: string | null;
+  conversationCategory: ConversationCategory | null;
   aiSummary: string | null;
   isViewed: boolean;
   isClicked: boolean;
@@ -248,6 +265,19 @@ function MobileResultCard({ result, allMarkedRead }: { result: Result; allMarked
                     {result.sentiment}
                   </Badge>
                 )}
+                {/* Conversation Category Badge */}
+                {result.conversationCategory && conversationCategoryStyles[result.conversationCategory] && (() => {
+                  const { Icon, bg, text, label } = conversationCategoryStyles[result.conversationCategory];
+                  return (
+                    <Badge
+                      variant="secondary"
+                      className={`text-xs gap-1 ${bg} ${text}`}
+                    >
+                      <Icon className="h-3 w-3" />
+                      {label}
+                    </Badge>
+                  );
+                })()}
                 {isUnread && (
                   <span className="w-2 h-2 rounded-full bg-primary" />
                 )}

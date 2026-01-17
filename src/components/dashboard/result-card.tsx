@@ -23,6 +23,11 @@ import {
   MoreHorizontal,
   Check,
   Loader2,
+  Target,
+  DollarSign,
+  AlertTriangle,
+  HelpCircle,
+  TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -33,6 +38,8 @@ import {
 } from "@/app/(dashboard)/dashboard/results/actions";
 import { getPlatformBadgeColor } from "@/lib/platform-utils";
 import { BlurredAiAnalysis } from "./upgrade-prompt";
+
+type ConversationCategory = "pain_point" | "solution_request" | "advice_request" | "money_talk" | "hot_discussion";
 
 interface ResultCardProps {
   result: {
@@ -45,6 +52,7 @@ interface ResultCardProps {
     postedAt: Date | null;
     sentiment: "positive" | "negative" | "neutral" | null;
     painPointCategory: string | null;
+    conversationCategory: ConversationCategory | null;
     aiSummary: string | null;
     isViewed: boolean;
     isClicked: boolean;
@@ -56,17 +64,20 @@ interface ResultCardProps {
   isAiBlurred?: boolean;
 }
 
+// Conversation category styling - these are the high-value GummySearch-style categories
+// Using Lucide icons for professional B2B appearance
+const conversationCategoryStyles: Record<ConversationCategory, { bg: string; text: string; label: string; Icon: typeof Target }> = {
+  solution_request: { bg: "bg-green-100 dark:bg-green-900/30", text: "text-green-700 dark:text-green-300", label: "Looking for Solution", Icon: Target },
+  money_talk: { bg: "bg-amber-100 dark:bg-amber-900/30", text: "text-amber-700 dark:text-amber-300", label: "Budget Talk", Icon: DollarSign },
+  pain_point: { bg: "bg-red-100 dark:bg-red-900/30", text: "text-red-700 dark:text-red-300", label: "Pain Point", Icon: AlertTriangle },
+  advice_request: { bg: "bg-blue-100 dark:bg-blue-900/30", text: "text-blue-700 dark:text-blue-300", label: "Seeking Advice", Icon: HelpCircle },
+  hot_discussion: { bg: "bg-purple-100 dark:bg-purple-900/30", text: "text-purple-700 dark:text-purple-300", label: "Trending", Icon: TrendingUp },
+};
+
 const sentimentIcons = {
   positive: <ThumbsUp className="h-4 w-4 text-green-500" />,
   negative: <ThumbsDown className="h-4 w-4 text-red-500" />,
   neutral: <Minus className="h-4 w-4 text-gray-500" />,
-};
-
-// Move outside component to avoid recreation on every render
-const formatCategory = (category: string) => {
-  return category
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (l) => l.toUpperCase());
 };
 
 // Memoize to prevent re-renders when parent updates but props haven't changed
@@ -136,11 +147,19 @@ export const ResultCard = memo(function ResultCard({ result, showHidden = false,
                 {result.platform}
               </Badge>
               {result.sentiment && sentimentIcons[result.sentiment]}
-              {result.painPointCategory && (
-                <Badge variant="secondary" className="text-xs">
-                  {formatCategory(result.painPointCategory)}
-                </Badge>
-              )}
+              {/* Conversation Category Badge - GummySearch-style high-value classification */}
+              {result.conversationCategory && conversationCategoryStyles[result.conversationCategory] && (() => {
+                const { Icon, bg, text, label } = conversationCategoryStyles[result.conversationCategory];
+                return (
+                  <Badge
+                    variant="secondary"
+                    className={cn("text-xs font-medium gap-1", bg, text)}
+                  >
+                    <Icon className="h-3 w-3" />
+                    {label}
+                  </Badge>
+                );
+              })()}
               {!isViewed && (
                 <Badge variant="default" className="text-xs bg-primary">
                   New
