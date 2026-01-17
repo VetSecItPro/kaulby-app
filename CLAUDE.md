@@ -91,14 +91,19 @@ Learn from ***'s fate with Reddit. Every integration decision must consider:
 | Tier | Monitors | Keywords | Results Visible | History | Platforms | Refresh |
 |------|----------|----------|-----------------|---------|-----------|---------|
 | free | 1 | 3 | Last 3 | 3 days | Reddit only | 24hr delay |
-| pro | 10 | 20 | Unlimited | 90 days | 8 platforms (Reddit, HN, PH, Google Reviews, Trustpilot, App Store, Play Store, Quora) | Real-time |
-| enterprise | Unlimited | 50 | Unlimited | 1 year | All 9 platforms (includes Dev.to) | Real-time |
+| pro | 10 | 20 | Unlimited | 90 days | All 9 platforms | 4-hour cycle |
+| enterprise | Unlimited | 50 | Unlimited | 1 year | All 9 platforms | Real-time |
 
-| Tier | AI Analysis | Email Digest | Alerts | Export |
-|------|-------------|--------------|--------|--------|
-| free | First result only, then blurred/locked | None | None | None |
-| pro | Full sentiment + pain points | Daily + Weekly | Email + Slack | CSV |
-| enterprise | Full + "Ask AI" feature | Real-time option | All + Webhooks | CSV + API |
+| Tier | AI Analysis | Email Digest | Alerts | Export | Team |
+|------|-------------|--------------|--------|--------|------|
+| free | First result only, then blurred/locked | None | None | None | - |
+| pro | Full sentiment + pain points | Daily | Email | CSV | 1 seat |
+| enterprise | Full AI analysis | Real-time | Email + Webhooks | CSV | 5 seats (+$15/user) |
+
+*****s Program:**
+- First 1,000 Pro/Team subscribers lock in their price forever
+- Tracked via `isFoundingMember`, `***Number`, `***PriceId` in users table
+- After 1,000, new subscribers see updated (higher) pricing
 
 *****:**
 - Free users see AI analysis is ready but blurred - "Unlock with Pro" CTA

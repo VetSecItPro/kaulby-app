@@ -1,41 +1,45 @@
 "use client";
 
 import { ReactNode } from "react";
-import { useDevice } from "@/hooks/use-device";
-import { MobileDashboardLayout } from "@/components/mobile/mobile-dashboard-layout";
+import { MobileNav } from "@/components/mobile/mobile-nav";
+import { MobileHeader } from "@/components/mobile/mobile-header";
 import { Sidebar } from "./sidebar";
 
 interface ResponsiveDashboardLayoutProps {
   children: ReactNode;
   isAdmin: boolean;
   title?: string;
+  subscriptionStatus?: string;
 }
 
+// CSS-based responsive layout - no JS device detection needed
+// This prevents layout flash by using CSS media queries instead of useDevice()
 export function ResponsiveDashboardLayout({
   children,
   isAdmin,
   title,
+  subscriptionStatus = "free",
 }: ResponsiveDashboardLayoutProps) {
-  const { isMobile, isTablet } = useDevice();
-
-  // Mobile or tablet view
-  if (isMobile || isTablet) {
-    return (
-      <MobileDashboardLayout title={title}>
-        {children}
-      </MobileDashboardLayout>
-    );
-  }
-
-  // Desktop view
   return (
-    <div className="flex min-h-screen">
-      <Sidebar isAdmin={isAdmin} />
-      <main className="flex-1 overflow-auto">
-        <div className="container py-6 px-4 md:px-8">
+    <>
+      {/* Mobile/Tablet Layout - visible below lg breakpoint */}
+      <div className="flex flex-col min-h-screen bg-background lg:hidden">
+        <MobileHeader title={title} />
+        <main className="flex-1 overflow-auto pb-20 px-4 pt-4">
           {children}
-        </div>
-      </main>
-    </div>
+        </main>
+        <MobileNav />
+      </div>
+
+      {/* Desktop Layout - visible at lg breakpoint and above */}
+      <div className="hidden lg:flex min-h-screen">
+        <Sidebar isAdmin={isAdmin} subscriptionStatus={subscriptionStatus} />
+        <main className="flex-1 overflow-auto">
+          <div className="container py-6 px-4 md:px-8">
+            {children}
+          </div>
+        </main>
+      </div>
+    </>
   );
 }

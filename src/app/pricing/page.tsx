@@ -14,69 +14,99 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Check } from "lucide-react";
 import { CheckoutModal } from "@/components/checkout-modal";
+import { cn } from "@/lib/utils";
+import type { BillingInterval } from "@/lib/stripe";
 
-const plans = [
+interface Feature {
+  text: string;
+  comingSoon?: boolean;
+}
+
+interface Plan {
+  name: string;
+  key: "free" | "pro" | "enterprise";
+  description: string;
+  monthlyPrice: number;
+  annualPrice: number;
+  features: Feature[];
+  cta: string;
+  href: string;
+  popular: boolean;
+  trialDays: number;
+}
+
+const plans: Plan[] = [
   {
     name: "Free",
-    key: "free" as const,
+    key: "free",
     description: "Get started with basic monitoring",
-    price: "$0",
-    period: "forever",
+    monthlyPrice: 0,
+    annualPrice: 0,
+    trialDays: 0,
     features: [
-      "1 monitor",
-      "Reddit only",
-      "3 keywords per monitor",
-      "View last 3 results",
-      "3-day history",
-      "Basic AI analysis",
+      { text: "1 monitor" },
+      { text: "Reddit only" },
+      { text: "3 keywords per monitor" },
+      { text: "View last 3 results" },
+      { text: "3-day history" },
+      { text: "Basic AI analysis" },
+      { text: "Daily refresh cycle" },
     ],
-    cta: "Get Started",
+    cta: "Get Started Free",
     href: "/sign-up",
     popular: false,
   },
   {
     name: "Pro",
-    key: "pro" as const,
+    key: "pro",
     description: "For power users and professionals",
-    price: "$29",
-    period: "per month",
+    monthlyPrice: 29,
+    annualPrice: 290,
+    trialDays: 14,
     features: [
-      "10 monitors",
-      "8 platforms (Reddit, HN, PH, Google Reviews, Trustpilot, App Store, Play Store, Quora)",
-      "20 keywords per monitor",
-      "Unlimited results",
-      "90-day history",
-      "Real-time monitoring",
-      "Full AI analysis with pain point detection",
-      "Email + Slack alerts",
-      "Daily & weekly digests",
-      "CSV export",
+      { text: "10 monitors" },
+      { text: "All 9 platforms" },
+      { text: "20 keywords per monitor" },
+      { text: "Unlimited results" },
+      { text: "90-day history" },
+      { text: "4-hour refresh cycle" },
+      { text: "Full AI analysis" },
+      { text: "Daily email digests" },
+      { text: "CSV export" },
     ],
-    cta: "Start Free Trial",
+    cta: "Sign Up for Pro",
     href: "/sign-up?plan=pro",
     popular: true,
   },
   {
     name: "Team",
-    key: "enterprise" as const, // Keep key as enterprise for backwards compatibility
+    key: "enterprise",
     description: "For growing teams and agencies",
-    price: "$99",
-    period: "per month",
+    monthlyPrice: 99,
+    annualPrice: 990,
+    trialDays: 14,
     features: [
-      "Everything in Pro",
-      "Unlimited monitors",
-      "All 9 platforms (includes Dev.to)",
-      "50 keywords per monitor",
-      "1-year history",
-      "Full AI + Ask feature",
-      "All alert channels + webhooks",
-      "API access",
-      "5 team seats included (+$15/user)",
-      "Priority support",
+      { text: "Everything in Pro" },
+      { text: "Unlimited monitors" },
+      { text: "50 keywords per monitor" },
+      { text: "1-year history" },
+      { text: "Real-time monitoring" },
+      { text: "Full AI analysis" },
+      { text: "Real-time email alerts" },
+      { text: "Webhooks" },
+      { text: "5 team seats (+$15/user)" },
+      { text: "Priority support" },
+      { text: "API access", comingSoon: true },
     ],
-    cta: "Start Free Trial",
+    cta: "Sign Up for Team",
     href: "/sign-up?plan=enterprise",
     popular: false,
   },
@@ -86,12 +116,23 @@ export default function PricingPage() {
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<"pro" | "enterprise">("pro");
   const [selectedPlanName, setSelectedPlanName] = useState("Pro");
+  const [billingInterval, setBillingInterval] = useState<BillingInterval>("monthly");
 
   const handleUpgrade = (planKey: "pro" | "enterprise", planName: string) => {
     setSelectedPlan(planKey);
     setSelectedPlanName(planName);
     setCheckoutOpen(true);
   };
+
+  const getDisplayPrice = (plan: Plan) => {
+    if (plan.monthlyPrice === 0) return "$0";
+    if (billingInterval === "annual") {
+      const monthlyEquivalent = Math.round(plan.annualPrice / 12);
+      return `$${monthlyEquivalent}`;
+    }
+    return `$${plan.monthlyPrice}`;
+  };
+
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -142,8 +183,42 @@ export default function PricingPage() {
               Simple, transparent pricing
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Choose the plan that fits your needs. All plans include a 14-day free trial.
+              Start free and upgrade when you need real-time monitoring and full AI insights.
             </p>
+            <p className="text-sm text-primary font-medium mt-4">
+              First 1,000 ***s lock in Pro or Team price forever
+            </p>
+          </div>
+
+          {/* Billing Toggle */}
+          <div className="flex items-center justify-center mb-10">
+            <div className="inline-flex items-center rounded-full bg-muted p-1 relative">
+              <button
+                onClick={() => setBillingInterval("monthly")}
+                className={cn(
+                  "px-5 py-2 rounded-full text-sm font-medium transition-colors",
+                  billingInterval === "monthly"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Monthly
+              </button>
+              <button
+                onClick={() => setBillingInterval("annual")}
+                className={cn(
+                  "px-5 py-2 rounded-full text-sm font-medium transition-colors",
+                  billingInterval === "annual"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Annual
+              </button>
+              <span className="absolute -top-3 right-0 bg-green-400 text-black font-medium text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap">
+                2 months free
+              </span>
+            </div>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
@@ -164,15 +239,36 @@ export default function PricingPage() {
                   <CardDescription>{plan.description}</CardDescription>
                 </CardHeader>
                 <CardContent className="flex-1">
-                  <div className="mb-6">
-                    <span className="text-4xl font-bold">{plan.price}</span>
-                    <span className="text-muted-foreground">/{plan.period}</span>
+                  <div className="mb-6 min-h-[72px]">
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-4xl font-bold">{getDisplayPrice(plan)}</span>
+                      <span className="text-muted-foreground">/mo</span>
+                    </div>
+                    {plan.monthlyPrice > 0 ? (
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {billingInterval === "annual"
+                          ? `Billed annually ($${plan.annualPrice}/year)`
+                          : `Billed monthly`}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground mt-1">Free forever</p>
+                    )}
+                    {plan.trialDays > 0 && (
+                      <p className="text-sm text-primary mt-1">{plan.trialDays}-day free trial</p>
+                    )}
                   </div>
                   <ul className="space-y-3">
                     {plan.features.map((feature) => (
-                      <li key={feature} className="flex items-center gap-2">
-                        <Check className="h-4 w-4 text-primary" />
-                        <span className="text-sm">{feature}</span>
+                      <li key={feature.text} className="flex items-center gap-2">
+                        <Check className="h-4 w-4 text-primary shrink-0" />
+                        <span className="text-sm flex items-center gap-2">
+                          {feature.text}
+                          {feature.comingSoon && (
+                            <span className="text-[10px] font-medium bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+                              Coming Soon
+                            </span>
+                          )}
+                        </span>
                       </li>
                     ))}
                   </ul>
@@ -199,7 +295,7 @@ export default function PricingPage() {
                         variant={plan.popular ? "default" : "outline"}
                         onClick={() => handleUpgrade(plan.key as "pro" | "enterprise", plan.name)}
                       >
-                        Upgrade to {plan.name}
+                        {plan.cta}
                       </Button>
                     )}
                   </SignedIn>
@@ -213,29 +309,60 @@ export default function PricingPage() {
             <h2 className="text-2xl font-bold text-center mb-8">
               Frequently Asked Questions
             </h2>
-            <div className="space-y-6">
-              <div>
-                <h3 className="font-semibold mb-2">Can I cancel anytime?</h3>
-                <p className="text-muted-foreground text-sm">
-                  Yes, you can cancel your subscription at any time. You&apos;ll continue to have
-                  access until the end of your billing period.
-                </p>
-              </div>
-              <div>
-                <h3 className="font-semibold mb-2">What platforms do you monitor?</h3>
-                <p className="text-muted-foreground text-sm">
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="free-plan">
+                <AccordionTrigger>Is there really a free plan?</AccordionTrigger>
+                <AccordionContent>
+                  Yes! The Free plan is free forever. You can monitor 1 keyword on Reddit with basic
+                  AI analysis and daily refresh. It&apos;s perfect for trying out Kaulby before upgrading.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="trial">
+                <AccordionTrigger>How does the 14-day free trial work?</AccordionTrigger>
+                <AccordionContent>
+                  Pro and Team plans include a 14-day free trial with full access to all features.
+                  You&apos;ll enter payment details at checkout, but you won&apos;t be charged until the trial ends.
+                  Cancel anytime during the trial and you won&apos;t be billed.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="cancel">
+                <AccordionTrigger>Can I cancel anytime?</AccordionTrigger>
+                <AccordionContent>
+                  Yes, you can cancel your subscription at any time from your account settings.
+                  You&apos;ll continue to have access to your plan until the end of your current billing period.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="switch-plans">
+                <AccordionTrigger>Can I switch between plans?</AccordionTrigger>
+                <AccordionContent>
+                  Absolutely! You can upgrade or downgrade your plan at any time. When upgrading,
+                  you&apos;ll be charged the prorated difference. When downgrading, the change takes effect
+                  at your next billing cycle.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="annual">
+                <AccordionTrigger>How does annual billing work?</AccordionTrigger>
+                <AccordionContent>
+                  Annual billing saves you 2 months compared to monthly billing. You pay once per year
+                  at a discounted rate: $290/year for Pro ($24/mo equivalent) or $990/year for Team ($82/mo equivalent).
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="platforms">
+                <AccordionTrigger>What platforms do you monitor?</AccordionTrigger>
+                <AccordionContent>
                   We monitor Reddit, Hacker News, Product Hunt, Google Reviews, Trustpilot,
-                  App Store, Play Store, Quora, and Dev.to. Platform availability varies by plan.
-                </p>
-              </div>
-              <div>
-                <h3 className="font-semibold mb-2">How does the free trial work?</h3>
-                <p className="text-muted-foreground text-sm">
-                  All paid plans include a 14-day free trial. No credit card required to start.
-                  You&apos;ll only be charged if you decide to continue after the trial.
-                </p>
-              </div>
-            </div>
+                  App Store, Play Store, Quora, and Dev.to. The Free plan includes Reddit only.
+                  Pro includes 8 platforms, and Team includes all 9.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="refresh">
+                <AccordionTrigger>How often are results refreshed?</AccordionTrigger>
+                <AccordionContent>
+                  Free plans refresh once per day. Pro plans refresh every 4 hours (6x faster).
+                  Team plans get real-time monitoring for immediate updates.
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </div>
         </div>
       </main>
@@ -283,6 +410,7 @@ export default function PricingPage() {
         onOpenChange={setCheckoutOpen}
         plan={selectedPlan}
         planName={selectedPlanName}
+        billingInterval={billingInterval}
       />
     </div>
   );

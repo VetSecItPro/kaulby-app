@@ -46,9 +46,10 @@ const sidebarLinks = [
 
 interface SidebarProps {
   isAdmin?: boolean;
+  subscriptionStatus?: string;
 }
 
-export function Sidebar({ isAdmin = false }: SidebarProps) {
+export function Sidebar({ isAdmin = false, subscriptionStatus = "free" }: SidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -114,16 +115,18 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
 
       </div>
 
-      {/* Billing Link */}
-      <div className="px-2 pb-2">
-        <Link
-          href="/dashboard/settings"
-          className="inline-flex w-fit items-center gap-2 rounded-full px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-        >
-          <CreditCard className="h-4 w-4" />
-          Upgrade Plan
-        </Link>
-      </div>
+      {/* Billing Link - hidden for Team tier users */}
+      {subscriptionStatus !== "enterprise" && (
+        <div className="px-2 pb-2">
+          <Link
+            href="/dashboard/settings"
+            className="inline-flex w-fit items-center gap-2 rounded-full px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          >
+            <CreditCard className="h-4 w-4" />
+            Upgrade Plan
+          </Link>
+        </div>
+      )}
 
       {/* User Section */}
       <div className="border-t p-4">
