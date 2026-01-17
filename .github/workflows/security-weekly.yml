@@ -4,130 +4,159 @@ on:
   schedule:
     # Sundays at 2am UTC
     - cron: '0 2 * * 0'
-  workflow_dispatch:
+  workflow_dispatch:  # Manual trigger
 
 permissions:
   contents: read
-  security-events: write
 
 jobs:
-  codeql:
-    name: CodeQL Analysis
+  # All jobs run in parallel - no dependencies between them
+
+  # Deep dependency audit
+  dependency-audit:
+    name: Dependency Audit
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
-        with:
-          languages: javascript-typescript
-          queries: security-extended
-
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
-
-      - name: Analyze
-        uses: github/codeql-action/analyze@v3
-
-  dependency-check:
-    name: OWASP Dependency Check
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
 
-      - name: Install dependencies
-        run: npm ci
+      - run: npm ci
 
-      - name: Full audit
+      - name: Full npm audit
         run: |
-          echo "### 🔒 Weekly Security Audit" >> $GITHUB_STEP_SUMMARY
-
+          echo "### 🔒 Weekly Dependency Audit" >> $GITHUB_STEP_SUMMARY
           npm audit --json > audit.json 2>/dev/null || true
 
-          TOTAL=$(jq '.metadata.vulnerabilities.total // 0' audit.json)
           CRITICAL=$(jq '.metadata.vulnerabilities.critical // 0' audit.json)
           HIGH=$(jq '.metadata.vulnerabilities.high // 0' audit.json)
           MODERATE=$(jq '.metadata.vulnerabilities.moderate // 0' audit.json)
+          LOW=$(jq '.metadata.vulnerabilities.low // 0' audit.json)
 
           echo "| Severity | Count |" >> $GITHUB_STEP_SUMMARY
           echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| 🔴 Critical | $CRITICAL |" >> $GITHUB_STEP_SUMMARY
           echo "| 🟠 High | $HIGH |" >> $GITHUB_STEP_SUMMARY
           echo "| 🟡 Moderate | $MODERATE |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Total** | **$TOTAL** |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🟢 Low | $LOW |" >> $GITHUB_STEP_SUMMARY
 
-      - name: OWASP Check
-        uses: dependency-check/Dependency-Check_Action@main
+          # List vulnerable packages
+          if [ "$CRITICAL" -gt 0 ] || [ "$HIGH" -gt 0 ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Packages needing attention:**" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            jq -r '.vulnerabilities | to_entries[] | select(.value.severity == "critical" or .value.severity == "high") | "\(.key): \(.value.severity)"' audit.json >> $GITHUB_STEP_SUMMARY 2>/dev/null || true
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Check for outdated packages
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Outdated Packages" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          npm outdated 2>/dev/null || echo "All packages up to date"
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+  # Semgrep deep scan (more rules than CI)
+  semgrep-deep:
+    name: Semgrep Deep Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Semgrep (extended rules)
+        uses: returntocorp/semgrep-action@v1
         with:
-          project: 'kaulby-app'
-          path: '.'
-          format: 'HTML'
-          args: --failOnCVSS 9 --enableRetired
-        continue-on-error: true
+          config: >-
+            p/default
+            p/security-audit
+            p/owasp-top-ten
+            p/javascript
+            p/typescript
+            p/nextjs
+            p/react
+        env:
+          SEMGREP_RULES: p/default p/security-audit p/owasp-top-ten p/javascript p/typescript p/nextjs p/react
 
-      - name: Upload report
-        uses: actions/upload-artifact@v4
+      - name: Summary
         if: always()
-        with:
-          name: owasp-report
-          path: reports/
-          retention-days: 30
+        run: |
+          echo "### 🔍 Semgrep Deep Scan" >> $GITHUB_STEP_SUMMARY
+          echo "Extended ruleset: OWASP, JS/TS, Next.js, React" >> $GITHUB_STEP_SUMMARY
 
+  # License compliance check
   license-check:
     name: License Compliance
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
 
-      - name: Install dependencies
-        run: npm ci
+      - run: npm ci
 
       - name: Check licenses
         run: |
           npm install -g license-checker
-
           echo "### 📜 License Audit" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**License Summary:**" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          license-checker --summary 2>/dev/null || echo "License check completed"
+          echo '```' >> $GITHUB_STEP_SUMMARY
 
-          license-checker --summary >> $GITHUB_STEP_SUMMARY || true
+          # Check for problematic licenses
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if license-checker --onlyAllow 'MIT;ISC;Apache-2.0;BSD-2-Clause;BSD-3-Clause;0BSD;CC0-1.0;Unlicense;CC-BY-4.0;Python-2.0' 2>/dev/null; then
+            echo "✅ All licenses compatible" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Review licenses above" >> $GITHUB_STEP_SUMMARY
+          fi
 
+  # OWASP ZAP DAST scan against production
   zap-scan:
-    name: OWASP ZAP
+    name: OWASP ZAP (DAST)
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
-      - name: ZAP Baseline
-        uses: zaproxy/action-baseline@v0.12.0
+      - name: Create ZAP rules file
+        run: |
+          mkdir -p .zap
+          cat > .zap/rules.tsv << 'EOF'
+          10038	IGNORE	(Content Security Policy - handled by Vercel)
+          10063	IGNORE	(Permissions Policy - handled by Vercel)
+          EOF
+
+      - name: ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.14.0
         with:
           target: 'https://kaulbyapp.com'
           rules_file_name: '.zap/rules.tsv'
-        continue-on-error: true
+          fail_action: false  # Don't fail workflow, just report
 
-      - name: Upload report
+      - name: Summary
+        if: always()
+        run: |
+          echo "### 🕷️ OWASP ZAP DAST" >> $GITHUB_STEP_SUMMARY
+          echo "Scanned: https://kaulbyapp.com" >> $GITHUB_STEP_SUMMARY
+          echo "See artifacts for detailed report" >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload ZAP report
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: zap-report
           path: report_html.html
           retention-days: 30
+          if-no-files-found: ignore
