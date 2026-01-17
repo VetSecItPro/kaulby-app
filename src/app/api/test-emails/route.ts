@@ -10,16 +10,20 @@ import {
 } from "@/lib/email";
 
 // POST /api/test-emails - Send all test emails
-// Only works in development or with secret key
+// SECURITY: Only works in verified local development (not Vercel preview/production)
 export async function POST(request: Request) {
+  // Defense-in-depth: Verify truly local development
+  // Middleware also protects this route, but double-check here
+  const isLocalDev = process.env.NODE_ENV === "development" &&
+                     !process.env.VERCEL &&
+                     !process.env.VERCEL_ENV;
+
+  if (!isLocalDev) {
+    return NextResponse.json({ error: "Only available in local development" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const email = searchParams.get("email");
-  const secret = searchParams.get("secret");
-
-  // Security check - only allow with secret or in dev
-  if (process.env.NODE_ENV !== "development" && secret !== process.env.TEST_EMAIL_SECRET) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
 
   if (!email) {
     return NextResponse.json({ error: "Email parameter required" }, { status: 400 });

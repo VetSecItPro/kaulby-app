@@ -371,11 +371,20 @@ export function generateDailyDigestHtml(data: DailyDigestData): string {
       <td align="center" style="padding: 40px 20px;">
         <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
 
-          <!-- Header -->
+          <!-- Header with Logo -->
           <tr>
-            <td style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); padding: 32px 40px; text-align: center;">
-              <h1 style="margin: 0 0 8px 0; font-size: 24px; font-weight: 700; color: #ffffff;">Your Daily Digest</h1>
-              <p style="margin: 0; font-size: 14px; color: rgba(255, 255, 255, 0.8);">${formatDate(date)}</p>
+            <td style="background: linear-gradient(135deg, #0d0d0d 0%, #1a1a1a 100%); padding: 24px 40px;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td width="60" style="vertical-align: middle;">
+                    <img src="https://kaulbyapp.com/logo-email.jpg" alt="Kaulby" width="48" height="48" style="display: block; border-radius: 10px;" />
+                  </td>
+                  <td style="vertical-align: middle; padding-left: 16px;">
+                    <h1 style="margin: 0 0 4px 0; font-size: 22px; font-weight: 700; color: #ffffff;">Your Daily Digest</h1>
+                    <p style="margin: 0; font-size: 13px; color: rgba(255, 255, 255, 0.6);">${formatDate(date)}</p>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
 
@@ -510,12 +519,21 @@ export function generateWeeklyReportHtml(data: WeeklyReportData): string {
       <td align="center" style="padding: 40px 20px;">
         <table role="presentation" width="640" cellspacing="0" cellpadding="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
 
-          <!-- Header -->
+          <!-- Header with Logo -->
           <tr>
-            <td style="background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); padding: 40px; text-align: center;">
-              <p style="margin: 0 0 8px 0; font-size: 12px; font-weight: 600; color: rgba(255, 255, 255, 0.6); text-transform: uppercase; letter-spacing: 1px;">Weekly Intelligence Report</p>
-              <h1 style="margin: 0 0 8px 0; font-size: 28px; font-weight: 700; color: #ffffff;">${formatDateRange(dateRange.start, dateRange.end)}</h1>
-              <p style="margin: 0; font-size: 14px; color: rgba(255, 255, 255, 0.7);">Executive Summary for ${userName}</p>
+            <td style="background: linear-gradient(135deg, #0d0d0d 0%, #1a1a1a 100%); padding: 24px 40px;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td width="60" style="vertical-align: middle;">
+                    <img src="https://kaulbyapp.com/logo-email.jpg" alt="Kaulby" width="48" height="48" style="display: block; border-radius: 10px;" />
+                  </td>
+                  <td style="vertical-align: middle; padding-left: 16px;">
+                    <p style="margin: 0 0 4px 0; font-size: 11px; font-weight: 600; color: rgba(255, 255, 255, 0.5); text-transform: uppercase; letter-spacing: 1px;">Weekly Intelligence Report</p>
+                    <h1 style="margin: 0 0 4px 0; font-size: 22px; font-weight: 700; color: #ffffff;">${formatDateRange(dateRange.start, dateRange.end)}</h1>
+                    <p style="margin: 0; font-size: 13px; color: rgba(255, 255, 255, 0.6);">Executive Summary for ${userName}</p>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
 

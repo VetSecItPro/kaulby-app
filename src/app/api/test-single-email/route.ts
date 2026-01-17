@@ -8,10 +8,16 @@ import {
 } from "@/lib/email";
 
 // POST /api/test-single-email - Send a specific test email
-// Only works in development
+// SECURITY: Only works in verified local development (not Vercel preview/production)
 export async function POST(request: Request) {
-  if (process.env.NODE_ENV !== "development") {
-    return NextResponse.json({ error: "Only available in development" }, { status: 401 });
+  // Defense-in-depth: Verify truly local development
+  // Middleware also protects this route, but double-check here
+  const isLocalDev = process.env.NODE_ENV === "development" &&
+                     !process.env.VERCEL &&
+                     !process.env.VERCEL_ENV;
+
+  if (!isLocalDev) {
+    return NextResponse.json({ error: "Only available in local development" }, { status: 401 });
   }
 
   const { searchParams } = new URL(request.url);
