@@ -71,6 +71,12 @@ export const conversationCategoryEnum = pgEnum("conversation_category", [
   "hot_discussion",   // Trending/viral threads with high engagement
 ]);
 
+// Monitor type - keyword-based or AI-powered discovery
+export const monitorTypeEnum = pgEnum("monitor_type", [
+  "keyword",     // Traditional keyword-based monitoring
+  "ai_discovery", // AI-powered semantic discovery (Pro/Enterprise)
+]);
+
 // IANA timezone strings for proper DST handling
 export const timezoneEnum = pgEnum("timezone", [
   "America/New_York",      // Eastern
@@ -185,6 +191,10 @@ export const monitors = pgTable("monitors", {
   name: text("name").notNull(), // Display name for the monitor
   companyName: text("company_name"), // The company/brand to monitor (required for brand monitoring)
   keywords: text("keywords").array().notNull(), // Additional keywords to track alongside company name
+  // Monitor type: keyword (traditional) or ai_discovery (semantic AI-based)
+  monitorType: monitorTypeEnum("monitor_type").default("keyword").notNull(),
+  // AI Discovery settings (used when monitorType is "ai_discovery")
+  discoveryPrompt: text("discovery_prompt"), // Natural language description of what to find
   // Advanced boolean search query (Pro feature)
   // Supports: "exact phrase", title:, body:, author:, subreddit:, NOT, OR, AND
   searchQuery: text("search_query"),
@@ -343,6 +353,49 @@ export const webhookDeliveries = pgTable("webhook_deliveries", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Cross-Platform Topics - detected themes appearing across multiple platforms
+// Used for the Insights page to show correlated discussions
+export const crossPlatformTopics = pgTable("cross_platform_topics", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  topic: text("topic").notNull(), // The detected topic/theme (e.g., "AI coding assistants")
+  keywords: text("keywords").array().notNull(), // Keywords that define this topic
+  platformsFound: platformEnum("platforms_found").array().notNull(), // Which platforms this topic appears on
+  resultCount: integer("result_count").default(0).notNull(), // Total results matching this topic
+  sentimentSummary: jsonb("sentiment_summary").$type<{
+    positive: number;
+    negative: number;
+    neutral: number;
+  }>(), // Aggregated sentiment across all linked results
+  trendDirection: text("trend_direction").$type<"rising" | "falling" | "stable">(), // Is this topic gaining traction?
+  peakDate: timestamp("peak_date"), // When this topic had the most mentions
+  firstSeenAt: timestamp("first_seen_at").defaultNow().notNull(), // When we first detected this topic
+  lastSeenAt: timestamp("last_seen_at").defaultNow().notNull(), // Most recent mention
+  isActive: boolean("is_active").default(true).notNull(), // Whether topic is still trending
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("cross_platform_topics_user_id_idx").on(table.userId),
+  index("cross_platform_topics_is_active_idx").on(table.isActive),
+]);
+
+// Topic Results - links results to cross-platform topics
+export const topicResults = pgTable("topic_results", {
+  topicId: uuid("topic_id")
+    .notNull()
+    .references(() => crossPlatformTopics.id, { onDelete: "cascade" }),
+  resultId: uuid("result_id")
+    .notNull()
+    .references(() => results.id, { onDelete: "cascade" }),
+  relevanceScore: real("relevance_score"), // How strongly this result matches the topic (0-1)
+  addedAt: timestamp("added_at").defaultNow().notNull(),
+}, (table) => [
+  index("topic_results_topic_idx").on(table.topicId),
+  index("topic_results_result_idx").on(table.resultId),
+]);
+
 // Workspace Invites - pending team invitations for Enterprise
 export const workspaceInvites = pgTable("workspace_invites", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -382,6 +435,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   usage: many(usage),
   slackIntegrations: many(slackIntegrations),
   webhooks: many(webhooks),
+  crossPlatformTopics: many(crossPlatformTopics),
 }));
 
 export const audiencesRelations = relations(audiences, ({ one, many }) => ({
@@ -433,10 +487,30 @@ export const alertsRelations = relations(alerts, ({ one }) => ({
   }),
 }));
 
-export const resultsRelations = relations(results, ({ one }) => ({
+export const resultsRelations = relations(results, ({ one, many }) => ({
   monitor: one(monitors, {
     fields: [results.monitorId],
     references: [monitors.id],
+  }),
+  topicResults: many(topicResults),
+}));
+
+export const crossPlatformTopicsRelations = relations(crossPlatformTopics, ({ one, many }) => ({
+  user: one(users, {
+    fields: [crossPlatformTopics.userId],
+    references: [users.id],
+  }),
+  topicResults: many(topicResults),
+}));
+
+export const topicResultsRelations = relations(topicResults, ({ one }) => ({
+  topic: one(crossPlatformTopics, {
+    fields: [topicResults.topicId],
+    references: [crossPlatformTopics.id],
+  }),
+  result: one(results, {
+    fields: [topicResults.resultId],
+    references: [results.id],
   }),
 }));
 
@@ -505,3 +579,7 @@ export type Workspace = typeof workspaces.$inferSelect;
 export type NewWorkspace = typeof workspaces.$inferInsert;
 export type WorkspaceInvite = typeof workspaceInvites.$inferSelect;
 export type NewWorkspaceInvite = typeof workspaceInvites.$inferInsert;
+export type CrossPlatformTopic = typeof crossPlatformTopics.$inferSelect;
+export type NewCrossPlatformTopic = typeof crossPlatformTopics.$inferInsert;
+export type TopicResult = typeof topicResults.$inferSelect;
+export type NewTopicResult = typeof topicResults.$inferInsert;

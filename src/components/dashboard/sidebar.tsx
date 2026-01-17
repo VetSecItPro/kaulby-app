@@ -14,6 +14,8 @@ import {
   ShieldCheck,
   HelpCircle,
   Users,
+  BarChart3,
+  Lightbulb,
 } from "lucide-react";
 
 const sidebarLinks = [
@@ -37,6 +39,16 @@ const sidebarLinks = [
     title: "Results",
     href: "/dashboard/results",
     icon: MessageSquare,
+  },
+  {
+    title: "Analytics",
+    href: "/dashboard/analytics",
+    icon: BarChart3,
+  },
+  {
+    title: "Insights",
+    href: "/dashboard/insights",
+    icon: Lightbulb,
   },
   {
     title: "Settings",
