@@ -1,8 +1,16 @@
 import { inngest } from "../client";
 import { db } from "@/lib/db";
-import { results, aiLogs } from "@/lib/db/schema";
+import { results, aiLogs, monitors } from "@/lib/db/schema";
 import { eq, count } from "drizzle-orm";
-import { analyzeSentiment, analyzePainPoints, summarizeContent, createTrace, flushAI } from "@/lib/ai";
+import {
+  analyzeSentiment,
+  analyzePainPoints,
+  summarizeContent,
+  analyzeComprehensive,
+  createTrace,
+  flushAI,
+  type ComprehensiveAnalysisContext,
+} from "@/lib/ai";
 import { incrementAiCallsCount, getUserPlan } from "@/lib/limits";
 import { getPlanLimits } from "@/lib/stripe";
 
@@ -38,6 +46,7 @@ export const analyzeContent = inngest.createFunction(
       return {
         plan,
         hasUnlimitedAi: limits.aiFeatures.unlimitedAiAnalysis,
+        useComprehensiveAnalysis: limits.aiFeatures.comprehensiveAnalysis,
       };
     });
 
@@ -70,11 +79,99 @@ export const analyzeContent = inngest.createFunction(
       metadata: {
         resultId,
         platform: result.platform,
+        tier: planCheck.useComprehensiveAnalysis ? "team" : "pro",
       },
-      tags: ["inngest", "analysis"],
+      tags: ["inngest", "analysis", planCheck.useComprehensiveAnalysis ? "team-tier" : "pro-tier"],
     });
 
     const traceId = trace.id;
+
+    // =========================================================================
+    // TEAM TIER: Comprehensive Analysis (Claude Sonnet 4)
+    // =========================================================================
+    if (planCheck.useComprehensiveAnalysis) {
+      // Get monitor info for context
+      const monitor = await step.run("get-monitor", async () => {
+        return db.query.monitors.findFirst({
+          where: eq(monitors.id, result.monitorId),
+          with: { user: true },
+        });
+      });
+
+      // Type assertion for metadata which stores platform-specific fields
+      const metadata = result.metadata as Record<string, unknown> | null;
+
+      const context: ComprehensiveAnalysisContext = {
+        platform: result.platform,
+        keywords: monitor?.keywords || [],
+        monitorName: monitor?.name || "Unknown Monitor",
+        businessName: undefined, // Can be added to user profile later
+        subreddit: (metadata?.subreddit as string) || undefined,
+      };
+
+      const comprehensiveResult = await step.run("analyze-comprehensive", async () => {
+        return analyzeComprehensive(contentToAnalyze, context);
+      });
+
+      const analysis = comprehensiveResult.result;
+
+      // Update result with comprehensive AI analysis
+      await step.run("update-result-team", async () => {
+        await db
+          .update(results)
+          .set({
+            sentiment: analysis.sentiment.label,
+            sentimentScore: analysis.sentiment.score,
+            painPointCategory: analysis.classification.category,
+            aiSummary: analysis.executiveSummary,
+            // Store full analysis as JSON metadata
+            aiAnalysis: JSON.stringify({
+              tier: "team",
+              sentiment: analysis.sentiment,
+              classification: analysis.classification,
+              opportunity: analysis.opportunity,
+              competitive: analysis.competitive,
+              actions: analysis.actions,
+              suggestedResponse: analysis.suggestedResponse,
+              contentOpportunity: analysis.contentOpportunity,
+              platformContext: analysis.platformContext,
+              executiveSummary: analysis.executiveSummary,
+              analyzedAt: new Date().toISOString(),
+            }),
+          })
+          .where(eq(results.id, resultId));
+      });
+
+      // Log AI usage for Team tier
+      await step.run("log-ai-usage-team", async () => {
+        await db.insert(aiLogs).values({
+          userId,
+          model: comprehensiveResult.meta.model,
+          promptTokens: comprehensiveResult.meta.promptTokens,
+          completionTokens: comprehensiveResult.meta.completionTokens,
+          costUsd: comprehensiveResult.meta.cost,
+          latencyMs: comprehensiveResult.meta.latencyMs,
+          traceId,
+        });
+
+        await incrementAiCallsCount(userId, 1);
+      });
+
+      await step.run("flush-langfuse", async () => {
+        await flushAI();
+      });
+
+      return {
+        tier: "team",
+        analysis: comprehensiveResult.result,
+        totalCost: comprehensiveResult.meta.cost,
+        model: comprehensiveResult.meta.model,
+      };
+    }
+
+    // =========================================================================
+    // PRO TIER: Standard Analysis (Gemini 2.5 Flash)
+    // =========================================================================
 
     // Run sentiment analysis
     const sentimentResult = await step.run("analyze-sentiment", async () => {
@@ -100,6 +197,14 @@ export const analyzeContent = inngest.createFunction(
           sentimentScore: sentimentResult.result.score,
           painPointCategory: painPointResult.result.category,
           aiSummary: summaryResult.result.summary,
+          // Store Pro tier analysis as JSON metadata
+          aiAnalysis: JSON.stringify({
+            tier: "pro",
+            sentiment: sentimentResult.result,
+            painPoint: painPointResult.result,
+            summary: summaryResult.result,
+            analyzedAt: new Date().toISOString(),
+          }),
         })
         .where(eq(results.id, resultId));
     });
@@ -128,7 +233,7 @@ export const analyzeContent = inngest.createFunction(
 
       await db.insert(aiLogs).values({
         userId,
-        model: sentimentResult.meta.model, // Use primary model as reference
+        model: sentimentResult.meta.model,
         promptTokens: totalPromptTokens,
         completionTokens: totalCompletionTokens,
         costUsd: totalCost,
@@ -136,7 +241,6 @@ export const analyzeContent = inngest.createFunction(
         traceId,
       });
 
-      // Increment AI calls count for usage tracking (3 calls: sentiment, pain points, summary)
       await incrementAiCallsCount(userId, 3);
     });
 
@@ -146,6 +250,7 @@ export const analyzeContent = inngest.createFunction(
     });
 
     return {
+      tier: "pro",
       sentiment: sentimentResult.result,
       painPoint: painPointResult.result,
       summary: summaryResult.result,

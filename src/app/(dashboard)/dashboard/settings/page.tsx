@@ -1,47 +1,9 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { users, aiLogs, usage, monitors, results } from "@/lib/db/schema";
-import { eq, and, gte, sum, count } from "drizzle-orm";
+import { users, usage, monitors, results } from "@/lib/db/schema";
+import { eq, count } from "drizzle-orm";
 import { ResponsiveSettings } from "@/components/dashboard/responsive-settings";
-
-async function getAiUsageStats(userId: string) {
-  // Get current billing period
-  const user = await db.query.users.findFirst({
-    where: eq(users.id, userId),
-    columns: {
-      currentPeriodStart: true,
-      currentPeriodEnd: true,
-    },
-  });
-
-  const periodStart = user?.currentPeriodStart || new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-
-  // Get AI usage for current period
-  const aiUsage = await db
-    .select({
-      totalPromptTokens: sum(aiLogs.promptTokens),
-      totalCompletionTokens: sum(aiLogs.completionTokens),
-      totalCost: sum(aiLogs.costUsd),
-      callCount: count(),
-    })
-    .from(aiLogs)
-    .where(
-      and(
-        eq(aiLogs.userId, userId),
-        gte(aiLogs.createdAt, periodStart)
-      )
-    );
-
-  return {
-    promptTokens: Number(aiUsage[0]?.totalPromptTokens) || 0,
-    completionTokens: Number(aiUsage[0]?.totalCompletionTokens) || 0,
-    totalTokens: (Number(aiUsage[0]?.totalPromptTokens) || 0) + (Number(aiUsage[0]?.totalCompletionTokens) || 0),
-    totalCost: Number(aiUsage[0]?.totalCost) || 0,
-    callCount: Number(aiUsage[0]?.callCount) || 0,
-    periodStart,
-  };
-}
 
 async function getDataStats(userId: string) {
   // Run all queries in parallel for better performance
@@ -94,60 +56,71 @@ export default async function SettingsPage() {
       })
     : null;
 
-  const subscriptionStatus = user?.subscriptionStatus || "free";
-  const email = clerkUser?.emailAddresses[0]?.emailAddress || user?.email || "demo@example.com";
-  const name = clerkUser?.fullName || user?.name || "Demo User";
+  // In dev mode, default to enterprise (Team) for full feature testing
+  const subscriptionStatus = isDev ? "enterprise" : (user?.subscriptionStatus || "free");
+  // In dev mode, show actual user email if available, otherwise show a clear dev mode indicator
+  const email = clerkUser?.emailAddresses[0]?.emailAddress || user?.email || (isDev ? "dev-mode@kaulby.local" : "");
+  const name = clerkUser?.fullName || user?.name || (isDev ? "Dev Mode User" : "");
   const timezone = user?.timezone || "America/New_York";
 
-  // Get AI usage and data stats
-  const aiUsage = userId ? await getAiUsageStats(userId) : {
-    promptTokens: 0,
-    completionTokens: 0,
-    totalTokens: 0,
-    totalCost: 0,
-    callCount: 0,
-    periodStart: new Date(),
-  };
-
+  // Get data stats
   const dataStats = userId ? await getDataStats(userId) : {
     monitors: 0,
     results: 0,
     aiCalls: 0,
   };
 
+  // Plans synced with pricing page
   const plans = [
     {
       name: "Free",
       price: "$0",
       description: "Get started with basic monitoring",
-      features: ["3 monitors", "100 results/month", "Basic analytics"],
+      features: [
+        "1 monitor",
+        "Reddit only",
+        "3 keywords per monitor",
+        "View last 3 results",
+        "3-day history",
+        "Basic AI analysis",
+      ],
       current: subscriptionStatus === "free",
     },
     {
       name: "Pro",
       price: "$29",
       period: "/month",
-      description: "For growing businesses",
+      description: "For power users and professionals",
       features: [
-        "20 monitors",
-        "5,000 results/month",
-        "AI-powered insights",
-        "Email & Slack alerts",
-        "Priority support",
+        "10 monitors",
+        "8 platforms",
+        "20 keywords per monitor",
+        "Unlimited results",
+        "90-day history",
+        "Real-time monitoring",
+        "Full AI analysis",
+        "Email + Slack alerts",
+        "Daily & weekly digests",
+        "CSV export",
       ],
       current: subscriptionStatus === "pro",
       recommended: true,
     },
     {
       name: "Team",
-      price: "$99/mo",
+      price: "$99",
+      period: "/month",
       description: "For growing teams and agencies",
       features: [
+        "Everything in Pro",
         "Unlimited monitors",
         "All 9 platforms",
+        "50 keywords per monitor",
+        "1-year history",
         "Full AI + Ask feature",
+        "All alert channels + webhooks",
+        "API access",
         "5 team seats (+$15/user)",
-        "API access + webhooks",
         "Priority support",
       ],
       current: subscriptionStatus === "enterprise",
@@ -161,7 +134,6 @@ export default async function SettingsPage() {
       subscriptionStatus={subscriptionStatus}
       timezone={timezone}
       plans={plans}
-      aiUsage={aiUsage}
       dataStats={dataStats}
       userId={userId || ""}
     />

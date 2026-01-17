@@ -1,13 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useDevice } from "@/hooks/use-device";
 import { MobileSettings } from "@/components/mobile/mobile-settings";
 import { TeamSettings } from "@/components/dashboard/team-settings";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, Zap, Download, Trash2, Brain, Database, AlertTriangle, Clock } from "lucide-react";
+import { Check, Zap, Download, Trash2, Database, AlertTriangle, Clock } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,15 +43,6 @@ interface Plan {
   recommended?: boolean;
 }
 
-interface AiUsage {
-  promptTokens: number;
-  completionTokens: number;
-  totalTokens: number;
-  totalCost: number;
-  callCount: number;
-  periodStart: Date;
-}
-
 interface DataStats {
   monitors: number;
   results: number;
@@ -65,9 +55,18 @@ interface ResponsiveSettingsProps {
   subscriptionStatus: string;
   timezone: string;
   plans: Plan[];
-  aiUsage: AiUsage;
   dataStats: DataStats;
   userId: string;
+}
+
+// Helper to convert internal plan names to display names
+function getPlanDisplayName(status: string): string {
+  const displayNames: Record<string, string> = {
+    enterprise: "Team",
+    pro: "Pro",
+    free: "Free",
+  };
+  return displayNames[status] || status;
 }
 
 export function ResponsiveSettings({
@@ -76,10 +75,9 @@ export function ResponsiveSettings({
   subscriptionStatus,
   timezone: initialTimezone,
   plans,
-  aiUsage,
   dataStats,
 }: ResponsiveSettingsProps) {
-  const { isMobile, isTablet } = useDevice();
+  const planDisplayName = getPlanDisplayName(subscriptionStatus);
   const [isExporting, setIsExporting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [timezone, setTimezone] = useState(initialTimezone);
@@ -143,36 +141,36 @@ export function ResponsiveSettings({
     }
   };
 
-  if (isMobile || isTablet) {
-    return (
-      <MobileSettings
-        email={email}
-        name={name}
-        subscriptionStatus={subscriptionStatus}
-        timezone={timezone}
-        timezoneOptions={TIMEZONE_OPTIONS}
-        onTimezoneChange={handleTimezoneChange}
-        isSavingTimezone={isSavingTimezone}
-        plans={plans}
-        aiUsage={aiUsage}
-        dataStats={dataStats}
-        onExportData={handleExportData}
-        onDeleteAccount={handleDeleteAccount}
-        isExporting={isExporting}
-        isDeleting={isDeleting}
-      />
-    );
-  }
-
   const formatNumber = (num: number) => {
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
     if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
     return num.toString();
   };
 
-  // Desktop view
+  // CSS-based responsive rendering - prevents hydration hooks mismatch
   return (
-    <div className="space-y-8">
+    <>
+      {/* Mobile/Tablet view - visible below lg breakpoint */}
+      <div className="lg:hidden">
+        <MobileSettings
+          email={email}
+          name={name}
+          subscriptionStatus={subscriptionStatus}
+          timezone={timezone}
+          timezoneOptions={TIMEZONE_OPTIONS}
+          onTimezoneChange={handleTimezoneChange}
+          isSavingTimezone={isSavingTimezone}
+          plans={plans}
+          dataStats={dataStats}
+          onExportData={handleExportData}
+          onDeleteAccount={handleDeleteAccount}
+          isExporting={isExporting}
+          isDeleting={isDeleting}
+        />
+      </div>
+
+      {/* Desktop view - visible at lg breakpoint and above */}
+      <div className="hidden lg:block space-y-8">
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
@@ -201,9 +199,8 @@ export function ResponsiveSettings({
             <div className="flex items-center gap-2">
               <Badge
                 variant={subscriptionStatus === "free" ? "secondary" : "default"}
-                className="capitalize"
               >
-                {subscriptionStatus}
+                {planDisplayName}
               </Badge>
             </div>
           </div>
@@ -243,55 +240,19 @@ export function ResponsiveSettings({
       {/* Team Settings - Enterprise only */}
       <TeamSettings subscriptionStatus={subscriptionStatus} />
 
-      {/* AI Usage */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Brain className="h-5 w-5" />
-            AI Usage
-          </CardTitle>
-          <CardDescription>
-            Token usage and costs for this billing period
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-4">
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Total Tokens</p>
-              <p className="text-2xl font-bold">{formatNumber(aiUsage.totalTokens)}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Input Tokens</p>
-              <p className="text-2xl font-bold">{formatNumber(aiUsage.promptTokens)}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Output Tokens</p>
-              <p className="text-2xl font-bold">{formatNumber(aiUsage.completionTokens)}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">AI Cost</p>
-              <p className="text-2xl font-bold">${aiUsage.totalCost.toFixed(4)}</p>
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground mt-4">
-            {aiUsage.callCount} AI calls since {new Date(aiUsage.periodStart).toLocaleDateString()}
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* Data & Storage */}
+      {/* Your Data */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Database className="h-5 w-5" />
-            Data & Storage
+            Your Data
           </CardTitle>
           <CardDescription>
-            Your data usage and management options
+            Manage your data and export options
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Monitors</p>
               <p className="text-2xl font-bold">{dataStats.monitors}</p>
@@ -299,10 +260,6 @@ export function ResponsiveSettings({
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Results Stored</p>
               <p className="text-2xl font-bold">{formatNumber(dataStats.results)}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">AI Analyses</p>
-              <p className="text-2xl font-bold">{formatNumber(dataStats.aiCalls)}</p>
             </div>
           </div>
 
@@ -403,6 +360,7 @@ export function ResponsiveSettings({
           ))}
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

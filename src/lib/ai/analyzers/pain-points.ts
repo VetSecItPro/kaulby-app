@@ -3,10 +3,11 @@ import { buildAnalysisPrompt } from "../prompts";
 import { type AnalysisMeta } from "./sentiment";
 
 export interface PainPointResult {
-  category: "pain_point" | "solution_request" | "question" | "feature_request" | "praise" | "discussion" | null;
+  category: "competitor_mention" | "pricing_concern" | "feature_request" | "support_need" | "negative_experience" | "positive_feedback" | "general_discussion" | null;
   confidence: number;
   keywords: string[];
   summary: string;
+  businessAction?: "respond" | "monitor" | "escalate" | "log";
 }
 
 export async function analyzePainPoints(
