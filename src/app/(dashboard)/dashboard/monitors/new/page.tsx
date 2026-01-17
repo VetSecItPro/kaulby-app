@@ -65,6 +65,7 @@ export default function NewMonitorPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [name, setName] = useState("");
+  const [companyName, setCompanyName] = useState("");
   const [keywordInput, setKeywordInput] = useState("");
   const [keywords, setKeywords] = useState<string[]>([]);
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
@@ -75,8 +76,8 @@ export default function NewMonitorPage() {
   const isDev = process.env.NODE_ENV === "development";
   const isPaidUser = isDev; // In dev mode, treat as paid user with access to all platforms
 
-  // Generate keyword suggestions based on monitor name
-  const keywordSuggestions = useMemo(() => generateKeywordSuggestions(name), [name]);
+  // Generate keyword suggestions based on company name
+  const keywordSuggestions = useMemo(() => generateKeywordSuggestions(companyName || name), [companyName, name]);
 
   const addKeyword = () => {
     const trimmed = keywordInput.trim();
@@ -105,8 +106,8 @@ export default function NewMonitorPage() {
       setError("Please enter a monitor name");
       return;
     }
-    if (keywords.length === 0) {
-      setError("Please add at least one keyword");
+    if (!companyName.trim()) {
+      setError("Please enter the company/brand name to monitor");
       return;
     }
     if (selectedPlatforms.length === 0) {
@@ -122,7 +123,8 @@ export default function NewMonitorPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name.trim(),
-          keywords,
+          companyName: companyName.trim(),
+          keywords, // Keywords are now optional additional terms
           platforms: selectedPlatforms,
         }),
       });
@@ -172,24 +174,51 @@ export default function NewMonitorPage() {
               <Label htmlFor="name">Monitor Name</Label>
               <Input
                 id="name"
-                placeholder="e.g., Brand Mentions, Competitor Tracking"
+                placeholder="e.g., Brand Reputation, Customer Feedback"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                autoComplete="off"
+                className="dark-input placeholder:text-gray-400 hover:border-teal-500 focus:border-teal-500"
               />
+              <p className="text-xs text-muted-foreground">
+                A friendly name to identify this monitor in your dashboard.
+              </p>
             </div>
 
-            {/* Keywords */}
+            {/* Company/Brand Name */}
             <div className="space-y-2">
-              <Label htmlFor="keywords">Keywords</Label>
+              <Label htmlFor="companyName">Company/Brand Name</Label>
+              <Input
+                id="companyName"
+                placeholder="e.g., High Rise Coffee, Acme Corp"
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                autoComplete="off"
+                className="dark-input placeholder:text-gray-400 hover:border-teal-500 focus:border-teal-500"
+              />
+              <p className="text-xs text-muted-foreground">
+                The company or brand you want to monitor. We&apos;ll search for this name across selected platforms.
+              </p>
+            </div>
+
+            {/* Keywords (Optional) */}
+            <div className="space-y-2">
+              <Label htmlFor="keywords">Additional Keywords <span className="text-muted-foreground font-normal">(optional)</span></Label>
               <div className="flex gap-2">
                 <Input
                   id="keywords"
-                  placeholder="Add a keyword and press Enter"
+                  placeholder="e.g., customer service, pricing, alternative"
                   value={keywordInput}
                   onChange={(e) => setKeywordInput(e.target.value)}
                   onKeyDown={handleKeyDown}
+                  autoComplete="off"
+                  className="dark-input placeholder:text-gray-400 hover:border-teal-500 focus:border-teal-500"
                 />
-                <Button type="button" variant="outline" onClick={addKeyword}>
+                <Button
+                  type="button"
+                  onClick={addKeyword}
+                  className="bg-teal-500 text-black hover:bg-teal-600"
+                >
                   Add
                 </Button>
               </div>
@@ -239,7 +268,7 @@ export default function NewMonitorPage() {
               )}
 
               <p className="text-xs text-muted-foreground">
-                Add keywords or phrases to monitor. Mentions will be tracked across selected platforms.
+                Add additional keywords to find mentions like &quot;{companyName || "your company"} customer service&quot; or &quot;{companyName || "your company"} alternative&quot;.
               </p>
             </div>
 

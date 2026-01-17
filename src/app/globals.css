@@ -270,6 +270,25 @@
   @apply bg-primary/20 text-foreground;
 }
 
+/* Override browser autofill styles for dark inputs */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px #000 inset !important;
+  -webkit-text-fill-color: #fff !important;
+  caret-color: #fff !important;
+}
+
+/* Force dark input styling */
+.dark-input,
+.dark-input:focus,
+.dark-input:hover,
+.dark-input:active {
+  background-color: #000 !important;
+  color: #fff !important;
+}
+
 /* Safe area insets for iOS devices */
 .safe-area-top {
   padding-top: env(safe-area-inset-top);

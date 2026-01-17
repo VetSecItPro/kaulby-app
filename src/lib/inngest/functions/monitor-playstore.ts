@@ -19,7 +19,7 @@ export const monitorPlayStore = inngest.createFunction(
     name: "Monitor Play Store",
     retries: 2,
   },
-  { cron: "0 */6 * * *" }, // Every 6 hours
+  { cron: "0 * * * *" }, // Every hour (tier-based delays apply)
   async ({ step }) => {
     // Check if Apify is configured
     if (!isApifyConfigured()) {

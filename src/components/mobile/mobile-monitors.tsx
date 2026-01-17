@@ -1,7 +1,8 @@
 "use client";
 
+import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Radio, Play, Pause, MoreHorizontal } from "lucide-react";
+import { Radio, Play, Pause, MoreHorizontal, Loader2, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +13,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { getPlatformDisplayName } from "@/lib/platform-utils";
 
 interface Monitor {
   id: string;
@@ -19,6 +21,8 @@ interface Monitor {
   keywords: string[];
   platforms: string[];
   isActive: boolean;
+  isScanning?: boolean;
+  lastManualScanAt?: Date | null;
   createdAt: Date;
 }
 
@@ -98,6 +102,72 @@ export function MobileMonitors({ monitors }: MobileMonitorsProps) {
 }
 
 function MonitorCard({ monitor }: { monitor: Monitor }) {
+  const [isScanning, setIsScanning] = useState(monitor.isScanning || false);
+  const [canScan, setCanScan] = useState(true);
+  const [cooldownText, setCooldownText] = useState<string | null>(null);
+
+  // Check scan status
+  const checkScanStatus = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/monitors/${monitor.id}/scan`);
+      if (response.ok) {
+        const data = await response.json();
+        setIsScanning(data.isScanning);
+        setCanScan(data.canScan);
+
+        if (!data.canScan && data.cooldownRemaining) {
+          const hours = Math.floor(data.cooldownRemaining / (1000 * 60 * 60));
+          const minutes = Math.floor((data.cooldownRemaining % (1000 * 60 * 60)) / (1000 * 60));
+          setCooldownText(hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`);
+        } else {
+          setCooldownText(null);
+        }
+      }
+    } catch {
+      // Silently fail
+    }
+  }, [monitor.id]);
+
+  useEffect(() => {
+    checkScanStatus();
+
+    if (isScanning) {
+      const interval = setInterval(checkScanStatus, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [isScanning, checkScanStatus]);
+
+  const handleScan = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!monitor.isActive || isScanning || !canScan) return;
+
+    setIsScanning(true);
+
+    try {
+      const response = await fetch(`/api/monitors/${monitor.id}/scan`, {
+        method: "POST",
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          setCanScan(false);
+          const hours = Math.floor(data.cooldownRemaining / (1000 * 60 * 60));
+          const minutes = Math.floor((data.cooldownRemaining % (1000 * 60 * 60)) / (1000 * 60));
+          setCooldownText(hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`);
+          setIsScanning(false);
+        } else {
+          setIsScanning(false);
+        }
+      }
+    } catch {
+      setIsScanning(false);
+    }
+  };
+
   return (
     <motion.div whileTap={{ scale: 0.98 }}>
       <Link href={`/dashboard/monitors/${monitor.id}`}>
@@ -107,12 +177,16 @@ function MonitorCard({ monitor }: { monitor: Monitor }) {
               {/* Status Indicator */}
               <div
                 className={`mt-1 p-2 rounded-full ${
-                  monitor.isActive
+                  isScanning
+                    ? "bg-teal-500/20 text-teal-500"
+                    : monitor.isActive
                     ? "bg-teal-500/10 text-teal-500"
                     : "bg-muted text-muted-foreground"
                 }`}
               >
-                {monitor.isActive ? (
+                {isScanning ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : monitor.isActive ? (
                   <Play className="h-4 w-4" />
                 ) : (
                   <Pause className="h-4 w-4" />
@@ -127,7 +201,7 @@ function MonitorCard({ monitor }: { monitor: Monitor }) {
                     variant={monitor.isActive ? "default" : "secondary"}
                     className="shrink-0 text-xs"
                   >
-                    {monitor.isActive ? "Active" : "Paused"}
+                    {isScanning ? "Scanning..." : monitor.isActive ? "Active" : "Paused"}
                   </Badge>
                 </div>
 
@@ -143,9 +217,9 @@ function MonitorCard({ monitor }: { monitor: Monitor }) {
                     <Badge
                       key={platform}
                       variant="outline"
-                      className="text-xs capitalize"
+                      className="text-xs"
                     >
-                      {platform}
+                      {getPlatformDisplayName(platform)}
                     </Badge>
                   ))}
                 </div>
@@ -159,6 +233,22 @@ function MonitorCard({ monitor }: { monitor: Monitor }) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={handleScan}
+                    disabled={!monitor.isActive || isScanning || !canScan}
+                    className="gap-2"
+                  >
+                    {isScanning ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4" />
+                    )}
+                    {isScanning
+                      ? "Scanning..."
+                      : !canScan && cooldownText
+                        ? `Wait ${cooldownText}`
+                        : "Scan Now"}
+                  </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link href={`/dashboard/monitors/${monitor.id}`}>
                       View Results
