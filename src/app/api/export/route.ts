@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { users, monitors, results, audiences, webhooks, alerts } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
+import { getPlanLimits } from "@/lib/stripe";
 
 /**
  * User Data Export API
@@ -100,6 +101,18 @@ export async function GET(request: Request) {
 
     if (!userData) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // Check export access based on tier
+    const plan = userData.subscriptionStatus || "free";
+    const limits = getPlanLimits(plan);
+
+    // CSV export requires Pro or Enterprise
+    if (format === "csv" && !limits.exports.csv) {
+      return NextResponse.json(
+        { error: "CSV export requires Pro or Enterprise plan" },
+        { status: 403 }
+      );
     }
 
     // Get user's monitors
