@@ -7,6 +7,28 @@ export const platforms = ["reddit", "hackernews", "producthunt", "devto", "googl
 export type Platform = (typeof platforms)[number];
 
 /**
+ * Human-readable display names for platforms
+ */
+export const platformDisplayNames: Record<Platform, string> = {
+  reddit: "Reddit",
+  hackernews: "Hacker News",
+  producthunt: "Product Hunt",
+  devto: "Dev.to",
+  googlereviews: "Google Reviews",
+  trustpilot: "Trustpilot",
+  appstore: "App Store",
+  playstore: "Play Store",
+  quora: "Quora",
+};
+
+/**
+ * Get human-readable display name for a platform
+ */
+export function getPlatformDisplayName(platform: string): string {
+  return platformDisplayNames[platform as Platform] || platform;
+}
+
+/**
  * Platform colors for different contexts
  */
 export const platformColors = {

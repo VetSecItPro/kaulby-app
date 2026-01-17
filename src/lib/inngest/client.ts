@@ -55,4 +55,10 @@ export type Events = {
       deliveryId: string;
     };
   };
+  "monitor/scan-now": {
+    data: {
+      monitorId: string;
+      userId: string;
+    };
+  };
 };
