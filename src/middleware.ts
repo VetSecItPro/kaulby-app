@@ -19,6 +19,7 @@ async function getClerkHandler() {
       "/pricing",
       "/privacy",
       "/terms",
+      "/gummysearch", // GummySearch migration landing page
       "/articles(.*)",
       "/sign-in(.*)",
       "/sign-up(.*)",
