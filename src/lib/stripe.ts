@@ -29,6 +29,7 @@ export interface PlanLimits {
     painPointCategories: boolean;
     askFeature: boolean;
     unlimitedAiAnalysis: boolean; // false = only first result gets AI analysis
+    comprehensiveAnalysis: boolean; // Team tier: Claude Sonnet 4 comprehensive analysis
   };
   alerts: {
     email: boolean;
@@ -41,12 +42,18 @@ export interface PlanLimits {
   };
 }
 
+// Billing interval type
+export type BillingInterval = "monthly" | "annual";
+
 // Plan definition interface
 export interface PlanDefinition {
   name: string;
   description: string;
-  price: number;
-  priceId: string | null;
+  price: number; // Monthly price
+  annualPrice: number; // Annual price (total for year)
+  priceId: string | null; // Monthly price ID
+  annualPriceId: string | null; // Annual price ID
+  trialDays: number; // Free trial days (0 for free tier)
   features: string[];
   limits: PlanLimits;
 }
@@ -57,7 +64,10 @@ export const PLANS: Record<"free" | "pro" | "enterprise", PlanDefinition> = {
     name: "Free",
     description: "Try Kaulby with limited features",
     price: 0,
+    annualPrice: 0,
     priceId: null,
+    annualPriceId: null,
+    trialDays: 0,
     features: [
       "1 monitor",
       "3 keywords",
@@ -81,6 +91,7 @@ export const PLANS: Record<"free" | "pro" | "enterprise", PlanDefinition> = {
         painPointCategories: false,
         askFeature: false,
         unlimitedAiAnalysis: false, // Only first result
+        comprehensiveAnalysis: false, // Free tier: no comprehensive analysis
       },
       alerts: {
         email: false,
@@ -97,17 +108,19 @@ export const PLANS: Record<"free" | "pro" | "enterprise", PlanDefinition> = {
     name: "Pro",
     description: "For power users and professionals",
     price: 29,
+    annualPrice: 290, // 2 months free ($29 x 10)
     priceId: process.env.STRIPE_PRO_PRICE_ID || "",
+    annualPriceId: process.env.STRIPE_PRO_ANNUAL_PRICE_ID || "",
+    trialDays: 14,
     features: [
       "10 monitors",
+      "All 9 platforms",
       "20 keywords per monitor",
       "Unlimited results",
-      "8 platforms (Reddit, HN, PH, Google Reviews, Trustpilot, App Store, Play Store, Quora)",
       "90-day history",
-      "2-hour refresh cycle",
+      "4-hour refresh cycle",
       "Full AI analysis",
-      "Pain point detection",
-      "Slack alerts + Daily email digest",
+      "Daily email digests",
       "CSV export",
     ],
     limits: {
@@ -116,14 +129,15 @@ export const PLANS: Record<"free" | "pro" | "enterprise", PlanDefinition> = {
       sourcesPerMonitor: 10,
       resultsHistoryDays: 90,
       resultsVisible: -1, // unlimited
-      refreshDelayHours: 2, // 2-hour refresh cycle
-      platforms: ["reddit", "hackernews", "producthunt", "googlereviews", "trustpilot", "appstore", "playstore", "quora"],
+      refreshDelayHours: 4, // 4-hour refresh cycle (6x faster than free)
+      platforms: ["reddit", "hackernews", "producthunt", "devto", "googlereviews", "trustpilot", "appstore", "playstore", "quora"],
       digestFrequencies: ["daily"], // Pro only gets daily digest
       aiFeatures: {
         sentiment: true,
         painPointCategories: true,
         askFeature: false,
         unlimitedAiAnalysis: true,
+        comprehensiveAnalysis: false, // Pro tier: uses Gemini 2.5 Flash (3 separate calls)
       },
       alerts: {
         email: true,
@@ -140,19 +154,22 @@ export const PLANS: Record<"free" | "pro" | "enterprise", PlanDefinition> = {
     name: "Team",
     description: "For growing teams and agencies",
     price: 99,
+    annualPrice: 990, // 2 months free ($99 x 10)
     priceId: process.env.STRIPE_ENTERPRISE_PRICE_ID || "",
+    annualPriceId: process.env.STRIPE_ENTERPRISE_ANNUAL_PRICE_ID || "",
+    trialDays: 14,
     features: [
+      "Everything in Pro",
       "Unlimited monitors",
       "50 keywords per monitor",
-      "Unlimited results",
-      "All 9 platforms (includes Dev.to)",
       "1-year history",
       "Real-time monitoring",
-      "Full AI + Ask feature",
-      "Configurable alerts (immediate/daily/weekly)",
-      "Webhooks + API access",
-      "Up to 5 team seats (+$15/user)",
+      "Full AI analysis",
+      "Real-time email alerts",
+      "Webhooks",
+      "5 team seats (+$15/user)",
       "Priority support",
+      "API access (coming soon)",
     ],
     limits: {
       monitors: -1, // unlimited
@@ -168,6 +185,7 @@ export const PLANS: Record<"free" | "pro" | "enterprise", PlanDefinition> = {
         painPointCategories: true,
         askFeature: true,
         unlimitedAiAnalysis: true,
+        comprehensiveAnalysis: true, // Team tier: Claude Sonnet 4 comprehensive analysis
       },
       alerts: {
         email: true,
@@ -184,14 +202,40 @@ export const PLANS: Record<"free" | "pro" | "enterprise", PlanDefinition> = {
 
 export type PlanKey = keyof typeof PLANS;
 
-// Map Stripe price ID to plan key
+// Map Stripe price ID to plan key (handles both monthly and annual)
 export function getPlanFromPriceId(priceId: string): PlanKey {
-  if (priceId === PLANS.pro.priceId) return "pro";
-  if (priceId === PLANS.enterprise.priceId) return "enterprise";
+  if (priceId === PLANS.pro.priceId || priceId === PLANS.pro.annualPriceId) return "pro";
+  if (priceId === PLANS.enterprise.priceId || priceId === PLANS.enterprise.annualPriceId) return "enterprise";
   return "free";
 }
 
 // Get plan limits for a subscription status
 export function getPlanLimits(plan: PlanKey): PlanLimits {
   return PLANS[plan].limits;
+}
+
+// Get the appropriate price ID based on plan and billing interval
+export function getPriceId(plan: PlanKey, interval: BillingInterval): string | null {
+  const planDef = PLANS[plan];
+  if (!planDef) return null;
+  return interval === "annual" ? planDef.annualPriceId : planDef.priceId;
+}
+
+// Get trial days for a plan
+export function getTrialDays(plan: PlanKey): number {
+  return PLANS[plan]?.trialDays || 0;
+}
+
+// Calculate savings for annual billing
+export function getAnnualSavings(plan: PlanKey): { amount: number; percentage: number; monthsFree: number } {
+  const planDef = PLANS[plan];
+  if (!planDef || planDef.price === 0) {
+    return { amount: 0, percentage: 0, monthsFree: 0 };
+  }
+  const monthlyTotal = planDef.price * 12;
+  const annualTotal = planDef.annualPrice;
+  const savings = monthlyTotal - annualTotal;
+  const percentage = Math.round((savings / monthlyTotal) * 100);
+  const monthsFree = Math.round(savings / planDef.price);
+  return { amount: savings, percentage, monthsFree };
 }

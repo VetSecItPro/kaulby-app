@@ -32,6 +32,7 @@ export default async function ResultsPage({ searchParams }: ResultsPageProps) {
   const offset = (page - 1) * RESULTS_PER_PAGE;
 
   // Run initial queries in parallel for better performance
+  // In dev mode, default to enterprise (Team) for full feature testing
   const [userPlan, refreshInfo, userMonitors] = userId
     ? await Promise.all([
         getUserPlan(userId),
@@ -40,7 +41,7 @@ export default async function ResultsPage({ searchParams }: ResultsPageProps) {
           where: eq(monitors.userId, userId),
         }),
       ])
-    : ["free" as const, null, []];
+    : [isDev ? "enterprise" as const : "free" as const, null, []];
 
   const planLimits = getPlanLimits(userPlan);
   const monitorIds = userMonitors.map((m) => m.id);

@@ -51,12 +51,13 @@ export const sentimentEnum = pgEnum("sentiment", [
 ]);
 
 export const painPointCategoryEnum = pgEnum("pain_point_category", [
-  "pain_point",
-  "solution_request",
-  "question",
+  "competitor_mention",
+  "pricing_concern",
   "feature_request",
-  "praise",
-  "discussion",
+  "support_need",
+  "negative_experience",
+  "positive_feedback",
+  "general_discussion",
 ]);
 
 // IANA timezone strings for proper DST handling
@@ -98,6 +99,8 @@ export const users = pgTable("users", {
   name: text("name"),
   timezone: timezoneEnum("timezone").default("America/New_York").notNull(),
   isAdmin: boolean("is_admin").default(false).notNull(),
+  // Onboarding tracking
+  onboardingCompleted: boolean("onboarding_completed").default(false).notNull(),
   // Workspace membership (Enterprise feature)
   workspaceId: uuid("workspace_id").references(() => workspaces.id, { onDelete: "set null" }),
   workspaceRole: workspaceRoleEnum("workspace_role"),
@@ -107,6 +110,10 @@ export const users = pgTable("users", {
   subscriptionId: text("subscription_id"),
   currentPeriodStart: timestamp("current_period_start"),
   currentPeriodEnd: timestamp("current_period_end"),
+  // Founding member tracking (first 1,000 Pro/Team subscribers)
+  isFoundingMember: boolean("is_founding_member").default(false).notNull(),
+  foundingMemberNumber: integer("founding_member_number"), // 1-1000
+  foundingMemberPriceId: text("founding_member_price_id"), // Stripe price ID they locked in
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -185,6 +192,7 @@ export const results = pgTable("results", {
   sentimentScore: real("sentiment_score"),
   painPointCategory: painPointCategoryEnum("pain_point_category"),
   aiSummary: text("ai_summary"),
+  aiAnalysis: jsonb("ai_analysis"), // Full AI analysis JSON (Pro: sentiment+painpoint+summary, Team: comprehensive)
   metadata: jsonb("metadata"),
   // User interaction tracking
   isViewed: boolean("is_viewed").default(false).notNull(),

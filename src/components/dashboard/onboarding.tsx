@@ -40,6 +40,7 @@ interface OnboardingWizardProps {
   isOpen: boolean;
   onClose: () => void;
   userName?: string;
+  userPlan?: "free" | "pro" | "enterprise";
 }
 
 // Pre-built monitor templates for quick setup
@@ -86,11 +87,21 @@ const MONITOR_TEMPLATES = [
   },
 ];
 
-const PLATFORMS = [
+// All available platforms
+const ALL_PLATFORMS = [
   { id: "reddit", name: "Reddit", description: "Discussions across communities" },
   { id: "hackernews", name: "Hacker News", description: "Tech & startup news" },
   { id: "producthunt", name: "Product Hunt", description: "Product launches" },
+  { id: "googlereviews", name: "Google Reviews", description: "Business reviews" },
+  { id: "trustpilot", name: "Trustpilot", description: "Company reviews" },
+  { id: "appstore", name: "App Store", description: "iOS app reviews" },
+  { id: "playstore", name: "Play Store", description: "Android app reviews" },
+  { id: "quora", name: "Quora", description: "Q&A discussions" },
+  { id: "devto", name: "Dev.to", description: "Developer community" },
 ];
+
+// Free tier only gets Reddit
+const FREE_PLATFORMS = ALL_PLATFORMS.filter(p => p.id === "reddit");
 
 const STEPS = [
   { id: 1, title: "Welcome" },
@@ -99,17 +110,19 @@ const STEPS = [
   { id: 4, title: "Platforms" },
 ];
 
-export function OnboardingWizard({ isOpen, onClose, userName }: OnboardingWizardProps) {
+export function OnboardingWizard({ isOpen, onClose, userName, userPlan = "free" }: OnboardingWizardProps) {
   const [step, setStep] = useState(1);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [monitorName, setMonitorName] = useState("");
   const [keywordInput, setKeywordInput] = useState("");
   const [keywords, setKeywords] = useState<string[]>([]);
-  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(["reddit", "hackernews"]);
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(["reddit"]);
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
 
+  // Get available platforms based on user's plan
+  const availablePlatforms = userPlan === "free" ? FREE_PLATFORMS : ALL_PLATFORMS;
   const progress = (step / STEPS.length) * 100;
 
   const addKeyword = (keyword?: string) => {
@@ -172,6 +185,7 @@ export function OnboardingWizard({ isOpen, onClose, userName }: OnboardingWizard
     setIsCreating(true);
 
     try {
+      // Create the monitor
       const response = await fetch("/api/monitors", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -186,6 +200,13 @@ export function OnboardingWizard({ isOpen, onClose, userName }: OnboardingWizard
         const data = await response.json();
         throw new Error(data.error || "Failed to create monitor");
       }
+
+      // Mark onboarding as complete
+      await fetch("/api/user/onboarding", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ completed: true }),
+      });
 
       onClose();
       router.push("/dashboard/monitors");
@@ -417,39 +438,50 @@ export function OnboardingWizard({ isOpen, onClose, userName }: OnboardingWizard
             </DialogHeader>
 
             <div className="py-4 space-y-4">
-              <div className="grid gap-2">
-                {PLATFORMS.map((platform) => (
-                  <div
-                    key={platform.id}
-                    className={cn(
-                      "flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-all hover:bg-muted/50",
-                      selectedPlatforms.includes(platform.id) && "border-primary bg-primary/5"
-                    )}
-                    onClick={() => {
-                      setSelectedPlatforms((prev) =>
-                        prev.includes(platform.id)
-                          ? prev.filter((p) => p !== platform.id)
-                          : [...prev, platform.id]
-                      );
-                    }}
-                  >
-                    <Checkbox
-                      checked={selectedPlatforms.includes(platform.id)}
-                      onCheckedChange={() => {
+              {userPlan === "free" ? (
+                <div className="rounded-lg border bg-muted/30 p-4 text-center">
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Free plan monitors <strong>Reddit</strong> only.
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Upgrade to Pro for all 9 platforms including Hacker News, Product Hunt, and more.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid gap-2 max-h-[200px] overflow-y-auto">
+                  {availablePlatforms.map((platform) => (
+                    <div
+                      key={platform.id}
+                      className={cn(
+                        "flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-all hover:bg-muted/50",
+                        selectedPlatforms.includes(platform.id) && "border-primary bg-primary/5"
+                      )}
+                      onClick={() => {
                         setSelectedPlatforms((prev) =>
                           prev.includes(platform.id)
                             ? prev.filter((p) => p !== platform.id)
                             : [...prev, platform.id]
                         );
                       }}
-                    />
-                    <div>
-                      <p className="font-medium text-sm">{platform.name}</p>
-                      <p className="text-xs text-muted-foreground">{platform.description}</p>
+                    >
+                      <Checkbox
+                        checked={selectedPlatforms.includes(platform.id)}
+                        onCheckedChange={() => {
+                          setSelectedPlatforms((prev) =>
+                            prev.includes(platform.id)
+                              ? prev.filter((p) => p !== platform.id)
+                              : [...prev, platform.id]
+                          );
+                        }}
+                      />
+                      <div>
+                        <p className="font-medium text-sm">{platform.name}</p>
+                        <p className="text-xs text-muted-foreground">{platform.description}</p>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
 
               {/* Summary */}
               <div className="rounded-lg border bg-muted/30 p-3">
@@ -458,7 +490,7 @@ export function OnboardingWizard({ isOpen, onClose, userName }: OnboardingWizard
                   <p><strong>Name:</strong> {monitorName || "My First Monitor"}</p>
                   <p><strong>Keywords:</strong> {keywords.join(", ")}</p>
                   <p><strong>Platforms:</strong> {selectedPlatforms.map(p =>
-                    PLATFORMS.find(pl => pl.id === p)?.name
+                    ALL_PLATFORMS.find(pl => pl.id === p)?.name
                   ).join(", ")}</p>
                 </div>
               </div>

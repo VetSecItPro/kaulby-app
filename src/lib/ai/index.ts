@@ -6,3 +6,5 @@ export * from "./analyzers/sentiment";
 export * from "./analyzers/pain-points";
 export * from "./analyzers/summarize";
 export * from "./analyzers/weekly-insights";
+export * from "./analyzers/comprehensive";
+export * from "./report-formatter";

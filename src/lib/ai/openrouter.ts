@@ -4,8 +4,11 @@ import { langfuse } from "./langfuse";
 
 // Models
 export const MODELS = {
+  // Standard tier - fast and cost-effective
   primary: "google/gemini-2.5-flash",
   fallback: "openai/gpt-4o-mini",
+  // Premium tier - for Team plan deep analysis
+  premium: "anthropic/claude-sonnet-4",
 } as const;
 
 // Lazy-initialized OpenRouter client to avoid build-time errors
@@ -48,6 +51,10 @@ export const MODEL_PRICING = {
   "openai/gpt-4o-mini": {
     input: 0.15,
     output: 0.6,
+  },
+  "anthropic/claude-sonnet-4": {
+    input: 3.0,
+    output: 15.0,
   },
 } as const;
 
