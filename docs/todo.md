@@ -90,31 +90,30 @@ Complete overhaul for modern 2025-2026 SaaS aesthetic:
 
 ### Admin Dashboard
 
-Full admin panel gated to admin accounts only:
+Full admin panel at `/manage` gated to admin accounts only:
 
-- [ ] Admin route protection middleware (`is_admin` check)
-- [ ] Admin layout with dedicated navigation
-- [ ] **User Management**
-  - [ ] User list with search/filter
-  - [ ] User details (subscription, usage, monitors)
-  - [ ] Ability to upgrade/downgrade users
-  - [ ] Ban/suspend functionality
-- [ ] **Analytics & Metrics**
-  - [ ] Total users, MRR, churn rate
-  - [ ] Signup trends (daily/weekly/monthly charts)
-  - [ ] Active users graph
-  - [ ] Conversion funnel visualization
-- [ ] **API Cost Tracking**
-  - [ ] OpenRouter/AI costs by day/week/month
-  - [ ] Serper API usage and costs
-  - [ ] Cost per user breakdown
-  - [ ] Budget alerts/thresholds
-- [ ] **System Health**
-  - [ ] Inngest job success/failure rates
-  - [ ] Average job processing times
-  - [ ] Error logs viewer
-  - [ ] Database query performance
-- [ ] **Content Moderation**
+- [x] Admin route protection middleware (`is_admin` check) ✅ (`manage/layout.tsx`)
+- [x] Admin layout with dedicated navigation ✅ (Sidebar with "Admin Dashboard" link)
+- [x] **User Management** ✅ (`/manage/users`)
+  - [x] User list with search/filter ✅ (search by email/name/ID, filter by plan)
+  - [x] User details (subscription, usage, monitors) ✅ (details dialog)
+  - [x] Ability to upgrade/downgrade users ✅ (`updateUserPlan` server action)
+  - [ ] Ban/suspend functionality - needs `isBanned` field in users schema
+- [x] **Analytics & Metrics** ✅ (`/manage` main page)
+  - [x] Total users, MRR, churn rate ✅ (`businessMetrics`)
+  - [x] Signup trends (daily/weekly/monthly charts) ✅ (`userGrowth` chart)
+  - [x] Active users graph ✅
+  - [x] Conversion funnel visualization ✅ (`conversionRate`, `proConversions`)
+- [x] **API Cost Tracking** ✅
+  - [x] OpenRouter/AI costs by day/week/month ✅ (`aiCostsByDay`)
+  - [x] Cost per user breakdown ✅ (`costBreakdown`, `topUsersByCost`)
+  - [ ] Budget alerts/thresholds - future enhancement
+- [x] **System Health** ✅ (`systemHealth` component)
+  - [x] Inngest job success/failure rates ✅ (job status display)
+  - [x] Average job processing times ✅ (`avgResponseTime`)
+  - [ ] Error logs viewer - needs logging integration
+  - [ ] Database query performance - needs query monitoring
+- [ ] **Content Moderation** - future enhancement
   - [ ] Flag/review reported content
   - [ ] Monitor abuse detection
 
@@ -134,3 +133,5 @@ Track pre-existing bugs/errors discovered during development here. Fix after cur
 - [x] Created kaulby-todo.md for tracking gaps and issues (Jan 13, 2026)
 - [x] Schema updated with result interaction fields, expanded pain point categories, usage table, monitor health stats, subscription period tracking, slack integrations table (Jan 13, 2026)
 - [x] Pushed schema changes to Neon via `npm run db:push` (Jan 13, 2026)
+- [x] Phase 9: UI Revamp - page transitions, empty states, sparklines, hover animations (Jan 17, 2026)
+- [x] Phase 10: Admin Dashboard - already implemented at `/manage` with user management, analytics, cost tracking, system health (Jan 17, 2026)

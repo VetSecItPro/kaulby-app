@@ -28,6 +28,7 @@ async function getClerkHandler() {
       "/api/webhooks(.*)",
       "/api/inngest(.*)",
       "/invite(.*)", // Public invite acceptance page
+      "/banned", // Banned user page
       // Test endpoints only in verified local development (not Vercel preview/prod)
       ...(isLocalDev ? ["/api/test-emails(.*)", "/api/test-single-email(.*)"] : []),
     ]);

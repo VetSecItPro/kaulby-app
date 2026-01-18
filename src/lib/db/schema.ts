@@ -116,6 +116,9 @@ export const users = pgTable("users", {
   name: text("name"),
   timezone: timezoneEnum("timezone").default("America/New_York").notNull(),
   isAdmin: boolean("is_admin").default(false).notNull(),
+  isBanned: boolean("is_banned").default(false).notNull(),
+  bannedAt: timestamp("banned_at"),
+  banReason: text("ban_reason"),
   // Onboarding tracking
   onboardingCompleted: boolean("onboarding_completed").default(false).notNull(),
   // Workspace membership (Enterprise feature)
