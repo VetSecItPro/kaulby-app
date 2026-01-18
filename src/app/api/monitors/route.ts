@@ -76,7 +76,7 @@ export async function POST(request: Request) {
     await ensureDevUserExists(userId);
 
     const body = await request.json();
-    const { name, companyName, keywords, searchQuery, platforms } = body;
+    const { name, companyName, keywords, searchQuery, platforms, platformUrls } = body;
 
     // Validate input
     if (!name || typeof name !== "string") {
@@ -162,6 +162,24 @@ export async function POST(request: Request) {
       ? searchQuery.trim().slice(0, 500) // Max 500 chars for search query
       : undefined;
 
+    // Sanitize platform URLs if provided
+    const sanitizedPlatformUrls: Record<string, string> = {};
+    if (platformUrls && typeof platformUrls === "object") {
+      for (const [platform, url] of Object.entries(platformUrls)) {
+        if (typeof url === "string" && url.trim()) {
+          // Basic URL validation - allow Google Maps URLs, Trustpilot, App Store, Play Store, and Place IDs
+          const trimmedUrl = url.trim();
+          if (
+            trimmedUrl.startsWith("https://") ||
+            trimmedUrl.startsWith("http://") ||
+            trimmedUrl.startsWith("ChI") // Google Place ID
+          ) {
+            sanitizedPlatformUrls[platform] = trimmedUrl.slice(0, 500); // Max 500 chars
+          }
+        }
+      }
+    }
+
     // Create monitor with allowed platforms only
     const [newMonitor] = await db
       .insert(monitors)
@@ -171,6 +189,7 @@ export async function POST(request: Request) {
         companyName: sanitizeInput(companyName),
         keywords: sanitizedKeywords,
         searchQuery: sanitizedSearchQuery,
+        platformUrls: Object.keys(sanitizedPlatformUrls).length > 0 ? sanitizedPlatformUrls : null,
         platforms: allowedPlatforms,
         isActive: true,
       })

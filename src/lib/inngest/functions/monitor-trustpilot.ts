@@ -59,8 +59,31 @@ export const monitorTrustpilot = inngest.createFunction(
 
       let monitorMatchCount = 0;
 
-      // For Trustpilot, keywords are company URLs or domains to monitor
-      for (const companyUrl of monitor.keywords) {
+      // For Trustpilot, check platformUrls first, then fall back to keywords
+      let companyUrl: string | null = null;
+
+      // Check platformUrls (new field)
+      const platformUrls = monitor.platformUrls as Record<string, string> | null;
+      if (platformUrls?.trustpilot) {
+        companyUrl = platformUrls.trustpilot;
+      }
+      // Fallback: Check keywords for Trustpilot URLs or domains
+      else if (monitor.keywords && monitor.keywords.length > 0) {
+        companyUrl = monitor.keywords.find(
+          (k) => k.includes("trustpilot") || k.includes(".com") || k.includes(".io")
+        ) || monitor.keywords[0];
+      }
+      // Fallback: Use companyName as domain guess
+      else if (monitor.companyName) {
+        companyUrl = monitor.companyName.toLowerCase().replace(/\s+/g, "");
+      }
+
+      if (!companyUrl) {
+        continue; // No valid company identifier
+      }
+
+      // Process single company URL
+      {
         const reviews = await step.run(`fetch-reviews-${monitor.id}-${companyUrl.slice(0, 20)}`, async () => {
           try {
             const fetchedReviews = await fetchTrustpilotReviews(companyUrl, 20);

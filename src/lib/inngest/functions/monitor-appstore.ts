@@ -59,17 +59,34 @@ export const monitorAppStore = inngest.createFunction(
 
       let monitorMatchCount = 0;
 
-      // For App Store, keywords are app URLs or IDs to monitor
-      for (const appUrl of monitor.keywords) {
-        const reviews = await step.run(`fetch-reviews-${monitor.id}-${appUrl.slice(0, 20)}`, async () => {
-          try {
-            const fetchedReviews = await fetchAppStoreReviews(appUrl, 20);
-            return fetchedReviews;
-          } catch (error) {
-            console.error(`Error fetching App Store reviews for ${appUrl}:`, error);
-            return [] as AppStoreReviewItem[];
-          }
-        });
+      // For App Store, check platformUrls first, then fall back to keywords
+      let appUrl: string | null = null;
+
+      // Check platformUrls (new field)
+      const platformUrls = monitor.platformUrls as Record<string, string> | null;
+      if (platformUrls?.appstore) {
+        appUrl = platformUrls.appstore;
+      }
+      // Fallback: Check keywords for App Store URLs or IDs
+      else if (monitor.keywords && monitor.keywords.length > 0) {
+        appUrl = monitor.keywords.find(
+          (k) => k.includes("apps.apple.com") || k.startsWith("id") || /^\d+$/.test(k)
+        ) || null;
+      }
+
+      if (!appUrl) {
+        continue; // No valid app identifier
+      }
+
+      const reviews = await step.run(`fetch-reviews-${monitor.id}-${appUrl.slice(0, 20)}`, async () => {
+        try {
+          const fetchedReviews = await fetchAppStoreReviews(appUrl!, 20);
+          return fetchedReviews;
+        } catch (error) {
+          console.error(`Error fetching App Store reviews for ${appUrl}:`, error);
+          return [] as AppStoreReviewItem[];
+        }
+      });
 
         // Save reviews as results
         if (reviews.length > 0) {
@@ -118,7 +135,6 @@ export const monitorAppStore = inngest.createFunction(
             }
           });
         }
-      }
 
       // Update monitor stats
       monitorResults[monitor.id] = monitorMatchCount;

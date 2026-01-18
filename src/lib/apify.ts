@@ -210,13 +210,14 @@ export function getApiHealth(): Record<string, { status: string; details: unknow
 }
 
 // Actor IDs for different scrapers
+// Format: "username/actor-name" - converted to "username~actor-name" for API calls
 const ACTORS = {
   reddit: "trudax/reddit-scraper",
   googleReviews: "compass/google-maps-reviews-scraper",
-  trustpilot: "epctex/trustpilot-scraper",
-  appStore: "alexey/app-store-scraper",
-  playStore: "epctex/google-play-scraper",
-  quora: "jupri/quora-scraper",
+  trustpilot: "happitap/trustpilot-scraper",
+  appStore: "thewolves/appstore-reviews-scraper", // Pay per result ($0.10/1000 reviews)
+  playStore: "neatrat/google-play-store-reviews-scraper", // Free tier available
+  quora: "jupri/quora-scraper", // Note: requires paid rental
 } as const;
 
 interface ApifyRunResponse {
@@ -308,9 +309,12 @@ async function runActor<T>(
 ): Promise<T[]> {
   const apiKey = getApiKey();
 
+  // Convert actor ID from "username/actor-name" to "username~actor-name" for API
+  const apiActorId = actorId.replace("/", "~");
+
   // Start the actor run
   const runResponse = await fetch(
-    `${APIFY_API_BASE}/acts/${actorId}/runs?token=${apiKey}`,
+    `${APIFY_API_BASE}/acts/${apiActorId}/runs?token=${apiKey}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -368,19 +372,34 @@ async function runActor<T>(
 
 /**
  * Fetch Google Reviews for a business
- * @param placeUrl - Google Maps URL or place ID
+ * @param placeUrlOrId - Google Maps URL or Place ID (ChI...)
  * @param maxReviews - Maximum number of reviews to fetch (default 50)
+ *
+ * Supported URL formats:
+ * - Full URL: https://www.google.com/maps/place/Business+Name/@lat,lng,zoom/...
+ * - Search URL: https://www.google.com/maps/search/restaurants+in+New+York
+ * - Place ID: ChIJVVVVVVXlUVMRu-GPNDD5qKw
  */
 export async function fetchGoogleReviews(
-  placeUrl: string,
+  placeUrlOrId: string,
   maxReviews: number = 50
 ): Promise<GoogleReviewItem[]> {
-  const input = {
-    startUrls: [{ url: placeUrl }],
-    maxReviews,
-    reviewsSort: "newest",
-    language: "en",
-  };
+  // Check if it's a Place ID (starts with ChI)
+  const isPlaceId = placeUrlOrId.startsWith("ChI");
+
+  const input = isPlaceId
+    ? {
+        placeIds: [placeUrlOrId],
+        maxReviews,
+        reviewsSort: "newest",
+        language: "en",
+      }
+    : {
+        startUrls: [{ url: placeUrlOrId }],
+        maxReviews,
+        reviewsSort: "newest",
+        language: "en",
+      };
 
   return runActor<GoogleReviewItem>(ACTORS.googleReviews, input);
 }
@@ -411,6 +430,9 @@ export async function fetchTrustpilotReviews(
  * Fetch App Store reviews for an app
  * @param appUrl - App Store URL or app ID
  * @param maxReviews - Maximum number of reviews to fetch (default 50)
+ *
+ * Uses thewolves/appstore-reviews-scraper actor
+ * Free demo mode: max 10 items
  */
 export async function fetchAppStoreReviews(
   appUrl: string,
@@ -419,23 +441,26 @@ export async function fetchAppStoreReviews(
   // Support both full URLs and app IDs
   // URL format: https://apps.apple.com/us/app/app-name/id123456789
   // App ID format: id123456789 or just 123456789
-  let appId = appUrl;
 
+  // If it's a full URL, use startUrls; otherwise extract app ID
   if (appUrl.includes("apps.apple.com")) {
-    // Extract app ID from URL
-    const match = appUrl.match(/id(\d+)/);
-    if (match) {
-      appId = match[1];
-    }
-  } else if (appUrl.startsWith("id")) {
+    const input = {
+      startUrls: [appUrl],
+      maxItems: maxReviews,
+    };
+    return runActor<AppStoreReviewItem>(ACTORS.appStore, input);
+  }
+
+  // Extract numeric ID
+  let appId = appUrl;
+  if (appUrl.startsWith("id")) {
     appId = appUrl.slice(2);
   }
 
   const input = {
-    appId,
+    appIds: [appId],
     country: "us",
-    maxReviews,
-    sort: "mostRecent",
+    maxItems: maxReviews,
   };
 
   return runActor<AppStoreReviewItem>(ACTORS.appStore, input);
@@ -445,6 +470,8 @@ export async function fetchAppStoreReviews(
  * Fetch Google Play Store reviews for an app
  * @param appUrl - Play Store URL or package ID
  * @param maxReviews - Maximum number of reviews to fetch (default 50)
+ *
+ * Uses neatrat/google-play-store-reviews-scraper actor
  */
 export async function fetchPlayStoreReviews(
   appUrl: string,
@@ -453,20 +480,11 @@ export async function fetchPlayStoreReviews(
   // Support both full URLs and package IDs
   // URL format: https://play.google.com/store/apps/details?id=com.example.app
   // Package ID format: com.example.app
-  let packageId = appUrl;
-
-  if (appUrl.includes("play.google.com")) {
-    // Extract package ID from URL
-    const match = appUrl.match(/id=([a-zA-Z0-9_.]+)/);
-    if (match) {
-      packageId = match[1];
-    }
-  }
 
   const input = {
-    startUrls: [{ url: `https://play.google.com/store/apps/details?id=${packageId}` }],
+    appIdOrUrl: appUrl, // Can be URL or package ID
     maxReviews,
-    sort: "newest",
+    sortBy: "newest",
   };
 
   return runActor<PlayStoreReviewItem>(ACTORS.playStore, input);

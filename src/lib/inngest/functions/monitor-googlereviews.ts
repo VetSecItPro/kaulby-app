@@ -63,42 +63,45 @@ export const monitorGoogleReviews = inngest.createFunction(
 
       let monitorMatchCount = 0;
 
-      // For Google Reviews, we need Google Maps URLs or place IDs
-      // Check keywords first, then fall back to companyName as search term
-      let businessUrls: string[] = [];
+      // For Google Reviews, check platformUrls first, then fall back to keywords/companyName
+      let businessUrl: string | null = null;
 
-      // If keywords contain Google URLs, use them
-      if (monitor.keywords && monitor.keywords.length > 0) {
-        businessUrls = monitor.keywords.filter(
+      // Check platformUrls (new field)
+      const platformUrls = monitor.platformUrls as Record<string, string> | null;
+      if (platformUrls?.googlereviews) {
+        businessUrl = platformUrls.googlereviews;
+      }
+      // Fallback: Check keywords for Google URLs
+      else if (monitor.keywords && monitor.keywords.length > 0) {
+        const googleUrl = monitor.keywords.find(
           (k) => k.includes("google") || k.includes("maps") || k.startsWith("ChI")
         );
+        if (googleUrl) businessUrl = googleUrl;
+      }
+      // Fallback: Use companyName as search term
+      if (!businessUrl && monitor.companyName) {
+        // For business name searches, use a Google Maps search URL
+        businessUrl = `https://www.google.com/maps/search/${encodeURIComponent(monitor.companyName)}`;
       }
 
-      // If no valid Google URLs and companyName exists, use it as a search term
-      // (The Apify scraper can search by business name)
-      if (businessUrls.length === 0 && monitor.companyName) {
-        businessUrls = [monitor.companyName];
-      }
-
-      if (businessUrls.length === 0) {
+      if (!businessUrl) {
         continue; // No valid business identifier
       }
 
-      for (const businessUrl of businessUrls) {
+      // Process single business URL
+      const reviews = await step.run(`fetch-reviews-${monitor.id}-${businessUrl.slice(0, 20)}`, async () => {
+        try {
+          const fetchedReviews = await fetchGoogleReviews(businessUrl!, 20);
+          return fetchedReviews;
+        } catch (error) {
+          console.error(`Error fetching Google Reviews for ${businessUrl}:`, error);
+          return [] as GoogleReviewItem[];
+        }
+      });
 
-        const reviews = await step.run(`fetch-reviews-${monitor.id}-${businessUrl.slice(0, 20)}`, async () => {
-          try {
-            const fetchedReviews = await fetchGoogleReviews(businessUrl, 20);
-            return fetchedReviews;
-          } catch (error) {
-            console.error(`Error fetching Google Reviews for ${businessUrl}:`, error);
-            return [] as GoogleReviewItem[];
-          }
-        });
-
-        // Save reviews as results
-        if (reviews.length > 0) {
-          await step.run(`save-results-${monitor.id}-${businessUrl.slice(0, 20)}`, async () => {
+      // Save reviews as results
+      if (reviews.length > 0) {
+        await step.run(`save-results-${monitor.id}-${businessUrl.slice(0, 20)}`, async () => {
             for (const review of reviews) {
               // Check if we already have this result
               const existing = await db.query.results.findFirst({
@@ -140,7 +143,7 @@ export const monitorGoogleReviews = inngest.createFunction(
             }
           });
         }
-      }
+
 
       // Update monitor stats
       monitorResults[monitor.id] = monitorMatchCount;
