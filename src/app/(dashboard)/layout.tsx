@@ -21,7 +21,9 @@ export default async function DashboardLayout({
   if (isLocalDev) {
     return (
       <ResponsiveDashboardLayout isAdmin={true} subscriptionStatus="enterprise">
-        {children}
+        <DashboardClientWrapper isNewUser={false} userName="Dev User">
+          {children}
+        </DashboardClientWrapper>
       </ResponsiveDashboardLayout>
     );
   }
@@ -37,13 +39,18 @@ export default async function DashboardLayout({
   const [dbUser, monitorsCountResult] = await Promise.all([
     db.query.users.findFirst({
       where: (users, { eq }) => eq(users.id, userId),
-      columns: { isAdmin: true, subscriptionStatus: true },
+      columns: { isAdmin: true, subscriptionStatus: true, isBanned: true },
     }),
     db
       .select({ count: count() })
       .from(monitors)
       .where(eq(monitors.userId, userId)),
   ]);
+
+  // Block banned users from accessing the dashboard
+  if (dbUser?.isBanned) {
+    redirect("/banned");
+  }
 
   const hasMonitors = (monitorsCountResult[0]?.count || 0) > 0;
   const isNewUser = !hasMonitors;

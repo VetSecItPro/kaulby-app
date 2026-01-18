@@ -2,6 +2,7 @@
 
 import { ReactNode } from "react";
 import { OnboardingProvider } from "./onboarding-provider";
+import { PageTransition } from "@/components/shared/motion";
 
 interface DashboardClientWrapperProps {
   children: ReactNode;
@@ -16,7 +17,7 @@ export function DashboardClientWrapper({
 }: DashboardClientWrapperProps) {
   return (
     <OnboardingProvider isNewUser={isNewUser} userName={userName}>
-      {children}
+      <PageTransition>{children}</PageTransition>
     </OnboardingProvider>
   );
 }

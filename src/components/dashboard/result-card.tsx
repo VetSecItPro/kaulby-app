@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, memo, useCallback } from "react";
+import { motion } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -128,14 +129,23 @@ export const ResultCard = memo(function ResultCard({ result, showHidden = false,
   }
 
   return (
-    <Card
-      className={cn(
-        "transition-all duration-200 hover:shadow-md",
-        !isViewed && "border-l-4 border-l-primary bg-primary/5",
-        isHidden && "opacity-60"
-      )}
-      onMouseEnter={handleView}
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      whileHover={{
+        y: -2,
+        transition: { duration: 0.2 },
+      }}
     >
+      <Card
+        className={cn(
+          "transition-shadow duration-200 hover:shadow-lg hover:shadow-primary/5",
+          !isViewed && "border-l-4 border-l-primary bg-primary/5",
+          isHidden && "opacity-60"
+        )}
+        onMouseEnter={handleView}
+      >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1 flex-1">
@@ -284,7 +294,8 @@ export const ResultCard = memo(function ResultCard({ result, showHidden = false,
           ) : null}
         </CardContent>
       )}
-    </Card>
+      </Card>
+    </motion.div>
   );
 });
 
