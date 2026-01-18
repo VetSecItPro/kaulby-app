@@ -59,20 +59,37 @@ export const monitorPlayStore = inngest.createFunction(
 
       let monitorMatchCount = 0;
 
-      // For Play Store, keywords are app URLs or package IDs to monitor
-      for (const appUrl of monitor.keywords) {
-        const reviews = await step.run(`fetch-reviews-${monitor.id}-${appUrl.slice(0, 20)}`, async () => {
-          try {
-            const fetchedReviews = await fetchPlayStoreReviews(appUrl, 20);
-            return fetchedReviews;
-          } catch (error) {
-            console.error(`Error fetching Play Store reviews for ${appUrl}:`, error);
-            return [] as PlayStoreReviewItem[];
-          }
-        });
+      // For Play Store, check platformUrls first, then fall back to keywords
+      let appUrl: string | null = null;
 
-        // Save reviews as results
-        if (reviews.length > 0) {
+      // Check platformUrls (new field)
+      const platformUrls = monitor.platformUrls as Record<string, string> | null;
+      if (platformUrls?.playstore) {
+        appUrl = platformUrls.playstore;
+      }
+      // Fallback: Check keywords for Play Store URLs or package IDs
+      else if (monitor.keywords && monitor.keywords.length > 0) {
+        appUrl = monitor.keywords.find(
+          (k) => k.includes("play.google.com") || k.includes(".")
+        ) || null;
+      }
+
+      if (!appUrl) {
+        continue; // No valid app identifier
+      }
+
+      const reviews = await step.run(`fetch-reviews-${monitor.id}-${appUrl.slice(0, 20)}`, async () => {
+        try {
+          const fetchedReviews = await fetchPlayStoreReviews(appUrl!, 20);
+          return fetchedReviews;
+        } catch (error) {
+          console.error(`Error fetching Play Store reviews for ${appUrl}:`, error);
+          return [] as PlayStoreReviewItem[];
+        }
+      });
+
+      // Save reviews as results
+      if (reviews.length > 0) {
           await step.run(`save-results-${monitor.id}-${appUrl.slice(0, 20)}`, async () => {
             for (const review of reviews) {
               // Generate a unique URL for deduplication
@@ -119,7 +136,6 @@ export const monitorPlayStore = inngest.createFunction(
             }
           });
         }
-      }
 
       // Update monitor stats
       monitorResults[monitor.id] = monitorMatchCount;

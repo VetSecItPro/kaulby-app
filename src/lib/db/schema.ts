@@ -201,6 +201,9 @@ export const monitors = pgTable("monitors", {
   // Advanced boolean search query (Pro feature)
   // Supports: "exact phrase", title:, body:, author:, subreddit:, NOT, OR, AND
   searchQuery: text("search_query"),
+  // Platform-specific URLs (for Google Reviews, Trustpilot, App Store, Play Store)
+  // Format: { googlereviews: "url", trustpilot: "url", ... }
+  platformUrls: jsonb("platform_urls").$type<Record<string, string>>(),
   filters: jsonb("filters"), // pain_point, solution_requests, etc.
   platforms: platformEnum("platforms").array().notNull(),
   isActive: boolean("is_active").default(true).notNull(),
