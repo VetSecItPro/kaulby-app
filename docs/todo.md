@@ -2,7 +2,7 @@
 
 Active gaps, migrations, and known issues. See also: `docs/platforms-research.md` for platform API research.
 
-**Last updated:** January 15, 2026
+**Last updated:** January 17, 2026
 
 ---
 
@@ -54,39 +54,39 @@ From Project Bible comparison:
 
 ### Tier Enforcement
 
-- [ ] Limit checking functions in `src/lib/limits.ts`
-- [ ] Usage increment logic in Inngest jobs
-- [ ] Feature gate checks in API routes and server actions
-- [ ] Upgrade prompts when limits hit
+- [x] Limit checking functions in `src/lib/limits.ts` ✅
+- [x] Usage increment logic in Inngest jobs ✅
+- [x] Feature gate checks in API routes and server actions ✅
+- [x] Upgrade prompts when limits hit ✅
 
 ### Onboarding Flow
 
-- [ ] Welcome screen: "What do you want to track?"
-- [ ] Quick monitor setup wizard
-- [ ] First results shown immediately (seeded/cached data)
-- [ ] Getting started checklist on dashboard
+- [x] Welcome screen: "What do you want to track?" ✅ (`OnboardingWizard` step 1)
+- [x] Quick monitor setup wizard ✅ (4-step wizard with templates)
+- [x] First results shown immediately (seeded/cached data) ✅ (`SampleResultsPreview` component)
+- [x] Getting started checklist on dashboard ✅ (`QuickStartGuide` component)
 
 ### Email Digests
 
-- [ ] Daily digest (Pro+)
-- [ ] Weekly digest (all tiers)
-- [ ] Weekly insights summary with AI
+- [x] Daily digest (Pro & Team) ✅ (`sendDailyDigest` - 9 AM local time, DST-aware)
+- [x] Weekly digest (Team) ✅ (`sendWeeklyDigest` - 9 AM Monday, DST-aware)
+- [x] Weekly insights summary with AI ✅ (`generateWeeklyInsights` for Pro+ users)
 
 ### UI Revamp
 
 Complete overhaul for modern 2025-2026 SaaS aesthetic:
 
-- [ ] Modern color palette and typography refresh
-- [ ] Smooth page transitions and micro-interactions (Framer Motion)
-- [ ] Glassmorphism/subtle gradients where appropriate
-- [ ] Improved card designs with hover states and shadows
-- [ ] Loading skeletons instead of spinners
-- [ ] Empty state illustrations
-- [ ] Responsive refinements for mobile/tablet
-- [ ] Dark mode support
-- [ ] Toast notifications with animations
-- [ ] Data visualization components (charts, sparklines)
-- [ ] Refined dashboard layout with better information hierarchy
+- [x] Modern color palette and typography refresh ✅ (teal/cyan primary, consistent typography)
+- [x] Smooth page transitions and micro-interactions (Framer Motion) ✅ (`PageTransition` in dashboard)
+- [x] Glassmorphism/subtle gradients where appropriate ✅ (empty state illustrations)
+- [x] Improved card designs with hover states and shadows ✅ (`motion.div` with hover lift effects)
+- [x] Loading skeletons instead of spinners ✅ (comprehensive skeleton components exist)
+- [x] Empty state illustrations ✅ (`empty-states.tsx` with animated illustrations)
+- [x] Responsive refinements for mobile/tablet ✅ (CSS-based responsive layout)
+- [x] Dark mode support ✅ (always-on dark mode)
+- [x] Toast notifications with animations ✅ (sonner toasts with animations)
+- [x] Data visualization components (charts, sparklines) ✅ (`stat-card.tsx` sparklines, recharts)
+- [x] Refined dashboard layout with better information hierarchy ✅ (`DashboardStats` component)
 
 ### Admin Dashboard
 

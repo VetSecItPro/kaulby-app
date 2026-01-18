@@ -21,7 +21,9 @@ export default async function DashboardLayout({
   if (isLocalDev) {
     return (
       <ResponsiveDashboardLayout isAdmin={true} subscriptionStatus="enterprise">
-        {children}
+        <DashboardClientWrapper isNewUser={false} userName="Dev User">
+          {children}
+        </DashboardClientWrapper>
       </ResponsiveDashboardLayout>
     );
   }
