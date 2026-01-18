@@ -39,7 +39,7 @@ export default async function DashboardLayout({
   const [dbUser, monitorsCountResult] = await Promise.all([
     db.query.users.findFirst({
       where: (users, { eq }) => eq(users.id, userId),
-      columns: { isAdmin: true, subscriptionStatus: true, isBanned: true },
+      columns: { isAdmin: true, subscriptionStatus: true, isBanned: true, onboardingCompleted: true },
     }),
     db
       .select({ count: count() })
@@ -53,7 +53,9 @@ export default async function DashboardLayout({
   }
 
   const hasMonitors = (monitorsCountResult[0]?.count || 0) > 0;
-  const isNewUser = !hasMonitors;
+  // Use database onboardingCompleted as source of truth, fall back to hasMonitors for legacy users
+  const onboardingCompleted = dbUser?.onboardingCompleted ?? hasMonitors;
+  const isNewUser = !onboardingCompleted;
   const isAdmin = dbUser?.isAdmin || false;
   const subscriptionStatus = dbUser?.subscriptionStatus || "free";
   const userName = user?.firstName || user?.username || undefined;

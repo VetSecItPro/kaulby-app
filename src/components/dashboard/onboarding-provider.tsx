@@ -1,7 +1,8 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode, useTransition } from "react";
 import { OnboardingWizard } from "./onboarding";
+import { completeOnboarding, resetOnboarding as resetOnboardingAction } from "@/app/(dashboard)/dashboard/actions";
 
 interface OnboardingContextType {
   showOnboarding: boolean;
@@ -13,58 +14,26 @@ interface OnboardingContextType {
 
 const OnboardingContext = createContext<OnboardingContextType | undefined>(undefined);
 
-const ONBOARDING_STORAGE_KEY = "kaulby_onboarding_completed";
-
 interface OnboardingProviderProps {
   children: ReactNode;
   isNewUser: boolean;
   userName?: string;
 }
 
-// Safe localStorage helper to handle errors gracefully
-function safeLocalStorage() {
-  return {
-    getItem: (key: string): string | null => {
-      try {
-        return localStorage.getItem(key);
-      } catch {
-        // localStorage may be unavailable (private browsing, storage quota, etc.)
-        return null;
-      }
-    },
-    setItem: (key: string, value: string): void => {
-      try {
-        localStorage.setItem(key, value);
-      } catch {
-        // Silently fail - not critical for app functionality
-      }
-    },
-    removeItem: (key: string): void => {
-      try {
-        localStorage.removeItem(key);
-      } catch {
-        // Silently fail
-      }
-    },
-  };
-}
-
 export function OnboardingProvider({ children, isNewUser, userName }: OnboardingProviderProps) {
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(true);
+  // isNewUser from server is the source of truth (derived from database onboardingCompleted)
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(!isNewUser);
   const [mounted, setMounted] = useState(false);
+  const [, startTransition] = useTransition();
 
-  // Check localStorage on mount
+  // Show onboarding for new users on mount
   useEffect(() => {
     setMounted(true);
-    const storage = safeLocalStorage();
-    const completed = storage.getItem(ONBOARDING_STORAGE_KEY);
-    const hasCompleted = completed === "true";
-    setHasCompletedOnboarding(hasCompleted);
 
     // Show onboarding for new users who haven't completed it
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
-    if (isNewUser && !hasCompleted) {
+    if (isNewUser) {
       // Small delay to let the page render first
       timeoutId = setTimeout(() => {
         setShowOnboarding(true);
@@ -81,14 +50,20 @@ export function OnboardingProvider({ children, isNewUser, userName }: Onboarding
 
   const dismissOnboarding = () => {
     setShowOnboarding(false);
-    safeLocalStorage().setItem(ONBOARDING_STORAGE_KEY, "true");
     setHasCompletedOnboarding(true);
+    // Persist to database
+    startTransition(async () => {
+      await completeOnboarding();
+    });
   };
 
-  const resetOnboarding = () => {
-    safeLocalStorage().removeItem(ONBOARDING_STORAGE_KEY);
+  const handleResetOnboarding = () => {
     setHasCompletedOnboarding(false);
     setShowOnboarding(true);
+    // Persist to database
+    startTransition(async () => {
+      await resetOnboardingAction();
+    });
   };
 
   // Don't render onboarding until mounted to avoid hydration mismatch
@@ -103,7 +78,7 @@ export function OnboardingProvider({ children, isNewUser, userName }: Onboarding
         setShowOnboarding,
         dismissOnboarding,
         hasCompletedOnboarding,
-        resetOnboarding,
+        resetOnboarding: handleResetOnboarding,
       }}
     >
       {children}

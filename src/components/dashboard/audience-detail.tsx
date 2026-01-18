@@ -109,8 +109,8 @@ export function AudienceDetail({
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-4">
           <Link href="/dashboard/audiences">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-4 w-4" />
+            <Button variant="ghost" size="icon" aria-label="Back to audiences">
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             </Button>
           </Link>
           <div className="flex items-center gap-3">
@@ -227,6 +227,9 @@ export function AudienceDetail({
                         className={`w-2 h-2 rounded-full ${
                           monitor.isActive ? "bg-green-500" : "bg-gray-300"
                         }`}
+                        role="status"
+                        aria-label={monitor.isActive ? "Active" : "Paused"}
+                        title={monitor.isActive ? "Active" : "Paused"}
                       />
                       <div>
                         <div className="font-medium">{monitor.name}</div>
@@ -244,8 +247,8 @@ export function AudienceDetail({
                     </div>
                     <div className="flex items-center gap-2">
                       <Link href={`/dashboard/monitors/${monitor.id}`}>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <ExternalLink className="h-4 w-4" />
+                        <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`View monitor ${monitor.name}`}>
+                          <ExternalLink className="h-4 w-4" aria-hidden="true" />
                         </Button>
                       </Link>
                       <Button
@@ -253,8 +256,9 @@ export function AudienceDetail({
                         size="icon"
                         className="h-8 w-8 text-muted-foreground hover:text-destructive"
                         onClick={() => setRemoveMonitorId(monitor.id)}
+                        aria-label={`Remove monitor ${monitor.name} from audience`}
                       >
-                        <X className="h-4 w-4" />
+                        <X className="h-4 w-4" aria-hidden="true" />
                       </Button>
                     </div>
                   </div>
