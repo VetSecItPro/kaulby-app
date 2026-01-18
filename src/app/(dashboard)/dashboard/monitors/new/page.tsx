@@ -14,15 +14,15 @@ import { SearchQueryInput } from "@/components/search-query-input";
 
 // All available platforms
 const ALL_PLATFORMS = [
-  { id: "reddit", name: "Reddit", description: "Track subreddits and discussions", tier: "free" },
-  { id: "hackernews", name: "Hacker News", description: "Tech and startup discussions", tier: "pro" },
-  { id: "producthunt", name: "Product Hunt", description: "Product launches and reviews", tier: "pro" },
-  { id: "devto", name: "Dev.to", description: "Developer community articles", tier: "pro" },
-  { id: "googlereviews", name: "Google Reviews", description: "Business reviews on Google", tier: "pro" },
-  { id: "trustpilot", name: "Trustpilot", description: "Customer reviews and ratings", tier: "pro" },
-  { id: "appstore", name: "App Store", description: "iOS app reviews", tier: "pro" },
-  { id: "playstore", name: "Play Store", description: "Android app reviews", tier: "pro" },
-  { id: "quora", name: "Quora", description: "Q&A discussions", tier: "pro" },
+  { id: "reddit", name: "Reddit", description: "Track subreddits and discussions", tier: "free", needsUrl: false },
+  { id: "hackernews", name: "Hacker News", description: "Tech and startup discussions", tier: "pro", needsUrl: false },
+  { id: "producthunt", name: "Product Hunt", description: "Product launches and reviews", tier: "pro", needsUrl: false },
+  { id: "devto", name: "Dev.to", description: "Developer community articles", tier: "pro", needsUrl: false },
+  { id: "googlereviews", name: "Google Reviews", description: "Business reviews on Google", tier: "pro", needsUrl: true, urlPlaceholder: "https://www.google.com/maps/place/... or Place ID", urlHelp: "Google Maps URL or Place ID (ChI...)" },
+  { id: "trustpilot", name: "Trustpilot", description: "Customer reviews and ratings", tier: "pro", needsUrl: true, urlPlaceholder: "https://www.trustpilot.com/review/example.com", urlHelp: "Trustpilot company review page URL" },
+  { id: "appstore", name: "App Store", description: "iOS app reviews", tier: "pro", needsUrl: true, urlPlaceholder: "https://apps.apple.com/us/app/name/id123456", urlHelp: "App Store URL for your iOS app" },
+  { id: "playstore", name: "Play Store", description: "Android app reviews", tier: "pro", needsUrl: true, urlPlaceholder: "https://play.google.com/store/apps/details?id=com.app", urlHelp: "Play Store URL for your Android app" },
+  { id: "quora", name: "Quora", description: "Q&A discussions", tier: "pro", needsUrl: false },
 ];
 
 // Dynamic keyword suggestions based on monitor name
@@ -71,6 +71,7 @@ export default function NewMonitorPage() {
   const [keywords, setKeywords] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
+  const [platformUrls, setPlatformUrls] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
 
   // In dev mode, assume enterprise tier. In production, this would come from user context
@@ -129,6 +130,7 @@ export default function NewMonitorPage() {
           keywords, // Keywords are now optional additional terms
           searchQuery: searchQuery.trim() || undefined, // Advanced boolean search (Pro feature)
           platforms: selectedPlatforms,
+          platformUrls, // Platform-specific URLs (Google Reviews, Trustpilot, etc.)
         }),
       });
 
@@ -337,6 +339,44 @@ export default function NewMonitorPage() {
                 })}
               </div>
             </div>
+
+            {/* Platform-specific URLs */}
+            {selectedPlatforms.some(p => ALL_PLATFORMS.find(ap => ap.id === p)?.needsUrl) && (
+              <div className="space-y-4 rounded-lg border p-4 bg-muted/30">
+                <div>
+                  <Label className="text-base">Platform URLs</Label>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Some platforms require specific URLs to monitor. Enter the URL for each selected platform below.
+                  </p>
+                </div>
+                <div className="space-y-4">
+                  {selectedPlatforms
+                    .filter(p => ALL_PLATFORMS.find(ap => ap.id === p)?.needsUrl)
+                    .map((platformId) => {
+                      const platform = ALL_PLATFORMS.find(ap => ap.id === platformId);
+                      if (!platform) return null;
+                      return (
+                        <div key={platformId} className="space-y-2">
+                          <Label htmlFor={`url-${platformId}`} className="text-sm font-medium">
+                            {platform.name} URL
+                          </Label>
+                          <Input
+                            id={`url-${platformId}`}
+                            placeholder={platform.urlPlaceholder}
+                            value={platformUrls[platformId] || ""}
+                            onChange={(e) => setPlatformUrls(prev => ({ ...prev, [platformId]: e.target.value }))}
+                            autoComplete="off"
+                            className="dark-input placeholder:text-gray-400 hover:border-teal-500 focus:border-teal-500"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            {platform.urlHelp}
+                          </p>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
 
             {/* Error */}
             {error && (
