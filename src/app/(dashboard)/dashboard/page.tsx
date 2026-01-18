@@ -5,12 +5,13 @@ import { monitors, results, users } from "@/lib/db/schema";
 import { eq, count, and, gte, inArray } from "drizzle-orm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Radio, MessageSquare, TrendingUp, PlusCircle, ArrowRight, Eye } from "lucide-react";
+import { PlusCircle, ArrowRight, Eye } from "lucide-react";
 import Link from "next/link";
 import { QuickStartGuide } from "@/components/dashboard/onboarding";
 import { OnboardingTrigger } from "@/components/dashboard/onboarding-trigger";
 import { SampleResultsPreview } from "@/components/dashboard/sample-results";
 import { UpgradeBanner } from "@/components/dashboard/upgrade-banner";
+import { DashboardStats } from "@/components/dashboard/dashboard-stats";
 import { getPlanLimits } from "@/lib/stripe";
 import { getUserPlan } from "@/lib/limits";
 
@@ -127,57 +128,16 @@ export default async function DashboardPage() {
         <QuickStartGuide hasMonitors={hasMonitors} hasResults={hasResults} />
       )}
 
-      {/* Stats Cards */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Monitors</CardTitle>
-            <Radio className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{monitorsCount[0]?.count || 0}</div>
-            <p className="text-xs text-muted-foreground">
-              {limits.monitors === -1
-                ? "Unlimited"
-                : `of ${limits.monitors} available`}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Results This Month</CardTitle>
-            <MessageSquare className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{resultsCount}</div>
-            <p className="text-xs text-muted-foreground">
-              {limits.resultsVisible === -1
-                ? "Unlimited visible"
-                : `${limits.resultsVisible} visible (free tier)`}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="col-span-2 lg:col-span-1">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Current Plan</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold capitalize">{userPlan}</div>
-            <p className="text-xs text-muted-foreground">
-              {userPlan === "free" ? (
-                <Link href="/dashboard/settings" className="text-primary hover:underline">
-                  Upgrade for more
-                </Link>
-              ) : (
-                "Active subscription"
-              )}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Stats Cards with Sparklines */}
+      <DashboardStats
+        monitorsCount={monitorsCount[0]?.count || 0}
+        resultsCount={resultsCount}
+        userPlan={userPlan}
+        limits={{
+          monitors: limits.monitors,
+          resultsVisible: limits.resultsVisible,
+        }}
+      />
 
       {/* Recent Activity Section - shown only when user has data */}
       {hasResults && recentResults.length > 0 && (

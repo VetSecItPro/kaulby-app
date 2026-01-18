@@ -56,6 +56,9 @@ interface UserData {
   name: string | null;
   subscriptionStatus: string;
   isAdmin: boolean;
+  isBanned: boolean;
+  banReason: string | null;
+  bannedAt: Date | null;
   stripeCustomerId: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -250,7 +253,15 @@ export function UsersManagement({
                       </div>
                     </TableCell>
                     <TableCell>
-                      <PlanBadge plan={user.subscriptionStatus} />
+                      <div className="flex items-center gap-2">
+                        <PlanBadge plan={user.subscriptionStatus} />
+                        {user.isBanned && (
+                          <Badge variant="destructive" className="gap-1">
+                            <Ban className="h-3 w-3" />
+                            Banned
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
                       <div className="flex items-center gap-1">
@@ -313,10 +324,10 @@ export function UsersManagement({
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             onClick={() => setActionDialog({ type: "ban", user })}
-                            className="text-destructive"
+                            className={user.isBanned ? "text-green-600" : "text-destructive"}
                           >
                             <Ban className="h-4 w-4 mr-2" />
-                            Ban User
+                            {user.isBanned ? "Unban User" : "Ban User"}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -430,7 +441,7 @@ export function UsersManagement({
             <DialogTitle>
               {actionDialog.type === "upgrade" && "Upgrade User Plan"}
               {actionDialog.type === "downgrade" && "Downgrade User Plan"}
-              {actionDialog.type === "ban" && "Ban User"}
+              {actionDialog.type === "ban" && (actionDialog.user?.isBanned ? "Unban User" : "Ban User")}
             </DialogTitle>
             <DialogDescription>
               {actionDialog.type === "upgrade" && (
@@ -454,10 +465,17 @@ export function UsersManagement({
                 </>
               )}
               {actionDialog.type === "ban" && (
-                <>
-                  Are you sure you want to ban {actionDialog.user?.email}? This action can be
-                  reversed later.
-                </>
+                actionDialog.user?.isBanned ? (
+                  <>
+                    Are you sure you want to unban {actionDialog.user?.email}? They will regain
+                    access to the dashboard.
+                  </>
+                ) : (
+                  <>
+                    Are you sure you want to ban {actionDialog.user?.email}? They will be blocked
+                    from accessing the dashboard.
+                  </>
+                )
               )}
             </DialogDescription>
           </DialogHeader>
@@ -469,7 +487,7 @@ export function UsersManagement({
               Cancel
             </Button>
             <Button
-              variant={actionDialog.type === "ban" ? "destructive" : "default"}
+              variant={actionDialog.type === "ban" && !actionDialog.user?.isBanned ? "destructive" : "default"}
               onClick={() => {
                 if (actionDialog.type === "ban" && actionDialog.user) {
                   handleBan(actionDialog.user);
@@ -480,7 +498,7 @@ export function UsersManagement({
             >
               {actionDialog.type === "upgrade" && "Upgrade"}
               {actionDialog.type === "downgrade" && "Downgrade"}
-              {actionDialog.type === "ban" && "Ban User"}
+              {actionDialog.type === "ban" && (actionDialog.user?.isBanned ? "Unban" : "Ban User")}
             </Button>
           </DialogFooter>
         </DialogContent>

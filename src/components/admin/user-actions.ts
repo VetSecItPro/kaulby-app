@@ -51,20 +51,38 @@ export async function updateUserPlan(
   return { success: true };
 }
 
-export async function toggleUserBan(userId: string) {
+export async function toggleUserBan(userId: string, reason?: string) {
   await verifyAdmin();
 
-  // Note: This would require adding a "banned" or "status" field to the users table
-  // For now, we'll just log the action
-  console.log(`Ban toggle requested for user: ${userId}`);
+  // Get current user state
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+    columns: { isBanned: true, email: true },
+  });
 
-  // TODO: Add banned field to schema and implement:
-  // const user = await db.query.users.findFirst({ where: eq(users.id, userId) });
-  // await db.update(users).set({ banned: !user?.banned }).where(eq(users.id, userId));
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  const newBanState = !user.isBanned;
+
+  await db
+    .update(users)
+    .set({
+      isBanned: newBanState,
+      bannedAt: newBanState ? new Date() : null,
+      banReason: newBanState ? (reason || "Banned by admin") : null,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, userId));
 
   revalidatePath("/manage/users");
 
-  return { success: true, message: "Ban functionality requires schema update" };
+  return {
+    success: true,
+    isBanned: newBanState,
+    message: newBanState ? `User ${user.email} has been banned` : `User ${user.email} has been unbanned`,
+  };
 }
 
 export async function makeUserAdmin(userId: string, isAdmin: boolean) {

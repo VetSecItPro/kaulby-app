@@ -3,10 +3,11 @@
 import { useState } from "react";
 import { MobileResults } from "@/components/mobile/mobile-results";
 import { ResultsList } from "./results-list";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { HiddenResultsBanner, RefreshDelayBanner } from "./upgrade-prompt";
+import { EmptyState, ScanningState } from "./empty-states";
 import { Download, Lock } from "lucide-react";
 import Link from "next/link";
 import type { PlanKey } from "@/lib/stripe";
@@ -123,17 +124,11 @@ function MobileResultsView({
           <h1 className="text-2xl font-bold">Results</h1>
           <p className="text-muted-foreground text-sm">Mentions found by your monitors</p>
         </div>
-        <Card className="border-dashed">
-          <CardContent className="p-6 text-center">
-            <h3 className="font-semibold mb-2">No results yet</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Create a monitor to start tracking
-            </p>
-            <Link href="/dashboard/monitors/new">
-              <Button className="w-full">Create Monitor</Button>
-            </Link>
-          </CardContent>
-        </Card>
+        <EmptyState
+          type="monitors"
+          title="No results yet"
+          description="Create a monitor to start tracking mentions across the web."
+        />
       </div>
     );
   }
@@ -232,27 +227,16 @@ function DesktopResultsView({
 
       {/* Results List */}
       {results.length === 0 && !hasMonitors ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>No results yet</CardTitle>
-            <CardDescription>
-              Create a monitor to start tracking mentions.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link href="/dashboard/monitors/new">
-              <Button>Create Monitor</Button>
-            </Link>
-          </CardContent>
-        </Card>
+        <EmptyState
+          type="monitors"
+          title="No results yet"
+          description="Create a monitor to start tracking mentions across the web."
+        />
       ) : results.length === 0 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>No results yet</CardTitle>
-            <CardDescription>
-              Your monitors have not found any results yet. Check back soon!
-            </CardDescription>
-          </CardHeader>
+        <Card className="border-dashed border-2 border-muted-foreground/20">
+          <CardContent className="p-0">
+            <ScanningState />
+          </CardContent>
         </Card>
       ) : (
         <>
