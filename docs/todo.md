@@ -2,7 +2,7 @@
 
 Active gaps, migrations, and known issues. See also: `docs/platforms-research.md` for platform API research.
 
-**Last updated:** January 17, 2026
+**Last updated:** January 18, 2026
 
 ---
 
@@ -21,18 +21,16 @@ Comparing current `schema.ts` against Project Bible requirements.
 
 ### Moderate (Should Fix)
 
-- [ ] **Data retention enforcement** - Implement cron job to delete old results per tier (free=7d, pro=90d, enterprise=1yr)
-- [ ] **Webhook configurations** - May need structured webhook table with retry logic (currently using `destination` field)
+- [x] **Data retention enforcement** ✅ - Inngest cron job (`dataRetention`) runs daily at 3 AM UTC, deletes old results per tier (free=3d, pro=90d, enterprise=365d). Also includes `resetUsageCounters` and `cleanupAiLogs`.
+- [x] **Webhook configurations** ✅ - Full implementation with `webhooks` and `webhookDeliveries` tables, HMAC signatures, exponential backoff retry logic (1min, 5min, 15min, 1hr, 4hr), and automatic cleanup.
 
-### Low Priority (Post-Launch)
+### Post-MVP
 
-- [ ] **Team workspaces** - Enterprise feature, not in MVP
-- [ ] **API key management** - Enterprise feature, not in MVP
-- [ ] **X/Twitter monitoring** - Enterprise-only feature. Options:
-  - Official X API ($100+/month) - Most reliable, full access
-  - SerpAPI (~$50/month) - Good middle ground, search without X API
-  - Social Searcher (~$9-29/month) - Budget option for testing demand
-  - Only implement if Enterprise customers specifically request it
+See **[kaulby-postMVP.md](./kaulby-postMVP.md)** for full post-MVP roadmap including:
+- API key management (Enterprise)
+- X/Twitter monitoring (Enterprise)
+- Admin dashboard improvements
+- Additional platform integrations
 
 ---
 
@@ -98,7 +96,7 @@ Full admin panel at `/manage` gated to admin accounts only:
   - [x] User list with search/filter ✅ (search by email/name/ID, filter by plan)
   - [x] User details (subscription, usage, monitors) ✅ (details dialog)
   - [x] Ability to upgrade/downgrade users ✅ (`updateUserPlan` server action)
-  - [ ] Ban/suspend functionality - needs `isBanned` field in users schema
+  - [x] Ban/suspend functionality ✅ (PR #20 - `isBanned`, `bannedAt`, `bannedReason` fields added)
 - [x] **Analytics & Metrics** ✅ (`/manage` main page)
   - [x] Total users, MRR, churn rate ✅ (`businessMetrics`)
   - [x] Signup trends (daily/weekly/monthly charts) ✅ (`userGrowth` chart)
@@ -107,15 +105,13 @@ Full admin panel at `/manage` gated to admin accounts only:
 - [x] **API Cost Tracking** ✅
   - [x] OpenRouter/AI costs by day/week/month ✅ (`aiCostsByDay`)
   - [x] Cost per user breakdown ✅ (`costBreakdown`, `topUsersByCost`)
-  - [ ] Budget alerts/thresholds - future enhancement
+  - [ ] Budget alerts/thresholds - See [kaulby-postMVP.md](./kaulby-postMVP.md)
 - [x] **System Health** ✅ (`systemHealth` component)
   - [x] Inngest job success/failure rates ✅ (job status display)
   - [x] Average job processing times ✅ (`avgResponseTime`)
-  - [ ] Error logs viewer - needs logging integration
-  - [ ] Database query performance - needs query monitoring
-- [ ] **Content Moderation** - future enhancement
-  - [ ] Flag/review reported content
-  - [ ] Monitor abuse detection
+  - [ ] Error logs viewer - See [kaulby-postMVP.md](./kaulby-postMVP.md)
+  - [ ] Database query performance - See [kaulby-postMVP.md](./kaulby-postMVP.md)
+- [ ] **Content Moderation** - See [kaulby-postMVP.md](./kaulby-postMVP.md)
 
 ---
 
@@ -135,3 +131,7 @@ Track pre-existing bugs/errors discovered during development here. Fix after cur
 - [x] Pushed schema changes to Neon via `npm run db:push` (Jan 13, 2026)
 - [x] Phase 9: UI Revamp - page transitions, empty states, sparklines, hover animations (Jan 17, 2026)
 - [x] Phase 10: Admin Dashboard - already implemented at `/manage` with user management, analytics, cost tracking, system health (Jan 17, 2026)
+- [x] Admin ban/unban functionality with `isBanned`, `bannedAt`, `bannedReason` fields (Jan 17, 2026)
+- [x] Data retention enforcement - Inngest cron jobs for tier-based cleanup (already implemented)
+- [x] Webhook configurations with retry logic - Full implementation with delivery tracking (already implemented)
+- [x] Team workspaces - Schema, APIs, UI for Enterprise team management (already implemented)

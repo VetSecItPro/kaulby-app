@@ -38,15 +38,28 @@ Track features and improvements to implement after MVP launch.
 
 ## Team Features (Enterprise)
 
-- [ ] **Team member roles** - Admin, Editor, Viewer permissions
+- [x] **Team workspaces** ✅ - Base implementation done (`workspaces`, `workspaceInvites` tables, APIs, UI)
+- [ ] **Team member roles** - Admin, Editor, Viewer permissions (currently just owner/member)
 - [ ] **Shared monitors** - Assign monitors to team members
 - [ ] **Activity log** - Track who did what in the workspace
 
 ## API & Integrations
 
+- [ ] **API key management** - Enterprise feature for programmatic access:
+  - `apiKeys` table (id, userId, name, keyHash, prefix, lastUsedAt, expiresAt, scopes)
+  - Key generation with `kaulby_` prefix, CRUD APIs, auth middleware
+  - Dashboard UI for managing keys, rate limiting
 - [ ] **Public API documentation** - OpenAPI spec for Team tier
 - [ ] **Zapier integration** - Connect to 5000+ apps
-- [ ] **Custom webhook payloads** - Let users customize webhook data
+- [x] **Webhook configurations** ✅ - Full implementation with retry logic already done
+- [ ] **Custom webhook payloads** - Let users customize webhook data structure
+
+## Admin Dashboard Improvements
+
+- [ ] **Budget alerts/thresholds** - Notify when AI costs exceed limits
+- [ ] **Error logs viewer** - View and filter application errors (needs logging integration)
+- [ ] **Database query performance** - Monitor slow queries (needs query monitoring)
+- [ ] **Content moderation** - Flag/review reported content, abuse detection
 
 ## Performance
 
