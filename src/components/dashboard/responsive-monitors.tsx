@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { motion } from "framer-motion";
 import { MobileMonitors } from "@/components/mobile/mobile-monitors";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { PlusCircle, Radio, Loader2, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { getPlatformDisplayName } from "@/lib/platform-utils";
+import { EmptyState } from "./empty-states";
 
 interface Monitor {
   id: string;
@@ -208,26 +210,21 @@ function DesktopMonitors({ monitors }: ResponsiveMonitorsProps) {
 
       {/* Monitors List */}
       {monitors.length === 0 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>No monitors yet</CardTitle>
-            <CardDescription>
-              Create your first monitor to start tracking mentions.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link href="/dashboard/monitors/new">
-              <Button>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Create Monitor
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
+        <EmptyState type="monitors" />
       ) : (
         <div className="grid gap-4">
-          {monitors.map((monitor) => (
-            <Card key={monitor.id}>
+          {monitors.map((monitor, index) => (
+            <motion.div
+              key={monitor.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: index * 0.05 }}
+              whileHover={{
+                y: -2,
+                transition: { duration: 0.2 },
+              }}
+            >
+            <Card className="transition-shadow duration-200 hover:shadow-lg hover:shadow-primary/5">
               <CardHeader>
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
@@ -276,6 +273,7 @@ function DesktopMonitors({ monitors }: ResponsiveMonitorsProps) {
                 </div>
               </CardContent>
             </Card>
+            </motion.div>
           ))}
         </div>
       )}
