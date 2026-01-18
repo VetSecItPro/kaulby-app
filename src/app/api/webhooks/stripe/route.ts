@@ -5,6 +5,7 @@ import { db, users } from "@/lib/db";
 import { eq, sql } from "drizzle-orm";
 import { upsertContact, sendSubscriptionEmail, sendPaymentFailedEmail } from "@/lib/email";
 import { captureEvent } from "@/lib/posthog";
+import { activateDayPass } from "@/lib/day-pass";
 import Stripe from "stripe";
 
 // Maximum number of ***s who lock in price forever
@@ -42,49 +43,100 @@ export async function POST(request: NextRequest) {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
-        const userId = session.client_reference_id;
+        const userId = session.client_reference_id || session.metadata?.userId;
         const customerId = session.customer as string;
-        const subscriptionId = session.subscription as string;
+        const subscriptionId = session.subscription as string | null;
 
+        // Handle Day Pass one-time purchase
+        if (session.mode === "payment" && session.metadata?.type === "day_pass") {
+          if (userId) {
+            const dayPassResult = await activateDayPass(userId);
+
+            // Track in PostHog
+            captureEvent({
+              distinctId: userId,
+              event: "day_pass_purchased",
+              properties: {
+                sessionId: session.id,
+                expiresAt: dayPassResult.expiresAt.toISOString(),
+                purchaseCount: dayPassResult.purchaseCount,
+              },
+            });
+
+            console.log(`Day pass activated for user ${userId} via webhook`);
+          }
+          break;
+        }
+
+        // Handle subscription checkout
         if (userId && subscriptionId) {
           // Get subscription details
           const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-          const priceId = subscription.items.data[0]?.price.id;
+          const subscriptionItem = subscription.items.data[0];
+          const priceId = subscriptionItem?.price.id;
           const plan = getPlanFromPriceId(priceId || "");
 
-          // Check *** eligibility (only for paid plans)
+          // In Stripe SDK v20+, current_period_start/end are on subscription items
+          const periodStart = subscriptionItem?.current_period_start;
+          const periodEnd = subscriptionItem?.current_period_end;
+
+          // Atomically assign *** number using UPDATE with subquery
+          // This prevents race conditions by using a single atomic operation
           let isFoundingMember = false;
           let ***Number: number | null = null;
 
           if (plan === "pro" || plan === "enterprise") {
-            // Count existing ***s
-            const countResult = await db
-              .select({ count: sql<number>`count(*)::int` })
-              .from(users)
-              .where(eq(users.isFoundingMember, true));
+            // Use an atomic UPDATE that only sets *** if under limit
+            // The subquery calculates the next number atomically
+            const result = await db
+              .update(users)
+              .set({
+                stripeCustomerId: customerId,
+                subscriptionId: subscriptionId,
+                subscriptionStatus: plan,
+                currentPeriodStart: periodStart ? new Date(periodStart * 1000) : undefined,
+                currentPeriodEnd: periodEnd ? new Date(periodEnd * 1000) : undefined,
+                isFoundingMember: sql`CASE
+                  WHEN (SELECT COUNT(*) FROM ${users} WHERE ${users.isFoundingMember} = true) < ${FOUNDING_MEMBER_LIMIT}
+                  THEN true
+                  ELSE false
+                END`,
+                ***Number: sql`CASE
+                  WHEN (SELECT COUNT(*) FROM ${users} WHERE ${users.isFoundingMember} = true) < ${FOUNDING_MEMBER_LIMIT}
+                  THEN (SELECT COUNT(*) FROM ${users} WHERE ${users.isFoundingMember} = true) + 1
+                  ELSE NULL
+                END`,
+                ***PriceId: sql`CASE
+                  WHEN (SELECT COUNT(*) FROM ${users} WHERE ${users.isFoundingMember} = true) < ${FOUNDING_MEMBER_LIMIT}
+                  THEN ${priceId}
+                  ELSE NULL
+                END`,
+                updatedAt: new Date(),
+              })
+              .where(eq(users.id, userId))
+              .returning({
+                isFoundingMember: users.isFoundingMember,
+                ***Number: users.***Number,
+              });
 
-            const currentCount = countResult[0]?.count || 0;
-
-            if (currentCount < FOUNDING_MEMBER_LIMIT) {
-              isFoundingMember = true;
-              ***Number = currentCount + 1;
+            if (result[0]) {
+              isFoundingMember = result[0].isFoundingMember || false;
+              ***Number = result[0].***Number;
             }
+          } else {
+            // Non-founding-member eligible plans
+            await db
+              .update(users)
+              .set({
+                stripeCustomerId: customerId,
+                subscriptionId: subscriptionId,
+                subscriptionStatus: plan,
+                currentPeriodStart: periodStart ? new Date(periodStart * 1000) : undefined,
+                currentPeriodEnd: periodEnd ? new Date(periodEnd * 1000) : undefined,
+                updatedAt: new Date(),
+              })
+              .where(eq(users.id, userId));
           }
-
-          // Update user in database
-          await db
-            .update(users)
-            .set({
-              stripeCustomerId: customerId,
-              subscriptionId: subscriptionId,
-              subscriptionStatus: plan,
-              // Founding member fields
-              isFoundingMember,
-              ***Number,
-              ***PriceId: isFoundingMember ? priceId : null,
-              updatedAt: new Date(),
-            })
-            .where(eq(users.id, userId));
 
           // Get user for email
           const user = await db.query.users.findFirst({
@@ -126,8 +178,13 @@ export async function POST(request: NextRequest) {
       case "customer.subscription.updated": {
         const subscription = event.data.object as Stripe.Subscription;
         const customerId = subscription.customer as string;
-        const priceId = subscription.items.data[0]?.price.id;
+        const subscriptionItem = subscription.items.data[0];
+        const priceId = subscriptionItem?.price.id;
         const plan = getPlanFromPriceId(priceId || "");
+
+        // In Stripe SDK v20+, current_period_start/end are on subscription items
+        const periodStart = subscriptionItem?.current_period_start;
+        const periodEnd = subscriptionItem?.current_period_end;
 
         const status = subscription.status === "active" ? plan : "free";
 
@@ -135,6 +192,8 @@ export async function POST(request: NextRequest) {
           .update(users)
           .set({
             subscriptionStatus: status,
+            currentPeriodStart: periodStart ? new Date(periodStart * 1000) : undefined,
+            currentPeriodEnd: periodEnd ? new Date(periodEnd * 1000) : undefined,
             updatedAt: new Date(),
           })
           .where(eq(users.stripeCustomerId, customerId));

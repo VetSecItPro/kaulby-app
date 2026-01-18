@@ -606,12 +606,97 @@ async function scanQuoraForMonitor(monitor: MonitorData): Promise<number> {
   return count;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function scanProductHuntForMonitor(monitor: MonitorData): Promise<number> {
-  // Product Hunt scanning logic - simplified version
-  // The full implementation would use their GraphQL API
-  // TODO: Implement using Product Hunt GraphQL API
-  return 0;
+  const apiKey = process.env.PRODUCTHUNT_API_KEY;
+  if (!apiKey) {
+    console.log("[ProductHunt] API key not configured, skipping on-demand scan");
+    return 0;
+  }
+
+  let count = 0;
+
+  try {
+    const query = `
+      query {
+        posts(first: 50, order: NEWEST) {
+          edges {
+            node {
+              id
+              name
+              tagline
+              description
+              url
+              votesCount
+              createdAt
+              user {
+                name
+              }
+            }
+          }
+        }
+      }
+    `;
+
+    const response = await fetch("https://api.producthunt.com/v2/api/graphql", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({ query }),
+    });
+
+    if (!response.ok) {
+      console.error(`[ProductHunt] Failed to fetch: ${response.status}`);
+      return 0;
+    }
+
+    const data = await response.json();
+    const posts = data.data?.posts?.edges?.map((e: { node: unknown }) => e.node) || [];
+
+    for (const post of posts) {
+      // Check if post matches monitor keywords
+      const text = `${post.name} ${post.tagline} ${post.description || ""}`.toLowerCase();
+      const isMatch = monitor.keywords.some((keyword: string) =>
+        text.includes(keyword.toLowerCase())
+      );
+
+      if (!isMatch) continue;
+
+      // Check for existing result
+      const existing = await db.query.results.findFirst({
+        where: eq(results.sourceUrl, post.url),
+      });
+
+      if (!existing) {
+        const [newResult] = await db.insert(results).values({
+          monitorId: monitor.id,
+          platform: "producthunt",
+          sourceUrl: post.url,
+          title: `${post.name} - ${post.tagline}`,
+          content: post.description || null,
+          author: post.user?.name || null,
+          postedAt: new Date(post.createdAt),
+          metadata: {
+            phId: post.id,
+            votesCount: post.votesCount,
+          },
+        }).returning();
+
+        count++;
+        await incrementResultsCount(monitor.userId, 1);
+
+        await inngest.send({
+          name: "content/analyze",
+          data: { resultId: newResult.id, userId: monitor.userId },
+        });
+      }
+    }
+  } catch (error) {
+    console.error("[ProductHunt] Error in on-demand scan:", error);
+  }
+
+  return count;
 }
 
 async function scanDevToForMonitor(monitor: MonitorData): Promise<number> {

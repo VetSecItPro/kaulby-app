@@ -65,12 +65,17 @@ export const monitorDevTo = inngest.createFunction(
 
     // Fetch latest articles from Dev.to
     const articles = await step.run("fetch-articles", async () => {
-      const response = await fetch(`${DEVTO_API_BASE}/articles?per_page=100&top=1`);
-      if (!response.ok) {
-        console.error("Failed to fetch Dev.to articles:", response.status);
+      try {
+        const response = await fetch(`${DEVTO_API_BASE}/articles?per_page=100&top=1`);
+        if (!response.ok) {
+          console.error("Failed to fetch Dev.to articles:", response.status);
+          return [] as DevToArticle[];
+        }
+        return await response.json() as DevToArticle[];
+      } catch (error) {
+        console.error("Error fetching/parsing Dev.to articles:", error);
         return [] as DevToArticle[];
       }
-      return response.json() as Promise<DevToArticle[]>;
     });
 
     let totalResults = 0;

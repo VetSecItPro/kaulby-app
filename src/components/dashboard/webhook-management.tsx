@@ -407,11 +407,12 @@ export function WebhookManagement({
                       variant="ghost"
                       size="sm"
                       onClick={() => copySecret(webhook.secret!)}
+                      aria-label={copiedSecret === webhook.secret ? "Secret copied" : "Copy webhook secret"}
                     >
                       {copiedSecret === webhook.secret ? (
-                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        <CheckCircle className="h-4 w-4 text-green-500" aria-hidden="true" />
                       ) : (
-                        <Copy className="h-4 w-4" />
+                        <Copy className="h-4 w-4" aria-hidden="true" />
                       )}
                     </Button>
                   )}

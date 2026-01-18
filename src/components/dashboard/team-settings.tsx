@@ -336,8 +336,8 @@ export function TeamSettings({ subscriptionStatus }: TeamSettingsProps) {
                   {role === "owner" && member.role !== "owner" && (
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
-                          <Trash2 className="h-4 w-4" />
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" aria-label={`Remove ${member.name || member.email} from workspace`}>
+                          <Trash2 className="h-4 w-4" aria-hidden="true" />
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
@@ -392,8 +392,9 @@ export function TeamSettings({ subscriptionStatus }: TeamSettingsProps) {
                     size="icon"
                     className="h-8 w-8 text-muted-foreground hover:text-destructive"
                     onClick={() => handleRevokeInvite(invite.id)}
+                    aria-label={`Revoke invite for ${invite.email}`}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-4 w-4" aria-hidden="true" />
                   </Button>
                 </div>
               ))}
