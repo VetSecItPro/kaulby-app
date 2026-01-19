@@ -5,6 +5,8 @@ import { webhooks, users } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import crypto from "crypto";
 
+export const dynamic = "force-dynamic";
+
 // GET - List all webhooks for user
 export async function GET() {
   try {

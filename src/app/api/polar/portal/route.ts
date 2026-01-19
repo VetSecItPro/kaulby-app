@@ -4,6 +4,8 @@ import { getPolarClient } from "@/lib/polar";
 import { db, users } from "@/lib/db";
 import { eq } from "drizzle-orm";
 
+export const dynamic = "force-dynamic";
+
 /**
  * POST /api/polar/portal
  * Create a Polar customer portal session URL for managing subscriptions

@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import { results, monitors } from "@/lib/db/schema";
 import { eq, inArray, gte, and, desc } from "drizzle-orm";
 
+export const dynamic = "force-dynamic";
+
 interface TopicCluster {
   topic: string;
   keywords: string[];

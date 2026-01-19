@@ -7,6 +7,8 @@ import { eq } from "drizzle-orm";
 import { upsertContact, sendWelcomeEmail } from "@/lib/email";
 import { identifyUser } from "@/lib/posthog";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(request: NextRequest) {
   const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET;
 

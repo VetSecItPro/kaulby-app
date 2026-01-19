@@ -4,6 +4,8 @@ import { getPolarClient, DAY_PASS_PRODUCT_ID } from "@/lib/polar";
 import { db, users } from "@/lib/db";
 import { eq } from "drizzle-orm";
 
+export const dynamic = "force-dynamic";
+
 /**
  * POST /api/polar/day-pass
  * Create a Polar checkout session for Day Pass purchase ($10 one-time)

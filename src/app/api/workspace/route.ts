@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import { workspaces, users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
+export const dynamic = "force-dynamic";
+
 // GET - Get current user's workspace
 export async function GET() {
   try {

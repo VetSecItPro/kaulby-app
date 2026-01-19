@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import { users, monitors, results, alerts, aiLogs, usage, audiences, communities } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
 
+export const dynamic = "force-dynamic";
+
 export async function POST() {
   try {
     const { userId } = await auth();

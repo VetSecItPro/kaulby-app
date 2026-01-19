@@ -6,6 +6,8 @@ import { eq, and } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { sendWorkspaceInviteEmail } from "@/lib/email";
 
+export const dynamic = "force-dynamic";
+
 // Generate secure invite token
 function generateInviteToken(): string {
   return randomBytes(32).toString("hex");
