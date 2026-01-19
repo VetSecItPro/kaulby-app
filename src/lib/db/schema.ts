@@ -405,6 +405,29 @@ export const topicResults = pgTable("topic_results", {
   index("topic_results_result_idx").on(table.resultId),
 ]);
 
+// API Keys - for Team tier API access
+export const apiKeys = pgTable("api_keys", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(), // User-friendly name (e.g., "Production API Key")
+  keyPrefix: text("key_prefix").notNull(), // First 8 chars for identification (e.g., "kaulby_a")
+  keyHash: text("key_hash").notNull(), // SHA-256 hash of the full key
+  lastUsedAt: timestamp("last_used_at"),
+  expiresAt: timestamp("expires_at"), // Optional expiration
+  isActive: boolean("is_active").default(true).notNull(),
+  // Rate limiting
+  requestCount: integer("request_count").default(0).notNull(), // Total requests made
+  dailyRequestCount: integer("daily_request_count").default(0).notNull(), // Today's requests
+  dailyRequestResetAt: timestamp("daily_request_reset_at"), // When to reset daily count
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  revokedAt: timestamp("revoked_at"), // When the key was revoked
+}, (table) => [
+  index("api_keys_user_id_idx").on(table.userId),
+  index("api_keys_key_hash_idx").on(table.keyHash),
+]);
+
 // Workspace Invites - pending team invitations for Enterprise
 export const workspaceInvites = pgTable("workspace_invites", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -445,6 +468,14 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   slackIntegrations: many(slackIntegrations),
   webhooks: many(webhooks),
   crossPlatformTopics: many(crossPlatformTopics),
+  apiKeys: many(apiKeys),
+}));
+
+export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
+  user: one(users, {
+    fields: [apiKeys.userId],
+    references: [users.id],
+  }),
 }));
 
 export const audiencesRelations = relations(audiences, ({ one, many }) => ({
@@ -592,3 +623,5 @@ export type CrossPlatformTopic = typeof crossPlatformTopics.$inferSelect;
 export type NewCrossPlatformTopic = typeof crossPlatformTopics.$inferInsert;
 export type TopicResult = typeof topicResults.$inferSelect;
 export type NewTopicResult = typeof topicResults.$inferInsert;
+export type ApiKey = typeof apiKeys.$inferSelect;
+export type NewApiKey = typeof apiKeys.$inferInsert;
