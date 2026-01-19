@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { MobileSettings } from "@/components/mobile/mobile-settings";
 import { TeamSettings } from "@/components/dashboard/team-settings";
+import { ApiKeysSettings } from "@/components/dashboard/api-keys-settings";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -245,6 +246,9 @@ export function ResponsiveSettings({
 
       {/* Team Settings - Enterprise only */}
       <TeamSettings subscriptionStatus={subscriptionStatus} />
+
+      {/* API Keys Settings - Enterprise only */}
+      <ApiKeysSettings subscriptionStatus={subscriptionStatus} />
 
       {/* Your Data */}
       <Card>
