@@ -12,6 +12,8 @@ import {
 } from "@/lib/limits";
 import { Platform } from "@/lib/plans";
 
+export const dynamic = "force-dynamic";
+
 // In development, ensure user exists in database
 async function ensureDevUserExists(userId: string): Promise<void> {
   const isLocalDev = process.env.NODE_ENV === "development" &&

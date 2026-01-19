@@ -9,6 +9,8 @@ import {
   sendInviteAcceptedEmail,
 } from "@/lib/email";
 
+export const dynamic = "force-dynamic";
+
 // POST /api/test-emails - Send all test emails
 // SECURITY: Only works in verified local development (not Vercel preview/production)
 export async function POST(request: Request) {

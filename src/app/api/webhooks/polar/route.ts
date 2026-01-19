@@ -7,6 +7,8 @@ import { upsertContact, sendSubscriptionEmail } from "@/lib/email";
 import { captureEvent } from "@/lib/posthog";
 import { activateDayPass } from "@/lib/day-pass";
 
+export const dynamic = "force-dynamic";
+
 // Maximum number of founding members who lock in price forever
 const FOUNDING_MEMBER_LIMIT = 1000;
 

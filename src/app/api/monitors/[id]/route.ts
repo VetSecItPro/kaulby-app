@@ -11,6 +11,8 @@ import {
 } from "@/lib/limits";
 import { Platform } from "@/lib/plans";
 
+export const dynamic = "force-dynamic";
+
 // All valid platforms (must match POST route)
 const VALID_PLATFORMS = ["reddit", "hackernews", "producthunt", "devto", "googlereviews", "trustpilot", "appstore", "playstore", "quora"];
 

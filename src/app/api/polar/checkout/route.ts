@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { getPolarClient, POLAR_PLANS, PolarPlanKey, getProductId, BillingInterval } from "@/lib/polar";
 
+export const dynamic = "force-dynamic";
+
 /**
  * POST /api/polar/checkout
  * Create a Polar checkout session and return the checkout URL for redirect

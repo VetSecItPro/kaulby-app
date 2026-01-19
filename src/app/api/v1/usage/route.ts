@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import { monitors, results, usage, users } from "@/lib/db/schema";
 import { eq, count, and, gte } from "drizzle-orm";
 
+export const dynamic = "force-dynamic";
+
 /**
  * GET /api/v1/usage - Get usage statistics for the authenticated user
  *

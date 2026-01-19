@@ -4,6 +4,8 @@ import { db, audiences, audienceMonitors, monitors } from "@/lib/db";
 import { eq, and } from "drizzle-orm";
 import { z } from "zod";
 
+export const dynamic = "force-dynamic";
+
 const addMonitorSchema = z.object({
   monitorId: z.string().uuid(),
 });
