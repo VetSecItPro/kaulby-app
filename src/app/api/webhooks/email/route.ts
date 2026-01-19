@@ -15,6 +15,8 @@ function getResendClient(): Resend {
 const INBOUND_EMAIL = "support@kaulbyapp.com";
 // Forward to: where emails get redirected
 const FORWARD_TO = "support@steelmotionllc.com";
+// Send from: must be a verified sending domain in Resend
+const SEND_FROM = "support@steelmotionllc.com";
 
 /**
  * Verify Resend webhook signature (Svix-based)
@@ -76,11 +78,15 @@ export async function POST(request: NextRequest) {
 
     const payload = JSON.parse(rawBody);
 
+    // Resend wraps email data in a "data" object
+    const emailData = payload.data || payload;
+
     // Log for debugging
     console.log("Inbound email webhook received:", {
-      from: payload.from,
-      to: payload.to,
-      subject: payload.subject,
+      type: payload.type,
+      from: emailData.from,
+      to: emailData.to,
+      subject: emailData.subject,
     });
 
     // Extract email details from Resend's inbound email format
@@ -90,7 +96,7 @@ export async function POST(request: NextRequest) {
       subject,
       text,
       html,
-    } = payload;
+    } = emailData;
 
     // Only process emails to support@kaulbyapp.com
     const toAddresses = Array.isArray(to) ? to : [to];
@@ -103,9 +109,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ received: true, forwarded: false });
     }
 
-    // Forward the email to steelmotionllc.com
+    // Forward the email using verified sending domain
     const { error } = await getResendClient().emails.send({
-      from: `Kaulby Support <${INBOUND_EMAIL}>`,
+      from: `Kaulby Support <${SEND_FROM}>`,
       to: FORWARD_TO,
       subject: `[Support] ${subject || "(no subject)"}`,
       text: `
@@ -139,9 +145,10 @@ ${text || "(no text content)"}
     return NextResponse.json({ received: true, forwarded: true });
 
   } catch (error) {
-    console.error("Email webhook error:", error);
+    console.error("Email webhook error:", error instanceof Error ? error.message : error);
+    console.error("Stack:", error instanceof Error ? error.stack : "no stack");
     return NextResponse.json(
-      { error: "Webhook processing failed" },
+      { error: "Webhook processing failed", details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }
