@@ -20,11 +20,37 @@ export async function POST(request: NextRequest) {
   try {
     const payload = await request.json();
 
+    // Log full payload to see all available fields
+    console.log("📧 Full webhook payload:", JSON.stringify(payload, null, 2));
+
     // Resend wraps email data in "data" object
     const email = payload.data || payload;
-    const { from, to, subject, text, html } = email;
+    const { from, to, subject } = email;
+    let { text, html } = email;
 
-    console.log("📧 Inbound email:", { from, to, subject });
+    // If body is missing, fetch full inbound email using Resend's receiving API
+    if (!text && !html && email.email_id) {
+      console.log("📧 Body missing, fetching inbound email:", email.email_id);
+      try {
+        const response = await fetch(`https://api.resend.com/emails/receiving/${email.email_id}`, {
+          headers: {
+            "Authorization": `Bearer ${process.env.RESEND_API_KEY}`,
+          },
+        });
+        if (response.ok) {
+          const fullEmail = await response.json();
+          console.log("📧 Full inbound email:", JSON.stringify(fullEmail, null, 2));
+          text = fullEmail.text;
+          html = fullEmail.html;
+        } else {
+          console.error("Failed to fetch inbound email:", response.status, await response.text());
+        }
+      } catch (fetchErr) {
+        console.error("Failed to fetch inbound email:", fetchErr);
+      }
+    }
+
+    console.log("📧 Final fields:", { from, to, subject, hasText: !!text, hasHtml: !!html });
 
     // Only forward emails sent to support@kaulbyapp.com (prevents loops)
     const toAddresses = Array.isArray(to) ? to : [to];
