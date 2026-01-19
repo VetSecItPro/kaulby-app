@@ -182,7 +182,7 @@ export default function HelpPage() {
             <div className="p-4 rounded-lg border bg-card">
               <h4 className="font-medium mb-2">How often are results updated?</h4>
               <p className="text-sm text-muted-foreground">
-                Pro users get results every 2 hours. Team users get real-time monitoring.
+                Pro users get results every 4 hours. Team users get results every 2 hours.
                 Free users have a 24-hour delay.
               </p>
             </div>
@@ -190,7 +190,7 @@ export default function HelpPage() {
               <h4 className="font-medium mb-2">How many keywords can I track?</h4>
               <p className="text-sm text-muted-foreground">
                 Free: 3 keywords per monitor. Pro: 20 keywords.
-                Team: 50 keywords. Use quotes for exact phrases.
+                Team: 35 keywords. Use quotes for exact phrases.
               </p>
             </div>
             <div className="p-4 rounded-lg border bg-card">
@@ -266,18 +266,18 @@ export default function HelpPage() {
                   <td className="py-3 pr-4">Monitors</td>
                   <td className="text-center py-3 px-4">1</td>
                   <td className="text-center py-3 px-4">10</td>
-                  <td className="text-center py-3 px-4">Unlimited</td>
+                  <td className="text-center py-3 px-4">30</td>
                 </tr>
                 <tr className="border-b">
                   <td className="py-3 pr-4">Keywords per monitor</td>
                   <td className="text-center py-3 px-4">3</td>
                   <td className="text-center py-3 px-4">20</td>
-                  <td className="text-center py-3 px-4">50</td>
+                  <td className="text-center py-3 px-4">35</td>
                 </tr>
                 <tr className="border-b">
                   <td className="py-3 pr-4">Platforms</td>
                   <td className="text-center py-3 px-4">Reddit only</td>
-                  <td className="text-center py-3 px-4">8 platforms</td>
+                  <td className="text-center py-3 px-4">All 9</td>
                   <td className="text-center py-3 px-4">All 9</td>
                 </tr>
                 <tr className="border-b">
@@ -289,8 +289,8 @@ export default function HelpPage() {
                 <tr className="border-b">
                   <td className="py-3 pr-4">Refresh rate</td>
                   <td className="text-center py-3 px-4">24hr delay</td>
+                  <td className="text-center py-3 px-4">4 hours</td>
                   <td className="text-center py-3 px-4">2 hours</td>
-                  <td className="text-center py-3 px-4">Real-time</td>
                 </tr>
                 <tr className="border-b">
                   <td className="py-3 pr-4">AI analysis</td>
