@@ -2,6 +2,8 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { checkDayPassStatus, getDayPassHistory } from "@/lib/day-pass";
 
+export const dynamic = "force-dynamic";
+
 /**
  * GET /api/user/day-pass
  * Get the current user's day pass status

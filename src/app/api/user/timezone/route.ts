@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { db, users } from "@/lib/db";
 import { eq } from "drizzle-orm";
 
+export const dynamic = "force-dynamic";
+
 const VALID_TIMEZONES = [
   "America/New_York",
   "America/Chicago",

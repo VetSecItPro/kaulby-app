@@ -6,6 +6,8 @@ import { eq, and } from "drizzle-orm";
 import { canTriggerManualScan, getManualScanCooldown } from "@/lib/limits";
 import { inngest } from "@/lib/inngest";
 
+export const dynamic = "force-dynamic";
+
 /**
  * POST /api/monitors/[id]/scan
  * Trigger an on-demand scan for a specific monitor

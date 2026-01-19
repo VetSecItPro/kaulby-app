@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import { db, users } from "@/lib/db";
 import { eq } from "drizzle-orm";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(request: Request) {
   const { userId } = await auth();
 

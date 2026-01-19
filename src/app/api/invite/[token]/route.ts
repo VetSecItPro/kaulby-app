@@ -5,6 +5,8 @@ import { workspaces, workspaceInvites, users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { sendInviteAcceptedEmail } from "@/lib/email";
 
+export const dynamic = "force-dynamic";
+
 // GET - Get invite details (public - for display before accepting)
 export async function GET(
   request: Request,

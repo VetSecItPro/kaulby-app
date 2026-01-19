@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import { workspaceInvites, users } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 
+export const dynamic = "force-dynamic";
+
 // DELETE - Revoke an invite
 export async function DELETE(
   request: Request,

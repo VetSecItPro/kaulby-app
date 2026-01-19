@@ -5,6 +5,8 @@ import { webhooks } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import crypto from "crypto";
 
+export const dynamic = "force-dynamic";
+
 // POST - Send test webhook
 export async function POST(request: NextRequest) {
   try {

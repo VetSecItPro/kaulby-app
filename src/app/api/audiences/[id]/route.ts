@@ -4,6 +4,8 @@ import { db, audiences, audienceMonitors, results } from "@/lib/db";
 import { eq, and, inArray, desc } from "drizzle-orm";
 import { z } from "zod";
 
+export const dynamic = "force-dynamic";
+
 const updateAudienceSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   description: z.string().max(500).optional(),

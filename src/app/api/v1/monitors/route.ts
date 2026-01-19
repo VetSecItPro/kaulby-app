@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import { monitors } from "@/lib/db/schema";
 import { eq, desc, count } from "drizzle-orm";
 
+export const dynamic = "force-dynamic";
+
 /**
  * GET /api/v1/monitors - List all monitors for the authenticated user
  *

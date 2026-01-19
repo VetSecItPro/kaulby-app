@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import { monitors, results } from "@/lib/db/schema";
 import { eq, desc, count, and, inArray, gte, lte } from "drizzle-orm";
 
+export const dynamic = "force-dynamic";
+
 /**
  * GET /api/v1/results - List results for the authenticated user
  *
