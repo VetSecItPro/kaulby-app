@@ -5,6 +5,8 @@ import { users, monitors, results, audiences, webhooks, alerts } from "@/lib/db/
 import { eq, inArray } from "drizzle-orm";
 import { getPlanLimits } from "@/lib/plans";
 
+export const dynamic = "force-dynamic";
+
 /**
  * User Data Export API
  *
