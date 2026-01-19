@@ -146,11 +146,12 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
         </Card>
       </div>
 
-      {/* Refresh Delay Banner (for free tier) */}
+      {/* Refresh Delay Banner */}
       {planLimits.refreshDelayHours > 0 && (
         <RefreshDelayBanner
           delayHours={planLimits.refreshDelayHours}
           nextRefreshAt={refreshInfo?.nextRefreshAt || null}
+          subscriptionStatus={userPlan}
         />
       )}
 

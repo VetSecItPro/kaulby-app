@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { PlusCircle, ArrowRight, Eye } from "lucide-react";
 import Link from "next/link";
 import { QuickStartGuide } from "@/components/dashboard/onboarding";
-import { OnboardingTrigger } from "@/components/dashboard/onboarding-trigger";
 import { SampleResultsPreview } from "@/components/dashboard/sample-results";
 import { UpgradeBanner } from "@/components/dashboard/upgrade-banner";
 import { DashboardStats } from "@/components/dashboard/dashboard-stats";
@@ -74,9 +73,6 @@ export default async function DashboardPage() {
   const hasResults = resultsCount > 0;
   const showGettingStarted = !hasMonitors || !hasResults;
 
-  // Show onboarding wizard for new users who haven't completed it
-  const showOnboarding = user ? !user.onboardingCompleted && !hasMonitors : false;
-
   // Get recent results for quick preview
   let recentResults: { title: string; platform: string; createdAt: Date }[] = [];
   if (hasResults && userMonitorIds.length > 0) {
@@ -95,13 +91,6 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Onboarding Wizard - shows automatically for new users */}
-      <OnboardingTrigger
-        showOnboarding={showOnboarding}
-        userName={user?.name || undefined}
-        userPlan={userPlan}
-      />
-
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
