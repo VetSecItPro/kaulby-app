@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { users, monitors, results } from "@/lib/db/schema";
 import { eq, and, lt, inArray, sql } from "drizzle-orm";
 
-// Data retention limits by plan (in days) - must match PLANS in stripe.ts
+// Data retention limits by plan (in days) - must match PLANS in plans.ts
 const RETENTION_DAYS = {
   free: 3, // Free tier: 3-day history
   pro: 90, // Pro tier: 90-day history

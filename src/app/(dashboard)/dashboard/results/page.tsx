@@ -5,7 +5,7 @@ import { monitors, results } from "@/lib/db/schema";
 import { eq, desc, inArray, count, and } from "drizzle-orm";
 import { ResponsiveResults } from "@/components/dashboard/responsive-results";
 import { getUserPlan, getRefreshDelay } from "@/lib/limits";
-import { getPlanLimits } from "@/lib/stripe";
+import { getPlanLimits } from "@/lib/plans";
 
 interface ResultsPageProps {
   searchParams: Promise<{ page?: string }>;

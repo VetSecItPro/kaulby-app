@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { users, monitors, results } from "@/lib/db/schema";
 import { eq, inArray, desc } from "drizzle-orm";
-import { getPlanLimits } from "@/lib/stripe";
+import { getPlanLimits } from "@/lib/plans";
 
 // Force dynamic rendering
 export const dynamic = "force-dynamic";

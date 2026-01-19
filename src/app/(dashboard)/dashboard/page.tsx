@@ -12,7 +12,7 @@ import { OnboardingTrigger } from "@/components/dashboard/onboarding-trigger";
 import { SampleResultsPreview } from "@/components/dashboard/sample-results";
 import { UpgradeBanner } from "@/components/dashboard/upgrade-banner";
 import { DashboardStats } from "@/components/dashboard/dashboard-stats";
-import { getPlanLimits } from "@/lib/stripe";
+import { getPlanLimits } from "@/lib/plans";
 import { getUserPlan } from "@/lib/limits";
 
 export default async function DashboardPage() {

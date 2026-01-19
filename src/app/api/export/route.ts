@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { users, monitors, results, audiences, webhooks, alerts } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
-import { getPlanLimits } from "@/lib/stripe";
+import { getPlanLimits } from "@/lib/plans";
 
 /**
  * User Data Export API

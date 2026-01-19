@@ -13,7 +13,7 @@ import {
   type ComprehensiveAnalysisContext,
 } from "@/lib/ai";
 import { incrementAiCallsCount, getUserPlan } from "@/lib/limits";
-import { getPlanLimits } from "@/lib/stripe";
+import { getPlanLimits } from "@/lib/plans";
 
 // Analyze content with AI
 export const analyzeContent = inngest.createFunction(

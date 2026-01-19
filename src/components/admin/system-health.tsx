@@ -21,7 +21,7 @@ interface SystemHealthProps {
     database: boolean;
     ai: boolean;
     email: boolean;
-    stripe: boolean;
+    polar: boolean;
   };
 }
 
@@ -179,10 +179,10 @@ export function SystemHealth({
               </div>
             </div>
             <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-              {getHealthStatus(healthChecks.stripe)}
+              {getHealthStatus(healthChecks.polar)}
               <div>
                 <p className="font-medium">Payments</p>
-                <p className="text-xs text-muted-foreground">Stripe</p>
+                <p className="text-xs text-muted-foreground">Polar</p>
               </div>
             </div>
           </div>

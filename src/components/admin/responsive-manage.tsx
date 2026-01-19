@@ -113,7 +113,7 @@ interface SystemHealthData {
     database: boolean;
     ai: boolean;
     email: boolean;
-    stripe: boolean;
+    polar: boolean;
   };
 }
 

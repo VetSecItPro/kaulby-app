@@ -2,7 +2,7 @@ import { inngest } from "../client";
 import { db, alerts, results, users } from "@/lib/db";
 import { eq, and, gte, inArray } from "drizzle-orm";
 import { sendAlertEmail, sendDigestEmail, type WeeklyInsights } from "@/lib/email";
-import { getPlanLimits } from "@/lib/stripe";
+import { getPlanLimits } from "@/lib/plans";
 import { generateWeeklyInsights } from "@/lib/ai";
 import { sendWebhookNotification, type NotificationResult } from "@/lib/notifications";
 

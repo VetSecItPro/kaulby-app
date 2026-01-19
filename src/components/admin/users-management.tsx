@@ -59,7 +59,7 @@ interface UserData {
   isBanned: boolean;
   banReason: string | null;
   bannedAt: Date | null;
-  stripeCustomerId: string | null;
+  polarCustomerId: string | null;
   createdAt: Date;
   updatedAt: Date;
   monitorsCount: number;
@@ -292,15 +292,15 @@ export function UsersManagement({
                             <User className="h-4 w-4 mr-2" />
                             View Details
                           </DropdownMenuItem>
-                          {user.stripeCustomerId && (
+                          {user.polarCustomerId && (
                             <DropdownMenuItem asChild>
                               <a
-                                href={`https://dashboard.stripe.com/customers/${user.stripeCustomerId}`}
+                                href={`https://polar.sh/dashboard/customers`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                               >
                                 <ExternalLink className="h-4 w-4 mr-2" />
-                                View in Stripe
+                                View in Polar
                               </a>
                             </DropdownMenuItem>
                           )}
@@ -419,10 +419,10 @@ export function UsersManagement({
                   <span className="text-muted-foreground">User ID:</span>
                   <span className="font-mono text-xs">{selectedUser.id}</span>
                 </div>
-                {selectedUser.stripeCustomerId && (
+                {selectedUser.polarCustomerId && (
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Stripe ID:</span>
-                    <span className="font-mono text-xs">{selectedUser.stripeCustomerId}</span>
+                    <span className="text-muted-foreground">Polar ID:</span>
+                    <span className="font-mono text-xs">{selectedUser.polarCustomerId}</span>
                   </div>
                 )}
               </div>

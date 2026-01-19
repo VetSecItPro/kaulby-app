@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { users, monitors, communities, usage } from "@/lib/db/schema";
 import { eq, and, count, gte } from "drizzle-orm";
-import { PLANS, PlanKey, Platform, getPlanLimits } from "@/lib/stripe";
+import { PLANS, PlanKey, Platform, getPlanLimits } from "@/lib/plans";
 
 // ============================================================================
 // TYPES

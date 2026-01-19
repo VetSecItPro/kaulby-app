@@ -146,10 +146,7 @@ export function OnboardingWizard({ isOpen, onClose, userName, userPlan = "free" 
 
   const selectTemplate = (templateId: string) => {
     setSelectedTemplate(templateId);
-    const template = MONITOR_TEMPLATES.find((t) => t.id === templateId);
-    if (template && template.id !== "custom") {
-      setMonitorName(`${template.title} Monitor`);
-    }
+    // Don't pre-fill monitor name - use placeholder instead so user can type freely
     setStep(3);
   };
 
@@ -229,8 +226,13 @@ export function OnboardingWizard({ isOpen, onClose, userName, userPlan = "free" 
         {step === 1 && (
           <>
             <DialogHeader className="pt-4">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-600">
-                <Rocket className="h-8 w-8 text-white" />
+              {/* Kaulby Logo */}
+              <div className="mx-auto mb-4">
+                <img
+                  src="/icon-512.png"
+                  alt="Kaulby"
+                  className="h-16 w-16 rounded-xl"
+                />
               </div>
               <DialogTitle className="text-center text-xl">
                 {userName ? `Welcome, ${userName}!` : "Welcome to Kaulby"}
@@ -279,6 +281,14 @@ export function OnboardingWizard({ isOpen, onClose, userName, userPlan = "free" 
         {step === 2 && (
           <>
             <DialogHeader className="pt-4">
+              {/* Kaulby Logo */}
+              <div className="mx-auto mb-4">
+                <img
+                  src="/icon-512.png"
+                  alt="Kaulby"
+                  className="h-16 w-16 rounded-xl"
+                />
+              </div>
               <DialogTitle className="text-center text-xl">
                 What do you want to track?
               </DialogTitle>
@@ -324,14 +334,19 @@ export function OnboardingWizard({ isOpen, onClose, userName, userPlan = "free" 
         {step === 3 && (
           <>
             <DialogHeader className="pt-4">
+              {/* Kaulby Logo */}
+              <div className="mx-auto mb-4">
+                <img
+                  src="/icon-512.png"
+                  alt="Kaulby"
+                  className="h-16 w-16 rounded-xl"
+                />
+              </div>
               <DialogTitle className="text-center text-xl">
                 Add your keywords
               </DialogTitle>
               <DialogDescription className="text-center">
-                {template?.id !== "custom"
-                  ? `Enter your ${template?.title.toLowerCase().replace(" monitoring", "").replace(" tracking", "")} and any related terms`
-                  : "Enter the keywords you want to track"
-                }
+                Enter your brand and any related terms
               </DialogDescription>
             </DialogHeader>
 
@@ -341,7 +356,7 @@ export function OnboardingWizard({ isOpen, onClose, userName, userPlan = "free" 
                 <Label htmlFor="monitor-name">Monitor Name</Label>
                 <Input
                   id="monitor-name"
-                  placeholder="e.g., Brand Mentions"
+                  placeholder={template?.id !== "custom" ? `${template?.title} Monitor` : "e.g., Brand Mentions"}
                   value={monitorName}
                   onChange={(e) => setMonitorName(e.target.value)}
                 />
@@ -429,6 +444,14 @@ export function OnboardingWizard({ isOpen, onClose, userName, userPlan = "free" 
         {step === 4 && (
           <>
             <DialogHeader className="pt-4">
+              {/* Kaulby Logo */}
+              <div className="mx-auto mb-4">
+                <img
+                  src="/icon-512.png"
+                  alt="Kaulby"
+                  className="h-16 w-16 rounded-xl"
+                />
+              </div>
               <DialogTitle className="text-center text-xl">
                 Choose platforms to monitor
               </DialogTitle>

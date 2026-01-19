@@ -5,6 +5,11 @@ import { eq } from "drizzle-orm";
 import { incrementResultsCount, canAccessPlatform, shouldProcessMonitor } from "@/lib/limits";
 
 const PH_API_BASE = "https://api.producthunt.com/v2/api/graphql";
+const PH_TOKEN_URL = "https://api.producthunt.com/v2/oauth/token";
+
+// Cache for access token (in-memory, refreshed on each cron run)
+let cachedAccessToken: string | null = null;
+let tokenExpiresAt: number = 0;
 
 interface PHPost {
   id: string;
@@ -29,6 +34,54 @@ interface PHResponse {
   };
 }
 
+// Get OAuth access token using Client Credentials flow
+async function getProductHuntAccessToken(): Promise<string | null> {
+  const clientId = process.env.PRODUCTHUNT_API_KEY;
+  const clientSecret = process.env.PRODUCTHUNT_API_SECRET;
+
+  if (!clientId || !clientSecret) {
+    console.error("[ProductHunt] Missing API credentials (need both API_KEY and API_SECRET)");
+    return null;
+  }
+
+  // Return cached token if still valid (with 5 min buffer)
+  if (cachedAccessToken && Date.now() < tokenExpiresAt - 300000) {
+    return cachedAccessToken;
+  }
+
+  try {
+    const response = await fetch(PH_TOKEN_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        client_id: clientId,
+        client_secret: clientSecret,
+        grant_type: "client_credentials",
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[ProductHunt] OAuth token request failed: ${response.status} - ${errorText}`);
+      return null;
+    }
+
+    const data = await response.json();
+    cachedAccessToken = data.access_token;
+    // Token typically expires in 2 weeks, but we'll refresh every run anyway
+    tokenExpiresAt = Date.now() + (data.expires_in ? data.expires_in * 1000 : 86400000);
+
+    console.log("[ProductHunt] Successfully obtained access token");
+    return cachedAccessToken;
+  } catch (error) {
+    console.error("[ProductHunt] Error getting access token:", error);
+    return null;
+  }
+}
+
 // Scan Product Hunt for new posts matching monitor keywords
 export const monitorProductHunt = inngest.createFunction(
   {
@@ -38,10 +91,13 @@ export const monitorProductHunt = inngest.createFunction(
   },
   { cron: "0 */2 * * *" }, // Every 2 hours (PH has less frequent posts)
   async ({ step }) => {
-    // Check if API key is configured
-    const apiKey = process.env.PRODUCTHUNT_API_KEY;
-    if (!apiKey) {
-      return { message: "Product Hunt API key not configured", skipped: true };
+    // Get OAuth access token
+    const accessToken = await step.run("get-access-token", async () => {
+      return getProductHuntAccessToken();
+    });
+
+    if (!accessToken) {
+      return { message: "Product Hunt API credentials not configured or invalid", skipped: true };
     }
 
     // Get all active monitors that include Product Hunt
@@ -87,7 +143,7 @@ export const monitorProductHunt = inngest.createFunction(
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
+            Authorization: `Bearer ${accessToken}`,
           },
           body: JSON.stringify({ query }),
         });

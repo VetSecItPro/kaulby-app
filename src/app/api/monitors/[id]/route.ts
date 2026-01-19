@@ -9,7 +9,7 @@ import {
   filterAllowedPlatforms,
   getUpgradePrompt,
 } from "@/lib/limits";
-import { Platform } from "@/lib/stripe";
+import { Platform } from "@/lib/plans";
 
 // All valid platforms (must match POST route)
 const VALID_PLATFORMS = ["reddit", "hackernews", "producthunt", "devto", "googlereviews", "trustpilot", "appstore", "playstore", "quora"];

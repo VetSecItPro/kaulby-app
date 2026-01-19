@@ -116,7 +116,7 @@ Learn from ***'s fate with Reddit. Every integration decision must consider:
 ## Key Files
 
 - `src/lib/db/schema.ts` - Database schema (source of truth)
-- `src/lib/stripe.ts` - Plan definitions and tier logic
+- `src/lib/plans.ts` - Plan definitions and tier logic
 - `src/lib/inngest/functions/` - Background jobs
 - `src/lib/ai/prompts.ts` - AI prompts
 - `src/middleware.ts` - Route protection
