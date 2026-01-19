@@ -114,6 +114,7 @@ export function OnboardingWizard({ isOpen, onClose, userName, userPlan = "free" 
   const [step, setStep] = useState(1);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [monitorName, setMonitorName] = useState("");
+  const [companyName, setCompanyName] = useState("");
   const [keywordInput, setKeywordInput] = useState("");
   const [keywords, setKeywords] = useState<string[]>([]);
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(["reddit"]);
@@ -187,7 +188,8 @@ export function OnboardingWizard({ isOpen, onClose, userName, userPlan = "free" 
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: monitorName || "My First Monitor",
+          name: monitorName || companyName || "My First Monitor",
+          companyName,
           keywords,
           platforms: selectedPlatforms,
         }),
@@ -351,6 +353,20 @@ export function OnboardingWizard({ isOpen, onClose, userName, userPlan = "free" 
             </DialogHeader>
 
             <div className="py-4 space-y-4">
+              {/* Company/Brand Name */}
+              <div className="space-y-2">
+                <Label htmlFor="company-name">Company/Brand Name <span className="text-destructive">*</span></Label>
+                <Input
+                  id="company-name"
+                  placeholder="e.g., Acme Inc, MyBrand"
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  The company or brand you want to track mentions for
+                </p>
+              </div>
+
               {/* Monitor Name */}
               <div className="space-y-2">
                 <Label htmlFor="monitor-name">Monitor Name</Label>
@@ -419,7 +435,11 @@ export function OnboardingWizard({ isOpen, onClose, userName, userPlan = "free" 
               )}
 
               <p className="text-xs text-muted-foreground">
-                Free plan: up to 3 keywords per monitor
+                {userPlan === "free"
+                  ? "Free plan: up to 3 keywords per monitor"
+                  : userPlan === "pro"
+                  ? "Pro plan: up to 20 keywords per monitor"
+                  : "Team plan: up to 50 keywords per monitor"}
               </p>
             </div>
 
@@ -431,7 +451,7 @@ export function OnboardingWizard({ isOpen, onClose, userName, userPlan = "free" 
               <Button
                 onClick={handleNext}
                 className="gap-2"
-                disabled={keywords.length === 0}
+                disabled={!companyName.trim() || keywords.length === 0}
               >
                 Next
                 <ArrowRight className="h-4 w-4" />

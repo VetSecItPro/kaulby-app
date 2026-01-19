@@ -10,6 +10,7 @@ interface ResponsiveDashboardLayoutProps {
   isAdmin: boolean;
   title?: string;
   subscriptionStatus?: string;
+  hasActiveDayPass?: boolean;
 }
 
 // CSS-based responsive layout - no JS device detection needed
@@ -19,6 +20,7 @@ export function ResponsiveDashboardLayout({
   isAdmin,
   title,
   subscriptionStatus = "free",
+  hasActiveDayPass = false,
 }: ResponsiveDashboardLayoutProps) {
   return (
     <>
@@ -33,7 +35,7 @@ export function ResponsiveDashboardLayout({
 
       {/* Desktop Layout - visible at lg breakpoint and above */}
       <div className="hidden lg:flex min-h-screen">
-        <Sidebar isAdmin={isAdmin} subscriptionStatus={subscriptionStatus} />
+        <Sidebar isAdmin={isAdmin} subscriptionStatus={subscriptionStatus} hasActiveDayPass={hasActiveDayPass} />
         <main className="flex-1 overflow-auto">
           <div className="container py-6 px-4 md:px-8">
             {children}

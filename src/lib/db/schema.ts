@@ -141,6 +141,8 @@ export const users = pgTable("users", {
   dayPassExpiresAt: timestamp("day_pass_expires_at"), // When the day pass expires (null = no active pass)
   dayPassPurchaseCount: integer("day_pass_purchase_count").default(0).notNull(), // Track repeat buyers
   lastDayPassPurchasedAt: timestamp("last_day_pass_purchased_at"), // Last purchase timestamp
+  // Account deletion - 7 day cooldown before permanent deletion
+  deletionRequestedAt: timestamp("deletion_requested_at"), // When user requested deletion (null = not requested)
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

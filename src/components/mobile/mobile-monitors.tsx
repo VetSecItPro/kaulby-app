@@ -76,7 +76,7 @@ export function MobileMonitors({ monitors }: MobileMonitorsProps) {
                 Create your first monitor to start tracking
               </p>
               <Link href="/dashboard/monitors/new">
-                <Button className="w-full">Create Monitor</Button>
+                <Button className="w-full bg-teal-500 hover:bg-teal-600 text-black">Create Monitor</Button>
               </Link>
             </CardContent>
           </Card>
