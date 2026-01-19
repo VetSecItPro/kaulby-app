@@ -98,7 +98,7 @@ export function MobileDashboard({
               </div>
               {subscriptionStatus === "free" && (
                 <Link href="/dashboard/settings">
-                  <Button size="sm" className="gap-1">
+                  <Button size="sm" className="gap-1 bg-teal-500 hover:bg-teal-600 text-black">
                     Upgrade
                     <ChevronRight className="h-4 w-4" />
                   </Button>
@@ -141,7 +141,7 @@ export function MobileDashboard({
                 Create your first monitor to start tracking mentions
               </p>
               <Link href="/dashboard/monitors/new">
-                <Button className="w-full">Create Monitor</Button>
+                <Button className="w-full bg-teal-500 hover:bg-teal-600 text-black">Create Monitor</Button>
               </Link>
             </CardContent>
           </Card>

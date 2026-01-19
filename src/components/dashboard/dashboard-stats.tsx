@@ -16,6 +16,13 @@ interface DashboardStatsProps {
   };
 }
 
+// Map internal plan names to display names
+const planDisplayNames: Record<PlanKey, string> = {
+  free: "Free",
+  pro: "Pro",
+  enterprise: "Team", // "enterprise" is internal code name, "Team" is user-facing
+};
+
 export function DashboardStats({
   monitorsCount,
   resultsCount,
@@ -73,7 +80,7 @@ export function DashboardStats({
 
       <StatCard
         title="Current Plan"
-        value={userPlan.charAt(0).toUpperCase() + userPlan.slice(1)}
+        value={planDisplayNames[userPlan] || userPlan}
         description={
           userPlan === "free" ? (
             <Link href="/dashboard/settings" className="text-primary hover:underline">

@@ -217,11 +217,12 @@ function DesktopResultsView({
         </div>
       </div>
 
-      {/* Refresh Delay Banner (for free tier) */}
+      {/* Refresh Delay Banner */}
       {planInfo && planInfo.refreshDelayHours > 0 && (
         <RefreshDelayBanner
           delayHours={planInfo.refreshDelayHours}
           nextRefreshAt={planInfo.nextRefreshAt}
+          subscriptionStatus={planInfo.plan}
         />
       )}
 

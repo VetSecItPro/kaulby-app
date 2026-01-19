@@ -61,4 +61,24 @@ export type Events = {
       userId: string;
     };
   };
+  "user/deletion.scheduled": {
+    data: {
+      userId: string;
+      email: string;
+      scheduledAt: string; // ISO timestamp when deletion was requested
+    };
+  };
+  "user/deletion.execute": {
+    data: {
+      userId: string;
+      email: string;
+    };
+  };
+  "user/deletion.reminder": {
+    data: {
+      userId: string;
+      email: string;
+      hoursRemaining: number;
+    };
+  };
 };

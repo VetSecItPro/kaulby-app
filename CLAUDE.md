@@ -43,6 +43,34 @@ Learn from ***'s fate with Reddit. Every integration decision must consider:
 - **Complete solutions**: Fix root causes, not symptoms. Consider downstream effects and related code paths.
 - **No over-engineering**: Solve the current problem completely, but don't build for hypothetical future requirements.
 
+## Strategic Thinking (CRITICAL)
+
+**For every feature or action, think holistically and consider all angles:**
+
+Before implementing any feature, ask:
+1. **What does this feature actually need to do end-to-end?** Don't just build the UI - build the complete flow.
+2. **What are the legal/compliance implications?** (GDPR, CCPA, data retention, etc.)
+3. **What happens in edge cases?** (user cancels, errors occur, timeouts, etc.)
+4. **What background jobs or scheduled tasks are needed?** A button that says "delete in 7 days" means nothing without the job that actually deletes.
+5. **What notifications/emails should be sent?** Users expect confirmation of important actions.
+6. **What audit trail is needed?** For sensitive operations, log who did what and when.
+
+**Example - Account Deletion Process:**
+- UI: Danger Zone modal with typed confirmation ✓
+- Database: `deletionRequestedAt` timestamp ✓
+- API: Request and cancel deletion endpoints ✓
+- Confirmation page: Show countdown and cancel option ✓
+- **Scheduled job**: Inngest function to actually delete after 7 days (REQUIRED)
+- **Email notifications**: Confirmation email, reminder at 24hrs, final deletion notice
+- **Data deletion**: Must delete ALL user data (monitors, results, AI logs, team members, API keys)
+- **External cleanup**: Cancel Polar subscription, delete from Clerk
+- **Audit log**: Record deletion for compliance
+
+**Research before implementing:**
+- For sensitive features (payments, deletion, auth), research best practices online
+- Check what established SaaS products do (AWS, Stripe, GitHub)
+- Ensure legal compliance (GDPR right to erasure, CCPA, etc.)
+
 ## Autonomous Work Authorization
 
 - **Pre-cleared for all operations**: No permission requests needed for file edits, database pushes, or shell commands.

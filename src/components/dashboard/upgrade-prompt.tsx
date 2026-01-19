@@ -394,18 +394,48 @@ export function HiddenResultsBanner({ hiddenCount, totalCount }: HiddenResultsBa
 interface RefreshDelayBannerProps {
   delayHours: number;
   nextRefreshAt?: Date | null;
+  subscriptionStatus?: string; // "free" | "pro" | "enterprise"
 }
 
-export function RefreshDelayBanner({ delayHours, nextRefreshAt }: RefreshDelayBannerProps) {
+export function RefreshDelayBanner({ delayHours, nextRefreshAt, subscriptionStatus = "free" }: RefreshDelayBannerProps) {
   const formatTimeRemaining = () => {
     if (!nextRefreshAt) return `${delayHours} hours`;
     const now = new Date();
     const diff = nextRefreshAt.getTime() - now.getTime();
+    if (diff <= 0) return "soon";
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
     if (hours > 0) return `${hours}h ${minutes}m`;
     return `${minutes} minutes`;
   };
+
+  // Team (enterprise) is on the highest tier - no upgrade available
+  const isHighestTier = subscriptionStatus === "enterprise";
+
+  // Determine upgrade messaging based on current tier
+  const getUpgradeMessage = () => {
+    if (subscriptionStatus === "free") {
+      return "Upgrade to Pro for 4-hour refresh";
+    }
+    if (subscriptionStatus === "pro") {
+      return "Upgrade to Team for 2-hour refresh";
+    }
+    return null; // enterprise - no upgrade available
+  };
+
+  const upgradeMessage = getUpgradeMessage();
+
+  // For Team users, show a simpler informational banner (not an upgrade prompt)
+  if (isHighestTier) {
+    return (
+      <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border border-border">
+        <Clock className="h-5 w-5 text-muted-foreground" />
+        <p className="text-sm text-muted-foreground">
+          Results refresh in {formatTimeRemaining()}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center justify-between p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
@@ -415,14 +445,16 @@ export function RefreshDelayBanner({ delayHours, nextRefreshAt }: RefreshDelayBa
           <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
             Results refresh in {formatTimeRemaining()}
           </p>
-          <p className="text-xs text-amber-600/80 dark:text-amber-500/80">
-            Upgrade to Pro for real-time monitoring
-          </p>
+          {upgradeMessage && (
+            <p className="text-xs text-amber-600/80 dark:text-amber-500/80">
+              {upgradeMessage}
+            </p>
+          )}
         </div>
       </div>
       <Button size="sm" variant="outline" asChild className="border-amber-500/50 text-amber-700 hover:bg-amber-500/10">
         <Link href="/pricing">
-          Go Real-Time
+          Upgrade
         </Link>
       </Button>
     </div>

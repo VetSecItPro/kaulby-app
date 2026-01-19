@@ -25,7 +25,7 @@ export function UpgradeBanner({ plan, variant = "full", context = "dashboard" }:
       icon: Clock,
       title: "24-hour delay",
       description: "Your results are delayed by 24 hours",
-      cta: "Get real-time with Pro",
+      cta: "Get 4-hour refresh with Pro",
     },
     {
       icon: Eye,
@@ -71,7 +71,7 @@ export function UpgradeBanner({ plan, variant = "full", context = "dashboard" }:
             <div>
               <p className="text-sm font-medium">Upgrade to Pro</p>
               <p className="text-xs text-muted-foreground">
-                Get real-time monitoring, 8 platforms, and full AI analysis
+                Get 4-hour refresh, all 9 platforms, and full AI analysis
               </p>
             </div>
           </div>
@@ -181,7 +181,7 @@ export function DelayedResultsBanner({ plan }: { plan: string }) {
       <Clock className="h-3 w-3" />
       <span>Results delayed 24 hours</span>
       <Link href="/dashboard/settings" className="underline ml-1">
-        Get real-time
+        Upgrade
       </Link>
     </div>
   );

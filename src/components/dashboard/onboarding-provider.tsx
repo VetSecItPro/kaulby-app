@@ -18,9 +18,10 @@ interface OnboardingProviderProps {
   children: ReactNode;
   isNewUser: boolean;
   userName?: string;
+  userPlan?: "free" | "pro" | "enterprise";
 }
 
-export function OnboardingProvider({ children, isNewUser, userName }: OnboardingProviderProps) {
+export function OnboardingProvider({ children, isNewUser, userName, userPlan = "free" }: OnboardingProviderProps) {
   const [showOnboarding, setShowOnboarding] = useState(false);
   // isNewUser from server is the source of truth (derived from database onboardingCompleted)
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(!isNewUser);
@@ -86,6 +87,7 @@ export function OnboardingProvider({ children, isNewUser, userName }: Onboarding
         isOpen={showOnboarding}
         onClose={dismissOnboarding}
         userName={userName}
+        userPlan={userPlan}
       />
     </OnboardingContext.Provider>
   );

@@ -1,13 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { Check, Zap, User, CreditCard, Database, Download, Trash2, AlertTriangle, Clock } from "lucide-react";
+import { Check, User, CreditCard, Database, Download, Trash2, Clock, ShieldAlert } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -56,9 +58,13 @@ interface MobileSettingsProps {
   plans: Plan[];
   dataStats: DataStats;
   onExportData: () => void;
-  onDeleteAccount: () => void;
+  onRequestDeletion: () => void;
   isExporting: boolean;
   isDeleting: boolean;
+  deleteConfirmText: string;
+  setDeleteConfirmText: (text: string) => void;
+  canDelete: boolean;
+  confirmDeletePhrase: string;
 }
 
 const containerVariants = {
@@ -88,6 +94,28 @@ function getPlanDisplayName(status: string): string {
   return displayNames[status] || status;
 }
 
+// Tier order for determining upgrade vs downgrade
+const TIER_ORDER: Record<string, number> = {
+  free: 0,
+  pro: 1,
+  enterprise: 2,
+};
+
+// Map plan display names to internal tier names
+const PLAN_TO_TIER: Record<string, string> = {
+  "Free": "free",
+  "Pro": "pro",
+  "Team": "enterprise",
+};
+
+// Helper to determine if switching to a plan is an upgrade or downgrade
+function getButtonAction(currentStatus: string, targetPlanName: string): "upgrade" | "downgrade" {
+  const targetTier = PLAN_TO_TIER[targetPlanName] || "free";
+  const currentTierLevel = TIER_ORDER[currentStatus] ?? 0;
+  const targetTierLevel = TIER_ORDER[targetTier] ?? 0;
+  return targetTierLevel > currentTierLevel ? "upgrade" : "downgrade";
+}
+
 export function MobileSettings({
   email,
   name,
@@ -99,10 +127,15 @@ export function MobileSettings({
   plans,
   dataStats,
   onExportData,
-  onDeleteAccount,
+  onRequestDeletion,
   isExporting,
   isDeleting,
+  deleteConfirmText,
+  setDeleteConfirmText,
+  canDelete,
+  confirmDeletePhrase,
 }: MobileSettingsProps) {
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const planDisplayName = getPlanDisplayName(subscriptionStatus);
   const formatNumber = (num: number) => {
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
@@ -217,7 +250,14 @@ export function MobileSettings({
                 {isExporting ? "Exporting..." : "Export All Data"}
               </Button>
 
-              <AlertDialog>
+              <AlertDialog open={showDeleteDialog} onOpenChange={(open) => {
+                if (!open) {
+                  setShowDeleteDialog(false);
+                  setDeleteConfirmText("");
+                } else {
+                  setShowDeleteDialog(true);
+                }
+              }}>
                 <AlertDialogTrigger asChild>
                   <Button
                     variant="destructive"
@@ -230,24 +270,45 @@ export function MobileSettings({
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle className="flex items-center gap-2">
-                      <AlertTriangle className="h-5 w-5 text-destructive" />
-                      Delete Account
+                    <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                      <ShieldAlert className="h-5 w-5" />
+                      Danger Zone
                     </AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This action cannot be undone. This will permanently delete your
-                      account and all your data.
+                    <AlertDialogDescription className="space-y-2">
+                      <p>
+                        This will schedule your account for <strong>permanent deletion in 7 days</strong>.
+                      </p>
+                      <p className="text-xs">
+                        All data will be permanently deleted including monitors, results, and AI analysis history.
+                      </p>
                     </AlertDialogDescription>
                   </AlertDialogHeader>
+                  <div className="py-3">
+                    <Label htmlFor="confirm-delete-mobile" className="text-sm">
+                      Type <span className="font-mono bg-muted px-1 rounded text-destructive text-xs">{confirmDeletePhrase}</span> to confirm
+                    </Label>
+                    <Input
+                      id="confirm-delete-mobile"
+                      value={deleteConfirmText}
+                      onChange={(e) => setDeleteConfirmText(e.target.value)}
+                      placeholder={confirmDeletePhrase}
+                      className="mt-2"
+                      autoComplete="off"
+                    />
+                  </div>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={onDeleteAccount}
-                      disabled={isDeleting}
-                      className="bg-destructive text-destructive-foreground"
+                    <AlertDialogCancel onClick={() => {
+                      setShowDeleteDialog(false);
+                      setDeleteConfirmText("");
+                    }}>Cancel</AlertDialogCancel>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={onRequestDeletion}
+                      disabled={!canDelete || isDeleting}
                     >
-                      {isDeleting ? "Deleting..." : "Delete"}
-                    </AlertDialogAction>
+                      {isDeleting ? "Processing..." : "Schedule Deletion"}
+                    </Button>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
@@ -263,7 +324,7 @@ export function MobileSettings({
         </h2>
         <div className="space-y-3">
           {plans.map((plan) => (
-            <MobilePlanCard key={plan.name} plan={plan} />
+            <MobilePlanCard key={plan.name} plan={plan} subscriptionStatus={subscriptionStatus} />
           ))}
         </div>
       </motion.div>
@@ -271,22 +332,21 @@ export function MobileSettings({
   );
 }
 
-function MobilePlanCard({ plan }: { plan: Plan }) {
+function MobilePlanCard({ plan, subscriptionStatus }: { plan: Plan; subscriptionStatus: string }) {
+  const action = getButtonAction(subscriptionStatus, plan.name);
+  const buttonText = action === "upgrade"
+    ? `Upgrade to ${plan.name}`
+    : `Downgrade to ${plan.name}`;
+
   return (
     <motion.div whileTap={{ scale: 0.98 }}>
-      <Card className={plan.recommended ? "border-primary" : ""}>
+      <Card className={plan.current ? "border-primary border-2" : ""}>
         <CardContent className="p-4">
           {/* Header */}
           <div className="flex items-start justify-between mb-3">
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-semibold text-lg">{plan.name}</h3>
-                {plan.recommended && (
-                  <Badge variant="default" className="gap-1 text-xs">
-                    <Zap className="h-3 w-3" />
-                    Best
-                  </Badge>
-                )}
               </div>
               <div className="flex items-baseline gap-1 mt-1">
                 <span className="text-2xl font-bold">{plan.price}</span>
@@ -320,12 +380,12 @@ function MobilePlanCard({ plan }: { plan: Plan }) {
 
           {/* Action */}
           {plan.current ? (
-            <Button variant="outline" className="w-full" disabled>
+            <Button size="sm" className="bg-teal-500 hover:bg-teal-600 text-black" disabled>
               Current Plan
             </Button>
           ) : (
-            <Button className="w-full">
-              Upgrade to {plan.name}
+            <Button size="sm" className="bg-teal-500 hover:bg-teal-600 text-black">
+              {buttonText}
             </Button>
           )}
         </CardContent>

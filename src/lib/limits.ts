@@ -31,7 +31,10 @@ export interface FeatureAccess {
 
 /**
  * Get the user's current subscription plan
- * Checks for active day pass first - day pass grants Pro-level access for 24 hours
+ * Priority order:
+ * 1. Admin users always get Enterprise (Team) tier
+ * 2. Active day pass grants Pro-level access for 24 hours
+ * 3. Otherwise, use subscriptionStatus from database
  */
 export async function getUserPlan(userId: string): Promise<PlanKey> {
   const user = await db.query.users.findFirst({
@@ -39,10 +42,16 @@ export async function getUserPlan(userId: string): Promise<PlanKey> {
     columns: {
       subscriptionStatus: true,
       dayPassExpiresAt: true,
+      isAdmin: true,
     },
   });
 
   if (!user) return "free";
+
+  // Admins always get Enterprise (Team) tier
+  if (user.isAdmin) {
+    return "enterprise";
+  }
 
   // Check for active day pass - grants Pro-level access
   if (user.dayPassExpiresAt && new Date(user.dayPassExpiresAt) > new Date()) {
@@ -276,35 +285,38 @@ export async function canViewAiAnalysis(
 
 /**
  * Get refresh delay for user's plan
- * Free: 24 hours delay, Pro/Enterprise: real-time
+ * Free: 24 hours, Pro: 4 hours, Team: 2 hours
  */
 export async function getRefreshDelay(userId: string): Promise<{
   delayHours: number;
   isDelayed: boolean;
   nextRefreshAt: Date | null;
   message: string;
+  plan: string;
 }> {
   const plan = await getUserPlan(userId);
   const limits = getPlanLimits(plan);
 
-  if (limits.refreshDelayHours === 0) {
-    return {
-      delayHours: 0,
-      isDelayed: false,
-      nextRefreshAt: null,
-      message: "Real-time monitoring active",
-    };
-  }
-
-  // Calculate next refresh time based on last check
+  // Calculate next refresh time based on delay
   const now = new Date();
   const nextRefreshAt = new Date(now.getTime() + limits.refreshDelayHours * 60 * 60 * 1000);
 
+  // Build contextual message based on tier
+  let message: string;
+  if (plan === "enterprise") {
+    message = `Results refresh every ${limits.refreshDelayHours} hours.`;
+  } else if (plan === "pro") {
+    message = `Results refresh every ${limits.refreshDelayHours} hours. Upgrade to Team for 2-hour refresh.`;
+  } else {
+    message = `Results refresh every ${limits.refreshDelayHours} hours. Upgrade to Pro for 4-hour refresh.`;
+  }
+
   return {
     delayHours: limits.refreshDelayHours,
-    isDelayed: true,
+    isDelayed: limits.refreshDelayHours > 0,
     nextRefreshAt,
-    message: `Results refresh every ${limits.refreshDelayHours} hours. Upgrade to Pro for real-time monitoring.`,
+    message,
+    plan,
   };
 }
 
@@ -683,11 +695,11 @@ export function getUpgradePrompt(
       ctaText: "Unlock AI insights",
     },
     refresh_delay: {
-      title: "Get Real-Time Monitoring",
+      title: "Get Faster Monitoring",
       description: "Your results are 24 hours delayed.",
-      benefit: `${planName} monitors in real-time so you can respond while conversations are hot.`,
+      benefit: `${planName} refreshes every ${suggestedPlan === "enterprise" ? "2" : "4"} hours so you can respond while conversations are hot.`,
       urgency: "Fresh mentions get 10x more engagement than day-old ones.",
-      ctaText: "Go real-time",
+      ctaText: "Upgrade",
     },
     export: {
       title: "Export Your Data",
@@ -777,7 +789,7 @@ export async function getActiveUpgradeTrigger(
 
 /**
  * Check if a monitor should be processed based on refresh delay
- * Free users have 24-hour delay, paid users get real-time processing
+ * Free: 24 hours, Pro: 4 hours, Team: 2 hours
  */
 export async function shouldProcessMonitor(
   userId: string,
@@ -790,11 +802,11 @@ export async function shouldProcessMonitor(
   const plan = await getUserPlan(userId);
   const limits = getPlanLimits(plan);
 
-  // Real-time processing for paid users
+  // No delay configured (shouldn't happen with current plans)
   if (limits.refreshDelayHours === 0) {
     return {
       shouldProcess: true,
-      reason: "Real-time monitoring",
+      reason: "Continuous monitoring",
     };
   }
 

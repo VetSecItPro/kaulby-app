@@ -65,10 +65,29 @@ const sidebarLinks = [
 interface SidebarProps {
   isAdmin?: boolean;
   subscriptionStatus?: string;
+  hasActiveDayPass?: boolean;
 }
 
-export function Sidebar({ isAdmin = false, subscriptionStatus = "free" }: SidebarProps) {
+// Get display name and styling for plan badge
+function getPlanBadge(subscriptionStatus: string, hasActiveDayPass: boolean): { label: string; show: boolean } {
+  // Day pass takes priority if active
+  if (hasActiveDayPass) {
+    return { label: "Day Pass", show: true };
+  }
+
+  switch (subscriptionStatus) {
+    case "enterprise":
+      return { label: "Team", show: true };
+    case "pro":
+      return { label: "Pro", show: true };
+    default:
+      return { label: "Free", show: true };
+  }
+}
+
+export function Sidebar({ isAdmin = false, subscriptionStatus = "free", hasActiveDayPass = false }: SidebarProps) {
   const pathname = usePathname();
+  const planBadge = getPlanBadge(subscriptionStatus, hasActiveDayPass);
 
   return (
     <div className="flex h-full w-64 flex-col border-r bg-muted/40">
@@ -86,6 +105,18 @@ export function Sidebar({ isAdmin = false, subscriptionStatus = "free" }: Sideba
           </div>
           <span className="text-xl gradient-text">Kaulby</span>
         </Link>
+        {/* Plan Badge */}
+        {planBadge.show && (
+          <span className="ml-2 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide rounded-full bg-amber-400 text-black">
+            {planBadge.label}
+          </span>
+        )}
+        {/* Admin Badge */}
+        {isAdmin && (
+          <span className="ml-1 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide rounded-full bg-red-500 text-white">
+            Admin
+          </span>
+        )}
       </div>
 
       {/* Navigation */}
@@ -157,10 +188,10 @@ export function Sidebar({ isAdmin = false, subscriptionStatus = "free" }: Sideba
               }
             }}
           />
-          <div className="flex flex-col">
+          <Link href="/dashboard/settings" className="flex flex-col hover:opacity-80 transition-opacity">
             <span className="text-sm font-medium">My Account</span>
             <span className="text-xs text-muted-foreground">Manage settings</span>
-          </div>
+          </Link>
         </div>
       </div>
     </div>

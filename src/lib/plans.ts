@@ -11,7 +11,7 @@ export interface PlanLimits {
   sourcesPerMonitor: number;
   resultsHistoryDays: number; // -1 for unlimited
   resultsVisible: number; // -1 for unlimited, how many results user can see
-  refreshDelayHours: number; // 0 for real-time, 24 for daily delay
+  refreshDelayHours: number; // Free: 24hr, Pro: 4hr, Team: 2hr
   platforms: Platform[];
   digestFrequencies: DigestFrequency[];
   aiFeatures: {
