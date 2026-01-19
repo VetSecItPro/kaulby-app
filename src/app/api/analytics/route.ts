@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import { results, monitors } from "@/lib/db/schema";
 import { eq, inArray, gte, and } from "drizzle-orm";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: Request) {
   try {
     const { userId } = await auth();
