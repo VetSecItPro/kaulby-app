@@ -16,6 +16,14 @@ const SEND_FROM = "Kaulby Support <support@kaulbyapp.com>";
 let resendClient: Resend | null = null;
 const getResend = () => resendClient ??= new Resend(process.env.RESEND_API_KEY);
 
+// Extract email address from various formats: "email@example.com" or "Name <email@example.com>"
+function extractEmail(input: string | string[] | undefined): string | undefined {
+  if (!input) return undefined;
+  const str = Array.isArray(input) ? input[0] : input;
+  const match = str.match(/<([^>]+)>/) || str.match(/([^\s<>]+@[^\s<>]+)/);
+  return match ? match[1] : str;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const payload = await request.json();
@@ -27,6 +35,10 @@ export async function POST(request: NextRequest) {
     const email = payload.data || payload;
     const { from, to, subject } = email;
     let { text, html } = email;
+
+    // Extract clean email for Reply-To
+    const originalSenderEmail = extractEmail(from);
+    console.log("📧 Original sender extracted:", originalSenderEmail);
 
     // If body is missing, fetch full inbound email using Resend's receiving API
     if (!text && !html && email.email_id) {
@@ -63,20 +75,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ received: true, forwarded: false });
     }
 
-    // Forward the email
+    // Forward the email with Reply-To set to original sender
     const { error } = await getResend().emails.send({
       from: SEND_FROM,
       to: FORWARD_TO,
-      replyTo: from, // Allow replying directly to original sender
+      replyTo: originalSenderEmail, // Clean email for Reply-To header
       subject: `[Support] ${subject || "(no subject)"}`,
-      text: `From: ${from}\n\n${text || "(no content)"}`,
+      text: `Original sender: ${from}\nReply-To: ${originalSenderEmail}\n\n${text || "(no content)"}`,
       html: html ? `
         <div style="padding:12px;background:#f5f5f5;border-radius:8px;margin-bottom:16px;font-size:14px;">
-          <strong>From:</strong> ${from}
+          <strong>From:</strong> ${from}<br/>
+          <small style="color:#666;">Reply will go to: ${originalSenderEmail}</small>
         </div>
         ${html}
       ` : undefined,
     });
+
+    console.log("📧 Forwarding with Reply-To:", originalSenderEmail);
 
     if (error) {
       console.error("❌ Forward failed:", error);
