@@ -111,8 +111,7 @@ const plans: Plan[] = [
       { text: "Real-time email alerts" },
       { text: "Webhooks" },
       { text: "5 team seats (+$15/user)" },
-      { text: "Priority support" },
-      { text: "API access", comingSoon: true },
+      { text: "API access" },
     ],
     cta: "Sign Up for Team",
     href: "/sign-up?plan=enterprise",
@@ -135,9 +134,8 @@ const featureComparison = [
   { feature: "Slack/Discord alerts", free: false, pro: true, team: true },
   { feature: "Webhooks", free: false, pro: false, team: true },
   { feature: "CSV export", free: false, pro: true, team: true },
-  { feature: "API access", free: false, pro: false, team: "Coming soon" },
+  { feature: "API access", free: false, pro: false, team: true },
   { feature: "Team seats", free: "-", pro: "1", team: "5 (+$15/user)" },
-  { feature: "Priority support", free: false, pro: false, team: true },
 ];
 
 export default function PricingPage() {

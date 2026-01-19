@@ -35,6 +35,7 @@ export default function SignInPage() {
               footerActionLink: "text-teal-400 hover:text-teal-300",
               identityPreviewText: "text-white",
               identityPreviewEditButton: "text-teal-400",
+              footer: { display: "none" },
             }
           }}
           fallback={
