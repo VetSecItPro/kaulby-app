@@ -9,7 +9,7 @@ import { Resend } from "resend";
  */
 
 const INBOUND_EMAIL = "support@kaulbyapp.com"; // Only forward emails sent here
-const FORWARD_TO = "support@steelmotionllc.com";
+const FORWARD_TO = "vetsecitpro@gmail.com"; // Forward to personal Gmail (steelmotionllc MX points to Resend, not Google)
 const SEND_FROM = "Kaulby Support <support@steelmotionllc.com>";
 
 // Lazy-load to avoid build errors when env var is missing
