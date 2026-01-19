@@ -12,7 +12,9 @@ export const dynamic = "force-dynamic";
 
 const INBOUND_EMAIL = "support@kaulbyapp.com"; // Only forward emails sent here
 const FORWARD_TO = "support@steelmotionllc.com";
-const SEND_FROM = "Kaulby Support <support@kaulbyapp.com>";
+// IMPORTANT: Use forwarded@ instead of support@ to avoid Gmail "Send As" conflict
+// Gmail ignores Reply-To if the From address matches a "Send mail as" account
+const SEND_FROM = "Kaulby Support <forwarded@kaulbyapp.com>";
 
 // Lazy-load to avoid build errors when env var is missing
 let resendClient: Resend | null = null;
