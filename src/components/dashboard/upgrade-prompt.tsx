@@ -12,7 +12,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Zap, Lock, ArrowRight, Check, Sparkles, Clock, Eye, Users } from "lucide-react";
-import { PLANS, PlanKey } from "@/lib/stripe";
+import { PLANS, PlanKey } from "@/lib/plans";
 import type { UpgradePrompt } from "@/lib/limits";
 import Link from "next/link";
 

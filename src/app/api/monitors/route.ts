@@ -10,7 +10,7 @@ import {
   filterAllowedPlatforms,
   getUpgradePrompt,
 } from "@/lib/limits";
-import { Platform } from "@/lib/stripe";
+import { Platform } from "@/lib/plans";
 
 // In development, ensure user exists in database
 async function ensureDevUserExists(userId: string): Promise<void> {

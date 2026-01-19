@@ -1,13 +1,3 @@
-import Stripe from "stripe";
-
-// Stripe client - initialized at module load for server-side usage
-export const stripe = process.env.STRIPE_SECRET_KEY
-  ? new Stripe(process.env.STRIPE_SECRET_KEY, {
-      apiVersion: "2025-12-15.clover",
-      typescript: true,
-    })
-  : (null as unknown as Stripe);
-
 // Platform types
 export type Platform = "reddit" | "hackernews" | "producthunt" | "devto" | "googlereviews" | "trustpilot" | "appstore" | "playstore" | "quora";
 
@@ -58,7 +48,7 @@ export interface PlanDefinition {
   limits: PlanLimits;
 }
 
-// Price IDs for your subscription plans - update these with your actual Stripe price IDs
+// Product IDs for subscription plans (Polar.sh)
 export const PLANS: Record<"free" | "pro" | "enterprise", PlanDefinition> = {
   free: {
     name: "Free",
@@ -109,8 +99,8 @@ export const PLANS: Record<"free" | "pro" | "enterprise", PlanDefinition> = {
     description: "For power users and professionals",
     price: 29,
     annualPrice: 290, // 2 months free ($29 x 10)
-    priceId: process.env.STRIPE_PRO_PRICE_ID || "",
-    annualPriceId: process.env.STRIPE_PRO_ANNUAL_PRICE_ID || "",
+    priceId: process.env.POLAR_PRO_MONTHLY_PRODUCT_ID || "",
+    annualPriceId: process.env.POLAR_PRO_ANNUAL_PRODUCT_ID || "",
     trialDays: 14,
     features: [
       "10 monitors",
@@ -155,15 +145,15 @@ export const PLANS: Record<"free" | "pro" | "enterprise", PlanDefinition> = {
     description: "For growing teams and agencies",
     price: 99,
     annualPrice: 990, // 2 months free ($99 x 10)
-    priceId: process.env.STRIPE_ENTERPRISE_PRICE_ID || "",
-    annualPriceId: process.env.STRIPE_ENTERPRISE_ANNUAL_PRICE_ID || "",
+    priceId: process.env.POLAR_TEAM_MONTHLY_PRODUCT_ID || "",
+    annualPriceId: process.env.POLAR_TEAM_ANNUAL_PRODUCT_ID || "",
     trialDays: 14,
     features: [
       "Everything in Pro",
-      "Unlimited monitors",
-      "50 keywords per monitor",
+      "30 monitors",
+      "35 keywords per monitor",
       "1-year history",
-      "Real-time monitoring",
+      "2-hour refresh cycle",
       "Full AI analysis",
       "Real-time email alerts",
       "Webhooks",
@@ -172,12 +162,12 @@ export const PLANS: Record<"free" | "pro" | "enterprise", PlanDefinition> = {
       "API access (coming soon)",
     ],
     limits: {
-      monitors: -1, // unlimited
-      keywordsPerMonitor: 50,
+      monitors: 30, // 30 monitors (was unlimited)
+      keywordsPerMonitor: 35, // reduced from 50 to 35
       sourcesPerMonitor: 25,
       resultsHistoryDays: 365,
       resultsVisible: -1, // unlimited
-      refreshDelayHours: 0, // real-time
+      refreshDelayHours: 2, // 2-hour refresh (was real-time)
       platforms: ["reddit", "hackernews", "producthunt", "devto", "googlereviews", "trustpilot", "appstore", "playstore", "quora"],
       digestFrequencies: ["daily", "weekly", "realtime"],
       aiFeatures: {
@@ -202,7 +192,7 @@ export const PLANS: Record<"free" | "pro" | "enterprise", PlanDefinition> = {
 
 export type PlanKey = keyof typeof PLANS;
 
-// Map Stripe price ID to plan key (handles both monthly and annual)
+// Map Polar product ID to plan key (handles both monthly and annual)
 export function getPlanFromPriceId(priceId: string): PlanKey {
   if (priceId === PLANS.pro.priceId || priceId === PLANS.pro.annualPriceId) return "pro";
   if (priceId === PLANS.enterprise.priceId || priceId === PLANS.enterprise.annualPriceId) return "enterprise";

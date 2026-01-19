@@ -124,16 +124,19 @@ export const users = pgTable("users", {
   // Workspace membership (Enterprise feature)
   workspaceId: uuid("workspace_id").references(() => workspaces.id, { onDelete: "set null" }),
   workspaceRole: workspaceRoleEnum("workspace_role"),
-  // Stripe/subscription fields
-  stripeCustomerId: text("stripe_customer_id").unique(),
+  // Legacy Stripe field - kept for data migration only
+  stripeCustomerId: text("stripe_customer_id").unique(), // DEPRECATED: Use polarCustomerId
   subscriptionStatus: subscriptionStatusEnum("subscription_status").default("free").notNull(),
   subscriptionId: text("subscription_id"),
+  // Polar.sh fields (new payment provider)
+  polarCustomerId: text("polar_customer_id").unique(),
+  polarSubscriptionId: text("polar_subscription_id"),
   currentPeriodStart: timestamp("current_period_start"),
   currentPeriodEnd: timestamp("current_period_end"),
   // Founding member tracking (first 1,000 Pro/Team subscribers)
   isFoundingMember: boolean("is_founding_member").default(false).notNull(),
   foundingMemberNumber: integer("founding_member_number"), // 1-1000
-  foundingMemberPriceId: text("founding_member_price_id"), // Stripe price ID they locked in
+  foundingMemberPriceId: text("founding_member_price_id"), // Polar product ID they locked in
   // Day Pass - 24hr Pro access for $10
   dayPassExpiresAt: timestamp("day_pass_expires_at"), // When the day pass expires (null = no active pass)
   dayPassPurchaseCount: integer("day_pass_purchase_count").default(0).notNull(), // Track repeat buyers

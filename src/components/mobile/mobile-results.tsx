@@ -28,7 +28,7 @@ import {
 import Link from "next/link";
 import { markAllResultsViewed } from "@/app/(dashboard)/dashboard/results/actions";
 import { getPlatformBadgeColor, getSentimentBadgeColor } from "@/lib/platform-utils";
-import type { PlanKey } from "@/lib/stripe";
+import type { PlanKey } from "@/lib/plans";
 
 type ConversationCategory = "pain_point" | "solution_request" | "advice_request" | "money_talk" | "hot_discussion";
 

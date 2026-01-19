@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { StatCard, generateSparklineData } from "./stat-card";
 import { Radio, MessageSquare, TrendingUp } from "lucide-react";
 import Link from "next/link";
-import type { PlanKey } from "@/lib/stripe";
+import type { PlanKey } from "@/lib/plans";
 
 interface DashboardStatsProps {
   monitorsCount: number;

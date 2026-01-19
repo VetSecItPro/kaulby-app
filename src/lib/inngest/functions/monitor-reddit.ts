@@ -5,31 +5,7 @@ import { eq } from "drizzle-orm";
 import { incrementResultsCount, canAccessPlatform, shouldProcessMonitor } from "@/lib/limits";
 import { findRelevantSubredditsCached } from "@/lib/ai";
 import { contentMatchesMonitor } from "@/lib/content-matcher";
-
-// Reddit RSS feed URL
-function getRedditRssUrl(subreddit: string): string {
-  return `https://www.reddit.com/r/${subreddit}/new.json?limit=100`;
-}
-
-interface RedditPost {
-  data: {
-    id: string;
-    title: string;
-    selftext: string;
-    author: string;
-    permalink: string;
-    created_utc: number;
-    score: number;
-    num_comments: number;
-    subreddit: string;
-  };
-}
-
-interface RedditResponse {
-  data: {
-    children: RedditPost[];
-  };
-}
+import { searchRedditResilient } from "@/lib/reddit";
 
 // Scan Reddit for new posts matching monitor keywords
 export const monitorReddit = inngest.createFunction(
@@ -112,36 +88,26 @@ export const monitorReddit = inngest.createFunction(
       });
 
       for (const subreddit of subreddits) {
-        const posts = await step.run(`fetch-${monitor.id}-${subreddit}`, async () => {
-          try {
-            const response = await fetch(getRedditRssUrl(subreddit), {
-              headers: {
-                "User-Agent": "Kaulby/1.0",
-              },
-            });
-
-            if (!response.ok) {
-              console.error(`Failed to fetch r/${subreddit}: ${response.status}`);
-              return [];
-            }
-
-            const data: RedditResponse = await response.json();
-            return data.data.children;
-          } catch (error) {
-            console.error(`Error fetching r/${subreddit}:`, error);
-            return [];
-          }
+        // Use resilient Reddit search (Serper → Apify → Public JSON) with caching
+        const searchResult = await step.run(`fetch-${monitor.id}-${subreddit}`, async () => {
+          return searchRedditResilient(subreddit, monitor.keywords, 50);
         });
+
+        if (searchResult.error) {
+          console.warn(`[Reddit] Search warning for r/${subreddit}: ${searchResult.error}`);
+        }
+
+        console.log(`[Reddit] Using ${searchResult.source} for r/${subreddit}, found ${searchResult.posts.length} posts`);
 
         // Check each post for matches using content matcher
         // Supports: company name, keywords, and advanced boolean search
-        const matchingPosts = posts.filter((post) => {
+        const matchingPosts = searchResult.posts.filter((post) => {
           const matchResult = contentMatchesMonitor(
             {
-              title: post.data.title,
-              body: post.data.selftext,
-              author: post.data.author,
-              subreddit: post.data.subreddit,
+              title: post.title,
+              body: post.selftext,
+              author: post.author,
+              subreddit: post.subreddit,
             },
             {
               companyName: monitor.companyName,
@@ -156,24 +122,27 @@ export const monitorReddit = inngest.createFunction(
         if (matchingPosts.length > 0) {
           await step.run(`save-results-${monitor.id}-${subreddit}`, async () => {
             for (const post of matchingPosts) {
+              // Build source URL
+              const sourceUrl = post.url || `https://reddit.com${post.permalink}`;
+
               // Check if we already have this result
               const existing = await db.query.results.findFirst({
-                where: eq(results.sourceUrl, `https://reddit.com${post.data.permalink}`),
+                where: eq(results.sourceUrl, sourceUrl),
               });
 
               if (!existing) {
                 const [newResult] = await db.insert(results).values({
                   monitorId: monitor.id,
                   platform: "reddit",
-                  sourceUrl: `https://reddit.com${post.data.permalink}`,
-                  title: post.data.title,
-                  content: post.data.selftext,
-                  author: post.data.author,
-                  postedAt: new Date(post.data.created_utc * 1000),
+                  sourceUrl,
+                  title: post.title,
+                  content: post.selftext,
+                  author: post.author,
+                  postedAt: new Date(post.created_utc * 1000),
                   metadata: {
-                    subreddit: post.data.subreddit,
-                    score: post.data.score,
-                    numComments: post.data.num_comments,
+                    subreddit: post.subreddit,
+                    score: post.score,
+                    numComments: post.num_comments,
                   },
                 }).returning();
 

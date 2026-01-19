@@ -27,7 +27,7 @@ export default function PrivacyPage() {
           <h3 className="text-xl font-medium mb-3 mt-6">2.1 Information You Provide</h3>
           <ul className="list-disc list-inside text-muted-foreground space-y-2">
             <li>Account information (email, name, profile details)</li>
-            <li>Payment information (processed securely via Stripe)</li>
+            <li>Payment information (processed securely via Polar)</li>
             <li>Monitor configurations (keywords, sources, preferences)</li>
             <li>Communications with our support team</li>
           </ul>
@@ -137,7 +137,7 @@ export default function PrivacyPage() {
           <p className="text-muted-foreground leading-relaxed">We use the following third-party services:</p>
           <ul className="list-disc list-inside text-muted-foreground mt-4 space-y-2">
             <li><strong>Clerk:</strong> Authentication and user management</li>
-            <li><strong>Stripe:</strong> Payment processing</li>
+            <li><strong>Polar:</strong> Payment processing (Merchant of Record)</li>
             <li><strong>PostHog:</strong> Product analytics</li>
             <li><strong>Loops:</strong> Email communications</li>
           </ul>

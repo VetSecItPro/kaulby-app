@@ -63,6 +63,10 @@ Track features and improvements to implement after MVP launch.
 
 ## Performance
 
+- [ ] **Upstash Redis for API caching** - Upgrade from in-memory to Upstash Redis for Serper/API query cache
+  - Current: In-memory cache in `src/lib/cache.ts` (works but lost on redeploy, not shared across instances)
+  - Upgrade when: 100+ DAU or noticeable cache miss rate in logs
+  - Benefits: Persistent across deploys, shared across Vercel instances, ~$0.20/100K commands
 - [ ] **Result caching** - Redis cache for frequently accessed results
 - [ ] **Infinite scroll** - Replace pagination with infinite scroll on results page
 
