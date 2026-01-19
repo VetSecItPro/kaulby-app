@@ -46,6 +46,19 @@ async function getClerkHandler() {
 
 // Main middleware - checks if Clerk is configured at runtime
 export default async function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+
+  // CRITICAL: Skip Clerk entirely for webhook routes - they use their own auth
+  // This must happen BEFORE Clerk middleware to prevent 307 redirects
+  if (
+    pathname.startsWith("/api/webhooks") ||
+    pathname.startsWith("/api/inngest") ||
+    pathname.startsWith("/api/v1") ||
+    pathname.startsWith("/api/polar")
+  ) {
+    return NextResponse.next();
+  }
+
   // Check if Clerk is configured at runtime
   const isClerkConfigured =
     process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY &&
