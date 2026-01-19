@@ -2,7 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import crypto from "crypto";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy-load Resend client to avoid build errors when env var is missing
+let resend: Resend | null = null;
+function getResendClient(): Resend {
+  if (!resend) {
+    resend = new Resend(process.env.RESEND_API_KEY);
+  }
+  return resend;
+}
 
 // Inbound: emails sent to this address
 const INBOUND_EMAIL = "support@kaulbyapp.com";
@@ -97,7 +104,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Forward the email to steelmotionllc.com
-    const { error } = await resend.emails.send({
+    const { error } = await getResendClient().emails.send({
       from: `Kaulby Support <${INBOUND_EMAIL}>`,
       to: FORWARD_TO,
       subject: `[Support] ${subject || "(no subject)"}`,
