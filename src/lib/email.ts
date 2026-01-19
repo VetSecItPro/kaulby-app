@@ -708,7 +708,7 @@ function getPaymentFailedEmailHtml(name: string): string {
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
           <tr>
             <td align="center">
-              <a href="${APP_URL}/api/stripe/portal" style="display: inline-block; padding: 14px 36px; background-color: ${COLORS.error}; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 15px; border-radius: 50px;">Update Payment Method</a>
+              <a href="${APP_URL}/api/polar/portal" style="display: inline-block; padding: 14px 36px; background-color: ${COLORS.error}; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 15px; border-radius: 50px;">Update Payment Method</a>
             </td>
           </tr>
         </table>

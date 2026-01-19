@@ -56,7 +56,7 @@ async function getUsers(searchParams: SearchParams) {
       isBanned: users.isBanned,
       banReason: users.banReason,
       bannedAt: users.bannedAt,
-      stripeCustomerId: users.stripeCustomerId,
+      polarCustomerId: users.polarCustomerId,
       createdAt: users.createdAt,
       updatedAt: users.updatedAt,
     })

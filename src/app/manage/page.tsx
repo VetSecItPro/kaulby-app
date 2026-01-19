@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { users, monitors, results, aiLogs } from "@/lib/db/schema";
 import { count, sum, desc, sql, gte, and, lt, eq } from "drizzle-orm";
 import { ResponsiveManage } from "@/components/admin/responsive-manage";
-import { PLANS } from "@/lib/stripe";
+import { PLANS } from "@/lib/plans";
 
 // Force dynamic rendering - this page requires database access
 export const dynamic = "force-dynamic";
@@ -184,7 +184,7 @@ async function getSystemHealth() {
     database: true, // If we got this far, database is working
     ai: aiStats[0]?.totalCalls ? aiStats[0].totalCalls > 0 : true,
     email: true, // Assume healthy
-    stripe: true, // Assume healthy
+    polar: true, // Assume healthy
   };
 
   return {

@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { incrementResultsCount, canAccessPlatform } from "@/lib/limits";
 import { fetchGoogleReviews, fetchTrustpilotReviews, fetchAppStoreReviews, fetchPlayStoreReviews, fetchQuoraAnswers, isApifyConfigured } from "@/lib/apify";
 import { findRelevantSubredditsCached } from "@/lib/ai";
+import { searchRedditResilient } from "@/lib/reddit";
 
 /**
  * Scan a single monitor on-demand when user clicks "Scan Now"
@@ -220,17 +221,17 @@ async function scanRedditForMonitor(monitor: MonitorData): Promise<number> {
 
   for (const subreddit of subreddits) {
     try {
-      const response = await fetch(`https://www.reddit.com/r/${subreddit}/new.json?limit=50`, {
-        headers: { "User-Agent": "Kaulby/1.0" },
-      });
+      // Use resilient Reddit search (Serper → Apify → Public JSON)
+      const searchResult = await searchRedditResilient(subreddit, monitor.keywords, 50);
 
-      if (!response.ok) continue;
+      if (searchResult.error) {
+        console.warn(`[Reddit] Search warning for r/${subreddit}: ${searchResult.error}`);
+      }
 
-      const data = await response.json();
-      const posts = data.data.children;
+      console.log(`[Reddit] Using ${searchResult.source} for r/${subreddit}, found ${searchResult.posts.length} posts`);
 
-      for (const post of posts) {
-        const text = `${post.data.title} ${post.data.selftext}`.toLowerCase();
+      for (const post of searchResult.posts) {
+        const text = `${post.title} ${post.selftext}`.toLowerCase();
 
         // Check for matches
         let isMatch = false;
@@ -241,7 +242,7 @@ async function scanRedditForMonitor(monitor: MonitorData): Promise<number> {
         }
 
         if (isMatch) {
-          const sourceUrl = `https://reddit.com${post.data.permalink}`;
+          const sourceUrl = post.url || `https://reddit.com${post.permalink}`;
           const existing = await db.query.results.findFirst({
             where: eq(results.sourceUrl, sourceUrl),
           });
@@ -251,14 +252,15 @@ async function scanRedditForMonitor(monitor: MonitorData): Promise<number> {
               monitorId: monitor.id,
               platform: "reddit",
               sourceUrl,
-              title: post.data.title,
-              content: post.data.selftext,
-              author: post.data.author,
-              postedAt: new Date(post.data.created_utc * 1000),
+              title: post.title,
+              content: post.selftext,
+              author: post.author,
+              postedAt: new Date(post.created_utc * 1000),
               metadata: {
-                subreddit: post.data.subreddit,
-                score: post.data.score,
-                numComments: post.data.num_comments,
+                subreddit: post.subreddit,
+                score: post.score,
+                numComments: post.num_comments,
+                source: searchResult.source, // Track which provider was used
               },
             }).returning();
 
@@ -606,10 +608,61 @@ async function scanQuoraForMonitor(monitor: MonitorData): Promise<number> {
   return count;
 }
 
+// Product Hunt OAuth token cache (shared within this module)
+let phAccessToken: string | null = null;
+let phTokenExpiresAt: number = 0;
+
+async function getProductHuntAccessToken(): Promise<string | null> {
+  const clientId = process.env.PRODUCTHUNT_API_KEY;
+  const clientSecret = process.env.PRODUCTHUNT_API_SECRET;
+
+  if (!clientId || !clientSecret) {
+    console.error("[ProductHunt] Missing API credentials (need both API_KEY and API_SECRET)");
+    return null;
+  }
+
+  // Return cached token if still valid (with 5 min buffer)
+  if (phAccessToken && Date.now() < phTokenExpiresAt - 300000) {
+    return phAccessToken;
+  }
+
+  try {
+    const response = await fetch("https://api.producthunt.com/v2/oauth/token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        client_id: clientId,
+        client_secret: clientSecret,
+        grant_type: "client_credentials",
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[ProductHunt] OAuth token request failed: ${response.status} - ${errorText}`);
+      return null;
+    }
+
+    const data = await response.json();
+    phAccessToken = data.access_token;
+    phTokenExpiresAt = Date.now() + (data.expires_in ? data.expires_in * 1000 : 86400000);
+
+    console.log("[ProductHunt] Successfully obtained access token for on-demand scan");
+    return phAccessToken;
+  } catch (error) {
+    console.error("[ProductHunt] Error getting access token:", error);
+    return null;
+  }
+}
+
 async function scanProductHuntForMonitor(monitor: MonitorData): Promise<number> {
-  const apiKey = process.env.PRODUCTHUNT_API_KEY;
-  if (!apiKey) {
-    console.log("[ProductHunt] API key not configured, skipping on-demand scan");
+  // Get OAuth access token
+  const accessToken = await getProductHuntAccessToken();
+  if (!accessToken) {
+    console.log("[ProductHunt] OAuth authentication failed, skipping on-demand scan");
     return 0;
   }
 
@@ -641,7 +694,7 @@ async function scanProductHuntForMonitor(monitor: MonitorData): Promise<number> 
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
+        Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify({ query }),
     });

@@ -7,7 +7,7 @@ import { db, users } from "@/lib/db";
 import { eq } from "drizzle-orm";
 
 /**
- * Activate a day pass for a user (called from Stripe webhook)
+ * Activate a day pass for a user (called from Polar webhook)
  * Grants Pro-level access for 24 hours
  */
 export async function activateDayPass(userId: string): Promise<{

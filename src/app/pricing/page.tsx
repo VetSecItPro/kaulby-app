@@ -30,9 +30,8 @@ import {
 } from "@/components/ui/table";
 import { Check, X } from "lucide-react";
 import { CheckoutModal } from "@/components/checkout-modal";
-import { DayPassCard } from "@/components/day-pass-card";
 import { cn } from "@/lib/utils";
-import type { BillingInterval } from "@/lib/stripe";
+import type { BillingInterval } from "@/lib/plans";
 
 interface Feature {
   text: string;
@@ -171,7 +170,7 @@ export default function PricingPage() {
   const handleDayPassPurchase = async () => {
     setIsPurchasingDayPass(true);
     try {
-      const response = await fetch("/api/stripe/day-pass", {
+      const response = await fetch("/api/polar/day-pass", {
         method: "POST",
       });
       const data = await response.json();
@@ -291,7 +290,7 @@ export default function PricingPage() {
             </div>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
             {plans.map((plan) => (
               <Card
                 key={plan.name}
@@ -372,6 +371,75 @@ export default function PricingPage() {
                 </CardFooter>
               </Card>
             ))}
+
+            {/* Day Pass Card - Inline with pricing */}
+            <Card className="relative flex flex-col bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 border-amber-400 dark:border-amber-600">
+              <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-400 hover:bg-amber-400 text-black font-semibold">
+                One-Time
+              </Badge>
+              <CardHeader>
+                <CardTitle className="text-amber-900 dark:text-amber-100">Day Pass</CardTitle>
+                <CardDescription>Need Pro just for today?</CardDescription>
+              </CardHeader>
+              <CardContent className="flex-1">
+                <div className="mb-6 min-h-[72px]">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-4xl font-bold text-amber-700 dark:text-amber-300">$10</span>
+                    <span className="text-amber-600 dark:text-amber-400">/24hr</span>
+                  </div>
+                  <p className="text-sm text-amber-700/80 dark:text-amber-300/80 mt-1">
+                    One-time payment
+                  </p>
+                  <p className="text-sm text-amber-600 dark:text-amber-400 mt-1">No subscription needed</p>
+                </div>
+                <ul className="space-y-3">
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-amber-600 shrink-0" />
+                    <span className="text-sm">Full Pro features</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-amber-600 shrink-0" />
+                    <span className="text-sm">All 9 platforms</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-amber-600 shrink-0" />
+                    <span className="text-sm">Unlimited results</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-amber-600 shrink-0" />
+                    <span className="text-sm">Full AI analysis</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-amber-600 shrink-0" />
+                    <span className="text-sm">24-hour access</span>
+                  </li>
+                </ul>
+              </CardContent>
+              <CardFooter>
+                <SignedOut>
+                  <Link href="/sign-up" className="w-full">
+                    <Button className="w-full bg-amber-400 hover:bg-amber-500 text-black font-semibold">
+                      Get Day Pass
+                    </Button>
+                  </Link>
+                </SignedOut>
+                <SignedIn>
+                  {dayPassStatus?.active ? (
+                    <Button className="w-full bg-amber-400 hover:bg-amber-500 text-black font-semibold" disabled>
+                      Active Until {new Date(dayPassStatus.expiresAt!).toLocaleTimeString()}
+                    </Button>
+                  ) : (
+                    <Button
+                      className="w-full bg-amber-400 hover:bg-amber-500 text-black font-semibold"
+                      onClick={handleDayPassPurchase}
+                      disabled={isPurchasingDayPass}
+                    >
+                      {isPurchasingDayPass ? "Processing..." : "Get Day Pass - $10"}
+                    </Button>
+                  )}
+                </SignedIn>
+              </CardFooter>
+            </Card>
           </div>
 
           {/* Feature Comparison Table */}
@@ -439,23 +507,6 @@ export default function PricingPage() {
               </Table>
             </div>
           </div>
-
-          {/* Day Pass Section - Only for signed-in users */}
-          <SignedIn>
-            <div className="mt-16 max-w-md mx-auto">
-              <div className="text-center mb-6">
-                <h2 className="text-xl font-semibold mb-2">Need Pro Features Just for Today?</h2>
-                <p className="text-sm text-muted-foreground">
-                  Try our 24-hour Day Pass for instant Pro access without a subscription.
-                </p>
-              </div>
-              <DayPassCard
-                dayPassExpiresAt={dayPassStatus?.expiresAt || null}
-                onPurchase={handleDayPassPurchase}
-                isPurchasing={isPurchasingDayPass}
-              />
-            </div>
-          </SignedIn>
 
           {/* FAQ Section */}
           <div className="mt-20 max-w-2xl mx-auto">

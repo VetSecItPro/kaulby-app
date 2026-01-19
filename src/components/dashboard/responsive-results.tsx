@@ -10,7 +10,7 @@ import { HiddenResultsBanner, RefreshDelayBanner } from "./upgrade-prompt";
 import { EmptyState, ScanningState } from "./empty-states";
 import { Download, Lock } from "lucide-react";
 import Link from "next/link";
-import type { PlanKey } from "@/lib/stripe";
+import type { PlanKey } from "@/lib/plans";
 
 type ConversationCategory = "pain_point" | "solution_request" | "advice_request" | "money_talk" | "hot_discussion";
 

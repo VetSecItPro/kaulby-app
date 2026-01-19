@@ -27,6 +27,7 @@ async function getClerkHandler() {
       "/sign-up(.*)",
       "/api/webhooks(.*)",
       "/api/inngest(.*)",
+      "/api/polar(.*)", // Polar checkout routes (auth handled in route)
       "/invite(.*)", // Public invite acceptance page
       "/banned", // Banned user page
       // Test endpoints only in verified local development (not Vercel preview/prod)

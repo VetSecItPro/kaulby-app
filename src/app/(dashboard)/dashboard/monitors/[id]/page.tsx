@@ -10,7 +10,7 @@ import { ArrowLeft, ExternalLink, ThumbsUp, ThumbsDown, Minus } from "lucide-rea
 import Link from "next/link";
 import { getPlatformDisplayName } from "@/lib/platform-utils";
 import { getUserPlan, getRefreshDelay } from "@/lib/limits";
-import { getPlanLimits } from "@/lib/stripe";
+import { getPlanLimits } from "@/lib/plans";
 import { HiddenResultsBanner, RefreshDelayBanner, BlurredAiAnalysis } from "@/components/dashboard/upgrade-prompt";
 
 interface MonitorPageProps {

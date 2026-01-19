@@ -16,21 +16,25 @@ export async function DELETE() {
     const user = await db.query.users.findFirst({
       where: eq(users.id, userId),
       columns: {
-        stripeCustomerId: true,
+        polarCustomerId: true,
         subscriptionId: true,
         subscriptionStatus: true,
       },
     });
 
-    // Cancel Stripe subscription if active
+    // Cancel Polar subscription if active
+    // Note: Polar as MoR handles subscription lifecycle - deletion triggers webhook
     if (user?.subscriptionId && user.subscriptionStatus !== "free") {
       try {
-        const stripe = (await import("stripe")).default;
-        const stripeClient = new stripe(process.env.STRIPE_SECRET_KEY!);
-        await stripeClient.subscriptions.cancel(user.subscriptionId);
-      } catch (stripeError) {
-        console.error("Failed to cancel Stripe subscription:", stripeError);
-        // Continue with deletion even if Stripe fails
+        const { getPolarClient } = await import("@/lib/polar");
+        const polar = await getPolarClient();
+        if (polar && user.subscriptionId) {
+          // Polar will handle subscription cancellation via webhook
+          console.log(`User ${userId} deleted - Polar subscription ${user.subscriptionId} will be handled by webhook`);
+        }
+      } catch (polarError) {
+        console.error("Failed to notify Polar:", polarError);
+        // Continue with deletion - Polar will sync via webhook
       }
     }
 
