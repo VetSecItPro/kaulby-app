@@ -103,11 +103,11 @@ const plans: Plan[] = [
     trialDays: 14,
     features: [
       { text: "Everything in Pro" },
-      { text: "Unlimited monitors" },
-      { text: "50 keywords per monitor" },
+      { text: "30 monitors" },
+      { text: "35 keywords per monitor" },
       { text: "1-year history" },
-      { text: "Real-time monitoring" },
-      { text: "Full AI analysis" },
+      { text: "2-hour refresh cycle" },
+      { text: "Comprehensive AI analysis" },
       { text: "Real-time email alerts" },
       { text: "Webhooks" },
       { text: "5 team seats (+$15/user)" },
@@ -122,12 +122,12 @@ const plans: Plan[] = [
 
 // Feature comparison table data
 const featureComparison = [
-  { feature: "Monitors", free: "1", pro: "10", team: "Unlimited" },
-  { feature: "Keywords per monitor", free: "3", pro: "20", team: "50" },
+  { feature: "Monitors", free: "1", pro: "10", team: "30" },
+  { feature: "Keywords per monitor", free: "3", pro: "20", team: "35" },
   { feature: "Platforms", free: "Reddit only", pro: "All 9 platforms", team: "All 9 platforms" },
   { feature: "Results visible", free: "Last 3", pro: "Unlimited", team: "Unlimited" },
   { feature: "History retention", free: "3 days", pro: "90 days", team: "1 year" },
-  { feature: "Refresh cycle", free: "24 hours", pro: "4 hours", team: "Real-time" },
+  { feature: "Refresh cycle", free: "24 hours", pro: "4 hours", team: "2 hours" },
   { feature: "AI sentiment analysis", free: true, pro: true, team: true },
   { feature: "AI pain point detection", free: false, pro: true, team: true },
   { feature: "Comprehensive AI analysis", free: false, pro: false, team: true },
@@ -563,7 +563,7 @@ export default function PricingPage() {
                 <AccordionTrigger>How often are results refreshed?</AccordionTrigger>
                 <AccordionContent>
                   Free plans refresh once per day. Pro plans refresh every 4 hours (6x faster).
-                  Team plans get real-time monitoring for immediate updates.
+                  Team plans refresh every 2 hours (12x faster than free) with real-time email alerts.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="day-pass">

@@ -66,7 +66,7 @@ Learn from GummySearch's fate with Reddit. Every integration decision must consi
 
 - Next.js 14 (App Router), TypeScript, Tailwind, shadcn/ui
 - Neon (Postgres) + Drizzle ORM
-- Clerk (auth), Stripe (payments), Inngest (background jobs)
+- Clerk (auth), Polar.sh (payments), Inngest (background jobs)
 - OpenRouter (AI) + Langfuse (observability), Resend (email), PostHog (analytics)
 
 ## Commands
@@ -92,7 +92,7 @@ Learn from GummySearch's fate with Reddit. Every integration decision must consi
 |------|----------|----------|-----------------|---------|-----------|---------|
 | free | 1 | 3 | Last 3 | 3 days | Reddit only | 24hr delay |
 | pro | 10 | 20 | Unlimited | 90 days | All 9 platforms | 4-hour cycle |
-| enterprise | Unlimited | 50 | Unlimited | 1 year | All 9 platforms | Real-time |
+| enterprise (Team) | 30 | 35 | Unlimited | 1 year | All 9 platforms | 2-hour cycle |
 
 | Tier | AI Analysis | Email Digest | Alerts | Export | Team |
 |------|-------------|--------------|--------|--------|------|
