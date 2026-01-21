@@ -16,57 +16,38 @@ function StaticSection({ children, className }: { children: ReactNode; className
 const DynamicHomeAnimations = dynamic(
   () => import("./home-animations").then((mod) => mod.HomeAnimations),
   {
-    ssr: false,
-    loading: () => null,
+    ssr: true, // Enable SSR to avoid flash of no content
   }
 );
 
 const DynamicAnimatedSection = dynamic(
   () => import("./home-animations").then((mod) => mod.AnimatedSection),
-  {
-    ssr: false,
-    loading: () => null,
-  }
+  { ssr: true }
 );
 
 const DynamicStaggerContainer = dynamic(
   () => import("./home-animations").then((mod) => mod.StaggerContainer),
-  {
-    ssr: false,
-    loading: () => null,
-  }
+  { ssr: true }
 );
 
 const DynamicStaggerItem = dynamic(
   () => import("./home-animations").then((mod) => mod.StaggerItem),
-  {
-    ssr: false,
-    loading: () => null,
-  }
+  { ssr: true }
 );
 
 const DynamicAnimatedBadge = dynamic(
   () => import("./home-animations").then((mod) => mod.AnimatedBadge),
-  {
-    ssr: false,
-    loading: () => null,
-  }
+  { ssr: true }
 );
 
 const DynamicAnimatedStepCard = dynamic(
   () => import("./home-animations").then((mod) => mod.AnimatedStepCard),
-  {
-    ssr: false,
-    loading: () => null,
-  }
+  { ssr: true }
 );
 
 const DynamicTextReveal = dynamic(
   () => import("./home-animations").then((mod) => mod.TextReveal),
-  {
-    ssr: false,
-    loading: () => null,
-  }
+  { ssr: true }
 );
 
 // Export wrapper components that show content immediately, add animations when loaded

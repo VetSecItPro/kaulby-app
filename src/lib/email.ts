@@ -815,3 +815,248 @@ function getInviteAcceptedEmailHtml(memberName: string, workspaceName: string): 
   `;
   return getEmailWrapper(content);
 }
+
+// ============================================================================
+// ACCOUNT DELETION EMAILS
+// ============================================================================
+
+// Send deletion request confirmation email
+export async function sendDeletionRequestedEmail(params: {
+  email: string;
+  name?: string;
+  deletionDate: Date;
+}) {
+  const { email, name = "there", deletionDate } = params;
+  const formattedDate = deletionDate.toLocaleDateString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+  await getResend().emails.send({
+    from: FROM_EMAIL,
+    to: email,
+    subject: "Account deletion scheduled - Action required to cancel",
+    html: getDeletionRequestedEmailHtml(name, formattedDate),
+  });
+}
+
+// Send 24-hour reminder before deletion (with win-back messaging)
+export async function sendDeletionReminderEmail(params: {
+  email: string;
+  name?: string;
+}) {
+  const { email, name = "there" } = params;
+
+  await getResend().emails.send({
+    from: FROM_EMAIL,
+    to: email,
+    subject: "Final notice: Your Kaulby account will be deleted tomorrow",
+    html: getDeletionReminderEmailHtml(name),
+  });
+}
+
+// Send deletion confirmed email (after account is deleted)
+export async function sendDeletionConfirmedEmail(params: {
+  email: string;
+  name?: string;
+}) {
+  const { email, name = "there" } = params;
+
+  await getResend().emails.send({
+    from: FROM_EMAIL,
+    to: email,
+    subject: "Your Kaulby account has been deleted",
+    html: getDeletionConfirmedEmailHtml(name),
+  });
+}
+
+function getDeletionRequestedEmailHtml(name: string, deletionDate: string): string {
+  const content = `
+    <tr>
+      <td style="padding: 40px 32px 24px; text-align: center;">
+        <div style="display: inline-block; width: 64px; height: 64px; background: rgba(245, 158, 11, 0.15); border-radius: 50%; line-height: 64px; margin-bottom: 20px;">
+          <span style="font-size: 32px;">⏳</span>
+        </div>
+        <h1 style="margin: 0 0 8px; font-size: 24px; font-weight: 700; color: ${COLORS.text};">Account Deletion Scheduled</h1>
+        <p style="margin: 0; font-size: 15px; color: ${COLORS.textMuted};">We've received your request, ${escapeHtml(name)}</p>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 0 32px 24px;">
+        <p style="margin: 0 0 20px; font-size: 15px; line-height: 1.7; color: ${COLORS.textMuted};">
+          Your Kaulby account has been scheduled for deletion. If this was a mistake or you change your mind, you can cancel the deletion anytime before the scheduled date.
+        </p>
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2); border-radius: 12px;">
+          <tr>
+            <td style="padding: 20px 24px;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td>
+                    <p style="margin: 0 0 4px; font-size: 12px; font-weight: 600; color: ${COLORS.warning}; text-transform: uppercase; letter-spacing: 0.5px;">Scheduled Deletion Date</p>
+                    <p style="margin: 0; font-size: 18px; font-weight: 600; color: ${COLORS.text};">${deletionDate}</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 0 32px 24px;">
+        <p style="margin: 0 0 8px; font-size: 13px; font-weight: 600; color: ${COLORS.textDim}; text-transform: uppercase; letter-spacing: 0.5px;">What happens next</p>
+        <ul style="margin: 0; padding: 0 0 0 20px; color: ${COLORS.textMuted}; font-size: 14px; line-height: 1.8;">
+          <li>Your account remains active until the deletion date</li>
+          <li>We'll send you a reminder 24 hours before deletion</li>
+          <li>After deletion, all data is permanently removed</li>
+          <li>You can cancel anytime before the scheduled date</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 0 32px 40px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+          <tr>
+            <td align="center">
+              <a href="${APP_URL}/deletion-requested" style="display: inline-block; padding: 14px 36px; background-color: ${COLORS.accent}; color: ${COLORS.bg}; text-decoration: none; font-weight: 600; font-size: 15px; border-radius: 50px;">Cancel Deletion Request</a>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding-top: 12px;">
+              <p style="margin: 0; font-size: 12px; color: ${COLORS.textDim};">
+                Changed your mind? Click above to keep your account.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  `;
+  return getEmailWrapper(content);
+}
+
+function getDeletionReminderEmailHtml(name: string): string {
+  const content = `
+    <tr>
+      <td style="padding: 40px 32px 24px; text-align: center;">
+        <div style="display: inline-block; width: 64px; height: 64px; background: rgba(239, 68, 68, 0.15); border-radius: 50%; line-height: 64px; margin-bottom: 20px;">
+          <span style="font-size: 32px;">⚠️</span>
+        </div>
+        <h1 style="margin: 0 0 8px; font-size: 24px; font-weight: 700; color: ${COLORS.text};">Final Notice</h1>
+        <p style="margin: 0; font-size: 15px; color: ${COLORS.textMuted};">Your account will be deleted in 24 hours</p>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 0 32px 24px;">
+        <p style="margin: 0 0 20px; font-size: 15px; line-height: 1.7; color: ${COLORS.textMuted};">
+          Hey ${escapeHtml(name)}, this is a final reminder that your Kaulby account is scheduled for permanent deletion tomorrow. Once deleted, all your data—monitors, results, and insights—will be gone forever.
+        </p>
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: linear-gradient(135deg, rgba(94, 234, 212, 0.08) 0%, rgba(212, 165, 116, 0.08) 100%); border: 1px solid ${COLORS.cardBorder}; border-radius: 12px;">
+          <tr>
+            <td style="padding: 24px;">
+              <p style="margin: 0 0 12px; font-size: 16px; font-weight: 600; color: ${COLORS.text};">Before you go...</p>
+              <p style="margin: 0 0 16px; font-size: 14px; line-height: 1.7; color: ${COLORS.textMuted};">
+                We'd love to have you back. If there was something that didn't work for you, we're always improving Kaulby based on feedback. Your monitors and data are still intact—just cancel the deletion to pick up right where you left off.
+              </p>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td style="padding: 8px 0;">
+                    <span style="color: ${COLORS.accent}; margin-right: 8px;">✓</span>
+                    <span style="font-size: 14px; color: ${COLORS.text};">All your monitors are still active</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0;">
+                    <span style="color: ${COLORS.accent}; margin-right: 8px;">✓</span>
+                    <span style="font-size: 14px; color: ${COLORS.text};">Your historical data is preserved</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0;">
+                    <span style="color: ${COLORS.accent}; margin-right: 8px;">✓</span>
+                    <span style="font-size: 14px; color: ${COLORS.text};">One click to cancel and restore access</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 0 32px 40px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+          <tr>
+            <td align="center">
+              <a href="${APP_URL}/deletion-requested" style="display: inline-block; padding: 14px 36px; background-color: ${COLORS.accent}; color: ${COLORS.bg}; text-decoration: none; font-weight: 600; font-size: 15px; border-radius: 50px;">Keep My Account</a>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding-top: 16px;">
+              <p style="margin: 0; font-size: 13px; color: ${COLORS.textDim};">
+                If you intended to delete your account, no action is needed.<br/>
+                The deletion will proceed automatically tomorrow.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  `;
+  return getEmailWrapper(content);
+}
+
+function getDeletionConfirmedEmailHtml(name: string): string {
+  const content = `
+    <tr>
+      <td style="padding: 40px 32px 24px; text-align: center;">
+        <div style="display: inline-block; width: 64px; height: 64px; background: rgba(113, 113, 122, 0.15); border-radius: 50%; line-height: 64px; margin-bottom: 20px;">
+          <span style="font-size: 32px;">👋</span>
+        </div>
+        <h1 style="margin: 0 0 8px; font-size: 24px; font-weight: 700; color: ${COLORS.text};">Account Deleted</h1>
+        <p style="margin: 0; font-size: 15px; color: ${COLORS.textMuted};">We're sorry to see you go</p>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 0 32px 24px;">
+        <p style="margin: 0 0 20px; font-size: 15px; line-height: 1.7; color: ${COLORS.textMuted};">
+          Hey ${escapeHtml(name)}, your Kaulby account has been permanently deleted as requested. All your data, including monitors, results, and settings, has been removed from our systems.
+        </p>
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: ${COLORS.bg}; border: 1px solid ${COLORS.cardBorder}; border-radius: 12px;">
+          <tr>
+            <td style="padding: 20px 24px;">
+              <p style="margin: 0 0 4px; font-size: 12px; font-weight: 600; color: ${COLORS.textDim}; text-transform: uppercase; letter-spacing: 0.5px;">What was deleted</p>
+              <ul style="margin: 8px 0 0; padding: 0 0 0 18px; color: ${COLORS.textMuted}; font-size: 14px; line-height: 1.8;">
+                <li>All monitors and configurations</li>
+                <li>Historical results and AI analysis</li>
+                <li>Account settings and preferences</li>
+                <li>Team memberships and API keys</li>
+              </ul>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 0 32px 24px;">
+        <p style="margin: 0; font-size: 14px; line-height: 1.7; color: ${COLORS.textMuted};">
+          Thank you for trying Kaulby. If you ever want to monitor community conversations again, you're always welcome back. Just sign up with any email to start fresh.
+        </p>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 0 32px 40px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+          <tr>
+            <td align="center">
+              <a href="${APP_URL}" style="display: inline-block; padding: 12px 32px; border: 1px solid ${COLORS.cardBorder}; color: ${COLORS.text}; text-decoration: none; font-weight: 500; font-size: 14px; border-radius: 50px;">Visit Kaulby</a>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  `;
+  return getEmailWrapper(content);
+}

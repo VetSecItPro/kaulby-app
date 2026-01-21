@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -66,6 +67,7 @@ interface SidebarProps {
   isAdmin?: boolean;
   subscriptionStatus?: string;
   hasActiveDayPass?: boolean;
+  workspaceRole?: "owner" | "member" | null;
 }
 
 // Get display name and styling for plan badge
@@ -85,9 +87,15 @@ function getPlanBadge(subscriptionStatus: string, hasActiveDayPass: boolean): { 
   }
 }
 
-export function Sidebar({ isAdmin = false, subscriptionStatus = "free", hasActiveDayPass = false }: SidebarProps) {
+export function Sidebar({ isAdmin = false, subscriptionStatus = "free", hasActiveDayPass = false, workspaceRole = null }: SidebarProps) {
   const pathname = usePathname();
   const planBadge = getPlanBadge(subscriptionStatus, hasActiveDayPass);
+  const [mounted, setMounted] = useState(false);
+
+  // Prevent hydration mismatch by only rendering UserButton after mount
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <div className="flex h-full w-64 flex-col border-r bg-muted/40">
@@ -109,6 +117,19 @@ export function Sidebar({ isAdmin = false, subscriptionStatus = "free", hasActiv
         {planBadge.show && (
           <span className="ml-2 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide rounded-full bg-amber-400 text-black">
             {planBadge.label}
+          </span>
+        )}
+        {/* Workspace Role Badge - only for Team accounts */}
+        {subscriptionStatus === "enterprise" && workspaceRole && (
+          <span
+            className={cn(
+              "ml-1 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide rounded-full",
+              workspaceRole === "owner"
+                ? "bg-gradient-to-r from-amber-300 to-yellow-400 text-black shadow-sm"
+                : "bg-slate-600 text-white"
+            )}
+          >
+            {workspaceRole === "owner" ? "Owner" : "Member"}
           </span>
         )}
         {/* Admin Badge */}
@@ -180,14 +201,18 @@ export function Sidebar({ isAdmin = false, subscriptionStatus = "free", hasActiv
       {/* User Section */}
       <div className="border-t p-4">
         <div className="flex items-center gap-3">
-          <UserButton
-            afterSignOutUrl="/"
-            appearance={{
-              elements: {
-                avatarBox: "h-8 w-8"
-              }
-            }}
-          />
+          {mounted ? (
+            <UserButton
+              afterSignOutUrl="/"
+              appearance={{
+                elements: {
+                  avatarBox: "h-8 w-8"
+                }
+              }}
+            />
+          ) : (
+            <div className="h-8 w-8 rounded-full bg-muted animate-pulse" />
+          )}
           <Link href="/dashboard/settings" className="flex flex-col hover:opacity-80 transition-opacity">
             <span className="text-sm font-medium">My Account</span>
             <span className="text-xs text-muted-foreground">Manage settings</span>

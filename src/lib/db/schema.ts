@@ -153,6 +153,8 @@ export const audiences = pgTable("audiences", {
   userId: text("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
+  // Workspace ID for team ownership - allows transfer when members leave
+  workspaceId: uuid("workspace_id").references(() => workspaces.id, { onDelete: "set null" }),
   name: text("name").notNull(),
   description: text("description"),
   color: text("color"), // Hex color for UI (e.g., "#3b82f6")
@@ -161,6 +163,7 @@ export const audiences = pgTable("audiences", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
   index("audiences_user_id_idx").on(table.userId),
+  index("audiences_workspace_id_idx").on(table.workspaceId),
 ]);
 
 // Audience-Monitor junction table - links monitors to audiences
@@ -195,6 +198,8 @@ export const monitors = pgTable("monitors", {
   userId: text("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
+  // Workspace ID for team ownership - allows transfer when members leave
+  workspaceId: uuid("workspace_id").references(() => workspaces.id, { onDelete: "set null" }),
   audienceId: uuid("audience_id").references(() => audiences.id, { onDelete: "set null" }),
   name: text("name").notNull(), // Display name for the monitor
   companyName: text("company_name"), // The company/brand to monitor (required for brand monitoring)
@@ -221,6 +226,7 @@ export const monitors = pgTable("monitors", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
   index("monitors_user_id_idx").on(table.userId),
+  index("monitors_workspace_id_idx").on(table.workspaceId),
   index("monitors_is_active_idx").on(table.isActive),
 ]);
 
@@ -449,6 +455,8 @@ export const workspaceInvites = pgTable("workspace_invites", {
 export const workspacesRelations = relations(workspaces, ({ many }) => ({
   members: many(users),
   invites: many(workspaceInvites),
+  monitors: many(monitors),
+  audiences: many(audiences),
 }));
 
 export const workspaceInvitesRelations = relations(workspaceInvites, ({ one }) => ({
@@ -485,6 +493,10 @@ export const audiencesRelations = relations(audiences, ({ one, many }) => ({
     fields: [audiences.userId],
     references: [users.id],
   }),
+  workspace: one(workspaces, {
+    fields: [audiences.workspaceId],
+    references: [workspaces.id],
+  }),
   communities: many(communities),
   monitors: many(monitors),
   audienceMonitors: many(audienceMonitors),
@@ -512,6 +524,10 @@ export const monitorsRelations = relations(monitors, ({ one, many }) => ({
   user: one(users, {
     fields: [monitors.userId],
     references: [users.id],
+  }),
+  workspace: one(workspaces, {
+    fields: [monitors.workspaceId],
+    references: [workspaces.id],
   }),
   audience: one(audiences, {
     fields: [monitors.audienceId],

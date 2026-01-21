@@ -10,7 +10,7 @@ interface HomeAnimationsProps {
 export function HomeAnimations({ children }: HomeAnimationsProps) {
   return (
     <motion.div
-      initial={{ opacity: 0 }}
+      initial={false}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
     >
@@ -31,7 +31,7 @@ export function AnimatedSection({
 }) {
   return (
     <motion.section
-      initial={{ opacity: 0, y: 30 }}
+      initial={false}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-100px" }}
       transition={{ duration: 0.6, delay, ease: "easeOut" }}
@@ -54,7 +54,7 @@ export function AnimatedCard({
 }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 40, scale: 0.95 }}
+      initial={false}
       whileInView={{ opacity: 1, y: 0, scale: 1 }}
       viewport={{ once: true, margin: "-50px" }}
       transition={{
@@ -113,7 +113,7 @@ export function StaggerItem({
   return (
     <motion.div
       variants={{
-        hidden: { opacity: 0, y: 30, scale: 0.95 },
+        hidden: { opacity: 1, y: 0, scale: 1 },
         visible: {
           opacity: 1,
           y: 0,
@@ -147,7 +147,7 @@ export function AnimatedBadge({
 }) {
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.8 }}
+      initial={false}
       whileInView={{ opacity: 1, scale: 1 }}
       viewport={{ once: true }}
       transition={{
@@ -217,7 +217,7 @@ export function AnimatedStepCard({
 }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 50 }}
+      initial={false}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-50px" }}
       transition={{
@@ -248,7 +248,7 @@ export function TextReveal({
 }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={false}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.5, delay, ease: "easeOut" }}

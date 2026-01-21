@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect } from "react";
-import { SignedIn, SignedOut, useAuth } from "@clerk/nextjs";
+import { useAuth } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -225,19 +225,20 @@ export default function PricingPage() {
             <Link href="/pricing" className="text-sm font-medium">
               Pricing
             </Link>
-            <SignedOut>
-              <Link href="/sign-in">
-                <Button variant="ghost">Sign In</Button>
-              </Link>
-              <Link href="/sign-up">
-                <Button>Get Started</Button>
-              </Link>
-            </SignedOut>
-            <SignedIn>
+            {!isSignedIn ? (
+              <>
+                <Link href="/sign-in">
+                  <Button variant="ghost">Sign In</Button>
+                </Link>
+                <Link href="/sign-up">
+                  <Button>Get Started</Button>
+                </Link>
+              </>
+            ) : (
               <Link href="/dashboard">
                 <Button>Dashboard</Button>
               </Link>
-            </SignedIn>
+            )}
           </nav>
         </div>
       </header>
@@ -341,7 +342,7 @@ export default function PricingPage() {
                   </ul>
                 </CardContent>
                 <CardFooter>
-                  <SignedOut>
+                  {!isSignedIn ? (
                     <Link href={plan.href} className="w-full">
                       <Button
                         className="w-full"
@@ -350,9 +351,8 @@ export default function PricingPage() {
                         {plan.cta}
                       </Button>
                     </Link>
-                  </SignedOut>
-                  <SignedIn>
-                    {plan.key === "free" ? (
+                  ) : (
+                    plan.key === "free" ? (
                       <Button className="w-full" variant="outline" disabled>
                         Current Plan
                       </Button>
@@ -364,8 +364,8 @@ export default function PricingPage() {
                       >
                         {plan.cta}
                       </Button>
-                    )}
-                  </SignedIn>
+                    )
+                  )}
                 </CardFooter>
               </Card>
             ))}
@@ -414,15 +414,14 @@ export default function PricingPage() {
                 </ul>
               </CardContent>
               <CardFooter>
-                <SignedOut>
+                {!isSignedIn ? (
                   <Link href="/sign-up" className="w-full">
                     <Button className="w-full bg-amber-400 hover:bg-amber-500 text-black font-semibold">
                       Get Day Pass
                     </Button>
                   </Link>
-                </SignedOut>
-                <SignedIn>
-                  {dayPassStatus?.active ? (
+                ) : (
+                  dayPassStatus?.active ? (
                     <Button className="w-full bg-amber-400 hover:bg-amber-500 text-black font-semibold" disabled>
                       Active Until {new Date(dayPassStatus.expiresAt!).toLocaleTimeString()}
                     </Button>
@@ -434,8 +433,8 @@ export default function PricingPage() {
                     >
                       {isPurchasingDayPass ? "Processing..." : "Get Day Pass - $10"}
                     </Button>
-                  )}
-                </SignedIn>
+                  )
+                )}
               </CardFooter>
             </Card>
           </div>

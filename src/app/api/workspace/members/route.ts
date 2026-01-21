@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { workspaces, users } from "@/lib/db/schema";
+import { workspaces, users, monitors, audiences } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
@@ -86,6 +86,43 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "Member not found in your workspace" }, { status: 404 });
     }
 
+    // Get workspace owner info
+    const workspace = await db.query.workspaces.findFirst({
+      where: eq(workspaces.id, user.workspaceId),
+    });
+
+    if (!workspace) {
+      return NextResponse.json({ error: "Workspace not found" }, { status: 404 });
+    }
+
+    // Transfer member's monitors to workspace owner (keep all data, just change ownership)
+    await db
+      .update(monitors)
+      .set({
+        userId: workspace.ownerId,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(monitors.userId, memberId),
+          eq(monitors.workspaceId, user.workspaceId)
+        )
+      );
+
+    // Transfer member's audiences to workspace owner
+    await db
+      .update(audiences)
+      .set({
+        userId: workspace.ownerId,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(audiences.userId, memberId),
+          eq(audiences.workspaceId, user.workspaceId)
+        )
+      );
+
     // Remove from workspace
     await db
       .update(users)
@@ -97,19 +134,13 @@ export async function DELETE(request: Request) {
       .where(eq(users.id, memberId));
 
     // Update workspace seat count
-    const workspace = await db.query.workspaces.findFirst({
-      where: eq(workspaces.id, user.workspaceId),
-    });
-
-    if (workspace) {
-      await db
-        .update(workspaces)
-        .set({
-          seatCount: Math.max(1, workspace.seatCount - 1),
-          updatedAt: new Date(),
-        })
-        .where(eq(workspaces.id, workspace.id));
-    }
+    await db
+      .update(workspaces)
+      .set({
+        seatCount: Math.max(1, workspace.seatCount - 1),
+        updatedAt: new Date(),
+      })
+      .where(eq(workspaces.id, workspace.id));
 
     return NextResponse.json({ success: true });
   } catch (error) {
