@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -230,9 +231,11 @@ export function OnboardingWizard({ isOpen, onClose, userName, userPlan = "free" 
             <DialogHeader className="pt-4">
               {/* Kaulby Logo */}
               <div className="mx-auto mb-4">
-                <img
+                <Image
                   src="/icon-512.png"
                   alt="Kaulby"
+                  width={64}
+                  height={64}
                   className="h-16 w-16 rounded-xl"
                 />
               </div>
@@ -285,9 +288,11 @@ export function OnboardingWizard({ isOpen, onClose, userName, userPlan = "free" 
             <DialogHeader className="pt-4">
               {/* Kaulby Logo */}
               <div className="mx-auto mb-4">
-                <img
+                <Image
                   src="/icon-512.png"
                   alt="Kaulby"
+                  width={64}
+                  height={64}
                   className="h-16 w-16 rounded-xl"
                 />
               </div>
@@ -338,9 +343,11 @@ export function OnboardingWizard({ isOpen, onClose, userName, userPlan = "free" 
             <DialogHeader className="pt-4">
               {/* Kaulby Logo */}
               <div className="mx-auto mb-4">
-                <img
+                <Image
                   src="/icon-512.png"
                   alt="Kaulby"
+                  width={64}
+                  height={64}
                   className="h-16 w-16 rounded-xl"
                 />
               </div>
@@ -466,9 +473,11 @@ export function OnboardingWizard({ isOpen, onClose, userName, userPlan = "free" 
             <DialogHeader className="pt-4">
               {/* Kaulby Logo */}
               <div className="mx-auto mb-4">
-                <img
+                <Image
                   src="/icon-512.png"
                   alt="Kaulby"
+                  width={64}
+                  height={64}
                   className="h-16 w-16 rounded-xl"
                 />
               </div>

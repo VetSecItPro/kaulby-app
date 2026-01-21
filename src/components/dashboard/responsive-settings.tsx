@@ -417,10 +417,10 @@ export function ResponsiveSettings({
 
         <div className="grid gap-4 md:grid-cols-3">
           {plans.map((plan) => {
-            const action = getButtonAction(subscriptionStatus, plan.name);
-            const buttonText = action === "upgrade"
+            const isUpgrade = getButtonAction(subscriptionStatus, plan.name) === "upgrade";
+            const buttonText = isUpgrade
               ? `Upgrade to ${plan.name}`
-              : `Downgrade to ${plan.name}`;
+              : `Switch to ${plan.name}`;
 
             return (
               <Card key={plan.name} className={`flex flex-col ${plan.current ? "border-primary border-2" : ""}`}>

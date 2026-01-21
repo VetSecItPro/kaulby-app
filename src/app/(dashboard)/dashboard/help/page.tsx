@@ -1,3 +1,6 @@
+"use client";
+
+import { useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -16,19 +19,97 @@ import {
   Download,
   Settings,
   Shield,
-  HelpCircle,
   Lightbulb,
   FolderOpen,
+  BookOpen,
+  Filter,
+  Clock,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+  ArrowRight,
+  ExternalLink,
 } from "lucide-react";
 
+// Section navigation data
+const sections = [
+  { id: "getting-started", title: "Getting Started", icon: Zap },
+  { id: "monitors", title: "Monitors", icon: Radio },
+  { id: "platforms", title: "Platforms", icon: Globe },
+  { id: "results", title: "Results & Analysis", icon: Brain },
+  { id: "alerts", title: "Alerts & Notifications", icon: Bell },
+  { id: "api", title: "API Access", icon: Key, badge: "Team" },
+  { id: "billing", title: "Billing & Plans", icon: CreditCard },
+  { id: "team", title: "Team Management", icon: Users, badge: "Team" },
+  { id: "account", title: "Account & Settings", icon: Settings },
+  { id: "troubleshooting", title: "Troubleshooting", icon: Shield },
+];
+
 export default function HelpPage() {
+  // Handle smooth scroll to section within the dashboard's scroll container
+  const scrollToSection = useCallback((e: React.MouseEvent<HTMLAnchorElement>, sectionId: string) => {
+    e.preventDefault();
+
+    const element = document.getElementById(sectionId);
+    if (!element) {
+      return;
+    }
+
+    // Helper to check if an element is truly visible (including checking ancestors)
+    const isElementVisible = (el: HTMLElement): boolean => {
+      let current: HTMLElement | null = el;
+      while (current) {
+        const style = window.getComputedStyle(current);
+        if (style.display === 'none' || style.visibility === 'hidden') {
+          return false;
+        }
+        current = current.parentElement;
+      }
+      return true;
+    };
+
+    // Find the visible <main> scroll container
+    // The dashboard layout has two main elements (mobile and desktop) wrapped in divs
+    // The parent divs have hidden/lg:flex classes that control visibility
+    const mainElements = Array.from(document.querySelectorAll('main'));
+    let scrollContainer: HTMLElement | null = null;
+
+    for (let i = 0; i < mainElements.length; i++) {
+      const main = mainElements[i] as HTMLElement;
+      if (isElementVisible(main)) {
+        scrollContainer = main;
+        break;
+      }
+    }
+
+    if (scrollContainer) {
+      // Get element's position relative to the scroll container
+      const containerRect = scrollContainer.getBoundingClientRect();
+      const elementRect = element.getBoundingClientRect();
+
+      // Calculate target scroll position
+      // elementRect.top is relative to viewport
+      // containerRect.top is the container's position in viewport
+      // scrollContainer.scrollTop is how much we've already scrolled
+      const targetScroll = elementRect.top - containerRect.top + scrollContainer.scrollTop - 80; // 80px offset for header
+
+      scrollContainer.scrollTo({
+        top: Math.max(0, targetScroll),
+        behavior: "smooth"
+      });
+    } else {
+      // Fallback: use scrollIntoView which works for most cases
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, []);
+
   return (
-    <div className="space-y-8 max-w-4xl">
+    <div className="space-y-12 max-w-4xl pb-20">
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Help Center</h1>
-        <p className="text-muted-foreground mt-1">
-          Everything you need to know about using Kaulby effectively.
+        <p className="text-muted-foreground mt-2">
+          Everything you need to know about using Kaulby to monitor online conversations and grow your business.
         </p>
       </div>
 
@@ -36,959 +117,1334 @@ export default function HelpPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <HelpCircle className="h-5 w-5 text-primary" />
-            Quick Navigation
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-2 md:grid-cols-3 text-sm">
-            <a href="#quick-start" className="text-primary hover:underline">→ Quick Start Guide</a>
-            <a href="#monitors" className="text-primary hover:underline">→ Creating Monitors</a>
-            <a href="#audiences" className="text-primary hover:underline">→ Audiences</a>
-            <a href="#platforms" className="text-primary hover:underline">→ Supported Platforms</a>
-            <a href="#ai-analysis" className="text-primary hover:underline">→ AI Analysis</a>
-            <a href="#analytics" className="text-primary hover:underline">→ Analytics & Insights</a>
-            <a href="#alerts" className="text-primary hover:underline">→ Alerts & Notifications</a>
-            <a href="#slack-discord" className="text-primary hover:underline">→ Slack & Discord Setup</a>
-            <a href="#webhooks" className="text-primary hover:underline">→ Webhooks</a>
-            <a href="#api-access" className="text-primary hover:underline">→ API Access</a>
-            <a href="#data-export" className="text-primary hover:underline">→ Data Export</a>
-            <a href="#team" className="text-primary hover:underline">→ Team Management</a>
-            <a href="#account" className="text-primary hover:underline">→ Account Settings</a>
-            <a href="#plans" className="text-primary hover:underline">→ Plan Comparison</a>
-            <a href="#troubleshooting" className="text-primary hover:underline">→ Troubleshooting</a>
-            <a href="#faq" className="text-primary hover:underline">→ FAQ</a>
-            <a href="#contact" className="text-primary hover:underline">→ Contact Support</a>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Quick Start */}
-      <Card id="quick-start">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Zap className="h-5 w-5 text-primary" />
-            Quick Start Guide
+            <BookOpen className="h-5 w-5 text-primary" />
+            Documentation
           </CardTitle>
           <CardDescription>
-            Get up and running in under 2 minutes
+            Click any section to jump directly to it
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="p-4 rounded-lg border bg-card">
-              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center mb-3">
-                <span className="text-sm font-bold text-primary">1</span>
+        <CardContent>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {sections.map((section) => {
+              const Icon = section.icon;
+              return (
+                <a
+                  key={section.id}
+                  href={`#${section.id}`}
+                  onClick={(e) => scrollToSection(e, section.id)}
+                  className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted transition-colors group"
+                >
+                  <Icon className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                  <span className="text-sm group-hover:text-primary transition-colors">{section.title}</span>
+                  {section.badge && (
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                      {section.badge}
+                    </Badge>
+                  )}
+                </a>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ==================== SECTION 1: GETTING STARTED ==================== */}
+      <section id="getting-started" className="scroll-mt-20 space-y-6">
+        <div className="flex items-center gap-3 border-b pb-4">
+          <div className="p-2 rounded-lg bg-primary/10">
+            <Zap className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold">Getting Started</h2>
+            <p className="text-muted-foreground">Set up your first monitor in under 2 minutes</p>
+          </div>
+        </div>
+
+        {/* Article: Quick Start Guide */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Quick Start Guide</CardTitle>
+            <CardDescription>
+              Follow these three steps to start monitoring online conversations about your brand
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid gap-6 md:grid-cols-3">
+              <div className="relative p-4 rounded-lg border bg-card">
+                <div className="absolute -top-3 -left-3 w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm">
+                  1
+                </div>
+                <h4 className="font-semibold mt-2 mb-2">Create a Monitor</h4>
+                <p className="text-sm text-muted-foreground">
+                  Click <strong>&quot;New Monitor&quot;</strong> in the sidebar. Enter your brand or company name, add optional keywords, and select which platforms to track.
+                </p>
               </div>
-              <h3 className="font-medium mb-1">Create a Monitor</h3>
-              <p className="text-sm text-muted-foreground">
-                Click &quot;New Monitor&quot; and add keywords you want to track. Select which platforms to monitor.
-              </p>
-            </div>
-            <div className="p-4 rounded-lg border bg-card">
-              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center mb-3">
-                <span className="text-sm font-bold text-primary">2</span>
+              <div className="relative p-4 rounded-lg border bg-card">
+                <div className="absolute -top-3 -left-3 w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm">
+                  2
+                </div>
+                <h4 className="font-semibold mt-2 mb-2">Review Results</h4>
+                <p className="text-sm text-muted-foreground">
+                  Within hours, you&apos;ll see matching conversations. Each result includes AI-powered sentiment analysis, categorization, and a summary of the discussion.
+                </p>
               </div>
-              <h3 className="font-medium mb-1">Review Results</h3>
-              <p className="text-sm text-muted-foreground">
-                See matching conversations with AI-powered sentiment analysis, categorization, and summaries.
-              </p>
-            </div>
-            <div className="p-4 rounded-lg border bg-card">
-              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center mb-3">
-                <span className="text-sm font-bold text-primary">3</span>
+              <div className="relative p-4 rounded-lg border bg-card">
+                <div className="absolute -top-3 -left-3 w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm">
+                  3
+                </div>
+                <h4 className="font-semibold mt-2 mb-2">Set Up Alerts</h4>
+                <p className="text-sm text-muted-foreground">
+                  Configure email digests or connect Slack/Discord to get notified when new mentions appear. Never miss an important conversation again.
+                </p>
               </div>
-              <h3 className="font-medium mb-1">Set Up Alerts</h3>
-              <p className="text-sm text-muted-foreground">
-                Get notified via email, Slack, or Discord when new mentions appear. Never miss important conversations.
-              </p>
             </div>
-          </div>
-          <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
-            <p className="text-sm">
-              <strong>Pro tip:</strong> Start with 2-3 specific keywords to see how Kaulby works, then expand your monitoring as you learn what generates the most valuable insights.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Creating Monitors */}
-      <Card id="monitors">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Radio className="h-5 w-5" />
-            Creating Monitors
-          </CardTitle>
-          <CardDescription>Track conversations that matter to your business</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Monitors are the core of Kaulby. Each monitor tracks specific keywords or phrases across your chosen platforms.
-          </p>
-
-          <div className="space-y-3">
-            <h4 className="font-medium">What to Monitor</h4>
-            <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-2">
-              <li><strong>Your brand name:</strong> &quot;YourCompany&quot; or &quot;your-product&quot;</li>
-              <li><strong>Competitor names:</strong> Track what people say about alternatives</li>
-              <li><strong>Industry keywords:</strong> &quot;best CRM for startups&quot;, &quot;project management tool&quot;</li>
-              <li><strong>Pain points:</strong> &quot;frustrated with&quot;, &quot;looking for alternative&quot;</li>
-              <li><strong>Feature requests:</strong> Track what users want in your space</li>
-            </ul>
-          </div>
-
-          <div className="space-y-3">
-            <h4 className="font-medium">Keyword Tips</h4>
-            <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-2">
-              <li>Use quotes for exact phrases: <code className="px-1 py-0.5 bg-muted rounded text-xs">&quot;your brand name&quot;</code></li>
-              <li>Be specific to reduce noise—&quot;Notion alternative&quot; vs just &quot;alternative&quot;</li>
-              <li>Include common misspellings of your brand</li>
-              <li>Monitor competitor names to find potential customers</li>
-            </ul>
-          </div>
-
-          <div className="p-3 rounded-lg bg-muted/50">
-            <p className="text-xs">
-              <strong>Limits by plan:</strong> Free: 3 keywords/monitor · Pro: 20 keywords/monitor · Team: 35 keywords/monitor
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Audiences */}
-      <Card id="audiences">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FolderOpen className="h-5 w-5" />
-            Audiences
-          </CardTitle>
-          <CardDescription>Organize monitors into logical groups</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Audiences help you organize multiple monitors into meaningful groups. This is useful when tracking different aspects of your business.
-          </p>
-
-          <div className="space-y-3">
-            <h4 className="font-medium">Use Cases</h4>
-            <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-2">
-              <li><strong>By product:</strong> Group monitors for each product line</li>
-              <li><strong>By competitor:</strong> Track each competitor separately</li>
-              <li><strong>By market:</strong> Different audiences for different regions or segments</li>
-              <li><strong>By team:</strong> Marketing monitors vs. Product monitors</li>
-            </ul>
-          </div>
-
-          <div className="space-y-3">
-            <h4 className="font-medium">How to Create an Audience</h4>
-            <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground ml-2">
-              <li>Go to <strong>Audiences</strong> in the sidebar</li>
-              <li>Click <strong>Create Audience</strong></li>
-              <li>Give it a name and optional description</li>
-              <li>Add existing monitors or create new ones within the audience</li>
-            </ol>
-          </div>
-
-          <div className="p-3 rounded-lg bg-muted/50">
-            <p className="text-xs">
-              <strong>Tip:</strong> Audiences make it easier to share specific monitoring data with different teams or stakeholders.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Platforms */}
-      <Card id="platforms">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Globe className="h-5 w-5" />
-            Supported Platforms
-          </CardTitle>
-          <CardDescription>Where we find conversations about your brand</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">We monitor 9 platforms where your audience discusses products and services:</p>
-
-          <div className="grid gap-3 md:grid-cols-3">
-            <div className="p-3 rounded-lg border">
-              <Badge variant="outline" className="mb-2">Reddit</Badge>
-              <p className="text-xs text-muted-foreground">Discussions across thousands of communities and subreddits</p>
+            <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
+              <div className="flex items-start gap-3">
+                <Lightbulb className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                <div>
+                  <p className="font-medium text-sm">Pro Tip</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Start with just your brand name as the primary search term. Kaulby will automatically find variations and related mentions. Add specific keywords later to narrow down results for particular topics like &quot;pricing&quot; or &quot;customer service.&quot;
+                  </p>
+                </div>
+              </div>
             </div>
-            <div className="p-3 rounded-lg border">
-              <Badge variant="outline" className="mb-2">Hacker News</Badge>
-              <p className="text-xs text-muted-foreground">Tech-focused discussions from the startup community</p>
-            </div>
-            <div className="p-3 rounded-lg border">
-              <Badge variant="outline" className="mb-2">Product Hunt</Badge>
-              <p className="text-xs text-muted-foreground">Product launches and tech tool discussions</p>
-            </div>
-            <div className="p-3 rounded-lg border">
-              <Badge variant="outline" className="mb-2">Google Reviews</Badge>
-              <p className="text-xs text-muted-foreground">Business reviews and customer feedback</p>
-            </div>
-            <div className="p-3 rounded-lg border">
-              <Badge variant="outline" className="mb-2">Trustpilot</Badge>
-              <p className="text-xs text-muted-foreground">Consumer reviews and brand reputation</p>
-            </div>
-            <div className="p-3 rounded-lg border">
-              <Badge variant="outline" className="mb-2">App Store</Badge>
-              <p className="text-xs text-muted-foreground">iOS app reviews and ratings</p>
-            </div>
-            <div className="p-3 rounded-lg border">
-              <Badge variant="outline" className="mb-2">Play Store</Badge>
-              <p className="text-xs text-muted-foreground">Android app reviews and ratings</p>
-            </div>
-            <div className="p-3 rounded-lg border">
-              <Badge variant="outline" className="mb-2">Quora</Badge>
-              <p className="text-xs text-muted-foreground">Q&A discussions and recommendations</p>
-            </div>
-            <div className="p-3 rounded-lg border">
-              <Badge variant="outline" className="mb-2">Dev.to</Badge>
-              <p className="text-xs text-muted-foreground">Developer community posts and discussions</p>
-            </div>
-          </div>
+          </CardContent>
+        </Card>
 
-          <div className="p-3 rounded-lg bg-muted/50">
-            <p className="text-xs">
-              <strong>Platform availability:</strong> Free users have Reddit access. Pro and Team users can monitor all 9 platforms.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* AI Analysis */}
-      <Card id="ai-analysis">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Brain className="h-5 w-5" />
-            AI Analysis
-          </CardTitle>
-          <CardDescription>Understand conversations at scale</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Our AI automatically analyzes every result to help you quickly understand the conversation and take action.
-          </p>
-
-          <div className="space-y-3">
-            <h4 className="font-medium">What AI Provides</h4>
-            <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground ml-2">
-              <li>
-                <strong>Sentiment Analysis:</strong> Positive, negative, or neutral tone with confidence score
-              </li>
-              <li>
-                <strong>Conversation Categories:</strong>
-                <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
-                  <li>Pain Point – User expressing frustration</li>
-                  <li>Solution Request – Looking for recommendations</li>
-                  <li>Feature Request – Wanting specific functionality</li>
-                  <li>Competitor Mention – Discussing alternatives</li>
-                  <li>Positive Feedback – Praise or recommendation</li>
-                </ul>
-              </li>
-              <li>
-                <strong>Summary:</strong> Key points extracted from longer discussions
-              </li>
-              <li>
-                <strong>Engagement Score:</strong> How active/popular the conversation is
-              </li>
-            </ul>
-          </div>
-
-          <div className="p-3 rounded-lg bg-muted/50">
-            <p className="text-xs">
-              <strong>AI access:</strong> Free users see AI analysis on the first result only (others are blurred). Pro and Team users get unlimited AI analysis.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Analytics & Insights */}
-      <Card id="analytics">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BarChart3 className="h-5 w-5" />
-            Analytics & Insights
-          </CardTitle>
-          <CardDescription>Track trends and measure impact</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            The Analytics dashboard helps you understand trends over time and measure the impact of your monitoring efforts.
-          </p>
-
-          <div className="space-y-3">
-            <h4 className="font-medium">Analytics Features</h4>
-            <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-2">
-              <li><strong>Mention Volume:</strong> Track how often you&apos;re mentioned over time</li>
-              <li><strong>Sentiment Trends:</strong> See if sentiment is improving or declining</li>
-              <li><strong>Platform Breakdown:</strong> Which platforms generate the most mentions</li>
-              <li><strong>Top Keywords:</strong> Which keywords are triggering the most results</li>
-              <li><strong>Category Distribution:</strong> Pain points vs. praise vs. questions</li>
-            </ul>
-          </div>
-
-          <div className="space-y-3">
-            <h4 className="font-medium flex items-center gap-2">
-              <Lightbulb className="h-4 w-4" />
-              Insights
-            </h4>
+        {/* Article: Understanding Your Dashboard */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Understanding Your Dashboard</CardTitle>
+            <CardDescription>
+              A tour of the main areas you&apos;ll use daily
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              The Insights page provides AI-generated summaries of trends, highlighting:
+              The dashboard is designed to give you a quick overview of your monitoring activity and help you take action on important conversations.
             </p>
-            <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-2">
-              <li>Emerging topics and themes in your mentions</li>
-              <li>Sudden spikes in activity (viral moments)</li>
-              <li>Common pain points users are expressing</li>
-              <li>Opportunities for engagement or outreach</li>
-            </ul>
+
+            <div className="space-y-3">
+              <div className="flex items-start gap-3 p-3 rounded-lg border">
+                <BarChart3 className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                <div>
+                  <p className="font-medium text-sm">Overview</p>
+                  <p className="text-sm text-muted-foreground">
+                    Your home base showing total mentions, sentiment breakdown, and recent activity across all monitors. Great for a daily health check.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 p-3 rounded-lg border">
+                <Radio className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                <div>
+                  <p className="font-medium text-sm">Monitors</p>
+                  <p className="text-sm text-muted-foreground">
+                    Manage your tracking configurations. Each monitor can target different keywords, platforms, and audiences. Create separate monitors for your brand, competitors, or industry topics.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 p-3 rounded-lg border">
+                <MessageSquare className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                <div>
+                  <p className="font-medium text-sm">Results</p>
+                  <p className="text-sm text-muted-foreground">
+                    Browse all discovered mentions with powerful filtering. See the full conversation, AI analysis, and engagement metrics. Save important results or hide irrelevant ones.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 p-3 rounded-lg border">
+                <Lightbulb className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                <div>
+                  <p className="font-medium text-sm">Insights</p>
+                  <p className="text-sm text-muted-foreground">
+                    AI-generated summaries of trends across your monitoring data. Discover emerging topics, sentiment shifts, and actionable opportunities without reading every result.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* ==================== SECTION 2: MONITORS ==================== */}
+      <section id="monitors" className="scroll-mt-20 space-y-6">
+        <div className="flex items-center gap-3 border-b pb-4">
+          <div className="p-2 rounded-lg bg-primary/10">
+            <Radio className="h-6 w-6 text-primary" />
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Alerts */}
-      <Card id="alerts">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Bell className="h-5 w-5" />
-            Alerts & Notifications
-          </CardTitle>
-          <CardDescription>Stay informed without constant checking</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Set up alerts to be notified when new mentions appear, so you can respond quickly to important conversations.
-          </p>
-
-          <div className="space-y-3">
-            <h4 className="font-medium">Notification Options</h4>
-            <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground ml-2">
-              <li>
-                <strong>Email Digest:</strong> Daily summary sent at 9 AM in your timezone with all new mentions
-              </li>
-              <li>
-                <strong>Slack/Discord:</strong> Instant notifications to your team channel (Pro+)
-              </li>
-              <li>
-                <strong>Webhooks:</strong> Send data to any URL for custom integrations (Team)
-              </li>
-            </ul>
+          <div>
+            <h2 className="text-2xl font-bold">Monitors</h2>
+            <p className="text-muted-foreground">Track conversations that matter to your business</p>
           </div>
+        </div>
 
-          <div className="space-y-3">
-            <h4 className="font-medium">Setting Up Alerts</h4>
-            <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground ml-2">
-              <li>Go to any monitor&apos;s settings page</li>
-              <li>Scroll to the &quot;Alerts&quot; section</li>
-              <li>Enable the notification channels you want</li>
-              <li>Configure frequency (instant, daily digest, etc.)</li>
-              <li>Save your settings</li>
-            </ol>
-          </div>
-
-          <div className="p-3 rounded-lg bg-muted/50">
-            <p className="text-xs">
-              <strong>Tip:</strong> Start with daily digests to avoid notification fatigue, then switch to instant alerts for high-priority monitors.
+        {/* Article: Creating Monitors */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Creating Monitors</CardTitle>
+            <CardDescription>
+              How to set up effective monitoring for your brand, competitors, or industry
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              A monitor is a saved search configuration that continuously scans selected platforms for conversations matching your criteria. Think of it as setting up a persistent Google Alert, but for community discussions across multiple platforms.
             </p>
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Slack/Discord Setup */}
-      <Card id="slack-discord">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5" />
-            Slack & Discord Setup
-          </CardTitle>
-          <CardDescription>Step-by-step guide to connect your workspace</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Slack Setup */}
-          <div>
-            <h3 className="font-semibold mb-3 flex items-center gap-2">
-              <span className="w-6 h-6 rounded bg-[#4A154B] flex items-center justify-center text-white text-xs font-bold">S</span>
-              Slack Setup
-            </h3>
-            <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground ml-4">
-              <li>Go to <a href="https://api.slack.com/apps" target="_blank" rel="noopener" className="text-primary hover:underline">api.slack.com/apps</a> and click &quot;Create New App&quot;</li>
-              <li>Select &quot;From scratch&quot; and name it (e.g., &quot;Kaulby Alerts&quot;)</li>
-              <li>Choose your Slack workspace</li>
-              <li>In the left sidebar, click &quot;Incoming Webhooks&quot;</li>
-              <li>Toggle &quot;Activate Incoming Webhooks&quot; to On</li>
-              <li>Click &quot;Add New Webhook to Workspace&quot;</li>
-              <li>Select the channel where you want alerts</li>
-              <li>Copy the Webhook URL (starts with <code className="px-1 py-0.5 bg-muted rounded text-xs">https://hooks.slack.com/...</code>)</li>
-              <li>Paste it in Kaulby: Settings → Notifications → Slack Webhook URL</li>
-            </ol>
-          </div>
+            <div className="space-y-4">
+              <h4 className="font-medium">Creating a New Monitor</h4>
+              <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground ml-2">
+                <li>Click <strong>Monitors</strong> in the sidebar, then <strong>New Monitor</strong></li>
+                <li>Enter a descriptive <strong>Monitor Name</strong> (e.g., &quot;Brand Mentions&quot;, &quot;Competitor X Feedback&quot;)</li>
+                <li>Enter your <strong>Company/Brand Name</strong> — this is the primary search term</li>
+                <li>Optionally add <strong>Additional Keywords</strong> to narrow results (e.g., &quot;pricing&quot;, &quot;support&quot;)</li>
+                <li>Select which <strong>Platforms</strong> to monitor (Reddit is available on Free; all 9 platforms on Pro/Team)</li>
+                <li>Click <strong>Create Monitor</strong></li>
+              </ol>
+            </div>
 
-          {/* Discord Setup */}
-          <div>
-            <h3 className="font-semibold mb-3 flex items-center gap-2">
-              <span className="w-6 h-6 rounded bg-[#5865F2] flex items-center justify-center text-white text-xs font-bold">D</span>
-              Discord Setup
-            </h3>
-            <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground ml-4">
-              <li>Open Discord and go to your server settings</li>
-              <li>Click &quot;Integrations&quot; → &quot;Webhooks&quot;</li>
-              <li>Click &quot;New Webhook&quot;</li>
-              <li>Give it a name and select the target channel</li>
-              <li>Click &quot;Copy Webhook URL&quot;</li>
-              <li><strong>Important:</strong> Add <code className="px-1 py-0.5 bg-muted rounded text-xs">/slack</code> to the end of the URL</li>
-              <li>Example: <code className="px-1 py-0.5 bg-muted rounded text-xs break-all">https://discord.com/api/webhooks/123.../abc.../slack</code></li>
-              <li>Paste this modified URL in Kaulby Settings → Notifications</li>
-            </ol>
-            <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 mt-4">
-              <p className="text-xs text-amber-800 dark:text-amber-200">
-                <strong>Why /slack?</strong> Discord supports Slack-compatible webhooks. Adding <code>/slack</code> to the URL enables this compatibility mode so Kaulby&apos;s Slack-formatted messages display correctly.
+            <div className="p-4 rounded-lg bg-muted/50">
+              <p className="text-xs text-muted-foreground">
+                <strong>Plan limits:</strong> Free: 1 monitor, 3 keywords · Pro: 10 monitors, 20 keywords each · Team: 30 monitors, 35 keywords each
               </p>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Article: Keywords and Search Queries */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Keywords and Search Queries</CardTitle>
+            <CardDescription>
+              Best practices for effective keyword selection
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              The keywords you choose determine what conversations Kaulby finds. Your company/brand name is always the primary search term — additional keywords help you find specific types of mentions.
+            </p>
+
+            <div className="space-y-4">
+              <h4 className="font-medium">What to Monitor</h4>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="p-3 rounded-lg border">
+                  <p className="font-medium text-sm mb-1">Your Brand</p>
+                  <p className="text-xs text-muted-foreground">
+                    Company name, product names, common misspellings, abbreviations users might use
+                  </p>
+                </div>
+                <div className="p-3 rounded-lg border">
+                  <p className="font-medium text-sm mb-1">Competitors</p>
+                  <p className="text-xs text-muted-foreground">
+                    Competitor names to find users comparing options or looking for alternatives
+                  </p>
+                </div>
+                <div className="p-3 rounded-lg border">
+                  <p className="font-medium text-sm mb-1">Pain Points</p>
+                  <p className="text-xs text-muted-foreground">
+                    &quot;frustrated with&quot;, &quot;looking for alternative&quot;, &quot;any recommendations for&quot;
+                  </p>
+                </div>
+                <div className="p-3 rounded-lg border">
+                  <p className="font-medium text-sm mb-1">Industry Topics</p>
+                  <p className="text-xs text-muted-foreground">
+                    Category keywords like &quot;best CRM&quot;, &quot;project management tool&quot;, &quot;email marketing&quot;
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="font-medium">Keyword Tips</h4>
+              <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-2">
+                <li><strong>Be specific:</strong> &quot;Notion alternative for teams&quot; finds better leads than just &quot;alternative&quot;</li>
+                <li><strong>Include variations:</strong> Add both &quot;YourBrand&quot; and &quot;Your Brand&quot; if users spell it both ways</li>
+                <li><strong>Think like your customers:</strong> What would someone type when they have a problem you solve?</li>
+                <li><strong>Monitor competitors:</strong> &quot;switching from Competitor&quot; or &quot;Competitor vs&quot; finds comparison shoppers</li>
+              </ul>
+            </div>
+
+            <div className="p-4 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+              <p className="text-sm text-amber-800 dark:text-amber-200">
+                <strong>Avoid overly broad keywords.</strong> Terms like &quot;app&quot;, &quot;software&quot;, or &quot;tool&quot; alone will generate too much noise. Combine them with your brand or specific context.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Article: Audiences */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <FolderOpen className="h-5 w-5" />
+              Organizing with Audiences
+            </CardTitle>
+            <CardDescription>
+              Group monitors for better organization and reporting
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Audiences let you organize multiple monitors into logical groups. This is especially useful when you&apos;re tracking different aspects of your business or managing monitoring for multiple products.
+            </p>
+
+            <div className="space-y-3">
+              <h4 className="font-medium">Use Cases for Audiences</h4>
+              <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-2">
+                <li><strong>By product:</strong> Separate audiences for each product in your suite</li>
+                <li><strong>By competitor:</strong> Track each competitor with their own audience</li>
+                <li><strong>By team:</strong> Marketing monitors vs. Product monitors vs. Support monitors</li>
+                <li><strong>By market segment:</strong> Enterprise vs. SMB vs. Consumer audiences</li>
+              </ul>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="font-medium">Creating an Audience</h4>
+              <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground ml-2">
+                <li>Go to <strong>Audiences</strong> in the sidebar</li>
+                <li>Click <strong>Create Audience</strong></li>
+                <li>Give it a name and optional description</li>
+                <li>Add existing monitors or create new ones within the audience</li>
+              </ol>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* ==================== SECTION 3: PLATFORMS ==================== */}
+      <section id="platforms" className="scroll-mt-20 space-y-6">
+        <div className="flex items-center gap-3 border-b pb-4">
+          <div className="p-2 rounded-lg bg-primary/10">
+            <Globe className="h-6 w-6 text-primary" />
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Webhooks */}
-      <Card id="webhooks">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Webhook className="h-5 w-5" />
-            Webhooks
-            <Badge variant="secondary" className="ml-2">Team Plan</Badge>
-          </CardTitle>
-          <CardDescription>Send data to your own systems</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Webhooks allow you to receive real-time notifications when new results are found, enabling custom integrations with your own tools.
-          </p>
-
-          <div className="space-y-3">
-            <h4 className="font-medium">Setting Up Webhooks</h4>
-            <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground ml-2">
-              <li>Go to <strong>Webhooks</strong> in the sidebar</li>
-              <li>Click <strong>Add Webhook</strong></li>
-              <li>Enter your endpoint URL (must be HTTPS)</li>
-              <li>Select which events to receive</li>
-              <li>Optionally add a secret for signature verification</li>
-              <li>Save and test the webhook</li>
-            </ol>
+          <div>
+            <h2 className="text-2xl font-bold">Platforms</h2>
+            <p className="text-muted-foreground">Where we find conversations about your brand</p>
           </div>
+        </div>
 
-          <div className="space-y-3">
-            <h4 className="font-medium">Webhook Payload</h4>
-            <p className="text-sm text-muted-foreground">Each webhook delivers a JSON payload with:</p>
-            <div className="p-3 rounded-lg bg-muted font-mono text-xs overflow-x-auto">
-              <pre>{`{
+        {/* Article: Platform Overview */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Supported Platforms Overview</CardTitle>
+            <CardDescription>
+              Kaulby monitors 9 platforms where your audience discusses products and services
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Each platform has unique characteristics and audience demographics. Understanding these helps you prioritize which platforms matter most for your business.
+            </p>
+
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="p-4 rounded-lg border space-y-2">
+                <div className="flex items-center justify-between">
+                  <Badge variant="outline">Reddit</Badge>
+                  <Badge className="bg-green-500/10 text-green-600 border-green-500/20">Free</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  The &quot;front page of the internet&quot; with thousands of niche communities. Excellent for B2C products and technical discussions. Users are highly engaged and vocal.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-lg border space-y-2">
+                <div className="flex items-center justify-between">
+                  <Badge variant="outline">Hacker News</Badge>
+                  <Badge className="bg-primary/10 text-primary border-primary/20">Pro</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Tech-savvy audience of developers, founders, and investors. Ideal for SaaS, dev tools, and startups. Conversations are high-quality and influential.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-lg border space-y-2">
+                <div className="flex items-center justify-between">
+                  <Badge variant="outline">Product Hunt</Badge>
+                  <Badge className="bg-primary/10 text-primary border-primary/20">Pro</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Where new products launch and get discovered. Perfect for tracking competitor launches, finding early adopters, and understanding product positioning.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-lg border space-y-2">
+                <div className="flex items-center justify-between">
+                  <Badge variant="outline">Google Reviews</Badge>
+                  <Badge className="bg-primary/10 text-primary border-primary/20">Pro</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Critical for local businesses and B2B services. Monitor what customers say about your Google Business listing and respond to feedback.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-lg border space-y-2">
+                <div className="flex items-center justify-between">
+                  <Badge variant="outline">Trustpilot</Badge>
+                  <Badge className="bg-primary/10 text-primary border-primary/20">Pro</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Major consumer review platform. Essential for e-commerce and service businesses. Shoppers frequently check Trustpilot before purchasing.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-lg border space-y-2">
+                <div className="flex items-center justify-between">
+                  <Badge variant="outline">App Store</Badge>
+                  <Badge className="bg-primary/10 text-primary border-primary/20">Pro</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  iOS app reviews directly from Apple&apos;s App Store. Track user sentiment, feature requests, and bugs reported by your mobile users.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-lg border space-y-2">
+                <div className="flex items-center justify-between">
+                  <Badge variant="outline">Play Store</Badge>
+                  <Badge className="bg-primary/10 text-primary border-primary/20">Pro</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Android app reviews from Google Play. Often has different feedback than iOS — important to monitor both if you have a mobile app.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-lg border space-y-2">
+                <div className="flex items-center justify-between">
+                  <Badge variant="outline">Quora</Badge>
+                  <Badge className="bg-primary/10 text-primary border-primary/20">Pro</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Q&A platform where people seek recommendations. Great for finding users actively looking for solutions — high-intent leads.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-lg border space-y-2">
+                <div className="flex items-center justify-between">
+                  <Badge variant="outline">Dev.to</Badge>
+                  <Badge className="bg-primary/10 text-primary border-primary/20">Pro</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Developer community with tutorials and discussions. Perfect for dev tools, APIs, and technical products. Engaged, technical audience.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-lg bg-muted/50">
+              <p className="text-sm text-muted-foreground">
+                <strong>Platform availability:</strong> Free users can monitor Reddit only. Pro and Team plans include access to all 9 platforms.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* ==================== SECTION 4: RESULTS & ANALYSIS ==================== */}
+      <section id="results" className="scroll-mt-20 space-y-6">
+        <div className="flex items-center gap-3 border-b pb-4">
+          <div className="p-2 rounded-lg bg-primary/10">
+            <Brain className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold">Results & Analysis</h2>
+            <p className="text-muted-foreground">Understanding and acting on discovered conversations</p>
+          </div>
+        </div>
+
+        {/* Article: Understanding Results */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Understanding Results</CardTitle>
+            <CardDescription>
+              What each result contains and how to use it
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              When Kaulby finds a conversation matching your monitor, it captures the content and runs AI analysis to help you quickly understand the context and decide whether to engage.
+            </p>
+
+            <div className="space-y-3">
+              <h4 className="font-medium">Each Result Includes</h4>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="p-3 rounded-lg border">
+                  <p className="font-medium text-sm mb-1">Title & Content</p>
+                  <p className="text-xs text-muted-foreground">
+                    The post title and body text, with your keywords highlighted for easy scanning
+                  </p>
+                </div>
+                <div className="p-3 rounded-lg border">
+                  <p className="font-medium text-sm mb-1">Source Link</p>
+                  <p className="text-xs text-muted-foreground">
+                    Direct link to the original conversation so you can read full context and engage
+                  </p>
+                </div>
+                <div className="p-3 rounded-lg border">
+                  <p className="font-medium text-sm mb-1">AI Sentiment</p>
+                  <p className="text-xs text-muted-foreground">
+                    Positive, negative, or neutral classification with confidence score
+                  </p>
+                </div>
+                <div className="p-3 rounded-lg border">
+                  <p className="font-medium text-sm mb-1">Category</p>
+                  <p className="text-xs text-muted-foreground">
+                    Pain point, solution request, praise, competitor mention, or feature request
+                  </p>
+                </div>
+                <div className="p-3 rounded-lg border">
+                  <p className="font-medium text-sm mb-1">AI Summary</p>
+                  <p className="text-xs text-muted-foreground">
+                    Brief summary of the key points for quick understanding without reading everything
+                  </p>
+                </div>
+                <div className="p-3 rounded-lg border">
+                  <p className="font-medium text-sm mb-1">Engagement Metrics</p>
+                  <p className="text-xs text-muted-foreground">
+                    Upvotes, comments, and other platform-specific engagement signals
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Article: AI Analysis */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">AI Sentiment & Categorization</CardTitle>
+            <CardDescription>
+              How our AI helps you prioritize and understand conversations
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Every result is analyzed by our AI to extract actionable insights. This helps you quickly identify which conversations need attention versus which are just informational.
+            </p>
+
+            <div className="space-y-4">
+              <h4 className="font-medium">Sentiment Analysis</h4>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="p-3 rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/30">
+                  <div className="flex items-center gap-2 mb-1">
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <p className="font-medium text-sm text-green-800 dark:text-green-200">Positive</p>
+                  </div>
+                  <p className="text-xs text-green-700 dark:text-green-300">
+                    User is happy, recommending, or sharing success. Great for testimonials and social proof.
+                  </p>
+                </div>
+                <div className="p-3 rounded-lg border border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-950/30">
+                  <div className="flex items-center gap-2 mb-1">
+                    <ArrowRight className="h-4 w-4 text-yellow-600" />
+                    <p className="font-medium text-sm text-yellow-800 dark:text-yellow-200">Neutral</p>
+                  </div>
+                  <p className="text-xs text-yellow-700 dark:text-yellow-300">
+                    Factual discussion, comparison, or question without strong emotion. Good context.
+                  </p>
+                </div>
+                <div className="p-3 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30">
+                  <div className="flex items-center gap-2 mb-1">
+                    <XCircle className="h-4 w-4 text-red-600" />
+                    <p className="font-medium text-sm text-red-800 dark:text-red-200">Negative</p>
+                  </div>
+                  <p className="text-xs text-red-700 dark:text-red-300">
+                    User frustrated, complaining, or having issues. High priority for support engagement.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h4 className="font-medium">Categories</h4>
+              <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground ml-2">
+                <li><strong>Pain Point:</strong> User expressing frustration with a problem your product could solve</li>
+                <li><strong>Solution Request:</strong> User actively looking for product recommendations</li>
+                <li><strong>Feature Request:</strong> User wanting specific functionality — valuable product feedback</li>
+                <li><strong>Competitor Mention:</strong> Discussion comparing you to alternatives</li>
+                <li><strong>Positive Feedback:</strong> Praise, recommendations, or success stories</li>
+              </ul>
+            </div>
+
+            <div className="p-4 rounded-lg bg-muted/50">
+              <p className="text-sm text-muted-foreground">
+                <strong>AI access:</strong> Free users see AI analysis on the first result only. Pro and Team users get unlimited AI analysis on all results.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Article: Filtering and Managing Results */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Filter className="h-5 w-5" />
+              Filtering and Managing Results
+            </CardTitle>
+            <CardDescription>
+              Find what matters and keep your feed organized
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              As your monitors accumulate results, filtering and organization become essential. Kaulby provides several ways to focus on what matters.
+            </p>
+
+            <div className="space-y-3">
+              <h4 className="font-medium">Filter Options</h4>
+              <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-2">
+                <li><strong>By Monitor:</strong> View results from a specific monitor only</li>
+                <li><strong>By Platform:</strong> See only Reddit, only Hacker News, etc.</li>
+                <li><strong>By Sentiment:</strong> Focus on negative mentions that need attention</li>
+                <li><strong>By Category:</strong> Find all solution requests or pain points</li>
+                <li><strong>By Date:</strong> Look at recent results or a specific time range</li>
+              </ul>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="font-medium">Managing Results</h4>
+              <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-2">
+                <li><strong>Save:</strong> Bookmark important results to review later or share with your team</li>
+                <li><strong>Hide:</strong> Remove irrelevant results from your feed (they&apos;re still stored)</li>
+                <li><strong>Export:</strong> Download results as CSV for analysis in Excel or Google Sheets (Pro/Team)</li>
+              </ul>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* ==================== SECTION 5: ALERTS & NOTIFICATIONS ==================== */}
+      <section id="alerts" className="scroll-mt-20 space-y-6">
+        <div className="flex items-center gap-3 border-b pb-4">
+          <div className="p-2 rounded-lg bg-primary/10">
+            <Bell className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold">Alerts & Notifications</h2>
+            <p className="text-muted-foreground">Stay informed without constant checking</p>
+          </div>
+        </div>
+
+        {/* Article: Email Digest */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Email Digest</CardTitle>
+            <CardDescription>
+              Daily summary of new mentions delivered to your inbox
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Email digests are the easiest way to stay on top of new mentions without constantly checking the dashboard. Configure them once and get a daily summary at your preferred time.
+            </p>
+
+            <div className="space-y-3">
+              <h4 className="font-medium">Setting Up Email Digest</h4>
+              <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground ml-2">
+                <li>Go to <strong>Settings</strong></li>
+                <li>Scroll to <strong>Notifications</strong> section</li>
+                <li>Toggle <strong>Email Digest</strong> on</li>
+                <li>Select your preferred delivery time (based on your timezone)</li>
+                <li>Save changes</li>
+              </ol>
+            </div>
+
+            <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
+              <p className="text-sm text-muted-foreground">
+                <strong>Note:</strong> Digests only send when there are new results to report. If no new mentions were found, you won&apos;t receive an email — no spam.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Article: Slack & Discord */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <MessageSquare className="h-5 w-5" />
+              Slack & Discord Integration
+              <Badge variant="secondary" className="ml-2">Pro</Badge>
+            </CardTitle>
+            <CardDescription>
+              Get instant notifications in your team&apos;s chat
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <p className="text-sm text-muted-foreground">
+              Connect Kaulby to Slack or Discord to receive instant notifications when new mentions appear. Perfect for teams who want to respond quickly to customer conversations.
+            </p>
+
+            {/* Slack Setup */}
+            <div className="space-y-3">
+              <h4 className="font-semibold flex items-center gap-2">
+                <span className="w-6 h-6 rounded bg-[#4A154B] flex items-center justify-center text-white text-xs font-bold">S</span>
+                Slack Setup
+              </h4>
+              <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground ml-4">
+                <li>Go to <a href="https://api.slack.com/apps" target="_blank" rel="noopener" className="text-primary hover:underline inline-flex items-center gap-1">api.slack.com/apps <ExternalLink className="h-3 w-3" /></a></li>
+                <li>Click <strong>&quot;Create New App&quot;</strong> → <strong>&quot;From scratch&quot;</strong></li>
+                <li>Name it (e.g., &quot;Kaulby Alerts&quot;) and select your workspace</li>
+                <li>Go to <strong>Incoming Webhooks</strong> in the sidebar and toggle it <strong>On</strong></li>
+                <li>Click <strong>&quot;Add New Webhook to Workspace&quot;</strong> and select a channel</li>
+                <li>Copy the Webhook URL (starts with <code className="px-1 py-0.5 bg-muted rounded text-xs">https://hooks.slack.com/...</code>)</li>
+                <li>In Kaulby, go to <strong>Settings → Notifications</strong> and paste the URL</li>
+              </ol>
+            </div>
+
+            {/* Discord Setup */}
+            <div className="space-y-3">
+              <h4 className="font-semibold flex items-center gap-2">
+                <span className="w-6 h-6 rounded bg-[#5865F2] flex items-center justify-center text-white text-xs font-bold">D</span>
+                Discord Setup
+              </h4>
+              <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground ml-4">
+                <li>Open Discord and go to your server <strong>Settings</strong></li>
+                <li>Click <strong>Integrations</strong> → <strong>Webhooks</strong> → <strong>New Webhook</strong></li>
+                <li>Name it and select the target channel</li>
+                <li>Click <strong>&quot;Copy Webhook URL&quot;</strong></li>
+                <li><strong>Important:</strong> Add <code className="px-1 py-0.5 bg-muted rounded text-xs">/slack</code> to the end of the URL</li>
+                <li>Example: <code className="px-1 py-0.5 bg-muted rounded text-xs text-[10px]">https://discord.com/api/webhooks/.../slack</code></li>
+                <li>Paste this modified URL in Kaulby Settings</li>
+              </ol>
+              <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                <p className="text-xs text-amber-800 dark:text-amber-200">
+                  <strong>Why /slack?</strong> Discord supports Slack-compatible webhooks. Adding <code>/slack</code> enables compatibility mode so our messages display correctly.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Article: Webhooks */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Webhook className="h-5 w-5" />
+              Webhooks
+              <Badge variant="secondary" className="ml-2">Team</Badge>
+            </CardTitle>
+            <CardDescription>
+              Send data to your own systems for custom integrations
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Webhooks allow you to receive real-time data when new results are found, enabling custom integrations with your CRM, support system, or internal tools.
+            </p>
+
+            <div className="space-y-3">
+              <h4 className="font-medium">Setting Up Webhooks</h4>
+              <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground ml-2">
+                <li>Go to <strong>Settings → Webhooks</strong></li>
+                <li>Click <strong>Add Webhook</strong></li>
+                <li>Enter your endpoint URL (must be HTTPS)</li>
+                <li>Select which events to receive</li>
+                <li>Optionally add a secret for signature verification</li>
+                <li>Save and use the &quot;Test&quot; button to verify</li>
+              </ol>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="font-medium">Webhook Payload</h4>
+              <div className="p-3 rounded-lg bg-muted font-mono text-xs overflow-x-auto">
+                <pre>{`{
   "event": "new_result",
-  "monitor_id": "...",
+  "monitor_id": "mon_abc123",
   "result": {
-    "id": "...",
+    "id": "res_xyz789",
     "platform": "reddit",
-    "title": "...",
-    "content": "...",
-    "sentiment": "positive",
-    "url": "...",
-    "created_at": "..."
+    "title": "Looking for alternatives to...",
+    "sentiment": "neutral",
+    "category": "solution_request",
+    "url": "https://reddit.com/...",
+    "created_at": "2024-01-15T10:30:00Z"
   }
 }`}</pre>
+              </div>
             </div>
-          </div>
 
-          <div className="space-y-3">
-            <h4 className="font-medium">Use Cases</h4>
-            <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-2">
-              <li>Send mentions to your CRM (HubSpot, Salesforce)</li>
-              <li>Create tickets in your support system</li>
-              <li>Trigger Zapier/Make automations</li>
-              <li>Store data in your own database</li>
-              <li>Send to custom Slack/Teams bots</li>
-            </ul>
-          </div>
-        </CardContent>
-      </Card>
+            <div className="space-y-3">
+              <h4 className="font-medium">Use Cases</h4>
+              <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-2">
+                <li>Create leads in your CRM (HubSpot, Salesforce) when someone asks for recommendations</li>
+                <li>Create support tickets when negative sentiment is detected</li>
+                <li>Trigger Zapier or Make automations</li>
+                <li>Feed data into your analytics pipeline</li>
+              </ul>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
 
-      {/* API Access */}
-      <Card id="api-access">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Key className="h-5 w-5" />
-            API Access
-            <Badge variant="secondary" className="ml-2">Team Plan</Badge>
-          </CardTitle>
-          <CardDescription>Integrate Kaulby with your own applications</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-4">
-            <h3 className="font-semibold">Getting Your API Key</h3>
-            <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground ml-4">
+      {/* ==================== SECTION 6: API ACCESS ==================== */}
+      <section id="api" className="scroll-mt-20 space-y-6">
+        <div className="flex items-center gap-3 border-b pb-4">
+          <div className="p-2 rounded-lg bg-primary/10">
+            <Key className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold flex items-center gap-2">
+              API Access
+              <Badge variant="secondary">Team Plan</Badge>
+            </h2>
+            <p className="text-muted-foreground">Build custom integrations with the Kaulby API</p>
+          </div>
+        </div>
+
+        {/* Article: Getting Started with API */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Getting Your API Key</CardTitle>
+            <CardDescription>
+              Generate and manage API keys for programmatic access
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground ml-2">
               <li>Go to <strong>Settings</strong> → scroll to <strong>API Access</strong></li>
               <li>Click <strong>Create API Key</strong></li>
-              <li>Give your key a descriptive name (e.g., &quot;Production App&quot;, &quot;Zapier&quot;)</li>
+              <li>Give your key a descriptive name (e.g., &quot;Production App&quot;, &quot;Zapier Integration&quot;)</li>
               <li><strong>Copy the key immediately</strong> — it won&apos;t be shown again</li>
-              <li>Store it securely in your environment variables</li>
+              <li>Store it securely in your environment variables — never commit it to code</li>
             </ol>
-          </div>
 
-          <div className="space-y-4">
-            <h3 className="font-semibold">Authentication</h3>
-            <p className="text-sm text-muted-foreground">
-              Include your API key in the Authorization header:
-            </p>
-            <div className="p-3 rounded-lg bg-muted font-mono text-xs space-y-2">
-              <p className="text-muted-foreground"># Recommended method</p>
-              <p>Authorization: Bearer kaulby_live_your_key_here</p>
+            <div className="p-4 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
+              <p className="text-sm text-red-800 dark:text-red-200">
+                <strong>Security:</strong> Treat your API key like a password. If compromised, revoke it immediately in Settings and create a new one.
+              </p>
             </div>
-          </div>
+          </CardContent>
+        </Card>
 
-          <div className="space-y-4">
-            <h3 className="font-semibold">Available Endpoints</h3>
-            <div className="space-y-3 text-sm">
-              <div className="p-3 rounded-lg border">
-                <p className="font-medium font-mono">GET /api/v1/monitors</p>
-                <p className="text-muted-foreground text-xs mt-1">List all your monitors. Supports <code>?limit</code>, <code>?offset</code>, <code>?active</code> query parameters.</p>
-              </div>
-              <div className="p-3 rounded-lg border">
-                <p className="font-medium font-mono">POST /api/v1/monitors</p>
-                <p className="text-muted-foreground text-xs mt-1">Create a new monitor. Body: <code>{`{ "name": "...", "keywords": [...], "platforms": [...] }`}</code></p>
-              </div>
-              <div className="p-3 rounded-lg border">
-                <p className="font-medium font-mono">GET /api/v1/results</p>
-                <p className="text-muted-foreground text-xs mt-1">List results. Supports <code>?monitor_id</code>, <code>?platform</code>, <code>?sentiment</code>, <code>?from</code>, <code>?to</code> filters.</p>
-              </div>
-              <div className="p-3 rounded-lg border">
-                <p className="font-medium font-mono">GET /api/v1/usage</p>
-                <p className="text-muted-foreground text-xs mt-1">Get your current usage statistics and plan limits.</p>
+        {/* Article: API Reference */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">API Endpoints</CardTitle>
+            <CardDescription>
+              Available endpoints and how to use them
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-3">
+              <h4 className="font-medium">Authentication</h4>
+              <p className="text-sm text-muted-foreground">Include your API key in the Authorization header:</p>
+              <div className="p-3 rounded-lg bg-muted font-mono text-xs">
+                Authorization: Bearer kaulby_live_your_key_here
               </div>
             </div>
-          </div>
 
-          <div className="space-y-4">
-            <h3 className="font-semibold">Rate Limits</h3>
-            <p className="text-sm text-muted-foreground">
-              API access is limited to <strong>10,000 requests per day</strong>. The limit resets at midnight UTC.
-              Check your usage anytime with <code className="px-1 py-0.5 bg-muted rounded text-xs">GET /api/v1/usage</code>.
-            </p>
-          </div>
+            <div className="space-y-3">
+              <h4 className="font-medium">Endpoints</h4>
+              <div className="space-y-2">
+                <div className="p-3 rounded-lg border">
+                  <p className="font-mono text-sm font-medium">GET /api/v1/monitors</p>
+                  <p className="text-xs text-muted-foreground mt-1">List all monitors. Supports <code>?limit</code>, <code>?offset</code>, <code>?active</code></p>
+                </div>
+                <div className="p-3 rounded-lg border">
+                  <p className="font-mono text-sm font-medium">POST /api/v1/monitors</p>
+                  <p className="text-xs text-muted-foreground mt-1">Create a new monitor</p>
+                </div>
+                <div className="p-3 rounded-lg border">
+                  <p className="font-mono text-sm font-medium">GET /api/v1/results</p>
+                  <p className="text-xs text-muted-foreground mt-1">List results. Supports <code>?monitor_id</code>, <code>?platform</code>, <code>?sentiment</code>, <code>?from</code>, <code>?to</code></p>
+                </div>
+                <div className="p-3 rounded-lg border">
+                  <p className="font-mono text-sm font-medium">GET /api/v1/usage</p>
+                  <p className="text-xs text-muted-foreground mt-1">Get your current usage statistics and limits</p>
+                </div>
+              </div>
+            </div>
 
-          <div className="space-y-4">
-            <h3 className="font-semibold">Example: Fetch Recent Results</h3>
-            <div className="p-3 rounded-lg bg-muted font-mono text-xs overflow-x-auto">
-              <pre>{`curl -H "Authorization: Bearer YOUR_API_KEY" \\
+            <div className="space-y-3">
+              <h4 className="font-medium">Rate Limits</h4>
+              <p className="text-sm text-muted-foreground">
+                API access is limited to <strong>10,000 requests per day</strong>. The limit resets at midnight UTC. Check your remaining quota via the usage endpoint.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="font-medium">Example Request</h4>
+              <div className="p-3 rounded-lg bg-muted font-mono text-xs overflow-x-auto">
+                <pre>{`curl -H "Authorization: Bearer YOUR_API_KEY" \\
   "https://kaulbyapp.com/api/v1/results?limit=10&sentiment=negative"`}</pre>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Data Export */}
-      <Card id="data-export">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Download className="h-5 w-5" />
-            Data Export
-          </CardTitle>
-          <CardDescription>Download your data anytime</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Export your monitoring data for analysis, reporting, or backup purposes.
-          </p>
-
-          <div className="space-y-3">
-            <h4 className="font-medium">Export Options</h4>
-            <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-2">
-              <li><strong>Full Export (JSON):</strong> Complete data including monitors, results, and settings</li>
-              <li><strong>Results Only (CSV):</strong> Spreadsheet-friendly format for analysis in Excel/Sheets</li>
-              <li><strong>Monitors Only (JSON):</strong> Just your monitor configurations</li>
-            </ul>
-          </div>
-
-          <div className="space-y-3">
-            <h4 className="font-medium">How to Export</h4>
-            <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground ml-2">
-              <li>Go to <strong>Settings</strong></li>
-              <li>Scroll to <strong>Your Data</strong> section</li>
-              <li>Click <strong>Export Data</strong></li>
-              <li>Select the format you need</li>
-              <li>Download starts automatically</li>
-            </ol>
-          </div>
-
-          <div className="p-3 rounded-lg bg-muted/50">
-            <p className="text-xs">
-              <strong>Note:</strong> CSV export is available for Pro and Team plans. Free users can export their data in JSON format.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Team Management */}
-      <Card id="team">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Team Management
-            <Badge variant="secondary" className="ml-2">Team Plan</Badge>
-          </CardTitle>
-          <CardDescription>Collaborate with your team</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Team plan includes 5 seats with the ability to add more. Share monitors and collaborate on responses.
-          </p>
-
-          <div className="space-y-3">
-            <h4 className="font-medium">Creating a Workspace</h4>
-            <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground ml-2">
-              <li>Go to <strong>Settings</strong> → <strong>Team</strong></li>
-              <li>Click <strong>Create Workspace</strong></li>
-              <li>Enter a name for your workspace</li>
-              <li>You&apos;ll be set as the workspace owner</li>
-            </ol>
-          </div>
-
-          <div className="space-y-3">
-            <h4 className="font-medium">Inviting Team Members</h4>
-            <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground ml-2">
-              <li>In the Team section, enter their email address</li>
-              <li>Click <strong>Invite</strong></li>
-              <li>They&apos;ll receive an email with a link to join</li>
-              <li>Once accepted, they have access to all workspace monitors</li>
-            </ol>
-          </div>
-
-          <div className="space-y-3">
-            <h4 className="font-medium">Roles</h4>
-            <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-2">
-              <li><strong>Owner:</strong> Full access, can manage billing and members</li>
-              <li><strong>Member:</strong> Can view and manage monitors, but cannot access billing</li>
-            </ul>
-          </div>
-
-          <div className="p-3 rounded-lg bg-muted/50">
-            <p className="text-xs">
-              <strong>Pricing:</strong> Team plan includes 5 seats. Additional seats are $15/user/month.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Account Settings */}
-      <Card id="account">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5" />
-            Account Settings
-          </CardTitle>
-          <CardDescription>Manage your account preferences</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-3">
-            <h4 className="font-medium">Available Settings</h4>
-            <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-2">
-              <li><strong>Timezone:</strong> Set your timezone for email digest delivery (9 AM your time)</li>
-              <li><strong>Email Preferences:</strong> Configure which emails you receive</li>
-              <li><strong>Plan & Billing:</strong> View current plan, upgrade, or manage subscription</li>
-              <li><strong>Data Export:</strong> Download all your data</li>
-              <li><strong>Delete Account:</strong> Permanently remove your account and data</li>
-            </ul>
-          </div>
-
-          <div className="space-y-3">
-            <h4 className="font-medium">Changing Your Plan</h4>
-            <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground ml-2">
-              <li>Go to <strong>Settings</strong></li>
-              <li>Scroll to <strong>Subscription Plans</strong></li>
-              <li>Click <strong>Upgrade</strong> on the plan you want</li>
-              <li>Complete checkout (14-day free trial for Pro/Team)</li>
-            </ol>
-          </div>
-
-          <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
-            <p className="text-xs text-amber-800 dark:text-amber-200">
-              <strong>Cancellation:</strong> You can cancel anytime from Settings. You&apos;ll keep access until the end of your billing period.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Plan Comparison */}
-      <Card id="plans">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CreditCard className="h-5 w-5" />
-            Plan Comparison
-          </CardTitle>
-          <CardDescription>
-            Choose the right plan for your needs
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left py-3 pr-4 font-medium">Feature</th>
-                  <th className="text-center py-3 px-4 font-medium">Free</th>
-                  <th className="text-center py-3 px-4 font-medium bg-primary/5">Pro</th>
-                  <th className="text-center py-3 px-4 font-medium">Team</th>
-                </tr>
-              </thead>
-              <tbody className="text-muted-foreground">
-                <tr className="border-b">
-                  <td className="py-3 pr-4">Monitors</td>
-                  <td className="text-center py-3 px-4">1</td>
-                  <td className="text-center py-3 px-4 bg-primary/5">10</td>
-                  <td className="text-center py-3 px-4">30</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="py-3 pr-4">Keywords per monitor</td>
-                  <td className="text-center py-3 px-4">3</td>
-                  <td className="text-center py-3 px-4 bg-primary/5">20</td>
-                  <td className="text-center py-3 px-4">35</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="py-3 pr-4">Platforms</td>
-                  <td className="text-center py-3 px-4">Reddit only</td>
-                  <td className="text-center py-3 px-4 bg-primary/5">All 9</td>
-                  <td className="text-center py-3 px-4">All 9</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="py-3 pr-4">History retention</td>
-                  <td className="text-center py-3 px-4">3 days</td>
-                  <td className="text-center py-3 px-4 bg-primary/5">90 days</td>
-                  <td className="text-center py-3 px-4">1 year</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="py-3 pr-4">Refresh cycle</td>
-                  <td className="text-center py-3 px-4">24 hours</td>
-                  <td className="text-center py-3 px-4 bg-primary/5">4 hours</td>
-                  <td className="text-center py-3 px-4">2 hours</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="py-3 pr-4">AI analysis</td>
-                  <td className="text-center py-3 px-4">First result only</td>
-                  <td className="text-center py-3 px-4 bg-primary/5">Unlimited</td>
-                  <td className="text-center py-3 px-4">Unlimited</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="py-3 pr-4">Email digest</td>
-                  <td className="text-center py-3 px-4">—</td>
-                  <td className="text-center py-3 px-4 bg-primary/5">Daily</td>
-                  <td className="text-center py-3 px-4">Configurable</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="py-3 pr-4">Slack/Discord</td>
-                  <td className="text-center py-3 px-4">—</td>
-                  <td className="text-center py-3 px-4 bg-primary/5">✓</td>
-                  <td className="text-center py-3 px-4">✓</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="py-3 pr-4">CSV Export</td>
-                  <td className="text-center py-3 px-4">—</td>
-                  <td className="text-center py-3 px-4 bg-primary/5">✓</td>
-                  <td className="text-center py-3 px-4">✓</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="py-3 pr-4">Webhooks</td>
-                  <td className="text-center py-3 px-4">—</td>
-                  <td className="text-center py-3 px-4 bg-primary/5">—</td>
-                  <td className="text-center py-3 px-4">✓</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="py-3 pr-4">API access</td>
-                  <td className="text-center py-3 px-4">—</td>
-                  <td className="text-center py-3 px-4 bg-primary/5">—</td>
-                  <td className="text-center py-3 px-4">✓</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="py-3 pr-4">Team members</td>
-                  <td className="text-center py-3 px-4">—</td>
-                  <td className="text-center py-3 px-4 bg-primary/5">—</td>
-                  <td className="text-center py-3 px-4">5 included</td>
-                </tr>
-                <tr>
-                  <td className="py-3 pr-4 font-medium text-foreground">Price</td>
-                  <td className="text-center py-3 px-4 font-medium text-foreground">$0</td>
-                  <td className="text-center py-3 px-4 font-medium text-foreground bg-primary/5">$29/mo</td>
-                  <td className="text-center py-3 px-4 font-medium text-foreground">$99/mo</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <p className="text-xs text-muted-foreground mt-4">
-            All paid plans include a 14-day free trial. Annual billing saves 2 months.
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* Troubleshooting */}
-      <Card id="troubleshooting">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            Troubleshooting
-          </CardTitle>
-          <CardDescription>Common issues and solutions</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="p-4 rounded-lg border">
-              <h4 className="font-medium mb-2">No results appearing for my monitor</h4>
-              <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• Keywords may be too specific—try broader terms</li>
-                <li>• New monitors can take up to 24 hours for first results</li>
-                <li>• Check that the platforms you selected are active</li>
-                <li>• Verify your plan supports the platforms you chose</li>
-              </ul>
-            </div>
-
-            <div className="p-4 rounded-lg border">
-              <h4 className="font-medium mb-2">Slack/Discord notifications not working</h4>
-              <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• Verify the webhook URL is correct and complete</li>
-                <li>• For Discord, make sure you added <code className="px-1 py-0.5 bg-muted rounded text-xs">/slack</code> to the end</li>
-                <li>• Check that the Slack app has permission to post to the channel</li>
-                <li>• Try the &quot;Test&quot; button in Settings to verify the connection</li>
-              </ul>
-            </div>
-
-            <div className="p-4 rounded-lg border">
-              <h4 className="font-medium mb-2">API key not working</h4>
-              <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• Ensure you&apos;re on the Team plan (API is Team-only)</li>
-                <li>• Check the Authorization header format: <code className="px-1 py-0.5 bg-muted rounded text-xs">Bearer kaulby_live_xxx</code></li>
-                <li>• Verify the key hasn&apos;t been revoked in Settings</li>
-                <li>• Check if you&apos;ve hit the daily rate limit (10,000 requests)</li>
-              </ul>
-            </div>
-
-            <div className="p-4 rounded-lg border">
-              <h4 className="font-medium mb-2">Email digest not arriving</h4>
-              <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• Check your spam/junk folder</li>
-                <li>• Verify your timezone is set correctly in Settings</li>
-                <li>• Digests only send if there are new results</li>
-                <li>• Add <code className="px-1 py-0.5 bg-muted rounded text-xs">noreply@kaulbyapp.com</code> to your contacts</li>
-              </ul>
-            </div>
-
-            <div className="p-4 rounded-lg border">
-              <h4 className="font-medium mb-2">Results seem outdated</h4>
-              <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• Free plan has 24-hour delay; Pro refreshes every 4 hours; Team every 2 hours</li>
-                <li>• Click the refresh icon on a monitor to trigger an immediate scan</li>
-                <li>• Some platforms have inherent delays in indexing new content</li>
-              </ul>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* FAQs */}
-      <Card id="faq">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5" />
-            Frequently Asked Questions
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="p-4 rounded-lg border bg-card">
-              <h4 className="font-medium mb-2">How often are results updated?</h4>
-              <p className="text-sm text-muted-foreground">
-                Free: 24-hour delay. Pro: every 4 hours. Team: every 2 hours.
-                You can also manually refresh any monitor.
-              </p>
-            </div>
-            <div className="p-4 rounded-lg border bg-card">
-              <h4 className="font-medium mb-2">How many keywords can I track?</h4>
-              <p className="text-sm text-muted-foreground">
-                Free: 3 per monitor. Pro: 20 per monitor. Team: 35 per monitor.
-                Use quotes for exact phrase matching.
-              </p>
-            </div>
-            <div className="p-4 rounded-lg border bg-card">
-              <h4 className="font-medium mb-2">How long are results stored?</h4>
-              <p className="text-sm text-muted-foreground">
-                Free: 3 days. Pro: 90 days. Team: 1 year.
-                Export your data anytime from Settings.
-              </p>
-            </div>
-            <div className="p-4 rounded-lg border bg-card">
-              <h4 className="font-medium mb-2">Can I cancel anytime?</h4>
-              <p className="text-sm text-muted-foreground">
-                Yes. Cancel from Settings and keep access until your billing period ends.
-                No questions asked.
-              </p>
-            </div>
-            <div className="p-4 rounded-lg border bg-card">
-              <h4 className="font-medium mb-2">Is there a free trial?</h4>
-              <p className="text-sm text-muted-foreground">
-                Pro and Team plans include a 14-day free trial.
-                No charge until the trial ends.
-              </p>
-            </div>
-            <div className="p-4 rounded-lg border bg-card">
-              <h4 className="font-medium mb-2">Can I add more team members?</h4>
-              <p className="text-sm text-muted-foreground">
-                Team plan includes 5 seats. Additional members are $15/user/month.
-                Contact us for larger teams.
-              </p>
-            </div>
-            <div className="p-4 rounded-lg border bg-card">
-              <h4 className="font-medium mb-2">How accurate is the AI analysis?</h4>
-              <p className="text-sm text-muted-foreground">
-                Very accurate for sentiment and categorization. We use advanced LLMs
-                and continuously improve based on feedback.
-              </p>
-            </div>
-            <div className="p-4 rounded-lg border bg-card">
-              <h4 className="font-medium mb-2">Can I export my data?</h4>
-              <p className="text-sm text-muted-foreground">
-                Yes. All plans can export JSON. Pro/Team can also export CSV.
-                Team has full API access for custom integrations.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Contact */}
-      <Card id="contact">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Mail className="h-5 w-5" />
-            Need More Help?
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Can&apos;t find what you&apos;re looking for? Our team is here to help.
-          </p>
-          <div className="p-4 rounded-lg border bg-card">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <Mail className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="font-medium">Email Support</p>
-                <a
-                  href="mailto:support@kaulbyapp.com"
-                  className="text-sm text-primary hover:underline"
-                >
-                  support@kaulbyapp.com
-                </a>
               </div>
             </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* ==================== SECTION 7: BILLING & PLANS ==================== */}
+      <section id="billing" className="scroll-mt-20 space-y-6">
+        <div className="flex items-center gap-3 border-b pb-4">
+          <div className="p-2 rounded-lg bg-primary/10">
+            <CreditCard className="h-6 w-6 text-primary" />
           </div>
-          <p className="text-xs text-muted-foreground">
-            We typically respond within 24 hours. Team customers receive priority support.
-          </p>
-        </CardContent>
-      </Card>
+          <div>
+            <h2 className="text-2xl font-bold">Billing & Plans</h2>
+            <p className="text-muted-foreground">Understand pricing and manage your subscription</p>
+          </div>
+        </div>
+
+        {/* Article: Plan Comparison */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Plan Comparison</CardTitle>
+            <CardDescription>
+              Choose the right plan for your needs
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-3 pr-4 font-medium">Feature</th>
+                    <th className="text-center py-3 px-4 font-medium">Free</th>
+                    <th className="text-center py-3 px-4 font-medium bg-primary/5">Pro</th>
+                    <th className="text-center py-3 px-4 font-medium">Team</th>
+                  </tr>
+                </thead>
+                <tbody className="text-muted-foreground">
+                  <tr className="border-b">
+                    <td className="py-3 pr-4">Monitors</td>
+                    <td className="text-center py-3 px-4">1</td>
+                    <td className="text-center py-3 px-4 bg-primary/5">10</td>
+                    <td className="text-center py-3 px-4">30</td>
+                  </tr>
+                  <tr className="border-b">
+                    <td className="py-3 pr-4">Keywords per monitor</td>
+                    <td className="text-center py-3 px-4">3</td>
+                    <td className="text-center py-3 px-4 bg-primary/5">20</td>
+                    <td className="text-center py-3 px-4">35</td>
+                  </tr>
+                  <tr className="border-b">
+                    <td className="py-3 pr-4">Platforms</td>
+                    <td className="text-center py-3 px-4">Reddit only</td>
+                    <td className="text-center py-3 px-4 bg-primary/5">All 9</td>
+                    <td className="text-center py-3 px-4">All 9</td>
+                  </tr>
+                  <tr className="border-b">
+                    <td className="py-3 pr-4">History retention</td>
+                    <td className="text-center py-3 px-4">3 days</td>
+                    <td className="text-center py-3 px-4 bg-primary/5">90 days</td>
+                    <td className="text-center py-3 px-4">1 year</td>
+                  </tr>
+                  <tr className="border-b">
+                    <td className="py-3 pr-4">Refresh cycle</td>
+                    <td className="text-center py-3 px-4">24 hours</td>
+                    <td className="text-center py-3 px-4 bg-primary/5">4 hours</td>
+                    <td className="text-center py-3 px-4">2 hours</td>
+                  </tr>
+                  <tr className="border-b">
+                    <td className="py-3 pr-4">AI analysis</td>
+                    <td className="text-center py-3 px-4">First result only</td>
+                    <td className="text-center py-3 px-4 bg-primary/5">Unlimited</td>
+                    <td className="text-center py-3 px-4">Unlimited</td>
+                  </tr>
+                  <tr className="border-b">
+                    <td className="py-3 pr-4">Slack/Discord</td>
+                    <td className="text-center py-3 px-4">—</td>
+                    <td className="text-center py-3 px-4 bg-primary/5">✓</td>
+                    <td className="text-center py-3 px-4">✓</td>
+                  </tr>
+                  <tr className="border-b">
+                    <td className="py-3 pr-4">Webhooks</td>
+                    <td className="text-center py-3 px-4">—</td>
+                    <td className="text-center py-3 px-4 bg-primary/5">—</td>
+                    <td className="text-center py-3 px-4">✓</td>
+                  </tr>
+                  <tr className="border-b">
+                    <td className="py-3 pr-4">API access</td>
+                    <td className="text-center py-3 px-4">—</td>
+                    <td className="text-center py-3 px-4 bg-primary/5">—</td>
+                    <td className="text-center py-3 px-4">✓</td>
+                  </tr>
+                  <tr className="border-b">
+                    <td className="py-3 pr-4">Team members</td>
+                    <td className="text-center py-3 px-4">—</td>
+                    <td className="text-center py-3 px-4 bg-primary/5">—</td>
+                    <td className="text-center py-3 px-4">5 included</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 pr-4 font-medium text-foreground">Price</td>
+                    <td className="text-center py-3 px-4 font-medium text-foreground">$0</td>
+                    <td className="text-center py-3 px-4 font-medium text-foreground bg-primary/5">$29/mo</td>
+                    <td className="text-center py-3 px-4 font-medium text-foreground">$99/mo</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p className="text-xs text-muted-foreground mt-4">
+              All paid plans include a 14-day free trial. Annual billing saves 2 months. Additional team members are $15/user/month.
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Article: Day Pass */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Clock className="h-5 w-5" />
+              Day Pass
+            </CardTitle>
+            <CardDescription>
+              24-hour access to Pro features without a subscription
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Need Pro features for a quick project? The Day Pass gives you 24 hours of Pro-level access for a one-time fee — no subscription required.
+            </p>
+
+            <div className="space-y-3">
+              <h4 className="font-medium">What&apos;s Included</h4>
+              <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-2">
+                <li>Up to 10 monitors during your 24-hour window</li>
+                <li>Access to all 9 platforms</li>
+                <li>Unlimited AI analysis</li>
+                <li>20 keywords per monitor</li>
+                <li>CSV export</li>
+              </ul>
+            </div>
+
+            <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
+              <p className="text-sm text-muted-foreground">
+                <strong>Best for:</strong> One-time competitor research, pre-launch brand monitoring setup, or trying Pro features before committing to a subscription.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Article: Managing Subscription */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Managing Your Subscription</CardTitle>
+            <CardDescription>
+              Upgrade, downgrade, or cancel anytime
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-3">
+              <h4 className="font-medium">Upgrading</h4>
+              <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground ml-2">
+                <li>Go to <strong>Settings</strong></li>
+                <li>Find your current plan in the <strong>Subscription</strong> section</li>
+                <li>Click <strong>Upgrade</strong> on the plan you want</li>
+                <li>Complete checkout — new features are available immediately</li>
+              </ol>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="font-medium">Downgrading or Canceling</h4>
+              <p className="text-sm text-muted-foreground">
+                You can cancel anytime from Settings. Your subscription remains active until the end of your billing period. If you downgrade, features beyond your new plan&apos;s limits become read-only (you won&apos;t lose data).
+              </p>
+            </div>
+
+            <div className="p-4 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+              <p className="text-sm text-amber-800 dark:text-amber-200">
+                <strong>Note:</strong> If you have more monitors than your new plan allows, the excess monitors will be paused (not deleted). You can reactivate them if you upgrade again.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* ==================== SECTION 8: TEAM MANAGEMENT ==================== */}
+      <section id="team" className="scroll-mt-20 space-y-6">
+        <div className="flex items-center gap-3 border-b pb-4">
+          <div className="p-2 rounded-lg bg-primary/10">
+            <Users className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold flex items-center gap-2">
+              Team Management
+              <Badge variant="secondary">Team Plan</Badge>
+            </h2>
+            <p className="text-muted-foreground">Collaborate with your team on monitoring</p>
+          </div>
+        </div>
+
+        {/* Article: Team Setup */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Setting Up Your Workspace</CardTitle>
+            <CardDescription>
+              Create a shared workspace for your team
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              The Team plan allows multiple people to access your Kaulby account. All team members share monitors, results, and settings — perfect for marketing, product, and support teams working together.
+            </p>
+
+            <div className="space-y-3">
+              <h4 className="font-medium">Creating a Workspace</h4>
+              <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground ml-2">
+                <li>Upgrade to the Team plan (or start a trial)</li>
+                <li>Go to <strong>Settings</strong> → <strong>Team</strong></li>
+                <li>Your workspace is automatically created</li>
+                <li>Start inviting team members</li>
+              </ol>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Article: Inviting Members */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Inviting Team Members</CardTitle>
+            <CardDescription>
+              Add colleagues to your workspace
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-3">
+              <h4 className="font-medium">How to Invite</h4>
+              <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground ml-2">
+                <li>Go to <strong>Settings</strong> → <strong>Team</strong></li>
+                <li>Enter the email address of the person you want to invite</li>
+                <li>Click <strong>Invite</strong></li>
+                <li>They&apos;ll receive an email with a link to join</li>
+                <li>Once they accept, they have access to all monitors and results</li>
+              </ol>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="font-medium">Roles</h4>
+              <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-2">
+                <li><strong>Owner:</strong> Full access including billing, member management, and account deletion</li>
+                <li><strong>Member:</strong> Can view and manage monitors and results, but cannot access billing or manage other members</li>
+              </ul>
+            </div>
+
+            <div className="p-4 rounded-lg bg-muted/50">
+              <p className="text-sm text-muted-foreground">
+                <strong>Seats:</strong> Team plan includes 5 seats. Additional members are $15/user/month. Remove members anytime from the Team settings.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* ==================== SECTION 9: ACCOUNT & SETTINGS ==================== */}
+      <section id="account" className="scroll-mt-20 space-y-6">
+        <div className="flex items-center gap-3 border-b pb-4">
+          <div className="p-2 rounded-lg bg-primary/10">
+            <Settings className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold">Account & Settings</h2>
+            <p className="text-muted-foreground">Manage your account preferences and data</p>
+          </div>
+        </div>
+
+        {/* Article: Profile Settings */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Profile Settings</CardTitle>
+            <CardDescription>
+              Configure your account preferences
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-3">
+              <h4 className="font-medium">Available Settings</h4>
+              <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-2">
+                <li><strong>Timezone:</strong> Set your timezone for email digest delivery (sent at 9 AM your time)</li>
+                <li><strong>Email Preferences:</strong> Control which emails you receive</li>
+                <li><strong>Profile:</strong> Update your name and profile picture via Clerk</li>
+              </ul>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Article: Data Export */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Download className="h-5 w-5" />
+              Data Export
+            </CardTitle>
+            <CardDescription>
+              Download your data anytime
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Your data belongs to you. Export it anytime for backup, analysis, or migration purposes.
+            </p>
+
+            <div className="space-y-3">
+              <h4 className="font-medium">Export Options</h4>
+              <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-2">
+                <li><strong>Full Export (JSON):</strong> Complete data including monitors, results, settings, and AI analysis</li>
+                <li><strong>Results Only (CSV):</strong> Spreadsheet-friendly format for analysis in Excel or Google Sheets (Pro/Team)</li>
+              </ul>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="font-medium">How to Export</h4>
+              <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground ml-2">
+                <li>Go to <strong>Settings</strong></li>
+                <li>Scroll to <strong>Your Data</strong> section</li>
+                <li>Click <strong>Export Data</strong></li>
+                <li>Select your preferred format</li>
+                <li>Download starts automatically</li>
+              </ol>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Article: Account Deletion */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Account Deletion
+            </CardTitle>
+            <CardDescription>
+              Permanently delete your account and data
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              If you decide to leave Kaulby, you can request account deletion from Settings. This process is designed to prevent accidents while respecting your right to be forgotten.
+            </p>
+
+            <div className="space-y-3">
+              <h4 className="font-medium">What Happens When You Delete</h4>
+              <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-2">
+                <li>Your request is queued for 7 days (you can cancel during this period)</li>
+                <li>After 7 days, ALL your data is permanently deleted</li>
+                <li>This includes: monitors, results, AI analysis, settings, API keys, and team data</li>
+                <li>Any active subscription is canceled</li>
+                <li>This action is irreversible</li>
+              </ul>
+            </div>
+
+            <div className="p-4 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
+              <p className="text-sm text-red-800 dark:text-red-200">
+                <strong>Recommendation:</strong> Export your data before requesting deletion. Once deleted, we cannot recover any information.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* ==================== SECTION 10: TROUBLESHOOTING ==================== */}
+      <section id="troubleshooting" className="scroll-mt-20 space-y-6">
+        <div className="flex items-center gap-3 border-b pb-4">
+          <div className="p-2 rounded-lg bg-primary/10">
+            <Shield className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold">Troubleshooting</h2>
+            <p className="text-muted-foreground">Common issues and how to resolve them</p>
+          </div>
+        </div>
+
+        {/* Article: Common Issues */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Common Issues</CardTitle>
+            <CardDescription>
+              Quick solutions to frequent problems
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-4">
+              <div className="p-4 rounded-lg border">
+                <h4 className="font-medium mb-2">No results appearing for my monitor</h4>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>• <strong>Wait for the first scan:</strong> New monitors can take up to 24 hours (Free) or 4 hours (Pro) for first results</li>
+                  <li>• <strong>Check your keywords:</strong> May be too specific — try broader terms</li>
+                  <li>• <strong>Verify platforms:</strong> Ensure the platforms you selected are active and included in your plan</li>
+                  <li>• <strong>Low volume topic:</strong> Some topics simply don&apos;t have many public discussions</li>
+                </ul>
+              </div>
+
+              <div className="p-4 rounded-lg border">
+                <h4 className="font-medium mb-2">Slack/Discord notifications not working</h4>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>• <strong>Check webhook URL:</strong> Verify it&apos;s correct and complete</li>
+                  <li>• <strong>Discord users:</strong> Make sure you added <code className="px-1 py-0.5 bg-muted rounded text-xs">/slack</code> to the end of the URL</li>
+                  <li>• <strong>Permissions:</strong> Ensure the webhook has permission to post to the channel</li>
+                  <li>• <strong>Test it:</strong> Use the &quot;Test&quot; button in Settings to verify the connection</li>
+                </ul>
+              </div>
+
+              <div className="p-4 rounded-lg border">
+                <h4 className="font-medium mb-2">API key not working</h4>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>• <strong>Plan check:</strong> API access requires the Team plan</li>
+                  <li>• <strong>Header format:</strong> Use <code className="px-1 py-0.5 bg-muted rounded text-xs">Authorization: Bearer kaulby_live_xxx</code></li>
+                  <li>• <strong>Key status:</strong> Verify the key hasn&apos;t been revoked in Settings</li>
+                  <li>• <strong>Rate limits:</strong> Check if you&apos;ve hit the daily limit (10,000 requests)</li>
+                </ul>
+              </div>
+
+              <div className="p-4 rounded-lg border">
+                <h4 className="font-medium mb-2">Email digest not arriving</h4>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>• <strong>Check spam:</strong> Look in your spam/junk folder</li>
+                  <li>• <strong>Timezone:</strong> Verify your timezone is correct in Settings</li>
+                  <li>• <strong>No new results:</strong> Digests only send when there are new mentions</li>
+                  <li>• <strong>Whitelist us:</strong> Add <code className="px-1 py-0.5 bg-muted rounded text-xs">noreply@kaulbyapp.com</code> to your contacts</li>
+                </ul>
+              </div>
+
+              <div className="p-4 rounded-lg border">
+                <h4 className="font-medium mb-2">Results seem outdated</h4>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>• <strong>Refresh cycles:</strong> Free: 24hr, Pro: 4hr, Team: 2hr — check your plan</li>
+                  <li>• <strong>Manual refresh:</strong> Click the refresh icon on a monitor to trigger an immediate scan</li>
+                  <li>• <strong>Platform delays:</strong> Some platforms have inherent delays in indexing new content</li>
+                </ul>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Article: Contact Support */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Mail className="h-5 w-5" />
+              Contact Support
+            </CardTitle>
+            <CardDescription>
+              Can&apos;t find what you&apos;re looking for?
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Our team is here to help. Reach out and we&apos;ll get back to you as soon as possible.
+            </p>
+
+            <div className="p-4 rounded-lg border bg-card">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Mail className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="font-medium">Email Support</p>
+                  <a
+                    href="mailto:support@kaulbyapp.com"
+                    className="text-sm text-primary hover:underline"
+                  >
+                    support@kaulbyapp.com
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              We typically respond within 24 hours. Team customers receive priority support with faster response times.
+            </p>
+          </CardContent>
+        </Card>
+      </section>
     </div>
   );
 }

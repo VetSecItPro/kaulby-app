@@ -14,9 +14,16 @@ import {
   crossPlatformTopics,
   topicResults,
   audienceMonitors,
+  alerts,
+  communities,
 } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { clerkClient } from "@clerk/nextjs/server";
+import {
+  sendDeletionRequestedEmail,
+  sendDeletionReminderEmail,
+  sendDeletionConfirmedEmail,
+} from "@/lib/email";
 
 const DELETION_DELAY_DAYS = 7;
 
@@ -34,9 +41,25 @@ export const scheduledAccountDeletion = inngest.createFunction(
   async ({ event, step }) => {
     const { userId, email } = event.data;
 
-    // Step 1: Send confirmation email
+    // Step 1: Get user name for personalized emails
+    const userData = await step.run("get-user-data", async () => {
+      const user = await db.query.users.findFirst({
+        where: eq(users.id, userId),
+        columns: { name: true },
+      });
+      return user;
+    });
+
+    const userName = userData?.name || undefined;
+    const deletionDate = new Date(new Date().getTime() + DELETION_DELAY_DAYS * 24 * 60 * 60 * 1000);
+
+    // Step 2: Send confirmation email
     await step.run("send-confirmation-email", async () => {
-      // TODO: Implement email sending via Resend
+      await sendDeletionRequestedEmail({
+        email,
+        name: userName,
+        deletionDate,
+      });
       console.log(`[Account Deletion] Confirmation email sent to ${email}`);
     });
 
@@ -58,9 +81,12 @@ export const scheduledAccountDeletion = inngest.createFunction(
       return { status: "cancelled", reason: "User cancelled before reminder" };
     }
 
-    // Step 4: Send 24-hour reminder email
+    // Step 4: Send 24-hour reminder email (with win-back messaging)
     await step.run("send-24hr-reminder", async () => {
-      // TODO: Implement email sending via Resend
+      await sendDeletionReminderEmail({
+        email,
+        name: userName,
+      });
       console.log(`[Account Deletion] 24-hour reminder sent to ${email}`);
     });
 
@@ -122,7 +148,10 @@ export const scheduledAccountDeletion = inngest.createFunction(
 
     // Step 10: Send final confirmation email (to the email we saved before deletion)
     await step.run("send-final-confirmation", async () => {
-      // TODO: Implement email sending via Resend
+      await sendDeletionConfirmedEmail({
+        email,
+        name: userName,
+      });
       console.log(`[Account Deletion] Final confirmation sent to ${email}`);
     });
 
@@ -135,94 +164,168 @@ export const scheduledAccountDeletion = inngest.createFunction(
 );
 
 /**
- * Delete all user data from the database
- * Uses cascade deletes where configured, manual deletes for safety
+ * Delete all user data from the database - GDPR/CCPA compliant
+ *
+ * This function performs a comprehensive deletion of ALL user data as required by:
+ * - GDPR Article 17 (Right to Erasure / "Right to be Forgotten")
+ * - CCPA Section 1798.105 (Right to Deletion)
+ *
+ * Deletion order matters due to foreign key constraints.
+ * We explicitly delete from all tables rather than relying solely on CASCADE
+ * to ensure complete data removal and provide an audit trail.
  */
 async function deleteAllUserData(userId: string): Promise<void> {
-  // Get all monitor IDs for this user (needed for cascading deletes)
+  console.log(`[Account Deletion] Starting comprehensive data deletion for user ${userId}`);
+
+  // =========================================================================
+  // PHASE 1: Gather all related IDs before deletion
+  // =========================================================================
+
+  // Get all monitor IDs for this user
   const userMonitors = await db
     .select({ id: monitors.id })
     .from(monitors)
     .where(eq(monitors.userId, userId));
-
   const monitorIds = userMonitors.map(m => m.id);
+  console.log(`[Account Deletion] Found ${monitorIds.length} monitors to delete`);
 
   // Get all audience IDs for this user
   const userAudiences = await db
     .select({ id: audiences.id })
     .from(audiences)
     .where(eq(audiences.userId, userId));
-
   const audienceIds = userAudiences.map(a => a.id);
+  console.log(`[Account Deletion] Found ${audienceIds.length} audiences to delete`);
 
   // Get all cross-platform topic IDs
   const userTopics = await db
     .select({ id: crossPlatformTopics.id })
     .from(crossPlatformTopics)
     .where(eq(crossPlatformTopics.userId, userId));
-
   const topicIds = userTopics.map(t => t.id);
+  console.log(`[Account Deletion] Found ${topicIds.length} cross-platform topics to delete`);
 
   // Get all webhook IDs
   const userWebhooks = await db
     .select({ id: webhooks.id })
     .from(webhooks)
     .where(eq(webhooks.userId, userId));
-
   const webhookIds = userWebhooks.map(w => w.id);
+  console.log(`[Account Deletion] Found ${webhookIds.length} webhooks to delete`);
 
-  // Delete in order to respect foreign key constraints
-  // Note: Many tables have cascade deletes configured, but we're explicit for safety
-  // Tables with CASCADE on user deletion: monitors, audiences, alerts (via monitor),
-  // results (via monitor), communities (via audience), aiLogs, usage, slackIntegrations,
-  // webhooks, apiKeys, crossPlatformTopics
+  // =========================================================================
+  // PHASE 2: Delete data in correct order (deepest dependencies first)
+  // =========================================================================
 
-  // 1. Delete webhook deliveries (cascade from webhooks)
+  // --- Webhook-related data ---
+  // 1. Delete webhook delivery logs (foreign key to webhooks)
   if (webhookIds.length > 0) {
     await db.delete(webhookDeliveries).where(inArray(webhookDeliveries.webhookId, webhookIds));
+    console.log(`[Account Deletion] Deleted webhook deliveries`);
   }
 
   // 2. Delete webhooks
   await db.delete(webhooks).where(eq(webhooks.userId, userId));
+  console.log(`[Account Deletion] Deleted webhooks`);
 
-  // 3. Delete topic results (cascade from topics)
+  // --- Cross-platform topic data ---
+  // 3. Delete topic results (foreign key to topics)
   if (topicIds.length > 0) {
     await db.delete(topicResults).where(inArray(topicResults.topicId, topicIds));
+    console.log(`[Account Deletion] Deleted topic results`);
   }
 
   // 4. Delete cross-platform topics
   await db.delete(crossPlatformTopics).where(eq(crossPlatformTopics.userId, userId));
+  console.log(`[Account Deletion] Deleted cross-platform topics`);
 
-  // 5. Delete results (cascade from monitors, but explicit for safety)
+  // --- Monitor-related data ---
+  // 5. Delete alerts (foreign key to monitors)
+  if (monitorIds.length > 0) {
+    await db.delete(alerts).where(inArray(alerts.monitorId, monitorIds));
+    console.log(`[Account Deletion] Deleted alerts`);
+  }
+
+  // 6. Delete results (foreign key to monitors) - includes all historical mention data
   if (monitorIds.length > 0) {
     await db.delete(results).where(inArray(results.monitorId, monitorIds));
+    console.log(`[Account Deletion] Deleted results`);
   }
 
-  // 6. Delete audience-monitor relationships
+  // 7. Delete audience-monitor junction records
   if (audienceIds.length > 0) {
     await db.delete(audienceMonitors).where(inArray(audienceMonitors.audienceId, audienceIds));
+    console.log(`[Account Deletion] Deleted audience-monitor relationships`);
   }
 
-  // 7. Delete monitors (alerts cascade from monitors)
+  // 8. Delete monitors
   await db.delete(monitors).where(eq(monitors.userId, userId));
+  console.log(`[Account Deletion] Deleted monitors`);
 
-  // 8. Delete audiences (communities cascade from audiences)
+  // --- Audience-related data ---
+  // 9. Delete communities (foreign key to audiences)
+  if (audienceIds.length > 0) {
+    await db.delete(communities).where(inArray(communities.audienceId, audienceIds));
+    console.log(`[Account Deletion] Deleted communities`);
+  }
+
+  // 10. Delete audiences
   await db.delete(audiences).where(eq(audiences.userId, userId));
+  console.log(`[Account Deletion] Deleted audiences`);
 
-  // 9. Delete Slack integrations
+  // --- Integration data ---
+  // 11. Delete Slack integrations (OAuth tokens, channel configs)
   await db.delete(slackIntegrations).where(eq(slackIntegrations.userId, userId));
+  console.log(`[Account Deletion] Deleted Slack integrations`);
 
-  // 10. Delete API keys
+  // 12. Delete API keys (hashed keys and metadata)
   await db.delete(apiKeys).where(eq(apiKeys.userId, userId));
+  console.log(`[Account Deletion] Deleted API keys`);
 
-  // 11. Delete AI logs
+  // --- Analytics and logs ---
+  // 13. Delete AI logs (AI analysis history, prompts, responses)
   await db.delete(aiLogs).where(eq(aiLogs.userId, userId));
+  console.log(`[Account Deletion] Deleted AI logs`);
 
-  // 12. Delete usage records
+  // 14. Delete usage records (API call counts, limits tracking)
   await db.delete(usage).where(eq(usage.userId, userId));
+  console.log(`[Account Deletion] Deleted usage records`);
 
-  // 13. Finally, delete the user record itself
+  // =========================================================================
+  // PHASE 3: Handle workspace ownership and membership
+  // =========================================================================
+
+  // Check if this user owns any workspaces
+  const { workspaces: workspacesTable, workspaceInvites } = await import("@/lib/db/schema");
+  const ownedWorkspaces = await db
+    .select({ id: workspacesTable.id })
+    .from(workspacesTable)
+    .where(eq(workspacesTable.ownerId, userId));
+
+  for (const workspace of ownedWorkspaces) {
+    // Delete workspace invites first (foreign key to workspace)
+    await db.delete(workspaceInvites).where(eq(workspaceInvites.workspaceId, workspace.id));
+
+    // Remove workspace reference from all member users
+    await db
+      .update(users)
+      .set({ workspaceId: null, workspaceRole: null })
+      .where(eq(users.workspaceId, workspace.id));
+
+    // Delete the workspace
+    await db.delete(workspacesTable).where(eq(workspacesTable.id, workspace.id));
+    console.log(`[Account Deletion] Deleted owned workspace ${workspace.id}`);
+  }
+
+  // =========================================================================
+  // PHASE 4: Delete the user record itself
+  // =========================================================================
+
+  // 15. Finally, delete the user record (contains PII: email, name, etc.)
   await db.delete(users).where(eq(users.id, userId));
+  console.log(`[Account Deletion] Deleted user record`);
+
+  console.log(`[Account Deletion] ✓ All data deleted for user ${userId}`);
 }
 
 // Export all functions

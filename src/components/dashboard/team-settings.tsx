@@ -5,7 +5,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Users, UserPlus, Mail, Trash2, Crown, User, Loader2, Building2 } from "lucide-react";
+import { Users, UserPlus, Mail, Trash2, Crown, User, Loader2, Building2, Radio, ArrowRightLeft } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -50,6 +57,23 @@ interface Workspace {
   members: Member[];
 }
 
+interface WorkspaceMonitor {
+  id: string;
+  name: string;
+  companyName: string | null;
+  keywords: string[];
+  platforms: string[];
+  isActive: boolean;
+  newMatchCount: number;
+  lastCheckedAt: string | null;
+  createdAt: string;
+  assignee: {
+    id: string;
+    name: string | null;
+    email: string;
+  } | null;
+}
+
 interface TeamSettingsProps {
   subscriptionStatus: string;
 }
@@ -65,6 +89,10 @@ export function TeamSettings({ subscriptionStatus }: TeamSettingsProps) {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [workspaceName, setWorkspaceName] = useState("");
   const [creating, setCreating] = useState(false);
+  // Team monitors state
+  const [workspaceMonitors, setWorkspaceMonitors] = useState<WorkspaceMonitor[]>([]);
+  const [reassigning, setReassigning] = useState<string | null>(null);
+  const [isOwner, setIsOwner] = useState(false);
 
   const isEnterprise = subscriptionStatus === "enterprise";
 
@@ -89,6 +117,14 @@ export function TeamSettings({ subscriptionStatus }: TeamSettingsProps) {
             if (invRes.ok) {
               setInvites(invData.invites || []);
             }
+          }
+
+          // Fetch workspace monitors
+          const monitorsRes = await fetch("/api/workspace/monitors");
+          const monitorsData = await monitorsRes.json();
+          if (monitorsRes.ok) {
+            setWorkspaceMonitors(monitorsData.monitors || []);
+            setIsOwner(monitorsData.isOwner || false);
           }
         }
       } catch (err) {
@@ -198,6 +234,39 @@ export function TeamSettings({ subscriptionStatus }: TeamSettingsProps) {
       }
     } catch {
       console.error("Failed to remove member");
+    }
+  }
+
+  // Reassign monitor to another team member
+  async function handleReassignMonitor(monitorId: string, newUserId: string) {
+    setReassigning(monitorId);
+    try {
+      const res = await fetch(`/api/workspace/monitors/${monitorId}/assign`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assignToUserId: newUserId }),
+      });
+
+      if (res.ok) {
+        // Update local state
+        const newAssignee = workspace?.members.find((m) => m.id === newUserId);
+        setWorkspaceMonitors((monitors) =>
+          monitors.map((m) =>
+            m.id === monitorId
+              ? {
+                  ...m,
+                  assignee: newAssignee
+                    ? { id: newAssignee.id, name: newAssignee.name, email: newAssignee.email }
+                    : null,
+                }
+              : m
+          )
+        );
+      }
+    } catch {
+      console.error("Failed to reassign monitor");
+    } finally {
+      setReassigning(null);
     }
   }
 
@@ -441,6 +510,86 @@ export function TeamSettings({ subscriptionStatus }: TeamSettingsProps) {
             <p className="text-sm text-amber-600 dark:text-amber-400">
               You&apos;ve reached your seat limit. Contact support to add more seats (+$15/user).
             </p>
+          </div>
+        )}
+
+        {/* Team Monitors - visible to all members, reassignment only for owners */}
+        {workspaceMonitors.length > 0 && (
+          <div className="space-y-3 pt-4 border-t">
+            <h4 className="text-sm font-medium flex items-center gap-2">
+              <Radio className="h-4 w-4" />
+              Team Monitors
+            </h4>
+            <div className="space-y-2">
+              {workspaceMonitors.map((monitor) => (
+                <div
+                  key={monitor.id}
+                  className="flex items-center justify-between p-3 rounded-lg border bg-card"
+                >
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div
+                      className={`w-2 h-2 rounded-full ${
+                        monitor.isActive ? "bg-green-500" : "bg-gray-400"
+                      }`}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">
+                        {monitor.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {monitor.platforms.join(", ")}
+                        {monitor.newMatchCount > 0 && (
+                          <span className="ml-2 text-primary">
+                            {monitor.newMatchCount} new
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 ml-4">
+                    {isOwner ? (
+                      <Select
+                        value={monitor.assignee?.id || ""}
+                        onValueChange={(value) => handleReassignMonitor(monitor.id, value)}
+                        disabled={reassigning === monitor.id}
+                      >
+                        <SelectTrigger className="w-[140px] h-8 text-xs">
+                          <SelectValue>
+                            {reassigning === monitor.id ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              monitor.assignee?.name || monitor.assignee?.email || "Unassigned"
+                            )}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {workspace.members.map((member) => (
+                            <SelectItem key={member.id} value={member.id}>
+                              <div className="flex items-center gap-2">
+                                {member.role === "owner" && (
+                                  <Crown className="h-3 w-3 text-primary" />
+                                )}
+                                <span>{member.name || member.email}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Badge variant="outline" className="text-xs">
+                        {monitor.assignee?.name || monitor.assignee?.email || "Unassigned"}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {isOwner && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <ArrowRightLeft className="h-3 w-3" />
+                Reassign monitors by selecting a team member
+              </p>
+            )}
           </div>
         )}
       </CardContent>
