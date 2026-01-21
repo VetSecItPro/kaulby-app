@@ -39,7 +39,7 @@ export default async function DashboardLayout({
   const [dbUser, monitorsCountResult] = await Promise.all([
     db.query.users.findFirst({
       where: (users, { eq }) => eq(users.id, userId),
-      columns: { isAdmin: true, subscriptionStatus: true, isBanned: true, onboardingCompleted: true, dayPassExpiresAt: true },
+      columns: { isAdmin: true, subscriptionStatus: true, isBanned: true, onboardingCompleted: true, dayPassExpiresAt: true, workspaceRole: true },
     }),
     db
       .select({ count: count() })
@@ -66,8 +66,11 @@ export default async function DashboardLayout({
   // Map subscriptionStatus to userPlan type
   const userPlan = subscriptionStatus === "enterprise" ? "enterprise" : subscriptionStatus === "pro" ? "pro" : "free";
 
+  // Get workspace role for team badge
+  const workspaceRole = dbUser?.workspaceRole || null;
+
   return (
-    <ResponsiveDashboardLayout isAdmin={isAdmin} subscriptionStatus={subscriptionStatus} hasActiveDayPass={hasActiveDayPass}>
+    <ResponsiveDashboardLayout isAdmin={isAdmin} subscriptionStatus={subscriptionStatus} hasActiveDayPass={hasActiveDayPass} workspaceRole={workspaceRole}>
       <DashboardClientWrapper isNewUser={isNewUser} userName={userName} userPlan={userPlan}>
         {children}
       </DashboardClientWrapper>

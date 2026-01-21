@@ -333,10 +333,10 @@ export function MobileSettings({
 }
 
 function MobilePlanCard({ plan, subscriptionStatus }: { plan: Plan; subscriptionStatus: string }) {
-  const action = getButtonAction(subscriptionStatus, plan.name);
-  const buttonText = action === "upgrade"
+  const isUpgrade = getButtonAction(subscriptionStatus, plan.name) === "upgrade";
+  const buttonText = isUpgrade
     ? `Upgrade to ${plan.name}`
-    : `Downgrade to ${plan.name}`;
+    : `Switch to ${plan.name}`;
 
   return (
     <motion.div whileTap={{ scale: 0.98 }}>
