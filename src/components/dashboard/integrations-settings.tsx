@@ -53,6 +53,7 @@ const IntegrationIcon = memo(function IntegrationIcon({ name, className }: { nam
     pipedrive: "bg-green-500",
     zapier: "bg-orange-400",
     slack: "bg-purple-500",
+    discord: "bg-indigo-500",
     webhook: "bg-gray-500",
   };
 
@@ -352,11 +353,19 @@ export function IntegrationsSettings({
               Build custom integrations with our REST API.
             </p>
           </div>
-          <Button variant="outline" asChild>
-            <a href="/dashboard/settings#api" className="gap-1">
-              <ExternalLink className="h-4 w-4" />
-              View API Keys
-            </a>
+          <Button
+            variant="outline"
+            onClick={() => {
+              // Scroll to API Keys section on the same page
+              const apiSection = document.getElementById("api-keys-section");
+              if (apiSection) {
+                apiSection.scrollIntoView({ behavior: "smooth" });
+              }
+            }}
+            className="gap-1"
+          >
+            <ExternalLink className="h-4 w-4" />
+            View API Keys
           </Button>
         </CardContent>
       </Card>
@@ -378,6 +387,13 @@ export const DEFAULT_INTEGRATIONS: Integration[] = [
     name: "Slack",
     description: "Get real-time alerts in your Slack channels.",
     icon: "slack",
+    status: "disconnected",
+  },
+  {
+    id: "discord",
+    name: "Discord",
+    description: "Get real-time alerts in your Discord server channels.",
+    icon: "discord",
     status: "disconnected",
   },
 ];

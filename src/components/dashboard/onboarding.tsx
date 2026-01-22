@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -694,6 +694,21 @@ interface QuickStartGuideProps {
 
 export function QuickStartGuide({ hasMonitors, hasResults, hasAlerts = false, onDismiss }: QuickStartGuideProps) {
   const router = useRouter();
+  const [isDismissed, setIsDismissed] = useState(false);
+
+  // Check localStorage on mount for dismiss state
+  useEffect(() => {
+    const dismissed = localStorage.getItem("kaulby-quickstart-dismissed");
+    if (dismissed === "true") {
+      setIsDismissed(true);
+    }
+  }, []);
+
+  const handleDismiss = () => {
+    setIsDismissed(true);
+    localStorage.setItem("kaulby-quickstart-dismissed", "true");
+    onDismiss?.();
+  };
 
   const steps = [
     {
@@ -726,8 +741,8 @@ export function QuickStartGuide({ hasMonitors, hasResults, hasAlerts = false, on
   const allCompleted = completedCount === steps.length;
   const progressPercent = (completedCount / steps.length) * 100;
 
-  // Don't show if all steps are completed
-  if (allCompleted && onDismiss) {
+  // Don't show if dismissed or all steps completed
+  if (isDismissed || allCompleted) {
     return null;
   }
 
@@ -742,11 +757,9 @@ export function QuickStartGuide({ hasMonitors, hasResults, hasAlerts = false, on
             <Rocket className="h-5 w-5 text-primary" />
             Getting Started
           </CardTitle>
-          {onDismiss && (
-            <Button variant="ghost" size="sm" onClick={onDismiss} className="h-8 w-8 p-0">
-              <X className="h-4 w-4" />
-            </Button>
-          )}
+          <Button variant="ghost" size="sm" onClick={handleDismiss} className="h-8 w-8 p-0">
+            <X className="h-4 w-4" />
+          </Button>
         </div>
         <div className="space-y-1">
           <div className="flex justify-between text-sm">
