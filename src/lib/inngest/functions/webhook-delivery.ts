@@ -119,7 +119,7 @@ export const processWebhookDelivery = inngest.createFunction(
     name: "Process Webhook Delivery",
     retries: 0,
     concurrency: {
-      limit: 10, // Limit concurrent webhook deliveries
+      limit: 5, // Limit concurrent webhook deliveries (matches Inngest free plan)
     },
   },
   { event: "webhook/process-delivery" },

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
+import { Instrument_Serif } from "next/font/google";
 import { Toaster } from "@/components/ui/toaster";
 import { DeviceProvider } from "@/hooks/use-device";
 import { ResilientClerkProvider } from "@/components/shared/clerk-provider";
@@ -21,6 +22,14 @@ const geistMono = localFont({
   weight: "100 900",
   display: "swap",
   preload: true,
+});
+
+// Serif font for elegant headers
+const instrumentSerif = Instrument_Serif({
+  subsets: ["latin"],
+  weight: "400",
+  variable: "--font-serif",
+  display: "swap",
 });
 
 // Viewport configuration
@@ -75,14 +84,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className="dark" suppressHydrationWarning>
       <head>
         {/* Preconnect for performance */}
         <link rel="preconnect" href="https://fonts.googleapis.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://api.polar.sh" />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background`}
+        className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} antialiased bg-background`}
+        suppressHydrationWarning
       >
         {/* Sitewide Structured Data for SEO & AEO */}
         <OrganizationSchema />

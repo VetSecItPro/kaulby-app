@@ -103,7 +103,7 @@ export function MobileMonitors({ monitors }: MobileMonitorsProps) {
 
 function MonitorCard({ monitor }: { monitor: Monitor }) {
   const [isScanning, setIsScanning] = useState(monitor.isScanning || false);
-  const [canScan, setCanScan] = useState(true);
+  const [canScan, setCanScan] = useState<boolean | null>(null); // null = loading
   const [cooldownText, setCooldownText] = useState<string | null>(null);
 
   // Check scan status
@@ -124,7 +124,8 @@ function MonitorCard({ monitor }: { monitor: Monitor }) {
         }
       }
     } catch {
-      // Silently fail
+      // On error, allow scan attempt
+      setCanScan(true);
     }
   }, [monitor.id]);
 
@@ -141,7 +142,7 @@ function MonitorCard({ monitor }: { monitor: Monitor }) {
     e.preventDefault();
     e.stopPropagation();
 
-    if (!monitor.isActive || isScanning || !canScan) return;
+    if (!monitor.isActive || isScanning || !canScan || canScan === null) return;
 
     setIsScanning(true);
 
@@ -235,19 +236,21 @@ function MonitorCard({ monitor }: { monitor: Monitor }) {
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem
                     onClick={handleScan}
-                    disabled={!monitor.isActive || isScanning || !canScan}
+                    disabled={!monitor.isActive || isScanning || !canScan || canScan === null}
                     className="gap-2"
                   >
-                    {isScanning ? (
+                    {isScanning || canScan === null ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <RefreshCw className="h-4 w-4" />
                     )}
-                    {isScanning
-                      ? "Scanning..."
-                      : !canScan && cooldownText
-                        ? `Wait ${cooldownText}`
-                        : "Scan Now"}
+                    {canScan === null
+                      ? "Loading..."
+                      : isScanning
+                        ? "Scanning..."
+                        : !canScan
+                          ? cooldownText ? `Wait ${cooldownText}` : "Cooldown"
+                          : "Scan Now"}
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link href={`/dashboard/monitors/${monitor.id}`}>
