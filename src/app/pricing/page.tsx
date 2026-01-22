@@ -28,8 +28,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Check, X } from "lucide-react";
+import { Check, X, ShieldCheck, CreditCard, RefreshCw, ArrowRight } from "lucide-react";
 import { CheckoutModal } from "@/components/checkout-modal";
+import { MarketingFooter } from "@/components/shared/marketing-footer";
 import { cn } from "@/lib/utils";
 import type { BillingInterval } from "@/lib/plans";
 
@@ -256,6 +257,22 @@ export default function PricingPage() {
             <p className="text-sm text-primary font-medium mt-4">
               First 1,000 ***s lock in Pro or Team price forever
             </p>
+
+            {/* Trust Signals */}
+            <div className="flex flex-wrap items-center justify-center gap-6 mt-8 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-green-500" />
+                <span>14-day money-back guarantee</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CreditCard className="h-4 w-4 text-green-500" />
+                <span>No credit card for free tier</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <RefreshCw className="h-4 w-4 text-green-500" />
+                <span>Cancel anytime</span>
+              </div>
+            </div>
           </div>
 
           {/* Billing Toggle */}
@@ -571,47 +588,62 @@ export default function PricingPage() {
                   without committing to a subscription. You can purchase multiple Day Passes whenever needed.
                 </AccordionContent>
               </AccordionItem>
+              <AccordionItem value="money-back">
+                <AccordionTrigger>What is the money-back guarantee?</AccordionTrigger>
+                <AccordionContent>
+                  We offer a 14-day money-back guarantee on all paid plans. If you&apos;re not satisfied
+                  with Kaulby for any reason, contact us within 14 days of your first payment for a full refund.
+                  No questions asked.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="founding-member">
+                <AccordionTrigger>What is the *** program?</AccordionTrigger>
+                <AccordionContent>
+                  The first 1,000 Pro and Team subscribers become ***s and lock in their current
+                  price forever, even when we raise prices in the future. This is our way of thanking early
+                  supporters who believe in Kaulby.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="data-security">
+                <AccordionTrigger>Is my data secure?</AccordionTrigger>
+                <AccordionContent>
+                  Yes. We use industry-standard encryption for all data in transit and at rest.
+                  Your monitoring data is stored securely and never shared with third parties.
+                  We&apos;re GDPR compliant and you can export or delete your data at any time.
+                </AccordionContent>
+              </AccordionItem>
             </Accordion>
+          </div>
+
+          {/* Final CTA */}
+          <div className="mt-20 text-center">
+            <Card className="max-w-2xl mx-auto bg-primary/5 border-primary/20">
+              <CardContent className="p-8">
+                <h3 className="text-2xl font-bold mb-2">Still not sure?</h3>
+                <p className="text-muted-foreground mb-6">
+                  Start with our free tier - no credit card required. Monitor 1 keyword on Reddit
+                  and see the AI analysis in action. Upgrade whenever you&apos;re ready.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <Link href="/sign-up">
+                    <Button size="lg" className="gap-2">
+                      Start Free
+                      <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  </Link>
+                  <Link href="/gummysearch">
+                    <Button size="lg" variant="outline">
+                      Coming from ***?
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t py-8 px-4">
-        <div className="container mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-3">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg overflow-hidden bg-black flex items-center justify-center">
-                <Image
-                  src="/logo.jpg"
-                  alt="Kaulby"
-                  width={28}
-                  height={28}
-                  className="object-cover w-full h-full"
-                />
-              </div>
-              <span className="text-xl font-bold gradient-text">Kaulby</span>
-            </Link>
-            <span className="text-sm text-muted-foreground">
-              &copy; {new Date().getFullYear()} All rights reserved.
-            </span>
-          </div>
-          <div className="flex gap-6">
-            <Link href="/articles" className="text-sm text-muted-foreground hover:text-foreground">
-              Articles
-            </Link>
-            <Link href="/pricing" className="text-sm text-muted-foreground hover:text-foreground">
-              Pricing
-            </Link>
-            <Link href="/privacy" className="text-sm text-muted-foreground hover:text-foreground">
-              Privacy
-            </Link>
-            <Link href="/terms" className="text-sm text-muted-foreground hover:text-foreground">
-              Terms
-            </Link>
-          </div>
-        </div>
-      </footer>
+      <MarketingFooter />
 
       {/* Checkout Modal */}
       <CheckoutModal

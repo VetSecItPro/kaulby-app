@@ -17,6 +17,8 @@ import {
   Users,
   BarChart3,
   Lightbulb,
+  Compass,
+  Sparkles,
 } from "lucide-react";
 
 const sidebarLinks = [
@@ -50,6 +52,16 @@ const sidebarLinks = [
     title: "Insights",
     href: "/dashboard/insights",
     icon: Lightbulb,
+  },
+  {
+    title: "Discover",
+    href: "/dashboard/discover",
+    icon: Compass,
+  },
+  {
+    title: "Ask AI",
+    href: "/dashboard/ask",
+    icon: Sparkles,
   },
   {
     title: "Settings",
