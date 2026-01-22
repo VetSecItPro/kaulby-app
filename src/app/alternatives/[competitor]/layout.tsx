@@ -26,6 +26,26 @@ const competitorMeta: Record<string, { name: string; description: string }> = {
     name: "Awario",
     description: "Compare Kaulby vs Awario for social listening. Kaulby offers better Reddit coverage, developer platform monitoring, and a generous free tier.",
   },
+  syften: {
+    name: "Syften",
+    description: "Looking for a Syften alternative? Kaulby offers AI sentiment analysis, pain point detection, and 9 platforms vs Syften's limited coverage. Free tier available.",
+  },
+  gummysearch: {
+    name: "GummySearch",
+    description: "GummySearch is shutting down. Kaulby offers everything GummySearch had plus 8 more platforms, better AI, and active development. Migrate free today.",
+  },
+  redreach: {
+    name: "RedReach",
+    description: "Compare Kaulby vs RedReach for Reddit marketing. Kaulby monitors 9 platforms, offers AI reply suggestions, and includes a free tier. No Reddit-only limitation.",
+  },
+  subredditsignals: {
+    name: "Subreddit Signals",
+    description: "Looking for a Subreddit Signals alternative? Kaulby offers AI sentiment analysis, multi-platform monitoring, and pain point detection. Free tier included.",
+  },
+  f5bot: {
+    name: "F5Bot",
+    description: "Need more than F5Bot's basic alerts? Kaulby offers a dashboard, AI analysis, sentiment tracking, and 9 platforms. Free tier matches F5Bot's price.",
+  },
 };
 
 interface LayoutProps {

@@ -262,6 +262,16 @@ export const results = pgTable("results", {
   conversationCategory: conversationCategoryEnum("conversation_category"),
   conversationCategoryConfidence: real("conversation_category_confidence"), // 0.0 to 1.0
   engagementScore: integer("engagement_score"), // For hot_discussion detection (upvotes + comments)
+  // Lead scoring - identifies high-intent posts (Phase 5)
+  leadScore: integer("lead_score"), // 0-100 composite score
+  leadScoreFactors: jsonb("lead_score_factors").$type<{
+    intent: number;        // 0-40 - Intent signals ("looking for", "need a tool", etc.)
+    engagement: number;    // 0-20 - Upvotes, comments indicate reach
+    recency: number;       // 0-15 - Newer posts = fresher leads
+    authorQuality: number; // 0-15 - Karma, account age, history
+    category: number;      // 0-10 - Solution requests score higher
+    total: number;         // 0-100 - Sum of all factors
+  }>(),
   aiSummary: text("ai_summary"),
   // Digest tracking - prevent sending same result multiple times
   lastSentInDigestAt: timestamp("last_sent_in_digest_at"),
@@ -281,6 +291,7 @@ export const results = pgTable("results", {
   index("results_platform_idx").on(table.platform),
   index("results_sentiment_idx").on(table.sentiment),
   index("results_conversation_category_idx").on(table.conversationCategory),
+  index("results_lead_score_idx").on(table.leadScore),
 ]);
 
 // AI Logs - for cost tracking
@@ -450,6 +461,60 @@ export const workspaceInvites = pgTable("workspace_invites", {
   acceptedAt: timestamp("accepted_at"), // When the invite was accepted
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+// Author Profiles - track author influence scores (Phase 5)
+// Used to identify high-impact voices and influencers
+export const authorProfiles = pgTable("author_profiles", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  platform: platformEnum("platform").notNull(),
+  username: text("username").notNull(),
+  karma: integer("karma"), // Platform-specific reputation score
+  accountAgeDays: integer("account_age_days"),
+  avgEngagement: real("avg_engagement"), // Average upvotes/comments on posts
+  postCount: integer("post_count").default(0).notNull(),
+  influenceScore: integer("influence_score"), // 0-100 composite score
+  lastUpdatedAt: timestamp("last_updated_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("author_profiles_platform_username_idx").on(table.platform, table.username),
+  index("author_profiles_influence_score_idx").on(table.influenceScore),
+]);
+
+// Community Growth - track community size over time (Phase 3)
+// Used for community discovery and growth rate calculations
+export const communityGrowth = pgTable("community_growth", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  platform: platformEnum("platform").notNull(),
+  identifier: text("identifier").notNull(), // e.g., "r/SaaS", "Hacker News"
+  memberCount: integer("member_count"),
+  postCountDaily: integer("post_count_daily"), // Posts in last 24 hours
+  engagementRate: real("engagement_rate"), // Average engagement per post
+  recordedAt: timestamp("recorded_at").defaultNow().notNull(),
+}, (table) => [
+  index("community_growth_lookup_idx").on(table.platform, table.identifier, table.recordedAt),
+]);
+
+// Saved Searches - user-saved search queries (Phase 1)
+// Allows users to save and reuse complex search queries
+export const savedSearches = pgTable("saved_searches", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  query: text("query").notNull(), // The boolean search query string
+  filters: jsonb("filters").$type<{
+    platforms?: string[];
+    categories?: string[];
+    sentiments?: string[];
+    dateRange?: { from?: string; to?: string };
+  }>(),
+  useCount: integer("use_count").default(0).notNull(),
+  lastUsedAt: timestamp("last_used_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("saved_searches_user_id_idx").on(table.userId),
+]);
 
 // Relations
 export const workspacesRelations = relations(workspaces, ({ many }) => ({
@@ -643,3 +708,9 @@ export type TopicResult = typeof topicResults.$inferSelect;
 export type NewTopicResult = typeof topicResults.$inferInsert;
 export type ApiKey = typeof apiKeys.$inferSelect;
 export type NewApiKey = typeof apiKeys.$inferInsert;
+export type AuthorProfile = typeof authorProfiles.$inferSelect;
+export type NewAuthorProfile = typeof authorProfiles.$inferInsert;
+export type CommunityGrowth = typeof communityGrowth.$inferSelect;
+export type NewCommunityGrowth = typeof communityGrowth.$inferInsert;
+export type SavedSearch = typeof savedSearches.$inferSelect;
+export type NewSavedSearch = typeof savedSearches.$inferInsert;

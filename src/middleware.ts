@@ -22,6 +22,7 @@ async function getClerkHandler() {
       "/gummysearch", // GummySearch migration landing page
       "/subreddits(.*)", // Programmatic SEO - subreddit landing pages
       "/alternatives(.*)", // Programmatic SEO - competitor comparison pages
+      "/tools(.*)", // Programmatic SEO - tool landing pages
       "/articles(.*)",
       "/sign-in(.*)",
       "/sign-up(.*)",

@@ -15,6 +15,7 @@ export { sendAlert, sendDailyDigest, sendWeeklyDigest } from "./functions/send-a
 export { dataRetention, resetUsageCounters, cleanupAiLogs } from "./functions/data-retention";
 export { sendWebhookEvent, processWebhookDelivery, retryWebhookDeliveries, cleanupWebhookDeliveries } from "./functions/webhook-delivery";
 export { scheduledAccountDeletion } from "./functions/account-deletion";
+export { detectCrisis } from "./functions/crisis-detection";
 
 // All functions for the Inngest handler
 import { monitorReddit } from "./functions/monitor-reddit";
@@ -32,6 +33,7 @@ import { sendAlert, sendDailyDigest, sendWeeklyDigest } from "./functions/send-a
 import { dataRetention, resetUsageCounters, cleanupAiLogs } from "./functions/data-retention";
 import { sendWebhookEvent, processWebhookDelivery, retryWebhookDeliveries, cleanupWebhookDeliveries } from "./functions/webhook-delivery";
 import { scheduledAccountDeletion } from "./functions/account-deletion";
+import { detectCrisis } from "./functions/crisis-detection";
 
 export const functions = [
   monitorReddit,
@@ -56,4 +58,5 @@ export const functions = [
   retryWebhookDeliveries,
   cleanupWebhookDeliveries,
   scheduledAccountDeletion,
+  detectCrisis,
 ];

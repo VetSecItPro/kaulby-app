@@ -4,14 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,15 +15,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, MoreVertical, Radio, Trash2, Pencil, Users } from "lucide-react";
+import { Plus, Users } from "lucide-react";
+import { AudienceCard, NewAudienceCard, type AudienceStats } from "./audience-card";
 import type { Audience } from "@/lib/db/schema";
 
-interface AudienceWithCount extends Audience {
-  monitorCount: number;
+interface AudienceWithStats extends Audience {
+  stats: AudienceStats;
 }
 
 interface AudiencesListProps {
-  audiences: AudienceWithCount[];
+  audiences: AudienceWithStats[];
 }
 
 export function AudiencesList({ audiences }: AudiencesListProps) {
@@ -63,7 +57,7 @@ export function AudiencesList({ audiences }: AudiencesListProps) {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Audiences</h1>
           <p className="text-muted-foreground">
-            Group your monitors to track different user segments.
+            Group your monitors to track different user segments across all platforms.
           </p>
         </div>
         <Link href="/dashboard/audiences/new">
@@ -96,71 +90,22 @@ export function AudiencesList({ audiences }: AudiencesListProps) {
         </Card>
       )}
 
-      {/* Audiences Grid */}
+      {/* Audiences Grid - Using new enhanced AudienceCard */}
       {audiences.length > 0 && (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {audiences.map((audience) => (
-            <Card
+            <AudienceCard
               key={audience.id}
-              className="hover:border-primary/50 transition-colors cursor-pointer"
-              onClick={() => router.push(`/dashboard/audiences/${audience.id}`)}
-            >
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2">
-                    {audience.color && (
-                      <div
-                        className="w-4 h-4 rounded-full"
-                        style={{ backgroundColor: audience.color }}
-                      />
-                    )}
-                    <CardTitle className="text-lg">{audience.name}</CardTitle>
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          router.push(`/dashboard/audiences/${audience.id}/edit`);
-                        }}
-                      >
-                        <Pencil className="h-4 w-4 mr-2" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-destructive"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeleteId(audience.id);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-                {audience.description && (
-                  <CardDescription className="line-clamp-2">
-                    {audience.description}
-                  </CardDescription>
-                )}
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className="gap-1">
-                    <Radio className="h-3 w-3" />
-                    {audience.monitorCount} monitor{audience.monitorCount !== 1 ? "s" : ""}
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
+              id={audience.id}
+              name={audience.name}
+              description={audience.description}
+              color={audience.color}
+              stats={audience.stats}
+              onDeleteRequest={setDeleteId}
+            />
           ))}
+          {/* Add new audience card at the end */}
+          <NewAudienceCard />
         </div>
       )}
 

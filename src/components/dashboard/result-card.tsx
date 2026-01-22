@@ -29,8 +29,13 @@ import {
   AlertTriangle,
   HelpCircle,
   TrendingUp,
+  Flame,
+  Star,
+  Snowflake,
+  Moon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { HighlightedText } from "./highlighted-text";
 import {
   markResultViewed,
   markResultClicked,
@@ -39,6 +44,8 @@ import {
 } from "@/app/(dashboard)/dashboard/results/actions";
 import { getPlatformBadgeColor } from "@/lib/platform-utils";
 import { BlurredAiAnalysis } from "./upgrade-prompt";
+import { LeadScoreBadge } from "./lead-score-badge";
+import { calculateLeadScore, type LeadScoreFactors } from "@/lib/ai/lead-scoring";
 
 type ConversationCategory = "pain_point" | "solution_request" | "advice_request" | "money_talk" | "hot_discussion";
 
@@ -59,10 +66,21 @@ interface ResultCardProps {
     isClicked: boolean;
     isSaved: boolean;
     isHidden: boolean;
-    monitor?: { name: string } | null;
+    monitor?: { name: string; keywords?: string[] } | null;
+    /** Lead score (0-100) - higher means stronger buying intent */
+    leadScore?: number | null;
+    /** Breakdown of lead score factors */
+    leadScoreFactors?: LeadScoreFactors | null;
+    /** Engagement metrics for on-the-fly lead score calculation */
+    engagementScore?: number | null;
+    authorKarma?: number | null;
   };
   showHidden?: boolean;
   isAiBlurred?: boolean;
+  /** Keywords to highlight in title and content (optional - falls back to monitor keywords) */
+  highlightKeywords?: string[];
+  /** Show lead score badge (default: true) */
+  showLeadScore?: boolean;
 }
 
 // Conversation category styling - these are the high-value GummySearch-style categories
@@ -82,11 +100,43 @@ const sentimentIcons = {
 };
 
 // Memoize to prevent re-renders when parent updates but props haven't changed
-export const ResultCard = memo(function ResultCard({ result, showHidden = false, isAiBlurred = false }: ResultCardProps) {
+export const ResultCard = memo(function ResultCard({
+  result,
+  showHidden = false,
+  isAiBlurred = false,
+  highlightKeywords = [],
+  showLeadScore = true,
+}: ResultCardProps) {
   const [isPending, startTransition] = useTransition();
   const [isSaved, setIsSaved] = useState(result.isSaved);
   const [isHidden, setIsHidden] = useState(result.isHidden);
   const [isViewed, setIsViewed] = useState(result.isViewed);
+
+  // Get keywords for highlighting - use prop or fall back to monitor keywords
+  const keywords = highlightKeywords.length > 0
+    ? highlightKeywords
+    : (result.monitor?.keywords || []);
+
+  // Calculate lead score if not provided but we have enough data
+  const { leadScore, leadScoreFactors } = (() => {
+    // If score is already provided, use it
+    if (result.leadScore !== null && result.leadScore !== undefined) {
+      return { leadScore: result.leadScore, leadScoreFactors: result.leadScoreFactors };
+    }
+    // Calculate on-the-fly if we have engagement data
+    if (result.engagementScore !== null && result.engagementScore !== undefined) {
+      const calculated = calculateLeadScore({
+        title: result.title,
+        content: result.content,
+        conversationCategory: result.conversationCategory,
+        engagementScore: result.engagementScore,
+        postedAt: result.postedAt,
+        authorKarma: result.authorKarma,
+      });
+      return { leadScore: calculated.total, leadScoreFactors: calculated };
+    }
+    return { leadScore: null, leadScoreFactors: null };
+  })();
 
   // All hooks must be called before any conditional returns
   const handleClick = useCallback(() => {
@@ -170,6 +220,15 @@ export const ResultCard = memo(function ResultCard({ result, showHidden = false,
                   </Badge>
                 );
               })()}
+              {/* Lead Score Badge - Shows buying intent level */}
+              {showLeadScore && leadScore !== null && (
+                <LeadScoreBadge
+                  score={leadScore}
+                  factors={leadScoreFactors}
+                  size="sm"
+                  showTooltip={true}
+                />
+              )}
               {!isViewed && (
                 <Badge variant="default" className="text-xs bg-primary">
                   New
@@ -183,7 +242,10 @@ export const ResultCard = memo(function ResultCard({ result, showHidden = false,
               )}
             </div>
             <CardTitle className="text-base line-clamp-2">
-              {result.title}
+              <HighlightedText
+                text={result.title}
+                keywords={keywords}
+              />
             </CardTitle>
             <CardDescription className="text-xs">
               From monitor: {result.monitor?.name || "Unknown"}
@@ -285,11 +347,19 @@ export const ResultCard = memo(function ResultCard({ result, showHidden = false,
           ) : result.aiSummary ? (
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground font-medium">AI Summary:</p>
-              <p className="text-sm">{result.aiSummary}</p>
+              <p className="text-sm">
+                <HighlightedText
+                  text={result.aiSummary}
+                  keywords={keywords}
+                />
+              </p>
             </div>
           ) : result.content ? (
             <p className="text-sm text-muted-foreground line-clamp-3">
-              {result.content}
+              <HighlightedText
+                text={result.content}
+                keywords={keywords}
+              />
             </p>
           ) : null}
         </CardContent>
@@ -298,6 +368,8 @@ export const ResultCard = memo(function ResultCard({ result, showHidden = false,
     </motion.div>
   );
 });
+
+export type LeadScoreFilter = "hot" | "warm" | "cool" | "cold" | null;
 
 interface ResultsFilterBarProps {
   totalCount: number;
@@ -311,6 +383,16 @@ interface ResultsFilterBarProps {
   categoryCounts: Record<ConversationCategory, number>;
   onMarkAllRead?: () => void;
   isPending?: boolean;
+  /** Number of results currently showing (after filters) */
+  filteredCount?: number;
+  /** Keywords being searched (for match count display) */
+  searchKeywords?: string[];
+  /** Lead score filter */
+  leadScoreFilter?: LeadScoreFilter;
+  /** Callback for lead score filter change */
+  onLeadScoreFilterChange?: (filter: LeadScoreFilter) => void;
+  /** Counts for each lead score tier */
+  leadScoreCounts?: { hot: number; warm: number; cool: number; cold: number };
 }
 
 // Category filter chips - GummySearch-style quick filtering
@@ -320,6 +402,14 @@ const categoryFilterOptions: { key: ConversationCategory; label: string; Icon: t
   { key: "pain_point", label: "Pain Points", Icon: AlertTriangle },
   { key: "advice_request", label: "Advice", Icon: HelpCircle },
   { key: "hot_discussion", label: "Trending", Icon: TrendingUp },
+];
+
+// Lead score filter options
+const leadScoreFilterOptions: { key: "hot" | "warm" | "cool" | "cold"; label: string; Icon: typeof Flame; bg: string; text: string }[] = [
+  { key: "hot", label: "Hot", Icon: Flame, bg: "bg-orange-500/10", text: "text-orange-600 dark:text-orange-400" },
+  { key: "warm", label: "Warm", Icon: Star, bg: "bg-amber-500/10", text: "text-amber-600 dark:text-amber-400" },
+  { key: "cool", label: "Cool", Icon: Snowflake, bg: "bg-blue-500/10", text: "text-blue-600 dark:text-blue-400" },
+  { key: "cold", label: "Cold", Icon: Moon, bg: "bg-gray-500/10", text: "text-gray-600 dark:text-gray-400" },
 ];
 
 // Memoize filter bar - pure presentational component
@@ -335,9 +425,32 @@ export const ResultsFilterBar = memo(function ResultsFilterBar({
   categoryCounts,
   onMarkAllRead,
   isPending,
+  filteredCount,
+  searchKeywords = [],
+  leadScoreFilter,
+  onLeadScoreFilterChange,
+  leadScoreCounts,
 }: ResultsFilterBarProps) {
+  // Show match count header when filtering
+  const showMatchCount = filteredCount !== undefined && filteredCount !== totalCount;
+
   return (
     <div className="space-y-3">
+      {/* Match count header - GummySearch-style */}
+      {showMatchCount && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">{filteredCount}</span>
+          <span>/</span>
+          <span>{totalCount}</span>
+          <span>results matching</span>
+          {searchKeywords.length > 0 && (
+            <span className="text-xs">
+              ({searchKeywords.length} keyword{searchKeywords.length !== 1 ? "s" : ""})
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Primary filters (All, Unread, Saved, Hidden) */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -454,6 +567,56 @@ export const ResultsFilterBar = memo(function ResultsFilterBar({
           </Button>
         )}
       </div>
+
+      {/* Lead Score filter chips - filter by buying intent */}
+      {onLeadScoreFilterChange && leadScoreCounts && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-muted-foreground font-medium">Lead score:</span>
+          {leadScoreFilterOptions.map(({ key, label, Icon, bg, text }) => {
+            const count = leadScoreCounts[key] || 0;
+            const isActive = leadScoreFilter === key;
+
+            return (
+              <Button
+                key={key}
+                variant="ghost"
+                size="sm"
+                onClick={() => onLeadScoreFilterChange(isActive ? null : key)}
+                className={cn(
+                  "h-7 px-2 text-xs gap-1 transition-all",
+                  isActive && cn(bg, text, "hover:opacity-90"),
+                  !isActive && count === 0 && "opacity-50"
+                )}
+                disabled={count === 0 && !isActive}
+              >
+                <Icon className="h-3 w-3" />
+                {label}
+                {count > 0 && (
+                  <Badge
+                    variant="secondary"
+                    className={cn(
+                      "ml-1 h-4 px-1 text-[10px]",
+                      isActive && "bg-white/20 text-current"
+                    )}
+                  >
+                    {count}
+                  </Badge>
+                )}
+              </Button>
+            );
+          })}
+          {leadScoreFilter && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onLeadScoreFilterChange(null)}
+              className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+            >
+              Clear
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
 });
