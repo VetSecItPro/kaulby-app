@@ -17,7 +17,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Plus, Users } from "lucide-react";
 import { AudienceCard, NewAudienceCard, type AudienceStats } from "./audience-card";
+import { SuggestedCommunities } from "./suggested-communities";
 import type { Audience } from "@/lib/db/schema";
+import type { CommunitySuggestion } from "@/lib/community-suggestions";
 
 interface AudienceWithStats extends Audience {
   stats: AudienceStats;
@@ -25,12 +27,18 @@ interface AudienceWithStats extends Audience {
 
 interface AudiencesListProps {
   audiences: AudienceWithStats[];
+  suggestions?: CommunitySuggestion[];
 }
 
-export function AudiencesList({ audiences }: AudiencesListProps) {
+export function AudiencesList({ audiences, suggestions = [] }: AudiencesListProps) {
   const router = useRouter();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleAddCommunity = (community: string) => {
+    // Open Reddit in new tab for now - could be enhanced to add to monitor
+    window.open(`https://reddit.com/${community}`, "_blank");
+  };
 
   const handleDelete = async () => {
     if (!deleteId) return;
@@ -67,6 +75,14 @@ export function AudiencesList({ audiences }: AudiencesListProps) {
           </Button>
         </Link>
       </div>
+
+      {/* Community Suggestions */}
+      {suggestions.length > 0 && (
+        <SuggestedCommunities
+          suggestions={suggestions}
+          onAddCommunity={handleAddCommunity}
+        />
+      )}
 
       {/* Empty State */}
       {audiences.length === 0 && (
