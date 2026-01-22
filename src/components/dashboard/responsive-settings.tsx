@@ -4,6 +4,7 @@ import { useState } from "react";
 import { MobileSettings } from "@/components/mobile/mobile-settings";
 import { TeamSettings } from "@/components/dashboard/team-settings";
 import { ApiKeysSettings } from "@/components/dashboard/api-keys-settings";
+import { IntegrationsSettings, DEFAULT_INTEGRATIONS } from "@/components/dashboard/integrations-settings";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -291,6 +292,28 @@ export function ResponsiveSettings({
 
       {/* API Keys Settings - Enterprise only */}
       <ApiKeysSettings subscriptionStatus={subscriptionStatus} />
+
+      {/* Integrations Settings - Pro and above */}
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-xl font-semibold">Integrations</h2>
+          <p className="text-sm text-muted-foreground">
+            Connect Kaulby with your favorite tools.
+          </p>
+        </div>
+        <IntegrationsSettings
+          integrations={DEFAULT_INTEGRATIONS}
+          isPro={subscriptionStatus === "pro" || subscriptionStatus === "enterprise"}
+          onConnect={async (integrationId) => {
+            // In production, this would initiate OAuth flow
+            console.log("Connecting:", integrationId);
+          }}
+          onDisconnect={async (integrationId) => {
+            // In production, this would revoke the integration
+            console.log("Disconnecting:", integrationId);
+          }}
+        />
+      </div>
 
       {/* Your Data */}
       <Card>

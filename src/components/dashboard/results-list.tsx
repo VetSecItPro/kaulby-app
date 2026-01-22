@@ -28,9 +28,11 @@ interface Result {
 interface ResultsListProps {
   results: Result[];
   hasUnlimitedAi?: boolean;
+  /** Keywords to highlight in results */
+  highlightKeywords?: string[];
 }
 
-export function ResultsList({ results, hasUnlimitedAi = true }: ResultsListProps) {
+export function ResultsList({ results, hasUnlimitedAi = true, highlightKeywords = [] }: ResultsListProps) {
   const [filter, setFilter] = useState<"all" | "unread" | "saved" | "hidden">("all");
   const [categoryFilter, setCategoryFilter] = useState<ConversationCategory | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -117,6 +119,8 @@ export function ResultsList({ results, hasUnlimitedAi = true }: ResultsListProps
         categoryCounts={categoryCounts}
         onMarkAllRead={handleMarkAllRead}
         isPending={isPending}
+        filteredCount={filteredResults.length}
+        searchKeywords={highlightKeywords}
       />
 
       <div className="grid gap-4">
@@ -135,6 +139,7 @@ export function ResultsList({ results, hasUnlimitedAi = true }: ResultsListProps
               result={result}
               showHidden={filter === "hidden"}
               isAiBlurred={!hasUnlimitedAi && index > 0}
+              highlightKeywords={highlightKeywords}
             />
           ))
         )}

@@ -31,15 +31,160 @@ import {
   ExternalLink,
   X,
   MessageSquare,
+  TrendingUp,
+  Activity,
+  BarChart3,
 } from "lucide-react";
-import { getPlatformDisplayName, getPlatformBadgeColor } from "@/lib/platform-utils";
+import { getPlatformDisplayName, getPlatformBadgeColor, getPlatformBarColor } from "@/lib/platform-utils";
+import { Sparkline, TrendIndicator } from "./sparkline";
 import type { Audience, Monitor, Result } from "@/lib/db/schema";
+
+/**
+ * Detailed stats for audience detail page
+ */
+export interface AudienceDetailStats {
+  totalMentions: number;
+  mentionChange: number;
+  dailyMentions: number[];
+  sentiment: {
+    positive: number;
+    neutral: number;
+    negative: number;
+  };
+  platformBreakdown: Record<string, {
+    count: number;
+    sentiment: { positive: number; neutral: number; negative: number };
+  }>;
+  avgEngagement: number;
+  totalAllTime: number;
+}
 
 interface AudienceDetailProps {
   audience: Audience;
   monitors: Monitor[];
   results: Result[];
   availableMonitors: Monitor[];
+  stats?: AudienceDetailStats;
+}
+
+/**
+ * Platform breakdown card component
+ */
+function PlatformBreakdownCard({
+  platform,
+  count,
+  sentiment,
+  totalMentions,
+}: {
+  platform: string;
+  count: number;
+  sentiment: { positive: number; neutral: number; negative: number };
+  totalMentions: number;
+}) {
+  const percentage = totalMentions > 0 ? (count / totalMentions) * 100 : 0;
+  const sentimentTotal = sentiment.positive + sentiment.neutral + sentiment.negative;
+  const positivePercent = sentimentTotal > 0 ? (sentiment.positive / sentimentTotal) * 100 : 0;
+
+  return (
+    <div className="p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors">
+      <div className="flex items-center justify-between mb-2">
+        <Badge
+          variant="secondary"
+          className={`${getPlatformBadgeColor(platform, "light")}`}
+        >
+          {getPlatformDisplayName(platform)}
+        </Badge>
+        <span className="text-sm font-medium">{count}</span>
+      </div>
+      {/* Percentage bar */}
+      <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden mb-1">
+        <div
+          className={`h-full ${getPlatformBarColor(platform)} transition-all`}
+          style={{ width: `${percentage}%` }}
+        />
+      </div>
+      <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+        <span>{percentage.toFixed(0)}% of mentions</span>
+        <span className="text-green-600 dark:text-green-400">
+          {positivePercent.toFixed(0)}% positive
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Sentiment donut chart (simple SVG)
+ */
+function SentimentDonut({
+  positive,
+  neutral,
+  negative,
+  size = 80,
+}: {
+  positive: number;
+  neutral: number;
+  negative: number;
+  size?: number;
+}) {
+  const total = positive + neutral + negative;
+  if (total === 0) {
+    return (
+      <div
+        className="rounded-full bg-muted flex items-center justify-center text-xs text-muted-foreground"
+        style={{ width: size, height: size }}
+      >
+        No data
+      </div>
+    );
+  }
+
+  const radius = size / 2 - 8;
+  const circumference = 2 * Math.PI * radius;
+
+  const positiveAngle = (positive / total) * circumference;
+  const neutralAngle = (neutral / total) * circumference;
+  const negativeAngle = (negative / total) * circumference;
+
+  let offset = 0;
+  const segments = [
+    { color: "rgb(34 197 94)", length: positiveAngle, label: "positive" },
+    { color: "rgb(156 163 175)", length: neutralAngle, label: "neutral" },
+    { color: "rgb(239 68 68)", length: negativeAngle, label: "negative" },
+  ].filter(s => s.length > 0);
+
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      {segments.map((segment) => {
+        const currentOffset = offset;
+        offset += segment.length;
+        return (
+          <circle
+            key={segment.label}
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke={segment.color}
+            strokeWidth={12}
+            strokeDasharray={`${segment.length} ${circumference - segment.length}`}
+            strokeDashoffset={-currentOffset}
+            transform={`rotate(-90 ${size / 2} ${size / 2})`}
+            strokeLinecap="round"
+          />
+        );
+      })}
+      <text
+        x={size / 2}
+        y={size / 2}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        className="fill-foreground text-lg font-bold"
+      >
+        {total}
+      </text>
+    </svg>
+  );
 }
 
 export function AudienceDetail({
@@ -47,6 +192,7 @@ export function AudienceDetail({
   monitors,
   results,
   availableMonitors,
+  stats,
 }: AudienceDetailProps) {
   const router = useRouter();
   const [isAddingMonitor, setIsAddingMonitor] = useState(false);
@@ -136,33 +282,160 @@ export function AudienceDetail({
         </Link>
       </div>
 
-      {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-3">
+      {/* Enhanced Stats */}
+      {stats && (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {/* Mentions this week */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardDescription className="flex items-center gap-1">
+                <MessageSquare className="h-3 w-3" />
+                Mentions This Week
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-bold">{stats.totalMentions}</span>
+                <TrendIndicator change={stats.mentionChange} size="sm" />
+              </div>
+              <div className="mt-2">
+                <Sparkline
+                  data={stats.dailyMentions}
+                  width={120}
+                  height={32}
+                  color={stats.mentionChange >= 0 ? "rgb(34 197 94)" : "rgb(239 68 68)"}
+                  label="Weekly activity trend"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Sentiment breakdown */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardDescription className="flex items-center gap-1">
+                <Activity className="h-3 w-3" />
+                Sentiment
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-4">
+                <SentimentDonut
+                  positive={stats.sentiment.positive}
+                  neutral={stats.sentiment.neutral}
+                  negative={stats.sentiment.negative}
+                />
+                <div className="space-y-1 text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-green-500" />
+                    <span>{stats.sentiment.positive} positive</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-gray-400" />
+                    <span>{stats.sentiment.neutral} neutral</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-red-500" />
+                    <span>{stats.sentiment.negative} negative</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Avg Engagement */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardDescription className="flex items-center gap-1">
+                <TrendingUp className="h-3 w-3" />
+                Avg Engagement
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{stats.avgEngagement}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                upvotes + comments
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Monitors */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardDescription className="flex items-center gap-1">
+                <Radio className="h-3 w-3" />
+                Active Monitors
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{monitors.length}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {stats.totalAllTime} mentions all time
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Platform Breakdown */}
+      {stats && Object.keys(stats.platformBreakdown).length > 0 && (
         <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Monitors</CardDescription>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <BarChart3 className="h-5 w-5" />
+              Platform Breakdown
+            </CardTitle>
+            <CardDescription>
+              Where conversations are happening this week
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{monitors.length}</div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {Object.entries(stats.platformBreakdown)
+                .sort((a, b) => b[1].count - a[1].count)
+                .map(([platform, data]) => (
+                  <PlatformBreakdownCard
+                    key={platform}
+                    platform={platform}
+                    count={data.count}
+                    sentiment={data.sentiment}
+                    totalMentions={stats.totalMentions}
+                  />
+                ))}
+            </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Recent Results</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{results.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Created</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatDate(audience.createdAt)}</div>
-          </CardContent>
-        </Card>
-      </div>
+      )}
+
+      {/* Fallback stats if no enhanced stats available */}
+      {!stats && (
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardDescription>Monitors</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{monitors.length}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardDescription>Recent Results</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{results.length}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardDescription>Created</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{formatDate(audience.createdAt)}</div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Monitors Section */}
       <Card>

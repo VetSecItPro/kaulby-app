@@ -1,5 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import { eq } from "drizzle-orm";
+import { db, users } from "@/lib/db";
 import { AnalyticsCharts } from "@/components/dashboard/analytics-charts";
 
 export default async function AnalyticsPage() {
@@ -8,6 +10,14 @@ export default async function AnalyticsPage() {
   if (!userId) {
     redirect("/sign-in");
   }
+
+  // Get user's subscription status for feature gating
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+    columns: { subscriptionStatus: true },
+  });
+
+  const subscriptionStatus = user?.subscriptionStatus || "free";
 
   return (
     <div className="space-y-8">
@@ -18,7 +28,7 @@ export default async function AnalyticsPage() {
         </p>
       </div>
 
-      <AnalyticsCharts />
+      <AnalyticsCharts subscriptionStatus={subscriptionStatus} />
     </div>
   );
 }
