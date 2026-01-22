@@ -314,11 +314,25 @@ export function ResponsiveSettings({
                 const { authUrl } = await response.json();
                 window.location.href = authUrl;
               }
+            } else if (integrationId === "slack") {
+              // Initiate Slack OAuth flow
+              const response = await fetch("/api/integrations/slack", {
+                method: "POST",
+              });
+              if (response.ok) {
+                const { authUrl } = await response.json();
+                window.location.href = authUrl;
+              }
             }
           }}
           onDisconnect={async (integrationId) => {
             if (integrationId === "hubspot") {
               await fetch("/api/integrations/hubspot", {
+                method: "DELETE",
+              });
+              window.location.reload();
+            } else if (integrationId === "slack") {
+              await fetch("/api/integrations/slack", {
                 method: "DELETE",
               });
               window.location.reload();
