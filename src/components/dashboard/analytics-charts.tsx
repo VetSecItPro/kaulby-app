@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   AreaChart,
   Area,
@@ -28,7 +29,10 @@ import {
   AlertTriangle,
   HelpCircle,
   Loader2,
+  Lock,
 } from "lucide-react";
+import { ShareOfVoice } from "./share-of-voice";
+import { ReportGenerator } from "./report-generator";
 
 interface AnalyticsData {
   volumeOverTime: { date: string; count: number }[];
@@ -83,10 +87,34 @@ const SENTIMENT_COLORS = {
 
 type TimeRange = "7d" | "30d" | "90d" | "1y";
 
-export function AnalyticsCharts() {
+interface ShareOfVoiceData {
+  yourBrand: {
+    name: string;
+    mentions: number;
+    previousMentions: number;
+    sentiment: { positive: number; neutral: number; negative: number };
+  } | null;
+  competitors: Array<{
+    name: string;
+    mentions: number;
+    previousMentions: number;
+    sentiment: { positive: number; neutral: number; negative: number };
+  }>;
+  period: string;
+}
+
+interface AnalyticsChartsProps {
+  subscriptionStatus?: string;
+}
+
+export function AnalyticsCharts({ subscriptionStatus = "free" }: AnalyticsChartsProps) {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [range, setRange] = useState<TimeRange>("30d");
+  const [sovData, setSovData] = useState<ShareOfVoiceData | null>(null);
+  const [sovLoading, setSovLoading] = useState(false);
+
+  const isTeam = subscriptionStatus === "enterprise";
 
   useEffect(() => {
     async function fetchAnalytics() {
@@ -105,6 +133,28 @@ export function AnalyticsCharts() {
     }
     fetchAnalytics();
   }, [range]);
+
+  // Fetch Share of Voice data for Team tier users
+  useEffect(() => {
+    async function fetchShareOfVoice() {
+      if (!isTeam) return;
+
+      setSovLoading(true);
+      try {
+        const days = range === "7d" ? 7 : range === "30d" ? 30 : range === "90d" ? 90 : 365;
+        const response = await fetch(`/api/analytics/share-of-voice?days=${days}`);
+        if (response.ok) {
+          const sovResult = await response.json();
+          setSovData(sovResult);
+        }
+      } catch (error) {
+        console.error("Failed to fetch share of voice:", error);
+      } finally {
+        setSovLoading(false);
+      }
+    }
+    fetchShareOfVoice();
+  }, [range, isTeam]);
 
   if (loading) {
     return (
@@ -136,8 +186,8 @@ export function AnalyticsCharts() {
 
   return (
     <div className="space-y-6">
-      {/* Time Range Selector */}
-      <div className="flex items-center justify-between">
+      {/* Time Range Selector & Actions */}
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-2">
           {(["7d", "30d", "90d", "1y"] as TimeRange[]).map((r) => (
             <Button
@@ -153,6 +203,15 @@ export function AnalyticsCharts() {
             </Button>
           ))}
         </div>
+        <ReportGenerator
+          isTeam={isTeam}
+          onGenerate={async (config) => {
+            // For now, just log - full PDF generation would require backend
+            console.log("Generating report with config:", config);
+            // Return a placeholder URL - in production this would hit /api/reports/generate
+            return "#";
+          }}
+        />
       </div>
 
       {/* Summary Cards */}
@@ -404,6 +463,43 @@ export function AnalyticsCharts() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Share of Voice - Team Tier Feature */}
+      {isTeam ? (
+        sovLoading ? (
+          <Card>
+            <CardContent className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </CardContent>
+          </Card>
+        ) : sovData?.yourBrand ? (
+          <ShareOfVoice
+            yourBrand={sovData.yourBrand}
+            competitors={sovData.competitors}
+            period={sovData.period}
+            showDetails={true}
+          />
+        ) : (
+          <Card>
+            <CardContent className="py-8 text-center">
+              <p className="text-muted-foreground">
+                Share of Voice data will appear once you have multiple monitors tracking different brands.
+              </p>
+            </CardContent>
+          </Card>
+        )
+      ) : (
+        <Card className="border-dashed">
+          <CardContent className="p-6 text-center">
+            <Lock className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+            <h3 className="font-semibold mb-1">Share of Voice</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Compare your brand&apos;s mentions against competitors. See who dominates the conversation.
+            </p>
+            <Badge variant="outline">Team Plan Feature</Badge>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

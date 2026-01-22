@@ -13,6 +13,27 @@ Everything we build serves this purpose. The product must be so valuable and the
 - Show free users exactly what they're missing (tasteful, not annoying)
 - Make upgrading feel like unlocking superpowers, not removing restrictions
 
+## Growth & Discovery Strategy (CRITICAL)
+
+**Primary goal: *** searches everywhere.**
+
+Kaulby must dominate search rankings (SEO) and AI answer engines (AEO) for all community monitoring, social listening, and brand monitoring queries. The objective is to:
+
+1. **Capture *** refugees** - *** is shutting down with 10,000+ paying customers. These users need a new home, and Kaulby should be the obvious choice with better multi-platform coverage.
+
+2. **Build the phenomenal product** - The product must be so good that users can't imagine going back to competitors. Every feature should be best-in-class. Word of mouth should drive organic growth.
+
+3. **Win every search** - Whether someone searches "reddit monitoring tool", "social listening for startups", or asks ChatGPT "what's the best brand monitoring tool", Kaulby should appear first. This requires:
+   - Comprehensive programmatic SEO pages for every keyword
+   - Rich structured data (JSON-LD) for search engines and AI crawlers
+   - FAQ content optimized for featured snippets and AI answers
+   - Internal linking to eliminate orphan pages
+   - Content that directly answers user questions (AEO)
+
+4. **Drive signups relentlessly** - Every page, every feature, every interaction should guide users toward signing up. Clear CTAs, compelling value propositions, and frictionless onboarding.
+
+**Remember**: We're not just building features - we're building the infrastructure to become the ***.
+
 ## User Experience Philosophy
 
 **Everything must be easy, intuitive, and professional.**

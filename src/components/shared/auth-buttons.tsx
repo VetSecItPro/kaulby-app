@@ -14,22 +14,8 @@ import { ArrowRight } from "lucide-react";
 export function AuthButtons() {
   const { isSignedIn, isLoaded } = useAuth();
 
-  // Show nothing while loading to prevent flash
-  if (!isLoaded) {
-    return (
-      <>
-        <Button variant="ghost" disabled className="opacity-50">
-          Sign In
-        </Button>
-        <Button disabled className="opacity-50">
-          Get Started
-        </Button>
-      </>
-    );
-  }
-
   // User is signed in - show dashboard link
-  if (isSignedIn) {
+  if (isLoaded && isSignedIn) {
     return (
       <Link href="/dashboard">
         <Button>Dashboard</Button>
@@ -37,7 +23,7 @@ export function AuthButtons() {
     );
   }
 
-  // User is not signed in - show auth buttons
+  // Show auth buttons (works even while Clerk is loading)
   return (
     <>
       <Link href="/sign-in">
@@ -59,24 +45,8 @@ export function AuthButtons() {
 export function HeroCTA() {
   const { isSignedIn, isLoaded } = useAuth();
 
-  // Show loading state
-  if (!isLoaded) {
-    return (
-      <>
-        <Button size="lg" disabled className="gap-2 opacity-50">
-          Start Free Trial <ArrowRight className="h-4 w-4" />
-        </Button>
-        <Link href="/pricing">
-          <Button size="lg">
-            View Pricing
-          </Button>
-        </Link>
-      </>
-    );
-  }
-
   // User is signed in - show dashboard link instead of sign-up
-  if (isSignedIn) {
+  if (isLoaded && isSignedIn) {
     return (
       <>
         <Link href="/dashboard">
@@ -93,7 +63,7 @@ export function HeroCTA() {
     );
   }
 
-  // User is not signed in
+  // Show sign-up buttons (works even while Clerk is loading)
   return (
     <>
       <Link href="/sign-up">
@@ -114,17 +84,8 @@ export function HeroCTA() {
 export function AuthCTA() {
   const { isSignedIn, isLoaded } = useAuth();
 
-  // Show loading state
-  if (!isLoaded) {
-    return (
-      <Button size="lg" variant="secondary" disabled className="gap-2 opacity-50">
-        Get Started for Free <ArrowRight className="h-4 w-4" />
-      </Button>
-    );
-  }
-
   // User is signed in - show dashboard link
-  if (isSignedIn) {
+  if (isLoaded && isSignedIn) {
     return (
       <Link href="/dashboard">
         <Button size="lg" variant="secondary" className="gap-2">
@@ -134,7 +95,7 @@ export function AuthCTA() {
     );
   }
 
-  // User is not signed in
+  // Show sign-up button (works even while Clerk is loading)
   return (
     <Link href="/sign-up">
       <Button size="lg" variant="secondary" className="gap-2">

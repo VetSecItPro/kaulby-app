@@ -56,7 +56,7 @@ export default async function ResultsPage({ searchParams }: ResultsPageProps) {
           offset,
           with: {
             monitor: {
-              columns: { name: true },
+              columns: { name: true, keywords: true },
             },
           },
         }),

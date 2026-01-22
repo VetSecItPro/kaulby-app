@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import { Toaster } from "@/components/ui/toaster";
 import { DeviceProvider } from "@/hooks/use-device";
 import { ResilientClerkProvider } from "@/components/shared/clerk-provider";
+import { OrganizationSchema, SoftwareApplicationSchema } from "@/lib/seo/structured-data";
 import "./globals.css";
 
 // Font configuration
@@ -83,6 +84,10 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background`}
       >
+        {/* Sitewide Structured Data for SEO & AEO */}
+        <OrganizationSchema />
+        <SoftwareApplicationSchema />
+
         <ResilientClerkProvider>
           <DeviceProvider>
             {children}
