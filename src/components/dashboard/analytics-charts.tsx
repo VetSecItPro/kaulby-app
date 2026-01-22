@@ -206,10 +206,19 @@ export function AnalyticsCharts({ subscriptionStatus = "free" }: AnalyticsCharts
         <ReportGenerator
           isTeam={isTeam}
           onGenerate={async (config) => {
-            // For now, just log - full PDF generation would require backend
-            console.log("Generating report with config:", config);
-            // Return a placeholder URL - in production this would hit /api/reports/generate
-            return "#";
+            const response = await fetch("/api/reports/generate", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(config),
+            });
+            if (!response.ok) {
+              throw new Error("Failed to generate report");
+            }
+            // For HTML reports, open in new tab
+            const html = await response.text();
+            const blob = new Blob([html], { type: "text/html" });
+            const url = URL.createObjectURL(blob);
+            return url;
           }}
         />
       </div>

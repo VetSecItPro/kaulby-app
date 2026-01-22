@@ -305,12 +305,24 @@ export function ResponsiveSettings({
           integrations={DEFAULT_INTEGRATIONS}
           isPro={subscriptionStatus === "pro" || subscriptionStatus === "enterprise"}
           onConnect={async (integrationId) => {
-            // In production, this would initiate OAuth flow
-            console.log("Connecting:", integrationId);
+            if (integrationId === "hubspot") {
+              // Initiate HubSpot OAuth flow
+              const response = await fetch("/api/integrations/hubspot", {
+                method: "POST",
+              });
+              if (response.ok) {
+                const { authUrl } = await response.json();
+                window.location.href = authUrl;
+              }
+            }
           }}
           onDisconnect={async (integrationId) => {
-            // In production, this would revoke the integration
-            console.log("Disconnecting:", integrationId);
+            if (integrationId === "hubspot") {
+              await fetch("/api/integrations/hubspot", {
+                method: "DELETE",
+              });
+              window.location.reload();
+            }
           }}
         />
       </div>
