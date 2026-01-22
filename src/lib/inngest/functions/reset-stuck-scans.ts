@@ -21,7 +21,7 @@ export const resetStuckScans = inngest.createFunction(
     id: "reset-stuck-scans",
     name: "Reset Stuck Scans",
   },
-  { cron: "*/5 * * * *" }, // Run every 5 minutes
+  { cron: "*/15 * * * *" }, // Run every 15 minutes
   async ({ step }) => {
     const cutoffTime = new Date(Date.now() - STUCK_SCAN_THRESHOLD_MS);
 
