@@ -268,10 +268,10 @@ export function IntegrationsSettings({
 }: IntegrationsSettingsProps) {
   // Group integrations by category
   const crmIntegrations = integrations.filter((i) =>
-    ["hubspot", "salesforce", "pipedrive"].includes(i.id)
+    ["hubspot"].includes(i.id)
   );
   const otherIntegrations = integrations.filter((i) =>
-    !["hubspot", "salesforce", "pipedrive"].includes(i.id)
+    !["hubspot"].includes(i.id)
   );
 
   return (
@@ -374,31 +374,10 @@ export const DEFAULT_INTEGRATIONS: Integration[] = [
     status: "disconnected",
   },
   {
-    id: "salesforce",
-    name: "Salesforce",
-    description: "Export leads to Salesforce. Map fields and create opportunities.",
-    icon: "salesforce",
-    status: "coming_soon",
-  },
-  {
-    id: "pipedrive",
-    name: "Pipedrive",
-    description: "Add leads to Pipedrive pipelines with full context.",
-    icon: "pipedrive",
-    status: "coming_soon",
-  },
-  {
     id: "slack",
     name: "Slack",
     description: "Get real-time alerts in your Slack channels.",
     icon: "slack",
     status: "disconnected",
-  },
-  {
-    id: "zapier",
-    name: "Zapier",
-    description: "Connect to 5,000+ apps via Zapier automations.",
-    icon: "zapier",
-    status: "coming_soon",
   },
 ];
