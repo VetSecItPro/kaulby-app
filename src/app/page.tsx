@@ -9,7 +9,6 @@ import {
   Globe,
   MessageSquare,
   TrendingUp,
-  Radar,
   Target,
   BarChart3,
   Activity,
@@ -17,7 +16,7 @@ import {
   Smartphone,
   Code2,
   HelpCircle,
-  Check,
+  Download,
 } from "lucide-react";
 
 import { AuthButtons, AuthCTA, HeroCTA } from "@/components/shared/auth-buttons";
@@ -31,7 +30,7 @@ import {
   AnimatedStepCard,
   TextReveal,
 } from "@/components/shared/home-animations-lazy";
-import { PWAInstallBanner } from "@/components/shared/pwa-install-banner";
+import { PWAInstallButton } from "@/components/shared/pwa-install-button";
 
 export default function HomePage() {
   return (
@@ -81,67 +80,26 @@ export default function HomePage() {
 
       {/* Hero Section */}
       <HomeAnimations>
-        <section className="py-16 md:py-24 lg:py-32 px-4 relative">
+        <section className="pt-16 pb-10 md:pt-24 md:pb-14 lg:pt-32 lg:pb-16 px-4 relative">
           <div className="container mx-auto text-center max-w-5xl">
-            {/* Feature badges */}
-            <div className="animate-fade-up flex flex-wrap items-center justify-center gap-2 md:gap-3 mb-6 md:mb-8">
-              <Badge
-                variant="outline"
-                className="px-3 py-1 text-xs border-primary/30 bg-primary/5"
-              >
-                <Check className="h-3 w-3 mr-1.5 text-primary" />
-                GummySearch Alternative
-              </Badge>
-              <Badge
-                variant="outline"
-                className="px-3 py-1 text-xs border-primary/30 bg-primary/5"
-              >
-                <Globe className="h-3 w-3 mr-1.5 text-primary" />
-                9 Platforms
-              </Badge>
-              <Badge
-                variant="outline"
-                className="px-3 py-1 text-xs border-primary/30 bg-primary/5"
-              >
-                <Radar className="h-3 w-3 mr-1.5 text-primary" />
-                AI-Powered
-              </Badge>
-            </div>
-
-            <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-4 md:mb-6 animate-fade-up leading-tight" style={{ animationDelay: "0.1s" }}>
-              Monitor{" "}
+<h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-4 md:mb-6 animate-fade-up leading-tight" style={{ animationDelay: "0.1s" }}>
+              Know What People Say
+              <br className="hidden sm:block" />
+              <span className="sm:hidden"> </span>
               <span className="relative inline-block">
-                <span className="relative z-10">9 Platforms</span>
+                <span className="relative z-10">About You</span>
                 <span className="absolute -inset-x-1 top-1/3 bottom-0 bg-yellow-400/50 -rotate-2 -z-0 rounded-sm" />
               </span>
-              <br className="hidden sm:block" />
-              <span className="sm:hidden">. </span>
-              <span className="gradient-text">Find Customers. Beat Competitors.</span>
+              <span className="gradient-text">. Everywhere.</span>
             </h1>
 
             <p className="text-base md:text-lg lg:text-xl text-muted-foreground mb-8 md:mb-10 max-w-2xl mx-auto animate-fade-up px-2" style={{ animationDelay: "0.2s" }}>
-              The only social listening tool built for startups.
-              Track Reddit, HN, Product Hunt, reviews, and more—powered by AI.
+              Find customers where they&apos;re already talking.
+              AI-powered monitoring across Reddit, Hacker News, Product Hunt, and review sites.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center animate-fade-up px-4 sm:px-0" style={{ animationDelay: "0.3s" }}>
               <HeroCTA />
-            </div>
-
-            {/* Trust badges */}
-            <div className="mt-10 md:mt-16 flex flex-col sm:flex-row flex-wrap items-center justify-center gap-4 md:gap-8 text-xs md:text-sm text-muted-foreground animate-fade-up" style={{ animationDelay: "0.4s" }}>
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                <span>Real-time monitoring</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Shield className="h-4 w-4" />
-                <span>14-day free trial</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Zap className="h-4 w-4" />
-                <span>Setup in 2 minutes</span>
-              </div>
             </div>
           </div>
         </section>
@@ -207,47 +165,47 @@ export default function HomePage() {
               </TextReveal>
             </div>
 
-            <StaggerContainer className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+            <StaggerContainer className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6" staggerDelay={0.08}>
               <StaggerItem>
                 <FeatureCard
                   icon={Target}
-                  title="Smart Keyword Tracking"
-                  description="Track any keyword, phrase, or brand name across multiple platforms simultaneously."
+                  title="Keyword Tracking"
+                  description="Monitor any keyword, phrase, or brand name across Reddit, Hacker News, and review sites."
                 />
               </StaggerItem>
               <StaggerItem>
                 <FeatureCard
                   icon={Activity}
-                  title="Smart Analysis"
-                  description="Automatic sentiment analysis and pain point detection to prioritize important mentions."
+                  title="AI-Powered Analysis"
+                  description="Automatic sentiment scoring and pain point detection to surface what matters most."
                 />
               </StaggerItem>
               <StaggerItem>
                 <FeatureCard
                   icon={Bell}
-                  title="Instant Alerts"
-                  description="Get real-time notifications via email when keywords are mentioned."
+                  title="Email Alerts"
+                  description="Get daily or weekly digests delivered to your inbox when new mentions are found."
                 />
               </StaggerItem>
               <StaggerItem>
                 <FeatureCard
                   icon={BarChart3}
-                  title="Rich Analytics"
-                  description="Visualize trends, sentiment over time, and engagement metrics in beautiful dashboards."
+                  title="Analytics Dashboard"
+                  description="Visualize trends, sentiment over time, and engagement metrics at a glance."
                 />
               </StaggerItem>
               <StaggerItem>
                 <FeatureCard
                   icon={Globe}
                   title="Multi-Platform"
-                  description="One dashboard for all 9 platforms: Reddit, HN, Product Hunt, reviews, Q&A, and more."
+                  description="One dashboard for Reddit, Hacker News, Product Hunt, app stores, and review sites."
                 />
               </StaggerItem>
               <StaggerItem>
                 <FeatureCard
                   icon={Shield}
                   title="Brand Protection"
-                  description="Respond quickly to mentions and manage your brand reputation effectively."
+                  description="Stay ahead of negative sentiment and respond to mentions before they escalate."
                 />
               </StaggerItem>
             </StaggerContainer>
@@ -294,30 +252,55 @@ export default function HomePage() {
           </div>
         </AnimatedSection>
 
-        {/* CTA Section */}
-        <AnimatedSection className="py-16 md:py-24 px-4 relative overflow-hidden">
+        {/* CTA Section - Split Layout */}
+        <AnimatedSection className="py-10 md:py-14 px-4 relative overflow-hidden">
           <div className="absolute inset-0 gradient-primary opacity-95" />
+          <div className="container mx-auto relative z-10">
+            <div className="grid md:grid-cols-2 gap-4 md:gap-6 items-center">
+              {/* Left: Start Monitoring CTA */}
+              <div className="p-6 md:p-8 border-r-0 md:border-r border-white/10">
+                <h2 className="text-xl sm:text-2xl font-bold mb-2 text-white">
+                  Ready to start monitoring?
+                </h2>
+                <p className="text-sm text-white/80 mb-4 max-w-md">
+                  Join companies using Kaulby to track conversations and engage with their communities.
+                </p>
+                <AuthCTA />
+              </div>
 
-          <div className="container mx-auto text-center relative z-10 px-4">
-            <TextReveal>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 md:mb-4 text-white">
-                Ready to start monitoring?
-              </h2>
-            </TextReveal>
-            <TextReveal delay={0.1}>
-              <p className="text-sm md:text-base text-white/80 mb-8 md:mb-10 max-w-xl mx-auto">
-                Join companies using Kaulby to track conversations and engage with their communities.
-              </p>
-            </TextReveal>
-            <TextReveal delay={0.2}>
-              <AuthCTA />
-            </TextReveal>
+              {/* Right: PWA Install Card */}
+              <div className="p-6 md:p-8">
+                <div className="flex items-start gap-4">
+                  <div className="h-10 w-10 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
+                    <Download className="h-5 w-5 text-white" />
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <h3 className="text-lg font-semibold text-white">Install the App</h3>
+                      <p className="text-sm text-white/70">
+                        Add to home screen for the best experience
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <PWAInstallButton />
+                      <div className="flex gap-3 text-xs text-white/60">
+                        <span className="flex items-center gap-1">
+                          <Zap className="h-3 w-3" />
+                          Fast
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Bell className="h-3 w-3" />
+                          Notifications
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </AnimatedSection>
       </HomeAnimations>
-
-      {/* PWA Install Banner */}
-      <PWAInstallBanner />
 
       {/* Footer */}
       <MarketingFooter />
@@ -352,13 +335,15 @@ function FeatureCard({
   description: string;
 }) {
   return (
-    <Card className="group hover-lift border-border/50 hover:border-primary/30 transition-all duration-300 hover:shadow-glow-sm">
-      <CardHeader>
-        <div className="h-12 w-12 rounded-xl gradient-primary flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-          <Icon className="h-6 w-6 text-white" />
+    <Card className="group relative overflow-hidden border-border/40 bg-card/50 backdrop-blur-sm hover:border-primary/40 transition-all duration-500 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-1">
+      <CardHeader className="space-y-4">
+        <div className="h-11 w-11 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors duration-300">
+          <Icon className="h-5 w-5 text-primary" />
         </div>
-        <CardTitle className="text-lg">{title}</CardTitle>
-        <CardDescription className="text-sm">{description}</CardDescription>
+        <div className="space-y-2">
+          <CardTitle className="font-serif text-lg font-normal tracking-wide">{title}</CardTitle>
+          <CardDescription className="text-sm leading-relaxed text-muted-foreground/80">{description}</CardDescription>
+        </div>
       </CardHeader>
     </Card>
   );

@@ -6,6 +6,10 @@
   .text-balance {
     text-wrap: balance;
   }
+
+  .font-serif {
+    font-family: var(--font-serif), Georgia, serif;
+  }
 }
 
 @layer base {

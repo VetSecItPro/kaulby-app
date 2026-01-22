@@ -123,8 +123,24 @@ Before implementing any feature, ask:
 - `npm run dev` - Dev server
 - `npm run db:push` - Push schema to database
 - `npm run db:studio` - Open Drizzle Studio
-- `npx inngest-cli@latest dev` - Inngest dev server (separate terminal)
+- `npx inngest-cli@latest dev` - Inngest dev server (separate terminal, includes MCP at http://127.0.0.1:8288/mcp)
 - `npx tsc --noEmit` - **Run before pushing to GitHub** to catch TypeScript errors locally and avoid wasted CI cycles
+
+## Inngest (Background Jobs)
+
+**Local Development:**
+1. Run `npx inngest-cli@latest dev` in separate terminal
+2. MCP available at `http://127.0.0.1:8288/mcp` for AI-assisted testing
+3. Dashboard at `http://127.0.0.1:8288` to view runs/events
+
+**Production (Inngest Cloud):**
+- Dashboard: https://app.inngest.com
+- App must be synced at: https://kaulbyapp.com/api/inngest
+- Cron jobs (monitor scans) run every 15min-2hrs depending on platform
+- Requires `INNGEST_SIGNING_KEY` and `INNGEST_EVENT_KEY` in Vercel env vars
+- Free plan limit: 5 concurrent function executions
+
+**After deploying code changes:** Must re-sync app in Inngest dashboard (Apps → Sync)
 
 ## Architecture Rules
 
