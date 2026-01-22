@@ -102,7 +102,6 @@ const ALL_PLATFORMS = [
 ];
 
 // Free tier only gets Reddit
-const FREE_PLATFORMS = ALL_PLATFORMS.filter(p => p.id === "reddit");
 
 const STEPS = [
   { id: 1, title: "Welcome" },
@@ -123,13 +122,15 @@ export function OnboardingWizard({ isOpen, onClose, userName, userPlan = "free" 
   const [error, setError] = useState("");
   const router = useRouter();
 
-  // Get available platforms based on user's plan
-  const availablePlatforms = userPlan === "free" ? FREE_PLATFORMS : ALL_PLATFORMS;
   const progress = (step / STEPS.length) * 100;
+
+  // Keyword limits by plan
+  const keywordLimit = userPlan === "free" ? 3 : userPlan === "pro" ? 20 : 35;
+  const isAtKeywordLimit = keywords.length >= keywordLimit;
 
   const addKeyword = (keyword?: string) => {
     const k = (keyword || keywordInput).trim();
-    if (k && !keywords.includes(k)) {
+    if (k && !keywords.includes(k) && keywords.length < keywordLimit) {
       setKeywords([...keywords, k]);
       setKeywordInput("");
     }
@@ -391,12 +392,18 @@ export function OnboardingWizard({ isOpen, onClose, userName, userPlan = "free" 
                 <div className="flex gap-2">
                   <Input
                     id="keyword-input"
-                    placeholder={template?.placeholder || "Enter a keyword"}
+                    placeholder={isAtKeywordLimit ? "Limit reached" : (template?.placeholder || "Enter a keyword")}
                     value={keywordInput}
                     onChange={(e) => setKeywordInput(e.target.value)}
                     onKeyDown={handleKeyDown}
+                    disabled={isAtKeywordLimit}
                   />
-                  <Button type="button" variant="outline" onClick={() => addKeyword()}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => addKeyword()}
+                    disabled={isAtKeywordLimit || !keywordInput.trim()}
+                  >
                     Add
                   </Button>
                 </div>
@@ -421,7 +428,7 @@ export function OnboardingWizard({ isOpen, onClose, userName, userPlan = "free" 
               )}
 
               {/* Suggested Keywords */}
-              {template && template.suggestedKeywords.length > 0 && keywords.length < 3 && (
+              {template && template.suggestedKeywords.length > 0 && !isAtKeywordLimit && (
                 <div className="space-y-2">
                   <Label className="text-muted-foreground">Suggested additions</Label>
                   <div className="flex flex-wrap gap-2">
@@ -441,13 +448,21 @@ export function OnboardingWizard({ isOpen, onClose, userName, userPlan = "free" 
                 </div>
               )}
 
-              <p className="text-xs text-muted-foreground">
-                {userPlan === "free"
-                  ? "Free plan: up to 3 keywords per monitor"
-                  : userPlan === "pro"
-                  ? "Pro plan: up to 20 keywords per monitor"
-                  : "Team plan: up to 50 keywords per monitor"}
-              </p>
+              {/* Keyword counter */}
+              <div className="flex items-center justify-between">
+                <p className={cn(
+                  "text-sm font-medium",
+                  isAtKeywordLimit ? "text-destructive" : "text-muted-foreground"
+                )}>
+                  {keywords.length} / {keywordLimit} keywords
+                  {isAtKeywordLimit && " (limit reached)"}
+                </p>
+                {userPlan === "free" && !isAtKeywordLimit && (
+                  <p className="text-xs text-muted-foreground">
+                    Upgrade for more keywords
+                  </p>
+                )}
+              </div>
             </div>
 
             <DialogFooter className="flex-col gap-2 sm:flex-row">
@@ -490,31 +505,29 @@ export function OnboardingWizard({ isOpen, onClose, userName, userPlan = "free" 
             </DialogHeader>
 
             <div className="py-4 space-y-4">
-              {userPlan === "free" ? (
-                <div className="rounded-lg border bg-muted/30 p-4 text-center">
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Free plan monitors <strong>Reddit</strong> only.
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Upgrade to Pro for all 9 platforms including Hacker News, Product Hunt, and more.
-                  </p>
-                </div>
-              ) : (
-                <div className="grid gap-2 max-h-[200px] overflow-y-auto">
-                  {availablePlatforms.map((platform) => (
+              {/* Platform selection - show all but gray out unavailable ones for free plan */}
+              <div className="grid gap-2 max-h-[200px] overflow-y-auto">
+                {ALL_PLATFORMS.map((platform) => {
+                  const isLocked = userPlan === "free" && platform.id !== "reddit";
+
+                  return (
                     <label
                       key={platform.id}
                       htmlFor={`onboarding-platform-${platform.id}`}
                       className={cn(
-                        "flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-all hover:bg-muted/50",
-                        selectedPlatforms.includes(platform.id) && "border-primary bg-primary/5"
+                        "flex items-center gap-3 rounded-lg border p-3 transition-all",
+                        isLocked
+                          ? "opacity-50 cursor-not-allowed bg-muted/20"
+                          : "cursor-pointer hover:bg-muted/50",
+                        selectedPlatforms.includes(platform.id) && !isLocked && "border-primary bg-primary/5"
                       )}
                     >
                       <Checkbox
                         id={`onboarding-platform-${platform.id}`}
                         checked={selectedPlatforms.includes(platform.id)}
+                        disabled={isLocked}
                         onCheckedChange={(checked) => {
-                          if (typeof checked === "boolean") {
+                          if (typeof checked === "boolean" && !isLocked) {
                             setSelectedPlatforms((prev) =>
                               checked
                                 ? [...prev, platform.id]
@@ -523,12 +536,29 @@ export function OnboardingWizard({ isOpen, onClose, userName, userPlan = "free" 
                           }
                         }}
                       />
-                      <div>
-                        <p className="font-medium text-sm">{platform.name}</p>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-sm">{platform.name}</p>
+                          {isLocked && (
+                            <span className="text-xs bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
+                              Pro
+                            </span>
+                          )}
+                        </div>
                         <p className="text-xs text-muted-foreground">{platform.description}</p>
                       </div>
                     </label>
-                  ))}
+                  );
+                })}
+              </div>
+
+              {/* Upgrade nudge for free plan */}
+              {userPlan === "free" && (
+                <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+                  <p className="text-sm text-center">
+                    <Zap className="h-4 w-4 inline mr-1 text-primary" />
+                    <span className="font-medium">Upgrade to Pro</span> to monitor all 9 platforms
+                  </p>
                 </div>
               )}
 
