@@ -53,7 +53,7 @@ interface ScanButtonProps {
 
 function ScanButton({ monitorId, isActive, initialIsScanning, onScanComplete }: ScanButtonProps) {
   const [isScanning, setIsScanning] = useState(initialIsScanning || false);
-  const [canScan, setCanScan] = useState(true);
+  const [canScan, setCanScan] = useState<boolean | null>(null); // null = loading
   const [cooldownText, setCooldownText] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -80,7 +80,8 @@ function ScanButton({ monitorId, isActive, initialIsScanning, onScanComplete }: 
         }
       }
     } catch {
-      // Silently fail status check
+      // On error, allow scan attempt
+      setCanScan(true);
     }
   }, [monitorId, initialIsScanning, onScanComplete]);
 
@@ -129,19 +130,35 @@ function ScanButton({ monitorId, isActive, initialIsScanning, onScanComplete }: 
     }
   };
 
+  // Monitor is paused
   if (!isActive) {
     return (
       <Button
         size="sm"
         disabled
-        className="bg-black border border-gray-500 text-gray-500 cursor-not-allowed"
+        className="bg-teal-500/20 text-teal-400/50 cursor-not-allowed border border-teal-500/30"
       >
         <RefreshCw className="h-4 w-4 mr-1" />
-        Scan Now
+        Paused
       </Button>
     );
   }
 
+  // Loading initial state
+  if (canScan === null) {
+    return (
+      <Button
+        size="sm"
+        disabled
+        className="bg-teal-500/50 text-black cursor-wait"
+      >
+        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+        Loading...
+      </Button>
+    );
+  }
+
+  // Currently scanning
   if (isScanning) {
     return (
       <Button
@@ -155,20 +172,22 @@ function ScanButton({ monitorId, isActive, initialIsScanning, onScanComplete }: 
     );
   }
 
-  if (!canScan && cooldownText) {
+  // In cooldown period
+  if (!canScan) {
     return (
       <Button
         size="sm"
         disabled
-        className="bg-black border border-teal-200 text-teal-200 cursor-not-allowed"
-        title={`Next scan available in ${cooldownText}`}
+        className="bg-teal-500/40 text-teal-100 cursor-not-allowed"
+        title={cooldownText ? `Next scan available in ${cooldownText}` : "Cooldown active"}
       >
         <RefreshCw className="h-4 w-4 mr-1" />
-        {cooldownText}
+        {cooldownText || "Cooldown"}
       </Button>
     );
   }
 
+  // Ready to scan
   return (
     <Button
       size="sm"
