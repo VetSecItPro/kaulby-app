@@ -143,6 +143,8 @@ export const users = pgTable("users", {
   lastDayPassPurchasedAt: timestamp("last_day_pass_purchased_at"), // Last purchase timestamp
   // Account deletion - 7 day cooldown before permanent deletion
   deletionRequestedAt: timestamp("deletion_requested_at"), // When user requested deletion (null = not requested)
+  // Third-party integrations (HubSpot, Salesforce, etc.)
+  integrations: jsonb("integrations").$type<Record<string, unknown>>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

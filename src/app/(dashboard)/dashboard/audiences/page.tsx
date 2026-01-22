@@ -1,9 +1,10 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { db, audiences, audienceMonitors, results } from "@/lib/db";
+import { db, audiences, audienceMonitors, results, monitors } from "@/lib/db";
 import { eq, inArray, gte, and } from "drizzle-orm";
 import { AudiencesList } from "@/components/dashboard/audiences-list";
 import type { AudienceStats } from "@/components/dashboard/audience-card";
+import { getSuggestionsFromMonitors } from "@/lib/community-suggestions";
 
 /**
  * Calculate audience stats from results
@@ -114,6 +115,25 @@ export default async function AudiencesPage() {
       })
     : [];
 
+  // Get all user monitors for community suggestions
+  const userMonitors = userId
+    ? await db.query.monitors.findMany({
+        where: eq(monitors.userId, userId),
+        columns: {
+          id: true,
+          keywords: true,
+          platforms: true,
+        },
+      })
+    : [];
+
+  // Generate community suggestions based on monitors
+  const suggestions = getSuggestionsFromMonitors(
+    userMonitors.map(m => ({ keywords: m.keywords, platforms: m.platforms })),
+    [], // No existing communities to exclude for now
+    8 // Limit to 8 suggestions
+  );
+
   // For each audience, get monitors and calculate stats
   const audiencesWithStats = await Promise.all(
     userAudiences.map(async (audience) => {
@@ -147,5 +167,5 @@ export default async function AudiencesPage() {
     })
   );
 
-  return <AudiencesList audiences={audiencesWithStats} />;
+  return <AudiencesList audiences={audiencesWithStats} suggestions={suggestions} />;
 }

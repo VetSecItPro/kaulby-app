@@ -17,6 +17,7 @@ import {
   Smartphone,
   Code2,
   HelpCircle,
+  Check,
 } from "lucide-react";
 
 import { AuthButtons, AuthCTA, HeroCTA } from "@/components/shared/auth-buttons";
@@ -82,30 +83,45 @@ export default function HomePage() {
       <HomeAnimations>
         <section className="py-16 md:py-24 lg:py-32 px-4 relative">
           <div className="container mx-auto text-center max-w-5xl">
-            <div className="animate-fade-up">
+            {/* Feature badges */}
+            <div className="animate-fade-up flex flex-wrap items-center justify-center gap-2 md:gap-3 mb-6 md:mb-8">
               <Badge
                 variant="outline"
-                className="mb-4 md:mb-6 px-3 md:px-4 py-1 md:py-1.5 text-xs md:text-sm border-primary/30 bg-primary/5"
+                className="px-3 py-1 text-xs border-primary/30 bg-primary/5"
               >
-                <Radar className="h-3 w-3 md:h-3.5 md:w-3.5 mr-1.5 md:mr-2 text-primary" />
-                AI-Powered Community Monitoring
+                <Check className="h-3 w-3 mr-1.5 text-primary" />
+                GummySearch Alternative
+              </Badge>
+              <Badge
+                variant="outline"
+                className="px-3 py-1 text-xs border-primary/30 bg-primary/5"
+              >
+                <Globe className="h-3 w-3 mr-1.5 text-primary" />
+                9 Platforms
+              </Badge>
+              <Badge
+                variant="outline"
+                className="px-3 py-1 text-xs border-primary/30 bg-primary/5"
+              >
+                <Radar className="h-3 w-3 mr-1.5 text-primary" />
+                AI-Powered
               </Badge>
             </div>
 
             <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-4 md:mb-6 animate-fade-up leading-tight" style={{ animationDelay: "0.1s" }}>
+              Monitor{" "}
               <span className="relative inline-block">
-                <span className="relative z-10">Never</span>
+                <span className="relative z-10">9 Platforms</span>
                 <span className="absolute -inset-x-1 top-1/3 bottom-0 bg-yellow-400/50 -rotate-2 -z-0 rounded-sm" />
-              </span>{" "}
-              miss a conversation
+              </span>
               <br className="hidden sm:block" />
-              <span className="sm:hidden"> </span>
-              <span className="gradient-text">about your brand</span>
+              <span className="sm:hidden">. </span>
+              <span className="gradient-text">Find Customers. Beat Competitors.</span>
             </h1>
 
             <p className="text-base md:text-lg lg:text-xl text-muted-foreground mb-8 md:mb-10 max-w-2xl mx-auto animate-fade-up px-2" style={{ animationDelay: "0.2s" }}>
-              Track discussions across Reddit, Hacker News, Product Hunt, Google Reviews, Trustpilot, App Store, Play Store, Quora, and Dev.to.
-              Get AI-powered insights and instant alerts when topics you care about are mentioned.
+              The only social listening tool built for startups.
+              Track Reddit, HN, Product Hunt, reviews, and more—powered by AI.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center animate-fade-up px-4 sm:px-0" style={{ animationDelay: "0.3s" }}>
@@ -120,7 +136,7 @@ export default function HomePage() {
               </div>
               <div className="flex items-center gap-2">
                 <Shield className="h-4 w-4" />
-                <span>Secure by design</span>
+                <span>14-day free trial</span>
               </div>
               <div className="flex items-center gap-2">
                 <Zap className="h-4 w-4" />
