@@ -146,7 +146,7 @@ export function ApiKeysSettings({ subscriptionStatus }: ApiKeysSettingsProps) {
 
   if (loading) {
     return (
-      <Card>
+      <Card id="api-keys-section">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Key className="h-5 w-5" />
@@ -161,7 +161,7 @@ export function ApiKeysSettings({ subscriptionStatus }: ApiKeysSettingsProps) {
   }
 
   return (
-    <Card>
+    <Card id="api-keys-section">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Key className="h-5 w-5" />

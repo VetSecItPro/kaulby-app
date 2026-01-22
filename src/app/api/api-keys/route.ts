@@ -81,11 +81,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Return the full key only once - user must save it
+    // Include keyInfo for the UI to add to the list
     return NextResponse.json({
       message: "API key created successfully. Save this key - it won't be shown again.",
-      id: result.id,
       key: result.key,
-      prefix: result.prefix,
+      keyInfo: {
+        id: result.id,
+        name: name.trim(),
+        keyPrefix: result.prefix,
+        lastUsedAt: null,
+        createdAt: new Date().toISOString(),
+        requestCount: 0,
+        isActive: true,
+      },
     });
   } catch (error) {
     console.error("Create API key error:", error);
@@ -108,7 +116,8 @@ export async function DELETE(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const keyId = searchParams.get("id");
+    // Support both 'id' and 'keyId' for backwards compatibility
+    const keyId = searchParams.get("keyId") || searchParams.get("id");
 
     if (!keyId) {
       return NextResponse.json(
