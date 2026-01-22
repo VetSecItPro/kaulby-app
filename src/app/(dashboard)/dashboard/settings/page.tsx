@@ -50,16 +50,25 @@ export default async function SettingsPage() {
     }
   }
 
-  const user = userId
+  // First try to find user by Clerk ID
+  let user = userId
     ? await db.query.users.findFirst({
         where: eq(users.id, userId),
       })
     : null;
 
+  // Fallback: if not found by ID, try by email (handles Clerk ID mismatch)
+  const clerkEmail = clerkUser?.emailAddresses[0]?.emailAddress;
+  if (!user && clerkEmail) {
+    user = await db.query.users.findFirst({
+      where: eq(users.email, clerkEmail),
+    });
+  }
+
   // In dev mode, default to enterprise (Team) for full feature testing
   const subscriptionStatus = isDev ? "enterprise" : (user?.subscriptionStatus || "free");
   // In dev mode, show actual user email if available, otherwise show a clear dev mode indicator
-  const email = clerkUser?.emailAddresses[0]?.emailAddress || user?.email || (isDev ? "dev-mode@kaulby.local" : "");
+  const email = clerkEmail || user?.email || (isDev ? "dev-mode@kaulby.local" : "");
   const name = clerkUser?.fullName || user?.name || (isDev ? "Dev Mode User" : "");
   const timezone = user?.timezone || "America/New_York";
 
