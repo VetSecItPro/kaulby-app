@@ -1,0 +1,6 @@
+# Semgrep ignore file
+# See: https://semgrep.dev/docs/ignoring-files-folders-code
+
+# Ignore structured data file - only contains safe JSON-LD schemas
+# using JSON.stringify() on hardcoded objects, not user input
+src/lib/seo/structured-data.tsx
