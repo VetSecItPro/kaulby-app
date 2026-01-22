@@ -25,7 +25,6 @@ export function OrganizationSchema() {
     <Script
       id="organization-schema"
       type="application/ld+json"
-      // nosemgrep: typescript.react.security.audit.react-dangerouslysetinnerhtml
       dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
     />
   );
@@ -71,7 +70,6 @@ export function SoftwareApplicationSchema() {
     <Script
       id="software-schema"
       type="application/ld+json"
-      // nosemgrep: typescript.react.security.audit.react-dangerouslysetinnerhtml
       dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
     />
   );
@@ -120,7 +118,6 @@ export function WebPageSchema({ title, description, url, breadcrumbs }: WebPageS
     <Script
       id="webpage-schema"
       type="application/ld+json"
-      // nosemgrep: typescript.react.security.audit.react-dangerouslysetinnerhtml
       dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
     />
   );
@@ -154,7 +151,6 @@ export function FAQSchema({ faqs }: FAQSchemaProps) {
     <Script
       id="faq-schema"
       type="application/ld+json"
-      // nosemgrep: typescript.react.security.audit.react-dangerouslysetinnerhtml
       dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
     />
   );
@@ -192,7 +188,6 @@ export function HowToSchema({ name, description, steps, totalTime }: HowToSchema
     <Script
       id="howto-schema"
       type="application/ld+json"
-      // nosemgrep: typescript.react.security.audit.react-dangerouslysetinnerhtml
       dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
     />
   );
@@ -246,7 +241,6 @@ export function ComparisonSchema({ productName, competitorName, url }: Compariso
     <Script
       id="comparison-schema"
       type="application/ld+json"
-      // nosemgrep: typescript.react.security.audit.react-dangerouslysetinnerhtml
       dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
     />
   );
@@ -289,7 +283,6 @@ export function PricingSchema({ tiers }: PricingSchemaProps) {
     <Script
       id="pricing-schema"
       type="application/ld+json"
-      // nosemgrep: typescript.react.security.audit.react-dangerouslysetinnerhtml
       dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
     />
   );
@@ -330,7 +323,6 @@ export function ToolPageSchema({ name, description, url, features }: ToolPageSch
     <Script
       id="tool-schema"
       type="application/ld+json"
-      // nosemgrep: typescript.react.security.audit.react-dangerouslysetinnerhtml
       dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
     />
   );
@@ -362,7 +354,6 @@ export function ReviewSchema({ itemName, ratingValue, reviewCount, bestRating = 
     <Script
       id="review-schema"
       type="application/ld+json"
-      // nosemgrep: typescript.react.security.audit.react-dangerouslysetinnerhtml
       dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
     />
   );
@@ -389,7 +380,6 @@ export function SpeakableSchema({ url, cssSelectors }: SpeakableSchemaProps) {
     <Script
       id="speakable-schema"
       type="application/ld+json"
-      // nosemgrep: typescript.react.security.audit.react-dangerouslysetinnerhtml
       dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
     />
   );
