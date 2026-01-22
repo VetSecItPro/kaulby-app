@@ -323,6 +323,15 @@ export function ResponsiveSettings({
                 const { authUrl } = await response.json();
                 window.location.href = authUrl;
               }
+            } else if (integrationId === "discord") {
+              // Initiate Discord OAuth flow
+              const response = await fetch("/api/integrations/discord", {
+                method: "POST",
+              });
+              if (response.ok) {
+                const { authUrl } = await response.json();
+                window.location.href = authUrl;
+              }
             }
           }}
           onDisconnect={async (integrationId) => {
@@ -333,6 +342,11 @@ export function ResponsiveSettings({
               window.location.reload();
             } else if (integrationId === "slack") {
               await fetch("/api/integrations/slack", {
+                method: "DELETE",
+              });
+              window.location.reload();
+            } else if (integrationId === "discord") {
+              await fetch("/api/integrations/discord", {
                 method: "DELETE",
               });
               window.location.reload();

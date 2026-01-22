@@ -59,29 +59,60 @@ export async function POST(request: NextRequest) {
         const email = primaryEmail?.email_address || "";
         const name = [first_name, last_name].filter(Boolean).join(" ") || null;
 
-        // Create user in database
-        await db.insert(users).values({
-          id, // Use Clerk ID as primary key
-          email,
-          name,
-        });
+        // Check for existing user with same email (handles re-signup after account deletion)
+        const existingUser = email
+          ? await db.query.users.findFirst({
+              where: eq(users.email, email),
+            })
+          : null;
 
-        // Send welcome email
-        try {
-          await upsertContact({
-            email,
-            firstName: first_name || undefined,
-            lastName: last_name || undefined,
-            userId: id,
-            subscriptionStatus: "free",
-          });
+        let isNewUser = true;
 
-          await sendWelcomeEmail({
+        if (existingUser) {
+          // User with this email already exists - update their Clerk ID
+          // This handles cases where:
+          // 1. User deleted their Clerk account but DB record remained
+          // 2. User signed up again with the same email
+          // Security note: We don't expose "email already exists" externally
+          console.log(`Linking existing user ${existingUser.id} to new Clerk ID ${id}`);
+
+          await db
+            .update(users)
+            .set({
+              id, // Update to new Clerk ID
+              name: name || existingUser.name, // Keep existing name if new one is empty
+              updatedAt: new Date(),
+            })
+            .where(eq(users.email, email));
+
+          isNewUser = false;
+        } else {
+          // Create new user in database
+          await db.insert(users).values({
+            id, // Use Clerk ID as primary key
             email,
-            name: first_name || undefined,
+            name,
           });
-        } catch (emailError) {
-          console.error("Email error:", emailError);
+        }
+
+        // Send welcome email (only for truly new users)
+        if (isNewUser) {
+          try {
+            await upsertContact({
+              email,
+              firstName: first_name || undefined,
+              lastName: last_name || undefined,
+              userId: id,
+              subscriptionStatus: "free",
+            });
+
+            await sendWelcomeEmail({
+              email,
+              name: first_name || undefined,
+            });
+          } catch (emailError) {
+            console.error("Email error:", emailError);
+          }
         }
 
         // Identify in PostHog
@@ -91,6 +122,7 @@ export async function POST(request: NextRequest) {
             email,
             name,
             createdAt: new Date().toISOString(),
+            isReturningUser: !isNewUser,
           },
         });
 
