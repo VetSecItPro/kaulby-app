@@ -401,17 +401,18 @@ interface RefreshDelayBannerProps {
 export function RefreshDelayBanner({ delayHours, nextRefreshAt, subscriptionStatus = "free" }: RefreshDelayBannerProps) {
   const [timeRemaining, setTimeRemaining] = useState<string>("");
 
-  // Calculate and format time remaining
+  // Calculate and format time remaining with seconds for live countdown
   const calculateTimeRemaining = () => {
-    if (!nextRefreshAt) return `${delayHours}h 0m`;
+    if (!nextRefreshAt) return `${delayHours}h 00m 00s`;
     const now = new Date();
     const diff = nextRefreshAt.getTime() - now.getTime();
-    if (diff <= 0) return "soon";
+    if (diff <= 0) return "refreshing...";
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
     const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-    if (hours > 0) return `${hours}h ${minutes}m`;
-    if (minutes > 0) return `${minutes}m ${seconds}s`;
+    // Always show full format for clear countdown
+    if (hours > 0) return `${hours}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`;
+    if (minutes > 0) return `${minutes}m ${String(seconds).padStart(2, '0')}s`;
     return `${seconds}s`;
   };
 
@@ -428,37 +429,19 @@ export function RefreshDelayBanner({ delayHours, nextRefreshAt, subscriptionStat
   // Team (enterprise) is on the highest tier - no upgrade available
   const isHighestTier = subscriptionStatus === "enterprise";
 
-  // Determine upgrade messaging based on current tier
-  const getUpgradeMessage = () => {
-    if (subscriptionStatus === "free") {
-      return "Upgrade to Pro for 4-hour refresh";
-    }
-    if (subscriptionStatus === "pro") {
-      return "Upgrade to Team for 2-hour refresh";
-    }
-    return null; // enterprise - no upgrade available
-  };
-
-  const upgradeMessage = getUpgradeMessage();
-
   return (
-    <div className="w-full flex items-center justify-between px-4 py-3 rounded-lg bg-amber-400 border border-amber-500">
-      <div className="flex items-center gap-3">
-        <Clock className="h-5 w-5 text-black" />
-        <p className="text-sm font-semibold text-black">
+    <div className="inline-flex items-center gap-3 px-3 py-1.5 rounded-md bg-gradient-to-r from-yellow-500/20 to-amber-500/20 border border-yellow-600/40">
+      <div className="flex items-center gap-2">
+        <Clock className="h-4 w-4 text-yellow-600 dark:text-yellow-500" />
+        <p className="text-sm text-foreground">
           Results refresh in{" "}
-          <span className="font-mono tabular-nums bg-black/10 px-1.5 py-0.5 rounded">
+          <span className="font-mono tabular-nums font-semibold text-foreground">
             {timeRemaining}
           </span>
         </p>
-        {upgradeMessage && !isHighestTier && (
-          <span className="text-sm text-black/70">
-            • {upgradeMessage}
-          </span>
-        )}
       </div>
       {!isHighestTier && (
-        <Button size="sm" asChild className="bg-black text-amber-400 hover:bg-black/80">
+        <Button size="sm" asChild className="h-6 px-2 text-xs bg-yellow-600 text-black hover:bg-yellow-500">
           <Link href="/pricing">
             Upgrade
           </Link>
