@@ -14,6 +14,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { getPlatformDisplayName } from "@/lib/platform-utils";
+import { RefreshDelayBanner } from "@/components/dashboard/upgrade-prompt";
+import type { PlanKey } from "@/lib/plans";
 
 interface Monitor {
   id: string;
@@ -26,8 +28,15 @@ interface Monitor {
   createdAt: Date;
 }
 
+interface RefreshInfo {
+  plan: PlanKey;
+  refreshDelayHours: number;
+  nextRefreshAt: Date | null;
+}
+
 interface MobileMonitorsProps {
   monitors: Monitor[];
+  refreshInfo?: RefreshInfo;
 }
 
 const containerVariants = {
@@ -47,13 +56,13 @@ const itemVariants = {
   },
 };
 
-export function MobileMonitors({ monitors }: MobileMonitorsProps) {
+export function MobileMonitors({ monitors, refreshInfo }: MobileMonitorsProps) {
   return (
     <motion.div
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="space-y-6"
+      className="space-y-4"
     >
       {/* Header */}
       <motion.div variants={itemVariants} className="space-y-1">
@@ -62,6 +71,17 @@ export function MobileMonitors({ monitors }: MobileMonitorsProps) {
           {monitors.length} active monitor{monitors.length !== 1 ? "s" : ""}
         </p>
       </motion.div>
+
+      {/* Refresh Delay Banner */}
+      {refreshInfo && refreshInfo.refreshDelayHours > 0 && (
+        <motion.div variants={itemVariants}>
+          <RefreshDelayBanner
+            delayHours={refreshInfo.refreshDelayHours}
+            nextRefreshAt={refreshInfo.nextRefreshAt}
+            subscriptionStatus={refreshInfo.plan}
+          />
+        </motion.div>
+      )}
 
       {/* Monitors List */}
       {monitors.length === 0 ? (

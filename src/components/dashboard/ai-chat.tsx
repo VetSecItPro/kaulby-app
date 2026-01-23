@@ -112,7 +112,6 @@ function renderMarkdown(text: string): React.ReactNode {
   return lines.map((line, lineIndex) => {
     // Process bold text within the line
     const parts: React.ReactNode[] = [];
-    let remaining = line;
     let keyIndex = 0;
 
     // Match **text** pattern

@@ -10,6 +10,8 @@ import { PlusCircle, Radio, Loader2, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { getPlatformDisplayName } from "@/lib/platform-utils";
 import { EmptyState } from "./empty-states";
+import { RefreshDelayBanner } from "./upgrade-prompt";
+import type { PlanKey } from "@/lib/plans";
 
 interface Monitor {
   id: string;
@@ -23,22 +25,29 @@ interface Monitor {
   createdAt: Date;
 }
 
+interface RefreshInfo {
+  plan: PlanKey;
+  refreshDelayHours: number;
+  nextRefreshAt: Date | null;
+}
+
 interface ResponsiveMonitorsProps {
   monitors: Monitor[];
+  refreshInfo?: RefreshInfo;
 }
 
 // CSS-based responsive - renders both layouts, CSS handles visibility
 // This prevents hydration mismatch from JS device detection
-export function ResponsiveMonitors({ monitors }: ResponsiveMonitorsProps) {
+export function ResponsiveMonitors({ monitors, refreshInfo }: ResponsiveMonitorsProps) {
   return (
     <>
       {/* Mobile/Tablet view - hidden on lg and above */}
       <div className="lg:hidden">
-        <MobileMonitors monitors={monitors} />
+        <MobileMonitors monitors={monitors} refreshInfo={refreshInfo} />
       </div>
 
       {/* Desktop view - hidden below lg */}
-      <DesktopMonitors monitors={monitors} />
+      <DesktopMonitors monitors={monitors} refreshInfo={refreshInfo} />
     </>
   );
 }
@@ -201,7 +210,7 @@ function ScanButton({ monitorId, isActive, initialIsScanning, onScanComplete }: 
   );
 }
 
-function DesktopMonitors({ monitors }: ResponsiveMonitorsProps) {
+function DesktopMonitors({ monitors, refreshInfo }: ResponsiveMonitorsProps) {
   const [, setRefreshKey] = useState(0);
 
   const handleScanComplete = () => {
@@ -210,7 +219,7 @@ function DesktopMonitors({ monitors }: ResponsiveMonitorsProps) {
   };
 
   return (
-    <div className="hidden lg:block space-y-8">
+    <div className="hidden lg:block space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -226,6 +235,15 @@ function DesktopMonitors({ monitors }: ResponsiveMonitorsProps) {
           </Button>
         </Link>
       </div>
+
+      {/* Refresh Delay Banner */}
+      {refreshInfo && refreshInfo.refreshDelayHours > 0 && (
+        <RefreshDelayBanner
+          delayHours={refreshInfo.refreshDelayHours}
+          nextRefreshAt={refreshInfo.nextRefreshAt}
+          subscriptionStatus={refreshInfo.plan}
+        />
+      )}
 
       {/* Monitors List */}
       {monitors.length === 0 ? (
