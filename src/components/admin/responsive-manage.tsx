@@ -88,9 +88,17 @@ interface TopUserCost {
   aiCalls: number;
 }
 
+interface CostByModel {
+  model: string;
+  totalCost: number;
+  totalCalls: number;
+  totalTokens: number;
+}
+
 interface CostBreakdownData {
   costByPlan: CostByPlan[];
   topUsersByCost: TopUserCost[];
+  costByModel?: CostByModel[];
   avgCostPerUser: number;
   avgCostPerPaidUser: number;
   costPerResult: number;
@@ -261,14 +269,14 @@ export function ResponsiveManage({
         </Card>
       </div>
 
+      {/* System Health - moved up for visibility */}
+      <SystemHealth {...systemHealth} />
+
       {/* Business Metrics */}
       <BusinessMetrics {...businessMetrics} />
 
       {/* Cost Breakdown */}
       <CostBreakdown {...costBreakdown} />
-
-      {/* System Health */}
-      <SystemHealth {...systemHealth} />
 
       {/* Charts */}
       <AdminCharts userGrowth={userGrowth} aiCosts={aiCosts} />

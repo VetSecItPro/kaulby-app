@@ -80,8 +80,19 @@ export default async function DashboardLayout({
   // Get workspace role for team badge
   const workspaceRole = dbUser?.workspaceRole || null;
 
+  // Get day pass expiration time for countdown timer
+  const dayPassExpiresAt = hasActiveDayPass && dbUser?.dayPassExpiresAt
+    ? new Date(dbUser.dayPassExpiresAt).toISOString()
+    : null;
+
   return (
-    <ResponsiveDashboardLayout isAdmin={isAdmin} subscriptionStatus={subscriptionStatus} hasActiveDayPass={hasActiveDayPass} workspaceRole={workspaceRole}>
+    <ResponsiveDashboardLayout
+      isAdmin={isAdmin}
+      subscriptionStatus={subscriptionStatus}
+      hasActiveDayPass={hasActiveDayPass}
+      dayPassExpiresAt={dayPassExpiresAt}
+      workspaceRole={workspaceRole}
+    >
       <DashboardClientWrapper isNewUser={isNewUser} userName={userName} userPlan={userPlan}>
         {children}
       </DashboardClientWrapper>
