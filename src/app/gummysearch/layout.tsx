@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "GummySearch Alternative - Kaulby | Reddit & Community Monitoring",
   description:
-    "GummySearch is closing. Kaulby is the best alternative with 9 platforms (Reddit, Hacker News, Product Hunt, Google Reviews & more), AI sentiment analysis, and pain point detection. Migrate free today.",
+    "GummySearch is closing. Kaulby is the best alternative with 12 platforms (Reddit, Hacker News, Product Hunt, Google Reviews & more), AI sentiment analysis, and pain point detection. Migrate free today.",
   keywords: [
     "GummySearch alternative",
     "GummySearch replacement",
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "GummySearch Alternative - Kaulby",
     description:
-      "GummySearch is closing. Migrate to Kaulby - monitor Reddit, HN, Product Hunt & 6 more platforms with AI-powered insights.",
+      "GummySearch is closing. Migrate to Kaulby - monitor Reddit, HN, Product Hunt & 9 more platforms with AI-powered insights.",
     url: "https://kaulbyapp.com/gummysearch",
     siteName: "Kaulby",
     type: "website",
@@ -41,7 +41,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "GummySearch Alternative - Kaulby",
     description:
-      "GummySearch is closing. Migrate to Kaulby - 9 platforms, AI analysis, same features you loved.",
+      "GummySearch is closing. Migrate to Kaulby - 12 platforms, AI analysis, same features you loved.",
     images: ["https://kaulbyapp.com/og-gummysearch.png"],
   },
   alternates: {

@@ -3,7 +3,18 @@ import { db } from "@/lib/db";
 import { monitors, results } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { incrementResultsCount, canAccessPlatform } from "@/lib/limits";
-import { fetchGoogleReviews, fetchTrustpilotReviews, fetchAppStoreReviews, fetchPlayStoreReviews, fetchQuoraAnswers, isApifyConfigured } from "@/lib/apify";
+import {
+  fetchGoogleReviews,
+  fetchTrustpilotReviews,
+  fetchAppStoreReviews,
+  fetchPlayStoreReviews,
+  fetchQuoraAnswers,
+  fetchYouTubeComments,
+  fetchG2Reviews,
+  fetchYelpReviews,
+  fetchAmazonReviews,
+  isApifyConfigured,
+} from "@/lib/apify";
 import { findRelevantSubredditsCached } from "@/lib/ai";
 import { searchRedditResilient } from "@/lib/reddit";
 
@@ -123,10 +134,41 @@ export const scanOnDemand = inngest.createFunction(
             });
             break;
 
+          case "youtube":
+            if (isApifyConfigured()) {
+              platformCount = await step.run(`scan-youtube-${monitorId}`, async () => {
+                return scanYouTubeForMonitor(monitor);
+              });
+            }
+            break;
+
+          case "g2":
+            if (isApifyConfigured()) {
+              platformCount = await step.run(`scan-g2-${monitorId}`, async () => {
+                return scanG2ForMonitor(monitor);
+              });
+            }
+            break;
+
+          case "yelp":
+            if (isApifyConfigured()) {
+              platformCount = await step.run(`scan-yelp-${monitorId}`, async () => {
+                return scanYelpForMonitor(monitor);
+              });
+            }
+            break;
+
+          case "amazonreviews":
+            if (isApifyConfigured()) {
+              platformCount = await step.run(`scan-amazonreviews-${monitorId}`, async () => {
+                return scanAmazonReviewsForMonitor(monitor);
+              });
+            }
+            break;
+
+          // Legacy platforms (no longer actively scanned, kept for historical data)
           case "devto":
-            platformCount = await step.run(`scan-devto-${monitorId}`, async () => {
-              return scanDevToForMonitor(monitor);
-            });
+            // Skip - this platform is deprecated
             break;
         }
 
@@ -752,24 +794,34 @@ async function scanProductHuntForMonitor(monitor: MonitorData): Promise<number> 
   return count;
 }
 
-async function scanDevToForMonitor(monitor: MonitorData): Promise<number> {
+// ============================================================================
+// New Platform Scanning Functions (Phase 2 - Apify Integration)
+// ============================================================================
+
+/**
+ * Scan YouTube for video comments matching monitor keywords.
+ * Keywords should contain YouTube video URLs.
+ * Uses Apify actor: streamers/youtube-comment-scraper
+ */
+async function scanYouTubeForMonitor(monitor: MonitorData): Promise<number> {
   let count = 0;
 
-  const searchTerms = monitor.keywords.length > 0
-    ? monitor.keywords
-    : monitor.companyName
-      ? [monitor.companyName]
-      : [];
+  // Keywords should be YouTube video URLs for this platform
+  const videoUrls = monitor.keywords.filter(k =>
+    k.includes("youtube.com") || k.includes("youtu.be")
+  );
 
-  for (const term of searchTerms) {
+  if (videoUrls.length === 0) {
+    console.log("[YouTube] No video URLs found in keywords, skipping");
+    return 0;
+  }
+
+  for (const videoUrl of videoUrls) {
     try {
-      const response = await fetch(`https://dev.to/api/articles?tag=${encodeURIComponent(term)}&per_page=30`);
-      if (!response.ok) continue;
+      const comments = await fetchYouTubeComments(videoUrl, 50);
 
-      const articles = await response.json();
-
-      for (const article of articles) {
-        const sourceUrl = article.url;
+      for (const comment of comments) {
+        const sourceUrl = `https://www.youtube.com/watch?v=${comment.videoId}&lc=${comment.commentId}`;
         const existing = await db.query.results.findFirst({
           where: eq(results.sourceUrl, sourceUrl),
         });
@@ -777,17 +829,17 @@ async function scanDevToForMonitor(monitor: MonitorData): Promise<number> {
         if (!existing) {
           const [newResult] = await db.insert(results).values({
             monitorId: monitor.id,
-            platform: "devto",
+            platform: "youtube",
             sourceUrl,
-            title: article.title,
-            content: article.description || "",
-            author: article.user?.username,
-            postedAt: article.published_at ? new Date(article.published_at) : new Date(),
+            title: comment.videoTitle || `YouTube Comment`,
+            content: comment.text,
+            author: comment.author,
+            postedAt: comment.publishedAt ? new Date(comment.publishedAt) : new Date(),
             metadata: {
-              devToId: article.id,
-              reactions: article.public_reactions_count,
-              comments: article.comments_count,
-              tags: article.tag_list,
+              youtubeCommentId: comment.commentId,
+              videoId: comment.videoId,
+              likeCount: comment.likeCount,
+              replyCount: comment.replyCount,
             },
           }).returning();
 
@@ -801,9 +853,204 @@ async function scanDevToForMonitor(monitor: MonitorData): Promise<number> {
         }
       }
     } catch (error) {
-      console.error(`Error scanning Dev.to for "${term}":`, error);
+      console.error(`[YouTube] Error scanning "${videoUrl}":`, error);
     }
   }
 
   return count;
 }
+
+/**
+ * Scan G2 for software reviews matching monitor keywords.
+ * Keywords should contain G2 product page URLs.
+ * Uses Apify actor: epctex/g2-scraper
+ */
+async function scanG2ForMonitor(monitor: MonitorData): Promise<number> {
+  let count = 0;
+
+  // Keywords should be G2 product URLs
+  const productUrls = monitor.keywords.filter(k => k.includes("g2.com"));
+
+  if (productUrls.length === 0) {
+    console.log("[G2] No G2 product URLs found in keywords, skipping");
+    return 0;
+  }
+
+  for (const productUrl of productUrls) {
+    try {
+      const reviews = await fetchG2Reviews(productUrl, 30);
+
+      for (const review of reviews) {
+        const sourceUrl = review.url || `g2-${review.reviewId}`;
+        const existing = await db.query.results.findFirst({
+          where: eq(results.sourceUrl, sourceUrl),
+        });
+
+        if (!existing) {
+          // Combine pros/cons with main text for content
+          let content = review.text;
+          if (review.pros) content += `\n\nPros: ${review.pros}`;
+          if (review.cons) content += `\n\nCons: ${review.cons}`;
+
+          const [newResult] = await db.insert(results).values({
+            monitorId: monitor.id,
+            platform: "g2",
+            sourceUrl,
+            title: review.title || `${review.rating}-star review`,
+            content,
+            author: review.author,
+            postedAt: review.date ? new Date(review.date) : new Date(),
+            metadata: {
+              g2ReviewId: review.reviewId,
+              rating: review.rating,
+              authorRole: review.authorRole,
+              companySize: review.companySize,
+              industry: review.industry,
+              productName: review.productName,
+            },
+          }).returning();
+
+          count++;
+          await incrementResultsCount(monitor.userId, 1);
+
+          await inngest.send({
+            name: "content/analyze",
+            data: { resultId: newResult.id, userId: monitor.userId },
+          });
+        }
+      }
+    } catch (error) {
+      console.error(`[G2] Error scanning "${productUrl}":`, error);
+    }
+  }
+
+  return count;
+}
+
+/**
+ * Scan Yelp for business reviews matching monitor keywords.
+ * Keywords should contain Yelp business page URLs.
+ * Uses Apify actor: maxcopell/yelp-scraper
+ */
+async function scanYelpForMonitor(monitor: MonitorData): Promise<number> {
+  let count = 0;
+
+  // Keywords should be Yelp business URLs
+  const businessUrls = monitor.keywords.filter(k => k.includes("yelp.com"));
+
+  if (businessUrls.length === 0) {
+    console.log("[Yelp] No Yelp business URLs found in keywords, skipping");
+    return 0;
+  }
+
+  for (const businessUrl of businessUrls) {
+    try {
+      const reviews = await fetchYelpReviews(businessUrl, 30);
+
+      for (const review of reviews) {
+        const sourceUrl = review.url || `yelp-${review.reviewId}`;
+        const existing = await db.query.results.findFirst({
+          where: eq(results.sourceUrl, sourceUrl),
+        });
+
+        if (!existing) {
+          const [newResult] = await db.insert(results).values({
+            monitorId: monitor.id,
+            platform: "yelp",
+            sourceUrl,
+            title: `${review.rating}-star review${review.businessName ? ` for ${review.businessName}` : ""}`,
+            content: review.text,
+            author: review.author,
+            postedAt: review.date ? new Date(review.date) : new Date(),
+            metadata: {
+              yelpReviewId: review.reviewId,
+              rating: review.rating,
+              authorLocation: review.authorLocation,
+              businessName: review.businessName,
+              hasPhotos: review.photos && review.photos.length > 0,
+            },
+          }).returning();
+
+          count++;
+          await incrementResultsCount(monitor.userId, 1);
+
+          await inngest.send({
+            name: "content/analyze",
+            data: { resultId: newResult.id, userId: monitor.userId },
+          });
+        }
+      }
+    } catch (error) {
+      console.error(`[Yelp] Error scanning "${businessUrl}":`, error);
+    }
+  }
+
+  return count;
+}
+
+/**
+ * Scan Amazon for product reviews matching monitor keywords.
+ * Keywords should contain Amazon product URLs or ASINs.
+ * Uses Apify actor: junglee/amazon-reviews-scraper
+ */
+async function scanAmazonReviewsForMonitor(monitor: MonitorData): Promise<number> {
+  let count = 0;
+
+  // Keywords should be Amazon URLs or ASINs
+  const productUrls = monitor.keywords.filter(k =>
+    k.includes("amazon.com") || k.includes("amazon.") || /^[A-Z0-9]{10}$/i.test(k)
+  );
+
+  if (productUrls.length === 0) {
+    console.log("[Amazon] No Amazon product URLs/ASINs found in keywords, skipping");
+    return 0;
+  }
+
+  for (const productUrl of productUrls) {
+    try {
+      const reviews = await fetchAmazonReviews(productUrl, 30);
+
+      for (const review of reviews) {
+        const sourceUrl = review.url || `amazon-${review.reviewId}`;
+        const existing = await db.query.results.findFirst({
+          where: eq(results.sourceUrl, sourceUrl),
+        });
+
+        if (!existing) {
+          const [newResult] = await db.insert(results).values({
+            monitorId: monitor.id,
+            platform: "amazonreviews",
+            sourceUrl,
+            title: review.title || `${review.rating}-star review`,
+            content: review.text,
+            author: review.author,
+            postedAt: review.date ? new Date(review.date) : new Date(),
+            metadata: {
+              amazonReviewId: review.reviewId,
+              rating: review.rating,
+              verifiedPurchase: review.verifiedPurchase,
+              helpfulVotes: review.helpfulVotes,
+              productName: review.productName,
+              productAsin: review.productAsin,
+            },
+          }).returning();
+
+          count++;
+          await incrementResultsCount(monitor.userId, 1);
+
+          await inngest.send({
+            name: "content/analyze",
+            data: { resultId: newResult.id, userId: monitor.userId },
+          });
+        }
+      }
+    } catch (error) {
+      console.error(`[Amazon] Error scanning "${productUrl}":`, error);
+    }
+  }
+
+  return count;
+}
+
+// Note: Legacy platform functions (devto, twitter) have been removed
+// Historical data remains in the database but new scans are skipped

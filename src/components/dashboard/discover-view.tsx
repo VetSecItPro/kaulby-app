@@ -87,12 +87,6 @@ const PLATFORM_RECOMMENDATIONS: Record<Platform, {
     bestFor: "Competitive intelligence and launch monitoring",
     tip: "Monitor your competitors' product launches",
   },
-  devto: {
-    headline: "Developer Community",
-    description: "Technical discussions and tutorials",
-    bestFor: "Developer-focused products and content ideas",
-    tip: "Find pain points developers are writing about",
-  },
   googlereviews: {
     headline: "Local Business Intelligence",
     description: "Track what customers say about businesses",
@@ -123,6 +117,30 @@ const PLATFORM_RECOMMENDATIONS: Record<Platform, {
     bestFor: "Thought leadership and SEO content ideas",
     tip: "Find questions your product can answer",
   },
+  youtube: {
+    headline: "Video Comment Insights",
+    description: "Track discussions in video comments",
+    bestFor: "Consumer products, tech reviews, and tutorials",
+    tip: "Monitor product review and tutorial video comments",
+  },
+  g2: {
+    headline: "B2B Software Reviews",
+    description: "Professional software comparison and reviews",
+    bestFor: "SaaS products and competitor analysis",
+    tip: "Track competitor feature gaps and user complaints",
+  },
+  yelp: {
+    headline: "Local Business Reviews",
+    description: "Customer feedback on local businesses",
+    bestFor: "Restaurants, services, and retail businesses",
+    tip: "Monitor reputation and competitor feedback",
+  },
+  amazonreviews: {
+    headline: "E-commerce Product Reviews",
+    description: "Customer feedback on Amazon products",
+    bestFor: "E-commerce brands and product manufacturers",
+    tip: "Track competitor products and feature requests",
+  },
 };
 
 /**
@@ -146,7 +164,7 @@ function PlatformDiscoveryCard({
   return (
     <Card
       className={cn(
-        "relative overflow-hidden transition-all hover:shadow-md",
+        "relative overflow-hidden transition-all hover:shadow-md flex flex-col h-full",
         isActive && "border-primary/50 bg-primary/5",
         !canAccess && "opacity-60"
       )}
@@ -180,14 +198,14 @@ function PlatformDiscoveryCard({
         </CardDescription>
       </CardHeader>
 
-      <CardContent className="space-y-3">
+      <CardContent className="flex flex-col flex-1">
         <div className="text-xs text-muted-foreground">
           <span className="font-medium text-foreground">Best for: </span>
           {info.bestFor}
         </div>
 
         {activity && activity.count > 0 && (
-          <div className="flex items-center gap-2 text-xs">
+          <div className="flex items-center gap-2 text-xs mt-3">
             <Flame className="h-3 w-3 text-orange-500" />
             <span className="text-muted-foreground">
               {activity.count} trending posts this week
@@ -195,24 +213,28 @@ function PlatformDiscoveryCard({
           </div>
         )}
 
-        <div className="pt-2">
+        <div className="mt-auto pt-4">
           {isActive ? (
             <Link href="/dashboard/results">
-              <Button variant="outline" size="sm" className="w-full">
+              <Button
+                variant="outline"
+                size="sm"
+                className="bg-amber-500/10 border-amber-500/30 text-amber-600 hover:bg-amber-500/20 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
+              >
                 View Results
                 <ArrowRight className="h-3 w-3 ml-1" />
               </Button>
             </Link>
           ) : canAccess ? (
             <Link href="/dashboard/monitors/new">
-              <Button size="sm" className="w-full">
+              <Button size="sm">
                 <Plus className="h-3 w-3 mr-1" />
                 Start Monitoring
               </Button>
             </Link>
           ) : (
             <Link href="/pricing">
-              <Button variant="outline" size="sm" className="w-full">
+              <Button variant="outline" size="sm">
                 <Lock className="h-3 w-3 mr-1" />
                 Upgrade to Pro
               </Button>
@@ -324,7 +346,7 @@ export function DiscoverView({
           Discover
         </h1>
         <p className="text-muted-foreground mt-1">
-          Expand your monitoring coverage and find new opportunities across all 9 platforms.
+          Expand your monitoring coverage and find new opportunities across all 12 platforms.
         </p>
       </div>
 
@@ -335,7 +357,7 @@ export function DiscoverView({
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Platforms Active</p>
-                <p className="text-2xl font-bold">{activePlatforms.length}/9</p>
+                <p className="text-2xl font-bold">{activePlatforms.length}/12</p>
               </div>
               <Target className="h-8 w-8 text-primary/20" />
             </div>

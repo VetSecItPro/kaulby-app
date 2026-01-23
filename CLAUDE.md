@@ -1,6 +1,6 @@
 # CLAUDE.md - Kaulby
 
-AI-powered community monitoring SaaS. Tracks 9 platforms (Reddit, Hacker News, Product Hunt, Google Reviews, Trustpilot, App Store, Play Store, Quora, Dev.to) for keywords, analyzes sentiment/pain points via AI, sends alerts.
+AI-powered community monitoring SaaS. Tracks 12 platforms (Reddit, Hacker News, Product Hunt, Google Reviews, Trustpilot, App Store, Play Store, Quora, YouTube, G2, Yelp, Amazon Reviews) for keywords, analyzes sentiment/pain points via AI, sends alerts.
 
 ## Business Objective
 
@@ -156,8 +156,8 @@ Before implementing any feature, ask:
 | Tier | Monitors | Keywords | Results Visible | History | Platforms | Refresh |
 |------|----------|----------|-----------------|---------|-----------|---------|
 | free | 1 | 3 | Last 3 | 3 days | Reddit only | 24hr delay |
-| pro | 10 | 20 | Unlimited | 90 days | All 9 platforms | 4-hour cycle |
-| enterprise (Team) | 30 | 35 | Unlimited | 1 year | All 9 platforms | 2-hour cycle |
+| pro | 10 | 20 | Unlimited | 90 days | All 12 platforms | 4-hour cycle |
+| enterprise (Team) | 30 | 35 | Unlimited | 1 year | All 12 platforms | 2-hour cycle |
 
 | Tier | AI Analysis | Email Digest | Alerts | Export | Team |
 |------|-------------|--------------|--------|--------|------|

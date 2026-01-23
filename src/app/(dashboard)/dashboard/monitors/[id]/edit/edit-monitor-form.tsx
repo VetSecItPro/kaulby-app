@@ -13,16 +13,21 @@ import { ArrowLeft, X, Loader2, Trash2, Lock, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import type { PlanLimits } from "@/lib/plans";
 
+// All available platforms (12 total)
 const ALL_PLATFORMS = [
   { id: "reddit", name: "Reddit", description: "Track subreddits and discussions", tier: "free" },
   { id: "hackernews", name: "Hacker News", description: "Tech and startup discussions", tier: "pro" },
   { id: "producthunt", name: "Product Hunt", description: "Product launches and reviews", tier: "pro" },
-  { id: "devto", name: "Dev.to", description: "Developer community articles", tier: "pro" },
   { id: "googlereviews", name: "Google Reviews", description: "Business reviews on Google", tier: "pro" },
   { id: "trustpilot", name: "Trustpilot", description: "Customer reviews and ratings", tier: "pro" },
   { id: "appstore", name: "App Store", description: "iOS app reviews", tier: "pro" },
   { id: "playstore", name: "Play Store", description: "Android app reviews", tier: "pro" },
   { id: "quora", name: "Quora", description: "Q&A discussions", tier: "pro" },
+  // New platforms
+  { id: "youtube", name: "YouTube", description: "Video comments and discussions", tier: "pro" },
+  { id: "g2", name: "G2", description: "Software reviews and ratings", tier: "pro" },
+  { id: "yelp", name: "Yelp", description: "Local business reviews", tier: "pro" },
+  { id: "amazonreviews", name: "Amazon Reviews", description: "Product reviews on Amazon", tier: "pro" },
 ];
 
 interface EditMonitorFormProps {
@@ -339,7 +344,7 @@ export function EditMonitorForm({ monitorId, limits, userPlan }: EditMonitorForm
             <div className="space-y-2">
               <Label>Platforms</Label>
               <p className="text-xs text-muted-foreground mb-2">
-                {isPaidUser ? "All 9 platforms available" : "Upgrade to Pro to unlock all platforms"}
+                {isPaidUser ? "All 12 platforms available" : "Upgrade to Pro to unlock all platforms"}
               </p>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {ALL_PLATFORMS.map((platform) => {

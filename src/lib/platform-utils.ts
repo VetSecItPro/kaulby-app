@@ -3,22 +3,45 @@
  * All platform-related colors and styling should be defined here
  */
 
-export const platforms = ["reddit", "hackernews", "producthunt", "devto", "googlereviews", "trustpilot", "appstore", "playstore", "quora"] as const;
+export const platforms = [
+  "reddit",
+  "hackernews",
+  "producthunt",
+  "googlereviews",
+  "trustpilot",
+  "appstore",
+  "playstore",
+  "quora",
+  "youtube",        // NEW
+  "g2",             // NEW
+  "yelp",           // NEW
+  "amazonreviews",  // NEW
+] as const;
 export type Platform = (typeof platforms)[number];
+
+// Legacy platforms kept for historical data display
+export const legacyPlatforms = ["devto", "twitter"] as const;
+export type LegacyPlatform = (typeof legacyPlatforms)[number];
 
 /**
  * Human-readable display names for platforms
  */
-export const platformDisplayNames: Record<Platform, string> = {
+export const platformDisplayNames: Record<Platform | LegacyPlatform, string> = {
   reddit: "Reddit",
   hackernews: "Hacker News",
   producthunt: "Product Hunt",
-  devto: "Dev.to",
   googlereviews: "Google Reviews",
   trustpilot: "Trustpilot",
   appstore: "App Store",
   playstore: "Play Store",
   quora: "Quora",
+  youtube: "YouTube",
+  g2: "G2",
+  yelp: "Yelp",
+  amazonreviews: "Amazon Reviews",
+  // Legacy platforms (kept for historical data)
+  devto: "Dev.to",
+  twitter: "Twitter",
 };
 
 /**
@@ -50,12 +73,6 @@ export const platformColors = {
     bar: "bg-red-500",
     icon: "text-red-500",
   },
-  devto: {
-    badge: "bg-purple-500/10 text-purple-500",
-    badgeLight: "bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-400",
-    bar: "bg-violet-500",
-    icon: "text-purple-500",
-  },
   googlereviews: {
     badge: "bg-blue-500/10 text-blue-500",
     badgeLight: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
@@ -85,6 +102,44 @@ export const platformColors = {
     badgeLight: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
     bar: "bg-red-600",
     icon: "text-red-600",
+  },
+  // NEW PLATFORMS
+  youtube: {
+    badge: "bg-red-500/10 text-red-500",
+    badgeLight: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+    bar: "bg-red-500",
+    icon: "text-red-500",
+  },
+  g2: {
+    badge: "bg-orange-600/10 text-orange-600",
+    badgeLight: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400",
+    bar: "bg-orange-600",
+    icon: "text-orange-600",
+  },
+  yelp: {
+    badge: "bg-red-600/10 text-red-600",
+    badgeLight: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+    bar: "bg-red-600",
+    icon: "text-red-600",
+  },
+  amazonreviews: {
+    badge: "bg-amber-600/10 text-amber-600",
+    badgeLight: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
+    bar: "bg-amber-600",
+    icon: "text-amber-600",
+  },
+  // LEGACY PLATFORMS (kept for historical data)
+  devto: {
+    badge: "bg-purple-500/10 text-purple-500",
+    badgeLight: "bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-400",
+    bar: "bg-violet-500",
+    icon: "text-purple-500",
+  },
+  twitter: {
+    badge: "bg-sky-500/10 text-sky-500",
+    badgeLight: "bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-400",
+    bar: "bg-sky-500",
+    icon: "text-sky-500",
   },
 } as const;
 

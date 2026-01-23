@@ -1,10 +1,10 @@
 "use client";
 
-import { memo, useMemo } from "react";
+import { memo, useMemo, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Lightbulb, Plus, Sparkles, ChevronRight } from "lucide-react";
+import { Lightbulb, Plus, Sparkles, ChevronRight, ChevronUp } from "lucide-react";
 import { getPlatformDisplayName, getPlatformBadgeColor, platforms, type Platform } from "@/lib/platform-utils";
 import { cn } from "@/lib/utils";
 
@@ -57,11 +57,6 @@ const platformMetadata: Record<Platform, {
     bestFor: ["new products", "startup launches", "competitor tracking"],
     suggestFor: ["launch", "product", "startup", "competitor"],
   },
-  devto: {
-    description: "Developer community articles and discussions",
-    bestFor: ["developer tools", "technical content", "tutorials"],
-    suggestFor: ["developer", "API", "SDK", "programming"],
-  },
   googlereviews: {
     description: "Local business and service reviews",
     bestFor: ["local businesses", "services", "restaurants", "agencies"],
@@ -86,6 +81,26 @@ const platformMetadata: Record<Platform, {
     description: "Q&A platform with high search visibility",
     bestFor: ["thought leadership", "long-form questions", "SEO"],
     suggestFor: ["question", "how to", "why", "best"],
+  },
+  youtube: {
+    description: "Video comments and discussions",
+    bestFor: ["consumer products", "tech reviews", "tutorials"],
+    suggestFor: ["video", "review", "tutorial", "consumer"],
+  },
+  g2: {
+    description: "B2B software reviews and comparisons",
+    bestFor: ["SaaS products", "enterprise software", "competitor analysis"],
+    suggestFor: ["B2B", "SaaS", "software", "enterprise"],
+  },
+  yelp: {
+    description: "Local business reviews and ratings",
+    bestFor: ["restaurants", "local services", "retail", "hospitality"],
+    suggestFor: ["local", "restaurant", "service", "retail"],
+  },
+  amazonreviews: {
+    description: "Product reviews on Amazon marketplace",
+    bestFor: ["e-commerce products", "consumer goods", "competitor products"],
+    suggestFor: ["product", "e-commerce", "consumer", "amazon"],
   },
 };
 
@@ -223,7 +238,7 @@ const SuggestionCard = memo(function SuggestionCard({
  * Source Suggestions Component
  *
  * Intelligently suggests platforms users should consider monitoring
- * based on their current setup and keywords. Works across all 9 platforms.
+ * based on their current setup and keywords. Works across all 12 platforms.
  */
 export const SourceSuggestions = memo(function SourceSuggestions({
   currentPlatforms,
@@ -232,6 +247,8 @@ export const SourceSuggestions = memo(function SourceSuggestions({
   isPro = false,
   className,
 }: SourceSuggestionsProps) {
+  const [expanded, setExpanded] = useState(false);
+
   const suggestions = useMemo(
     () => getSuggestions(currentPlatforms, keywords),
     [currentPlatforms, keywords]
@@ -252,8 +269,8 @@ export const SourceSuggestions = memo(function SourceSuggestions({
     );
   }
 
-  // Show top 3 suggestions
-  const topSuggestions = suggestions.slice(0, 3);
+  // Show top 3 suggestions or all when expanded
+  const displayedSuggestions = expanded ? suggestions : suggestions.slice(0, 3);
   const remainingCount = suggestions.length - 3;
 
   return (
@@ -268,7 +285,7 @@ export const SourceSuggestions = memo(function SourceSuggestions({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        {topSuggestions.map((suggestion) => (
+        {displayedSuggestions.map((suggestion) => (
           <SuggestionCard
             key={suggestion.platform}
             suggestion={suggestion}
@@ -279,9 +296,22 @@ export const SourceSuggestions = memo(function SourceSuggestions({
         ))}
 
         {remainingCount > 0 && (
-          <Button variant="ghost" className="w-full text-muted-foreground">
-            View {remainingCount} more platform{remainingCount > 1 ? "s" : ""}
-            <ChevronRight className="h-4 w-4 ml-1" />
+          <Button
+            variant="ghost"
+            className="w-full text-muted-foreground"
+            onClick={() => setExpanded(!expanded)}
+          >
+            {expanded ? (
+              <>
+                Show less
+                <ChevronUp className="h-4 w-4 ml-1" />
+              </>
+            ) : (
+              <>
+                View {remainingCount} more platform{remainingCount > 1 ? "s" : ""}
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </>
+            )}
           </Button>
         )}
       </CardContent>

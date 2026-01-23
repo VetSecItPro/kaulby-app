@@ -43,7 +43,7 @@ const conversationCategoryStyles: Record<ConversationCategory, { bg: string; tex
 
 interface Result {
   id: string;
-  platform: "reddit" | "hackernews" | "producthunt" | "devto" | "twitter" | "googlereviews" | "trustpilot" | "appstore" | "playstore" | "quora";
+  platform: "reddit" | "hackernews" | "producthunt" | "devto" | "googlereviews" | "trustpilot" | "appstore" | "playstore" | "quora" | "youtube" | "g2" | "yelp" | "amazonreviews";
   sourceUrl: string;
   title: string;
   content: string | null;

@@ -82,7 +82,7 @@ const plans: Plan[] = [
     trialDays: 14,
     features: [
       { text: "10 monitors" },
-      { text: "All 9 platforms" },
+      { text: "All 12 platforms" },
       { text: "20 keywords per monitor" },
       { text: "Unlimited results" },
       { text: "90-day history" },
@@ -124,7 +124,7 @@ const plans: Plan[] = [
 const featureComparison = [
   { feature: "Monitors", free: "1", pro: "10", team: "30" },
   { feature: "Keywords per monitor", free: "3", pro: "20", team: "35" },
-  { feature: "Platforms", free: "Reddit only", pro: "All 9 platforms", team: "All 9 platforms" },
+  { feature: "Platforms", free: "Reddit only", pro: "All 12 platforms", team: "All 12 platforms" },
   { feature: "Results visible", free: "Last 3", pro: "Unlimited", team: "Unlimited" },
   { feature: "History retention", free: "3 days", pro: "90 days", team: "1 year" },
   { feature: "Refresh cycle", free: "24 hours", pro: "4 hours", team: "2 hours" },
@@ -414,7 +414,7 @@ export default function PricingPage() {
                   </li>
                   <li className="flex items-center gap-2">
                     <Check className="h-4 w-4 text-amber-600 shrink-0" />
-                    <span className="text-sm">All 9 platforms</span>
+                    <span className="text-sm">All 12 platforms</span>
                   </li>
                   <li className="flex items-center gap-2">
                     <Check className="h-4 w-4 text-amber-600 shrink-0" />
@@ -569,8 +569,8 @@ export default function PricingPage() {
                 <AccordionTrigger>What platforms do you monitor?</AccordionTrigger>
                 <AccordionContent>
                   We monitor Reddit, Hacker News, Product Hunt, Google Reviews, Trustpilot,
-                  App Store, Play Store, Quora, and Dev.to. The Free plan includes Reddit only.
-                  Pro includes 8 platforms, and Team includes all 9.
+                  App Store, Play Store, Quora, YouTube, G2, Yelp, and Amazon Reviews. The Free plan includes Reddit only.
+                  Pro and Team include all 12 platforms.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="refresh">

@@ -8,9 +8,15 @@ export { monitorTrustpilot } from "./functions/monitor-trustpilot";
 export { monitorAppStore } from "./functions/monitor-appstore";
 export { monitorPlayStore } from "./functions/monitor-playstore";
 export { monitorQuora } from "./functions/monitor-quora";
-export { monitorDevTo } from "./functions/monitor-devto";
+// New platforms (Phase 3)
+export { monitorYouTube } from "./functions/monitor-youtube";
+export { monitorG2 } from "./functions/monitor-g2";
+export { monitorYelp } from "./functions/monitor-yelp";
+export { monitorAmazon } from "./functions/monitor-amazon";
+// monitorDevTo removed - Dev.to is deprecated
 export { scanOnDemand } from "./functions/scan-on-demand";
 export { analyzeContent } from "./functions/analyze-content";
+export { analyzeContentBatch, shouldUseBatchMode } from "./functions/analyze-content-batch";
 export { sendAlert, sendDailyDigest, sendWeeklyDigest } from "./functions/send-alerts";
 export { dataRetention, resetUsageCounters, cleanupAiLogs } from "./functions/data-retention";
 export { sendWebhookEvent, processWebhookDelivery, retryWebhookDeliveries, cleanupWebhookDeliveries } from "./functions/webhook-delivery";
@@ -27,9 +33,15 @@ import { monitorTrustpilot } from "./functions/monitor-trustpilot";
 import { monitorAppStore } from "./functions/monitor-appstore";
 import { monitorPlayStore } from "./functions/monitor-playstore";
 import { monitorQuora } from "./functions/monitor-quora";
-import { monitorDevTo } from "./functions/monitor-devto";
+// New platforms (Phase 3)
+import { monitorYouTube } from "./functions/monitor-youtube";
+import { monitorG2 } from "./functions/monitor-g2";
+import { monitorYelp } from "./functions/monitor-yelp";
+import { monitorAmazon } from "./functions/monitor-amazon";
+// monitorDevTo removed - Dev.to is deprecated
 import { scanOnDemand } from "./functions/scan-on-demand";
 import { analyzeContent } from "./functions/analyze-content";
+import { analyzeContentBatch } from "./functions/analyze-content-batch";
 import { sendAlert, sendDailyDigest, sendWeeklyDigest } from "./functions/send-alerts";
 import { dataRetention, resetUsageCounters, cleanupAiLogs } from "./functions/data-retention";
 import { sendWebhookEvent, processWebhookDelivery, retryWebhookDeliveries, cleanupWebhookDeliveries } from "./functions/webhook-delivery";
@@ -46,9 +58,15 @@ export const functions = [
   monitorAppStore,
   monitorPlayStore,
   monitorQuora,
-  monitorDevTo,
+  // New platforms (Phase 3)
+  monitorYouTube,
+  monitorG2,
+  monitorYelp,
+  monitorAmazon,
+  // monitorDevTo removed - Dev.to is deprecated
   scanOnDemand,
   analyzeContent,
+  analyzeContentBatch,
   sendAlert,
   sendDailyDigest,
   sendWeeklyDigest,

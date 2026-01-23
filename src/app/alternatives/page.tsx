@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   description: "Compare Kaulby to popular social listening tools like GummySearch, Brand24, Mention, Hootsuite, and more. See why startups choose Kaulby for community monitoring.",
   openGraph: {
     title: "Kaulby Alternatives - Compare Social Listening Tools",
-    description: "Compare Kaulby to popular social listening tools. 9 platforms, AI-powered insights, free tier available.",
+    description: "Compare Kaulby to popular social listening tools. 12 platforms, AI-powered insights, free tier available.",
     url: "https://kaulbyapp.com/alternatives",
   },
   alternates: {
@@ -26,7 +26,7 @@ const alternatives = [
     slug: "gummysearch",
     name: "GummySearch",
     tagline: "Reddit Audience Research (Shutting Down)",
-    description: "GummySearch was Reddit-only. Kaulby monitors 9 platforms with the same AI features.",
+    description: "GummySearch was Reddit-only. Kaulby monitors 12 platforms with the same AI features.",
     status: "Shutting Down",
     pricing: "Was $29-59/mo",
     highlight: true,
@@ -84,7 +84,7 @@ const alternatives = [
     slug: "redreach",
     name: "RedReach",
     tagline: "Reddit Marketing Tool",
-    description: "RedReach is Reddit-only. Kaulby monitors 9 platforms including review sites.",
+    description: "RedReach is Reddit-only. Kaulby monitors 12 platforms including review sites.",
     pricing: "$19+/mo",
   },
   {
@@ -110,7 +110,7 @@ const faqs = [
   },
   {
     question: "What is the best GummySearch alternative?",
-    answer: "Kaulby is the best GummySearch alternative. It offers the same Reddit monitoring with AI analysis, plus 8 more platforms (Hacker News, Product Hunt, review sites). Unlike GummySearch, Kaulby isn't dependent on a single platform's API.",
+    answer: "Kaulby is the best GummySearch alternative. It offers the same Reddit monitoring with AI analysis, plus 11 more platforms (Hacker News, Product Hunt, review sites). Unlike GummySearch, Kaulby isn't dependent on a single platform's API.",
   },
   {
     question: "How does Kaulby compare to Brand24 and Mention?",
@@ -123,7 +123,7 @@ const faqs = [
 ];
 
 const kaulbyAdvantages = [
-  "9 platforms (Reddit, HN, Product Hunt, reviews, and more)",
+  "12 platforms (Reddit, HN, Product Hunt, reviews, and more)",
   "AI sentiment analysis on all tiers",
   "Pain point detection and conversation categorization",
   "Free forever tier available",

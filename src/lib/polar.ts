@@ -49,7 +49,7 @@ export async function getPolarClient(): Promise<PolarClient | null> {
 export const polar: PolarClient | null = null;
 
 // Platform types (shared with plans.ts)
-export type Platform = "reddit" | "hackernews" | "producthunt" | "devto" | "googlereviews" | "trustpilot" | "appstore" | "playstore" | "quora";
+export type Platform = "reddit" | "hackernews" | "producthunt" | "devto" | "googlereviews" | "trustpilot" | "appstore" | "playstore" | "quora" | "youtube" | "g2" | "yelp" | "amazonreviews";
 
 // Digest frequency types
 export type DigestFrequency = "weekly" | "daily" | "realtime";
@@ -154,7 +154,7 @@ export const POLAR_PLANS: Record<"free" | "pro" | "team", PolarPlanDefinition> =
     trialDays: 14,
     features: [
       "10 monitors",
-      "All 9 platforms",
+      "All 12 platforms",
       "20 keywords per monitor",
       "Unlimited results",
       "90-day history",
@@ -170,7 +170,7 @@ export const POLAR_PLANS: Record<"free" | "pro" | "team", PolarPlanDefinition> =
       resultsHistoryDays: 90,
       resultsVisible: -1,
       refreshDelayHours: 4,
-      platforms: ["reddit", "hackernews", "producthunt", "devto", "googlereviews", "trustpilot", "appstore", "playstore", "quora"],
+      platforms: ["reddit", "hackernews", "producthunt", "googlereviews", "trustpilot", "appstore", "playstore", "quora", "youtube", "g2", "yelp", "amazonreviews"],
       digestFrequencies: ["daily"],
       aiFeatures: {
         sentiment: true,
@@ -218,7 +218,7 @@ export const POLAR_PLANS: Record<"free" | "pro" | "team", PolarPlanDefinition> =
       resultsHistoryDays: 365,
       resultsVisible: -1,
       refreshDelayHours: 0,
-      platforms: ["reddit", "hackernews", "producthunt", "devto", "googlereviews", "trustpilot", "appstore", "playstore", "quora"],
+      platforms: ["reddit", "hackernews", "producthunt", "googlereviews", "trustpilot", "appstore", "playstore", "quora", "youtube", "g2", "yelp", "amazonreviews"],
       digestFrequencies: ["daily", "weekly", "realtime"],
       aiFeatures: {
         sentiment: true,

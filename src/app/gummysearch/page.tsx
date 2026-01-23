@@ -36,7 +36,10 @@ const featureComparison = [
   { feature: "Trustpilot Monitoring", gummysearch: false, kaulby: true },
   { feature: "App Store/Play Store Reviews", gummysearch: false, kaulby: true },
   { feature: "Quora Monitoring", gummysearch: false, kaulby: true },
-  { feature: "Dev.to Monitoring", gummysearch: false, kaulby: true },
+  { feature: "YouTube Comments Monitoring", gummysearch: false, kaulby: true },
+  { feature: "G2 Reviews Monitoring", gummysearch: false, kaulby: true },
+  { feature: "Yelp Reviews Monitoring", gummysearch: false, kaulby: true },
+  { feature: "Amazon Reviews Monitoring", gummysearch: false, kaulby: true },
   { feature: "AI Sentiment Analysis", gummysearch: true, kaulby: true },
   { feature: "Pain Point Detection", gummysearch: true, kaulby: true },
   { feature: "Conversation Categories", gummysearch: true, kaulby: true },
@@ -53,8 +56,8 @@ const featureComparison = [
 const benefits = [
   {
     icon: Globe,
-    title: "9 Platforms, Not Just 1",
-    description: "Monitor Reddit, Hacker News, Product Hunt, Google Reviews, Trustpilot, App Store, Play Store, Quora, and Dev.to - all in one place.",
+    title: "12 Platforms, Not Just 1",
+    description: "Monitor Reddit, Hacker News, Product Hunt, Google Reviews, Trustpilot, App Store, Play Store, Quora, YouTube, G2, Yelp, and Amazon Reviews - all in one place.",
   },
   {
     icon: Brain,
@@ -91,7 +94,7 @@ export default function GummySearchPage() {
             <span className="text-primary">Kaulby is Here.</span>
           </h1>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Everything you loved about GummySearch - plus 8 more platforms, better AI, and a team committed to keeping it running.
+            Everything you loved about GummySearch - plus 11 more platforms, better AI, and a team committed to keeping it running.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/sign-up?ref=gummysearch">

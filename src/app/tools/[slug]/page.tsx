@@ -164,13 +164,13 @@ const toolPages: Record<string, {
   "social-listening-for-startups": {
     title: "Social Listening for Startups",
     subtitle: "Affordable social listening built for bootstrapped founders",
-    description: "Enterprise-grade social listening at startup-friendly prices. Monitor 9 platforms, get AI insights, and find customers - all without the enterprise price tag.",
+    description: "Enterprise-grade social listening at startup-friendly prices. Monitor 12 platforms, get AI insights, and find customers - all without the enterprise price tag.",
     keywords: ["social listening startups", "affordable social listening", "startup monitoring tool"],
     features: [
       {
         icon: Globe,
-        title: "9 Platforms, One Dashboard",
-        description: "Monitor Reddit, Hacker News, Product Hunt, Google Reviews, Trustpilot, App Store, Play Store, Quora, and Dev.to.",
+        title: "12 Platforms, One Dashboard",
+        description: "Monitor Reddit, Hacker News, Product Hunt, Google Reviews, Trustpilot, App Store, Play Store, Quora, YouTube, G2, Yelp, and Amazon Reviews.",
       },
       {
         icon: Zap,
@@ -216,7 +216,7 @@ const toolPages: Record<string, {
         description: "Discover what questions your audience is asking. Create content that answers their real problems.",
       },
     ],
-    platforms: ["reddit", "hackernews", "producthunt", "googlereviews", "trustpilot", "appstore", "playstore", "quora", "devto"],
+    platforms: ["reddit", "hackernews", "producthunt", "googlereviews", "trustpilot", "appstore", "playstore", "quora", "youtube", "g2", "yelp", "amazonreviews"],
     ctaText: "Start Free Social Listening",
     faqs: [
       {
@@ -233,7 +233,7 @@ const toolPages: Record<string, {
       },
       {
         question: "What platforms does Kaulby monitor?",
-        answer: "Kaulby monitors 9 platforms: Reddit, Hacker News, Product Hunt, Google Reviews, Trustpilot, App Store reviews, Play Store reviews, Quora, and Dev.to. These are the platforms where startups get discovered and discussed, unlike traditional social listening tools that focus on Twitter and Facebook.",
+        answer: "Kaulby monitors 12 platforms: Reddit, Hacker News, Product Hunt, Google Reviews, Trustpilot, App Store reviews, Play Store reviews, Quora, YouTube, G2, Yelp, and Amazon Reviews. These are the platforms where startups get discovered and discussed, unlike traditional social listening tools that focus on Twitter and Facebook.",
       },
       {
         question: "How can social listening help me find customers?",
@@ -251,7 +251,7 @@ const toolPages: Record<string, {
       },
       {
         name: "Choose your platforms",
-        text: "Select which platforms to monitor (Pro tier unlocks all 9 platforms).",
+        text: "Select which platforms to monitor (Pro tier unlocks all 12 platforms).",
       },
       {
         name: "Configure notifications",
@@ -273,7 +273,7 @@ const toolPages: Record<string, {
       {
         icon: Globe,
         title: "Multi-Platform Coverage",
-        description: "Monitor 9 platforms including Reddit, review sites, app stores, and developer communities.",
+        description: "Monitor 12 platforms including Reddit, review sites, app stores, and more.",
       },
       {
         icon: Bell,
@@ -319,12 +319,12 @@ const toolPages: Record<string, {
         description: "Stay on top of reviews across all platforms. Respond professionally to build trust.",
       },
     ],
-    platforms: ["reddit", "hackernews", "producthunt", "googlereviews", "trustpilot", "appstore", "playstore", "quora", "devto"],
+    platforms: ["reddit", "hackernews", "producthunt", "googlereviews", "trustpilot", "appstore", "playstore", "quora", "youtube", "g2", "yelp", "amazonreviews"],
     ctaText: "Start Brand Monitoring Free",
     faqs: [
       {
         question: "What is brand monitoring?",
-        answer: "Brand monitoring is the process of tracking mentions of your company, products, and executives across the internet. It helps you understand public perception, respond to feedback, prevent PR crises, and gather competitive intelligence. Kaulby monitors 9 platforms including Reddit, review sites, and developer communities.",
+        answer: "Brand monitoring is the process of tracking mentions of your company, products, and executives across the internet. It helps you understand public perception, respond to feedback, prevent PR crises, and gather competitive intelligence. Kaulby monitors 12 platforms including Reddit, review sites, YouTube, G2, Yelp, and Amazon.",
       },
       {
         question: "Why should I monitor my brand online?",
@@ -354,7 +354,7 @@ const toolPages: Record<string, {
       },
       {
         name: "Select platforms to monitor",
-        text: "Choose from 9 platforms: Reddit, review sites, app stores, and more.",
+        text: "Choose from 12 platforms: Reddit, review sites, app stores, YouTube, G2, Yelp, Amazon, and more.",
       },
       {
         name: "Configure alert preferences",
@@ -370,7 +370,7 @@ const toolPages: Record<string, {
   "competitor-monitoring": {
     title: "Competitor Monitoring Tool",
     subtitle: "Track what customers say about your competitors",
-    description: "Monitor competitor mentions across 9 platforms. Understand their strengths, weaknesses, and customer sentiment to gain competitive advantage.",
+    description: "Monitor competitor mentions across 12 platforms. Understand their strengths, weaknesses, and customer sentiment to gain competitive advantage.",
     keywords: ["competitor monitoring", "competitor tracking", "competitive intelligence"],
     features: [
       {
@@ -422,7 +422,7 @@ const toolPages: Record<string, {
         description: "Understand why customers choose competitors. Improve your offering based on real feedback.",
       },
     ],
-    platforms: ["reddit", "hackernews", "producthunt", "googlereviews", "trustpilot", "appstore", "playstore"],
+    platforms: ["reddit", "hackernews", "producthunt", "googlereviews", "trustpilot", "appstore", "playstore", "quora", "youtube", "g2", "yelp", "amazonreviews"],
     ctaText: "Start Competitor Monitoring Free",
     faqs: [
       {
@@ -435,7 +435,7 @@ const toolPages: Record<string, {
       },
       {
         question: "What platforms should I monitor competitors on?",
-        answer: "Reddit and Hacker News are where honest, unfiltered discussions happen. Review sites (Google, Trustpilot, G2) show detailed feedback. App stores reveal mobile experience issues. Kaulby monitors all 9 of these platforms in one dashboard.",
+        answer: "Reddit and Hacker News are where honest, unfiltered discussions happen. Review sites (Google, Trustpilot, G2) show detailed feedback. App stores reveal mobile experience issues. YouTube comments, Yelp, and Amazon Reviews round out the picture. Kaulby monitors all 12 of these platforms in one dashboard.",
       },
       {
         question: "Can I compare my brand against multiple competitors?",
@@ -481,7 +481,10 @@ const platformLabels: Record<string, string> = {
   appstore: "App Store",
   playstore: "Play Store",
   quora: "Quora",
-  devto: "Dev.to",
+  youtube: "YouTube",
+  g2: "G2",
+  yelp: "Yelp",
+  amazonreviews: "Amazon Reviews",
 };
 
 const alternativeLabels: Record<string, string> = {
@@ -719,7 +722,7 @@ export default function ToolPage() {
             <CardContent className="p-8 text-center">
               <h3 className="text-2xl font-bold mb-2">Start Free, Upgrade When Ready</h3>
               <p className="text-muted-foreground mb-6">
-                Free tier includes 1 monitor on Reddit. Pro starts at $29/month for full access to all 9 platforms.
+                Free tier includes 1 monitor on Reddit. Pro starts at $29/month for full access to all 12 platforms.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link href="/sign-up">
