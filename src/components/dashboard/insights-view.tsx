@@ -37,6 +37,7 @@ interface TopicCluster {
     neutral: number;
   };
   trendDirection: "rising" | "falling" | "stable";
+  isAIGenerated?: boolean;
 }
 
 interface PlatformCorrelation {
@@ -48,6 +49,7 @@ interface PlatformCorrelation {
 interface InsightsData {
   topics: TopicCluster[];
   singlePlatformTopics: TopicCluster[];
+  aiTopics: TopicCluster[]; // AI-generated topics for Pro/Team
   platformCorrelation: PlatformCorrelation[];
   totalResults: number;
   plan: "free" | "pro" | "enterprise";
@@ -99,7 +101,8 @@ function TopicCard({
     <Card
       className={cn(
         "cursor-pointer transition-all hover:shadow-md",
-        expandedTopic === topic.topic && "ring-2 ring-primary"
+        expandedTopic === topic.topic && "ring-2 ring-primary",
+        topic.isAIGenerated && "border-purple-500/30"
       )}
       onClick={() =>
         setExpandedTopic(expandedTopic === topic.topic ? null : topic.topic)
@@ -108,7 +111,15 @@ function TopicCard({
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between">
           <div>
-            <CardTitle className="text-base">{topic.topic}</CardTitle>
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-base">{topic.topic}</CardTitle>
+              {topic.isAIGenerated && (
+                <Badge variant="outline" className="text-xs text-purple-500 border-purple-500/50">
+                  <Sparkles className="h-3 w-3 mr-1" />
+                  AI
+                </Badge>
+              )}
+            </div>
             <CardDescription className="flex items-center gap-1 mt-1">
               {getTrendIcon(topic.trendDirection)}
               <span>{getTrendLabel(topic.trendDirection)}</span>
@@ -310,10 +321,21 @@ export function InsightsView() {
     );
   }
 
-  // Case 2: Pro/Team user but no cross-platform topics (show single-platform as fallback)
-  if (!data || data.topics.length === 0) {
-    // Check if they have single-platform topics to show
-    if (data?.singlePlatformTopics && data.singlePlatformTopics.length > 0) {
+  // Case 2: Pro/Team user but no cross-platform topics (show single-platform and AI topics)
+  const hasAnyTopics = data && (
+    data.topics.length > 0 ||
+    data.singlePlatformTopics.length > 0 ||
+    (data.aiTopics && data.aiTopics.length > 0)
+  );
+
+  if (!data || (!hasAnyTopics && data.topics.length === 0)) {
+    // Check if they have single-platform topics or AI topics to show
+    const topicsToShow = [
+      ...(data?.singlePlatformTopics || []),
+      ...(data?.aiTopics || []),
+    ];
+
+    if (topicsToShow.length > 0) {
       return (
         <div className="space-y-6">
           {/* Info banner */}
@@ -344,15 +366,23 @@ export function InsightsView() {
               ))}
             </div>
             <div className="text-sm text-muted-foreground">
-              Analyzing {data.totalResults} results from {data.platformsInData.length} platform{data.platformsInData.length !== 1 ? "s" : ""}
+              Analyzing {data?.totalResults ?? 0} results from {data?.platformsInData?.length ?? 0} platform{(data?.platformsInData?.length ?? 0) !== 1 ? "s" : ""}
             </div>
           </div>
 
-          {/* Single platform topics */}
+          {/* Combined topics (single-platform + AI) */}
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold">Trending Topics</h2>
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              Trending Topics
+              {data?.aiTopics && data.aiTopics.length > 0 && (
+                <Badge variant="outline" className="text-xs text-purple-500 border-purple-500/50">
+                  <Sparkles className="h-3 w-3 mr-1" />
+                  AI-Enhanced
+                </Badge>
+              )}
+            </h2>
             <div className="grid gap-4 md:grid-cols-2">
-              {data.singlePlatformTopics.map((topic) => (
+              {topicsToShow.map((topic) => (
                 <TopicCard
                   key={topic.topic}
                   topic={topic}
@@ -373,9 +403,9 @@ export function InsightsView() {
       <Card className="border-dashed">
         <CardContent className="flex flex-col items-center justify-center py-12 text-center">
           <Lightbulb className="h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">No cross-platform insights yet</h3>
+          <h3 className="text-lg font-semibold mb-2">No insights yet</h3>
           <p className="text-muted-foreground max-w-md">
-            Insights appear when similar topics are discussed across multiple platforms.
+            Insights appear when you have monitored results to analyze.
             Keep monitoring to discover emerging trends in your market.
           </p>
         </CardContent>
@@ -472,6 +502,31 @@ export function InsightsView() {
           ))}
         </div>
       </div>
+
+      {/* AI-Generated Topics (when keyword clustering found few topics) */}
+      {data.aiTopics && data.aiTopics.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-purple-500" />
+            AI-Discovered Topics
+          </h2>
+          <p className="text-sm text-muted-foreground -mt-2">
+            Additional themes identified by AI analysis
+          </p>
+          <div className="grid gap-4 md:grid-cols-2">
+            {data.aiTopics.map((topic) => (
+              <TopicCard
+                key={topic.topic}
+                topic={topic}
+                expandedTopic={expandedTopic}
+                setExpandedTopic={setExpandedTopic}
+                getTrendIcon={getTrendIcon}
+                getTrendLabel={getTrendLabel}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Platform Correlation */}
       {data.platformCorrelation.length > 0 && (
