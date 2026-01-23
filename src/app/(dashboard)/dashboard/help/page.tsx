@@ -1,8 +1,19 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState, useTransition } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Radio,
   Bell,
@@ -29,10 +40,17 @@ import {
   XCircle,
   ArrowRight,
   ExternalLink,
+  HelpCircle,
+  ChevronDown,
+  ChevronUp,
+  Send,
+  Loader2,
 } from "lucide-react";
+import { submitSupportTicket } from "./actions";
 
 // Section navigation data
 const sections = [
+  { id: "faq", title: "Quick Answers", icon: HelpCircle },
   { id: "getting-started", title: "Getting Started", icon: Zap },
   { id: "monitors", title: "Monitors", icon: Radio },
   { id: "platforms", title: "Platforms", icon: Globe },
@@ -43,10 +61,66 @@ const sections = [
   { id: "team", title: "Team Management", icon: Users, badge: "Team" },
   { id: "account", title: "Account & Settings", icon: Settings },
   { id: "troubleshooting", title: "Troubleshooting", icon: Shield },
+  { id: "contact", title: "Contact Support", icon: Mail },
+];
+
+// FAQ data - common questions users ask
+const faqs = [
+  {
+    question: "How long until I see my first results?",
+    answer: "New monitors typically find results within 2-24 hours depending on your plan. Free plans scan every 24 hours, Pro every 4 hours, and Team every 2 hours. If your keywords are very specific or niche, it may take longer to find matching conversations.",
+  },
+  {
+    question: "Why am I not seeing any results?",
+    answer: "Several things to check: (1) Your keywords might be too specific - try broader terms. (2) The topic might have low discussion volume online. (3) Free users only have Reddit access - upgrade for more platforms. (4) New monitors need time for the first scan to complete.",
+  },
+  {
+    question: "What's the difference between platforms that need a URL vs. keyword-based?",
+    answer: "Reddit, Hacker News, Product Hunt, and Quora search by keywords across the entire platform. Review platforms (Google Reviews, Trustpilot, G2, Yelp, Amazon, App Store, Play Store) and YouTube require your specific business/product URL because they monitor reviews for that exact listing.",
+  },
+  {
+    question: "Can I monitor my competitors?",
+    answer: "Yes! Create a separate monitor with your competitor's brand name as the keyword. You'll see what people are saying about them, complaints they have, and users looking for alternatives - all potential opportunities for you.",
+  },
+  {
+    question: "Why is some AI analysis locked or blurred?",
+    answer: "Free users get AI analysis on their first result only. This lets you see the value before upgrading. Pro and Team plans include unlimited AI analysis on all results, plus enhanced insights like pain point detection and category classification.",
+  },
+  {
+    question: "How do I get notified about new mentions?",
+    answer: "Go to Settings → Notifications. You can enable daily email digests (sent at 9 AM your timezone), or connect Slack/Discord for instant notifications (Pro+). Team plans also support custom webhooks for integrations.",
+  },
+  {
+    question: "What happens to my data if I downgrade or cancel?",
+    answer: "Your data is retained for 30 days after cancellation, giving you time to export or resubscribe. If you downgrade, monitors beyond your new limit are paused (not deleted) and results remain accessible within your new plan's history limit.",
+  },
+  {
+    question: "Can multiple people on my team access Kaulby?",
+    answer: "Team plan includes 5 seats with shared access to all monitors and results. Additional members are $15/user/month. Each member can set their own notification preferences while sharing the same monitoring data.",
+  },
 ];
 
 export default function HelpPage() {
-  // Handle smooth scroll to section within the dashboard's scroll container
+  // FAQ accordion state
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+  // Support form state
+  const [isPending, startTransition] = useTransition();
+  const [formState, setFormState] = useState<{
+    category: string;
+    subject: string;
+    message: string;
+  }>({
+    category: "",
+    subject: "",
+    message: "",
+  });
+  const [submitStatus, setSubmitStatus] = useState<{
+    type: "success" | "error" | null;
+    message: string;
+  }>({ type: null, message: "" });
+
+  // Handle smooth scroll to section
   const scrollToSection = useCallback((e: React.MouseEvent<HTMLAnchorElement>, sectionId: string) => {
     e.preventDefault();
 
@@ -55,53 +129,32 @@ export default function HelpPage() {
       return;
     }
 
-    // Helper to check if an element is truly visible (including checking ancestors)
-    const isElementVisible = (el: HTMLElement): boolean => {
-      let current: HTMLElement | null = el;
-      while (current) {
-        const style = window.getComputedStyle(current);
-        if (style.display === 'none' || style.visibility === 'hidden') {
-          return false;
-        }
-        current = current.parentElement;
-      }
-      return true;
-    };
-
-    // Find the visible <main> scroll container
-    // The dashboard layout has two main elements (mobile and desktop) wrapped in divs
-    // The parent divs have hidden/lg:flex classes that control visibility
-    const mainElements = Array.from(document.querySelectorAll('main'));
-    let scrollContainer: HTMLElement | null = null;
-
-    for (let i = 0; i < mainElements.length; i++) {
-      const main = mainElements[i] as HTMLElement;
-      if (isElementVisible(main)) {
-        scrollContainer = main;
-        break;
-      }
-    }
-
-    if (scrollContainer) {
-      // Get element's position relative to the scroll container
-      const containerRect = scrollContainer.getBoundingClientRect();
-      const elementRect = element.getBoundingClientRect();
-
-      // Calculate target scroll position
-      // elementRect.top is relative to viewport
-      // containerRect.top is the container's position in viewport
-      // scrollContainer.scrollTop is how much we've already scrolled
-      const targetScroll = elementRect.top - containerRect.top + scrollContainer.scrollTop - 80; // 80px offset for header
-
-      scrollContainer.scrollTo({
-        top: Math.max(0, targetScroll),
-        behavior: "smooth"
-      });
-    } else {
-      // Fallback: use scrollIntoView which works for most cases
-      element.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
+    // Use native scrollIntoView - works with any scroll container
+    // The scroll-mt-20 class on sections handles the header offset
+    element.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
+
+  // Handle support form submission
+  const handleSubmitTicket = () => {
+    setSubmitStatus({ type: null, message: "" });
+
+    startTransition(async () => {
+      const result = await submitSupportTicket(formState);
+
+      if (result.success) {
+        setSubmitStatus({
+          type: "success",
+          message: "Your message has been sent! We'll get back to you within 24 hours.",
+        });
+        setFormState({ category: "", subject: "", message: "" });
+      } else {
+        setSubmitStatus({
+          type: "error",
+          message: result.error || "Something went wrong. Please try again.",
+        });
+      }
+    });
+  };
 
   return (
     <div className="space-y-12 max-w-4xl pb-20">
@@ -148,6 +201,53 @@ export default function HelpPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* ==================== SECTION 0: QUICK ANSWERS (FAQ) ==================== */}
+      <section id="faq" className="scroll-mt-20 space-y-6">
+        <div className="flex items-center gap-3 border-b pb-4">
+          <div className="p-2 rounded-lg bg-primary/10">
+            <HelpCircle className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold">Quick Answers</h2>
+            <p className="text-muted-foreground">Common questions answered instantly</p>
+          </div>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Frequently Asked Questions</CardTitle>
+            <CardDescription>
+              Click any question to expand the answer
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {faqs.map((faq, index) => (
+              <div
+                key={index}
+                className="border rounded-lg overflow-hidden"
+              >
+                <button
+                  onClick={() => setOpenFaq(openFaq === index ? null : index)}
+                  className="w-full flex items-center justify-between p-4 text-left hover:bg-muted/50 transition-colors"
+                >
+                  <span className="font-medium text-sm pr-4">{faq.question}</span>
+                  {openFaq === index ? (
+                    <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                  )}
+                </button>
+                {openFaq === index && (
+                  <div className="px-4 pb-4 text-sm text-muted-foreground border-t bg-muted/30">
+                    <p className="pt-3">{faq.answer}</p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </section>
 
       {/* ==================== SECTION 1: GETTING STARTED ==================== */}
       <section id="getting-started" className="scroll-mt-20 space-y-6">
@@ -210,6 +310,53 @@ export default function HelpPage() {
                   </p>
                 </div>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Article: What to Expect */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">What to Expect</CardTitle>
+            <CardDescription>
+              Realistic expectations for your first week using Kaulby
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs font-bold shrink-0">1</div>
+                <div>
+                  <p className="font-medium text-sm">First Few Hours</p>
+                  <p className="text-sm text-muted-foreground">
+                    Your monitor is created and queued for scanning. Depending on your plan, the first scan runs within 2-24 hours. You may see results immediately if there are recent discussions about your keywords.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs font-bold shrink-0">2</div>
+                <div>
+                  <p className="font-medium text-sm">Days 1-3</p>
+                  <p className="text-sm text-muted-foreground">
+                    Results start flowing in. You might see anywhere from a handful to hundreds of mentions depending on how often your brand is discussed. Use this time to refine your keywords — too many irrelevant results means your terms are too broad.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs font-bold shrink-0">3</div>
+                <div>
+                  <p className="font-medium text-sm">Week 1 and Beyond</p>
+                  <p className="text-sm text-muted-foreground">
+                    You&apos;ll develop a rhythm. Most users check their dashboard once daily or rely on email digests. The AI analysis helps you quickly spot which conversations need your attention vs. which are just informational.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+              <p className="text-sm text-amber-800 dark:text-amber-200">
+                <strong>Not seeing results?</strong> This could mean: (1) your brand isn&apos;t being discussed much publicly yet — which is valuable information, (2) your keywords are too specific, or (3) you need to wait for the next scan cycle. Check the Troubleshooting section for more help.
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -291,7 +438,7 @@ export default function HelpPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              A monitor is a saved search configuration that continuously scans selected platforms for conversations matching your criteria. Think of it as setting up a persistent Google Alert, but for community discussions across multiple platforms.
+              A monitor is a saved search configuration that continuously scans selected platforms for conversations matching your criteria. Think of it as a persistent, intelligent Google Alert that works across communities, forums, and review sites — and tells you not just <em>what</em> people are saying, but <em>how they feel</em> about it.
             </p>
 
             <div className="space-y-4">
@@ -310,6 +457,71 @@ export default function HelpPage() {
               <p className="text-xs text-muted-foreground">
                 <strong>Plan limits:</strong> Free: 1 monitor, 3 keywords · Pro: 10 monitors, 20 keywords each · Team: 30 monitors, 35 keywords each
               </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Article: Two Types of Platforms */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Understanding Platform Types</CardTitle>
+            <CardDescription>
+              Keyword-based vs. URL-based platforms work differently
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Kaulby monitors two types of platforms, and it&apos;s important to understand the difference to set up your monitors correctly.
+            </p>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="p-4 rounded-lg border bg-card">
+                <h4 className="font-semibold mb-2 text-sm">Keyword-Based Platforms</h4>
+                <p className="text-xs text-muted-foreground mb-3">
+                  These platforms are searched by keywords. Kaulby scans the entire platform for posts, comments, and discussions that mention your terms.
+                </p>
+                <div className="flex flex-wrap gap-1">
+                  <Badge variant="outline" className="text-xs">Reddit</Badge>
+                  <Badge variant="outline" className="text-xs">Hacker News</Badge>
+                  <Badge variant="outline" className="text-xs">Product Hunt</Badge>
+                  <Badge variant="outline" className="text-xs">Quora</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground mt-3">
+                  <strong>Best for:</strong> Brand mentions, competitor tracking, industry trends, finding people asking questions you can answer.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-lg border bg-card">
+                <h4 className="font-semibold mb-2 text-sm">URL-Based Platforms (Reviews)</h4>
+                <p className="text-xs text-muted-foreground mb-3">
+                  These require your specific business or product URL. Kaulby monitors reviews on that exact listing.
+                </p>
+                <div className="flex flex-wrap gap-1">
+                  <Badge variant="outline" className="text-xs">Google Reviews</Badge>
+                  <Badge variant="outline" className="text-xs">Trustpilot</Badge>
+                  <Badge variant="outline" className="text-xs">G2</Badge>
+                  <Badge variant="outline" className="text-xs">Yelp</Badge>
+                  <Badge variant="outline" className="text-xs">Amazon</Badge>
+                  <Badge variant="outline" className="text-xs">App Store</Badge>
+                  <Badge variant="outline" className="text-xs">Play Store</Badge>
+                  <Badge variant="outline" className="text-xs">YouTube</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground mt-3">
+                  <strong>Best for:</strong> Monitoring your own product reviews, tracking customer feedback, responding to negative reviews quickly.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
+              <div className="flex items-start gap-3">
+                <Lightbulb className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                <div>
+                  <p className="font-medium text-sm">Setting Up Review Monitoring</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    When you select a URL-based platform, you&apos;ll see an input field asking for the URL. Copy your exact business URL from that platform. For example, for Google Reviews, copy your Google Maps business URL. For Amazon, copy your product page URL.
+                  </p>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -568,6 +780,85 @@ export default function HelpPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Article: Which Platforms to Prioritize */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Which Platforms Should You Monitor?</CardTitle>
+            <CardDescription>
+              Recommendations based on your business type
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              You don&apos;t need to monitor all 12 platforms. Focus on where your customers actually spend time. Here are recommendations by business type:
+            </p>
+
+            <div className="space-y-4">
+              <div className="p-4 rounded-lg border">
+                <h4 className="font-medium mb-2">B2B SaaS / Software</h4>
+                <p className="text-sm text-muted-foreground mb-2">
+                  Start with: <strong>Reddit, Hacker News, G2, Product Hunt</strong>
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Tech-savvy buyers research heavily on these platforms. G2 is especially critical for enterprise sales — buyers often check G2 reviews before demos.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-lg border">
+                <h4 className="font-medium mb-2">E-commerce / Consumer Products</h4>
+                <p className="text-sm text-muted-foreground mb-2">
+                  Start with: <strong>Reddit, Amazon Reviews, Trustpilot, YouTube</strong>
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Amazon reviews directly impact sales. YouTube for product mentions in reviews and unboxings. Trustpilot for brand credibility.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-lg border">
+                <h4 className="font-medium mb-2">Local Business / Services</h4>
+                <p className="text-sm text-muted-foreground mb-2">
+                  Start with: <strong>Google Reviews, Yelp, Trustpilot</strong>
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Google Reviews is #1 — it appears directly in search results. Yelp matters for restaurants and local services. Trustpilot for service businesses.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-lg border">
+                <h4 className="font-medium mb-2">Mobile Apps</h4>
+                <p className="text-sm text-muted-foreground mb-2">
+                  Start with: <strong>App Store, Play Store, Reddit, Product Hunt</strong>
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  App store reviews are critical — they affect your rating and downloads. Reddit for community feedback. Product Hunt for launches.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-lg border">
+                <h4 className="font-medium mb-2">Startups / New Businesses</h4>
+                <p className="text-sm text-muted-foreground mb-2">
+                  Start with: <strong>Reddit, Hacker News, Quora, Product Hunt</strong>
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Focus on discovery platforms where people ask &quot;what&apos;s the best tool for X&quot; — these are your best leads. Add review platforms once you have customers.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
+              <div className="flex items-start gap-3">
+                <Lightbulb className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                <div>
+                  <p className="font-medium text-sm">Start Small, Then Expand</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Begin with 2-3 platforms where you know your audience exists. Add more platforms once you&apos;ve established a workflow for handling results. Quality engagement on a few platforms beats scattered attention across many.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </section>
 
       {/* ==================== SECTION 4: RESULTS & ANALYSIS ==================== */}
@@ -738,6 +1029,80 @@ export default function HelpPage() {
                 <li><strong>Hide:</strong> Remove irrelevant results from your feed (they&apos;re still stored)</li>
                 <li><strong>Export:</strong> Download results as CSV for analysis in Excel or Google Sheets (Pro/Team)</li>
               </ul>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Article: Acting on Results */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Taking Action on Results</CardTitle>
+            <CardDescription>
+              What to do with different types of conversations you discover
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Finding conversations is just the beginning. The real value comes from engaging thoughtfully. Here&apos;s how to respond to different types of results:
+            </p>
+
+            <div className="space-y-4">
+              <div className="p-4 rounded-lg border border-green-200 dark:border-green-800">
+                <h4 className="font-medium text-green-800 dark:text-green-200 mb-2">Positive Mentions</h4>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>• <strong>Thank them publicly</strong> — a simple &quot;Thanks for the kind words!&quot; builds community</li>
+                  <li>• <strong>Ask for permission</strong> to use their feedback as a testimonial</li>
+                  <li>• <strong>Share internally</strong> with your team to boost morale</li>
+                  <li>• <strong>Add to marketing</strong> — screenshots of genuine praise are powerful social proof</li>
+                </ul>
+              </div>
+
+              <div className="p-4 rounded-lg border border-red-200 dark:border-red-800">
+                <h4 className="font-medium text-red-800 dark:text-red-200 mb-2">Negative Mentions</h4>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>• <strong>Respond quickly</strong> — speed matters. Aim to reply within hours, not days</li>
+                  <li>• <strong>Be empathetic</strong> — acknowledge their frustration before offering solutions</li>
+                  <li>• <strong>Take it offline</strong> — offer to continue the conversation via email or DM</li>
+                  <li>• <strong>Follow up publicly</strong> — when resolved, post an update so others can see you care</li>
+                  <li>• <strong>Log the feedback</strong> — track recurring complaints for product improvements</li>
+                </ul>
+              </div>
+
+              <div className="p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+                <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-2">Solution Requests / People Looking for Help</h4>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>• <strong>Be helpful first</strong> — answer their question genuinely, don&apos;t just pitch</li>
+                  <li>• <strong>Disclose your affiliation</strong> — &quot;Full disclosure: I work at [Company]&quot; builds trust</li>
+                  <li>• <strong>Offer a trial or demo</strong> — make it easy to try your solution</li>
+                  <li>• <strong>Respect the community</strong> — some subreddits have rules against self-promotion</li>
+                </ul>
+              </div>
+
+              <div className="p-4 rounded-lg border border-purple-200 dark:border-purple-800">
+                <h4 className="font-medium text-purple-800 dark:text-purple-200 mb-2">Competitor Comparisons</h4>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>• <strong>Stay professional</strong> — never badmouth competitors</li>
+                  <li>• <strong>Highlight differences</strong> — focus on what makes you unique, not what&apos;s wrong with them</li>
+                  <li>• <strong>Let customers speak</strong> — share relevant case studies or testimonials</li>
+                  <li>• <strong>Learn from it</strong> — competitor praise reveals what customers value</li>
+                </ul>
+              </div>
+
+              <div className="p-4 rounded-lg border border-amber-200 dark:border-amber-800">
+                <h4 className="font-medium text-amber-800 dark:text-amber-200 mb-2">Feature Requests</h4>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>• <strong>Acknowledge the request</strong> — even if you can&apos;t build it, say you&apos;ve heard it</li>
+                  <li>• <strong>Track frequency</strong> — requests mentioned multiple times deserve attention</li>
+                  <li>• <strong>Share your roadmap</strong> — if you&apos;re planning to build it, let them know</li>
+                  <li>• <strong>Suggest workarounds</strong> — sometimes there&apos;s an existing way to solve their problem</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+              <p className="text-sm text-amber-800 dark:text-amber-200">
+                <strong>Golden rule:</strong> Be a helpful community member first, a marketer second. People can tell the difference between genuine engagement and spam. The best responses add value to the conversation regardless of whether the person becomes a customer.
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -1432,46 +1797,204 @@ export default function HelpPage() {
                   <li>• <strong>Platform delays:</strong> Some platforms have inherent delays in indexing new content</li>
                 </ul>
               </div>
+
+              <div className="p-4 rounded-lg border">
+                <h4 className="font-medium mb-2">Review platform not finding my business</h4>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>• <strong>Correct URL format:</strong> Copy the exact URL from the platform (Google Maps, Trustpilot, G2, etc.)</li>
+                  <li>• <strong>Public listing:</strong> Ensure your business listing is publicly visible and not restricted</li>
+                  <li>• <strong>Recently created:</strong> New listings may take time to be indexed by the platform</li>
+                  <li>• <strong>URL vs keywords:</strong> Review platforms need specific URLs, not keyword searches</li>
+                </ul>
+              </div>
+
+              <div className="p-4 rounded-lg border">
+                <h4 className="font-medium mb-2">Getting irrelevant results</h4>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>• <strong>Keywords too broad:</strong> &quot;App&quot; or &quot;software&quot; matches too much — be specific</li>
+                  <li>• <strong>Common word conflicts:</strong> If your brand name is a common word, add context keywords</li>
+                  <li>• <strong>Hide irrelevant:</strong> Click &quot;Hide&quot; on results you don&apos;t want to see — we learn from this</li>
+                  <li>• <strong>Use audiences:</strong> Segment monitors by topic to better organize results</li>
+                </ul>
+              </div>
+
+              <div className="p-4 rounded-lg border">
+                <h4 className="font-medium mb-2">Monitor limit reached</h4>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>• <strong>Free plan:</strong> Limited to 1 monitor — upgrade to Pro (10) or Team (30)</li>
+                  <li>• <strong>Delete unused:</strong> Remove monitors you no longer need to make room</li>
+                  <li>• <strong>Combine keywords:</strong> One monitor can track multiple keywords (3 Free, 20 Pro, 35 Team)</li>
+                </ul>
+              </div>
+
+              <div className="p-4 rounded-lg border">
+                <h4 className="font-medium mb-2">Can&apos;t access certain platforms</h4>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>• <strong>Plan restrictions:</strong> Free users only have Reddit access — upgrade for all 12 platforms</li>
+                  <li>• <strong>Grayed out:</strong> Platforms showing as locked require Pro or Team plan</li>
+                  <li>• <strong>Day Pass:</strong> Need temporary access? Buy a 24-hour Day Pass for $9</li>
+                </ul>
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Article: Contact Support */}
+      </section>
+
+      {/* ==================== SECTION 11: CONTACT SUPPORT ==================== */}
+      <section id="contact" className="scroll-mt-20 space-y-6">
+        <div className="flex items-center gap-3 border-b pb-4">
+          <div className="p-2 rounded-lg bg-primary/10">
+            <Mail className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold">Contact Support</h2>
+            <p className="text-muted-foreground">Can&apos;t find what you need? We&apos;re here to help.</p>
+          </div>
+        </div>
+
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
-              <Mail className="h-5 w-5" />
-              Contact Support
+              <Send className="h-5 w-5" />
+              Submit a Support Ticket
             </CardTitle>
             <CardDescription>
-              Can&apos;t find what you&apos;re looking for?
+              Describe your issue and we&apos;ll get back to you within 24 hours. Team customers receive priority support.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Our team is here to help. Reach out and we&apos;ll get back to you as soon as possible.
-            </p>
-
-            <div className="p-4 rounded-lg border bg-card">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Mail className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <p className="font-medium">Email Support</p>
-                  <a
-                    href="mailto:support@kaulbyapp.com"
-                    className="text-sm text-primary hover:underline"
+          <CardContent className="space-y-6">
+            {submitStatus.type === "success" ? (
+              <div className="p-6 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 text-center">
+                <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-4" />
+                <h3 className="font-semibold text-green-800 dark:text-green-200 mb-2">Message Sent!</h3>
+                <p className="text-sm text-green-700 dark:text-green-300 mb-4">
+                  {submitStatus.message}
+                </p>
+                <Button
+                  variant="outline"
+                  onClick={() => setSubmitStatus({ type: null, message: "" })}
+                >
+                  Submit Another Request
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="category">Category</Label>
+                  <Select
+                    value={formState.category}
+                    onValueChange={(value) => setFormState({ ...formState, category: value })}
                   >
-                    support@kaulbyapp.com
-                  </a>
+                    <SelectTrigger id="category">
+                      <SelectValue placeholder="What can we help with?" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Technical Issue">Technical Issue</SelectItem>
+                      <SelectItem value="Billing Question">Billing Question</SelectItem>
+                      <SelectItem value="Feature Request">Feature Request</SelectItem>
+                      <SelectItem value="Account Help">Account Help</SelectItem>
+                      <SelectItem value="Platform/Integration">Platform / Integration</SelectItem>
+                      <SelectItem value="General Question">General Question</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="subject">Subject</Label>
+                  <Input
+                    id="subject"
+                    placeholder="Brief description of your issue"
+                    value={formState.subject}
+                    onChange={(e) => setFormState({ ...formState, subject: e.target.value })}
+                    maxLength={200}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="message">Message</Label>
+                  <Textarea
+                    id="message"
+                    placeholder="Please describe your issue in detail. Include any error messages, steps to reproduce, or relevant context that might help us assist you faster."
+                    className="min-h-[150px]"
+                    value={formState.message}
+                    onChange={(e) => setFormState({ ...formState, message: e.target.value })}
+                    maxLength={5000}
+                  />
+                  <p className="text-xs text-muted-foreground text-right">
+                    {formState.message.length}/5000
+                  </p>
+                </div>
+
+                {submitStatus.type === "error" && (
+                  <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
+                    <p className="text-sm text-red-800 dark:text-red-200">{submitStatus.message}</p>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between pt-2">
+                  <p className="text-xs text-muted-foreground">
+                    Or email us directly at{" "}
+                    <a href="mailto:support@kaulbyapp.com" className="text-primary hover:underline">
+                      support@kaulbyapp.com
+                    </a>
+                  </p>
+                  <Button
+                    onClick={handleSubmitTicket}
+                    disabled={isPending || !formState.category || !formState.subject || !formState.message}
+                  >
+                    {isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="h-4 w-4 mr-2" />
+                        Send Message
+                      </>
+                    )}
+                  </Button>
                 </div>
               </div>
-            </div>
+            )}
+          </CardContent>
+        </Card>
 
-            <p className="text-xs text-muted-foreground">
-              We typically respond within 24 hours. Team customers receive priority support with faster response times.
-            </p>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Before You Contact Us</CardTitle>
+            <CardDescription>
+              Quick things to check that might resolve your issue
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="p-3 rounded-lg border">
+                <p className="font-medium text-sm mb-1">No results appearing?</p>
+                <p className="text-xs text-muted-foreground">
+                  Wait for the first scan (up to 24hrs on Free), check keywords aren&apos;t too specific, verify platforms match your plan
+                </p>
+              </div>
+              <div className="p-3 rounded-lg border">
+                <p className="font-medium text-sm mb-1">Notifications not working?</p>
+                <p className="text-xs text-muted-foreground">
+                  Check Settings → Notifications, verify webhook URLs, ensure digests are enabled
+                </p>
+              </div>
+              <div className="p-3 rounded-lg border">
+                <p className="font-medium text-sm mb-1">AI analysis locked?</p>
+                <p className="text-xs text-muted-foreground">
+                  Free users get analysis on first result only. Upgrade to Pro or Team for unlimited AI insights
+                </p>
+              </div>
+              <div className="p-3 rounded-lg border">
+                <p className="font-medium text-sm mb-1">Billing or subscription issue?</p>
+                <p className="text-xs text-muted-foreground">
+                  Go to Settings → Subscription to manage your plan, update payment, or view invoices
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </section>
