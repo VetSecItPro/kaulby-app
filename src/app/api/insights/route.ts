@@ -3,6 +3,8 @@ import { db } from "@/lib/db";
 import { results, monitors } from "@/lib/db/schema";
 import { eq, inArray, gte, and, desc } from "drizzle-orm";
 import { getEffectiveUserId } from "@/lib/dev-auth";
+import { getUserPlan } from "@/lib/limits";
+import { getPlanLimits, type PlanKey } from "@/lib/plans";
 
 export const dynamic = "force-dynamic";
 
@@ -167,6 +169,92 @@ function findTopicClusters(
   return clusters.sort((a, b) => b.results.length - a.results.length).slice(0, 10);
 }
 
+// Find trending topics within a single platform
+function findSinglePlatformTopics(
+  resultsData: {
+    id: string;
+    title: string;
+    content: string | null;
+    platform: string;
+    sentiment: string | null;
+    sourceUrl: string;
+    createdAt: Date;
+  }[]
+): TopicCluster[] {
+  // Group results by their primary keywords (regardless of platform)
+  const keywordGroups = new Map<string, typeof resultsData>();
+
+  resultsData.forEach((result) => {
+    const text = `${result.title} ${result.content || ""}`;
+    const keywords = extractKeywords([text]);
+    if (keywords.length > 0) {
+      const primaryKeyword = keywords[0];
+      if (!keywordGroups.has(primaryKeyword)) {
+        keywordGroups.set(primaryKeyword, []);
+      }
+      keywordGroups.get(primaryKeyword)!.push(result);
+    }
+  });
+
+  // Convert to clusters - include topics with at least 2 results
+  const clusters: TopicCluster[] = [];
+
+  keywordGroups.forEach((groupResults, keyword) => {
+    if (groupResults.length >= 2) {
+      const platforms = Array.from(new Set(groupResults.map((r) => r.platform)));
+      const allTexts = groupResults.map((r) => `${r.title} ${r.content || ""}`);
+      const keywords = extractKeywords(allTexts);
+
+      // Calculate sentiment breakdown
+      let positive = 0, negative = 0, neutral = 0;
+      groupResults.forEach((r) => {
+        if (r.sentiment === "positive") positive++;
+        else if (r.sentiment === "negative") negative++;
+        else neutral++;
+      });
+
+      // Determine trend direction
+      const now = new Date();
+      const recentResults = groupResults.filter(
+        (r) => now.getTime() - r.createdAt.getTime() < 7 * 24 * 60 * 60 * 1000
+      );
+      const olderResults = groupResults.filter(
+        (r) => now.getTime() - r.createdAt.getTime() >= 7 * 24 * 60 * 60 * 1000
+      );
+
+      let trendDirection: "rising" | "falling" | "stable" = "stable";
+      if (recentResults.length > olderResults.length) {
+        trendDirection = "rising";
+      } else if (recentResults.length < olderResults.length * 0.5) {
+        trendDirection = "falling";
+      }
+
+      const topicName = keywords.slice(0, 3).join(" ") || keyword;
+
+      clusters.push({
+        topic: topicName
+          .split(" ")
+          .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+          .join(" "),
+        keywords,
+        platforms,
+        results: groupResults.map((r) => ({
+          id: r.id,
+          title: r.title,
+          platform: r.platform,
+          sentiment: r.sentiment,
+          sourceUrl: r.sourceUrl,
+          createdAt: r.createdAt,
+        })),
+        sentimentBreakdown: { positive, negative, neutral },
+        trendDirection,
+      });
+    }
+  });
+
+  return clusters.sort((a, b) => b.results.length - a.results.length).slice(0, 10);
+}
+
 export async function GET(request: Request) {
   try {
     const userId = await getEffectiveUserId();
@@ -174,6 +262,12 @@ export async function GET(request: Request) {
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    // Get user's plan info
+    const userPlan = await getUserPlan(userId);
+    const planLimits = getPlanLimits(userPlan);
+    const availablePlatforms = planLimits.platforms;
+    const canHaveMultiplePlatforms = availablePlatforms.length > 1;
 
     const { searchParams } = new URL(request.url);
     const range = searchParams.get("range") || "30d";
@@ -204,8 +298,12 @@ export async function GET(request: Request) {
     if (userMonitors.length === 0) {
       return NextResponse.json({
         topics: [],
+        singlePlatformTopics: [],
         platformCorrelation: [],
         totalResults: 0,
+        plan: userPlan,
+        canHaveMultiplePlatforms,
+        platformsInData: [],
       });
     }
 
@@ -230,16 +328,26 @@ export async function GET(request: Request) {
       limit: 500, // Analyze up to 500 recent results
     });
 
+    // Calculate which platforms appear in the user's data
+    const platformsInData = Array.from(new Set(userResults.map((r) => r.platform)));
+
     if (userResults.length === 0) {
       return NextResponse.json({
         topics: [],
+        singlePlatformTopics: [],
         platformCorrelation: [],
         totalResults: 0,
+        plan: userPlan,
+        canHaveMultiplePlatforms,
+        platformsInData: [],
       });
     }
 
     // Find cross-platform topic clusters
     const topics = findTopicClusters(userResults);
+
+    // If no cross-platform topics found, find single-platform topics as fallback
+    const singlePlatformTopics = topics.length === 0 ? findSinglePlatformTopics(userResults) : [];
 
     // Calculate platform correlation (which platforms often discuss the same topics)
     const platformPairs = new Map<string, number>();
@@ -262,8 +370,12 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       topics,
+      singlePlatformTopics,
       platformCorrelation,
       totalResults: userResults.length,
+      plan: userPlan as PlanKey,
+      canHaveMultiplePlatforms,
+      platformsInData,
     });
   } catch (error) {
     console.error("Insights error:", error);
