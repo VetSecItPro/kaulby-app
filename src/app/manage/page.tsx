@@ -295,9 +295,9 @@ async function getBusinessMetrics() {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  // Get current subscription counts
-  const [currentSubs, lastMonthSubs, monthlySignups] = await Promise.all([
-    // Current subscription breakdown
+  // Get subscription counts - ONLY count users who actually paid via Polar
+  const [currentSubs, paidUsers, lastMonthSubs, monthlySignups] = await Promise.all([
+    // Current subscription breakdown (all users for display)
     db.select({
       status: users.subscriptionStatus,
       count: count(),
@@ -305,13 +305,27 @@ async function getBusinessMetrics() {
     .from(users)
     .groupBy(users.subscriptionStatus),
 
-    // Last month subscription breakdown (users who existed before end of last month)
+    // REAL paid users - only those with Polar subscription ID
     db.select({
       status: users.subscriptionStatus,
       count: count(),
     })
     .from(users)
-    .where(lt(users.createdAt, startOfMonth))
+    .where(sql`${users.polarSubscriptionId} IS NOT NULL`)
+    .groupBy(users.subscriptionStatus),
+
+    // Last month paid users with Polar subscription
+    db.select({
+      status: users.subscriptionStatus,
+      count: count(),
+    })
+    .from(users)
+    .where(
+      and(
+        lt(users.createdAt, startOfMonth),
+        sql`${users.polarSubscriptionId} IS NOT NULL`
+      )
+    )
     .groupBy(users.subscriptionStatus),
 
     // New signups this month
@@ -320,18 +334,23 @@ async function getBusinessMetrics() {
     .where(gte(users.createdAt, startOfMonth)),
   ]);
 
-  // Calculate current MRR
+  // Calculate current MRR - ONLY from users who actually paid via Polar
+  const paidProUsers = paidUsers.find(s => s.status === "pro")?.count || 0;
+  const paidEnterpriseUsers = paidUsers.find(s => s.status === "enterprise")?.count || 0;
+
+  // Total users for conversion rate calculation
+  const currentFreeUsers = currentSubs.find(s => s.status === "free")?.count || 0;
   const currentProUsers = currentSubs.find(s => s.status === "pro")?.count || 0;
   const currentEnterpriseUsers = currentSubs.find(s => s.status === "enterprise")?.count || 0;
-  const currentFreeUsers = currentSubs.find(s => s.status === "free")?.count || 0;
   const totalUsers = currentProUsers + currentEnterpriseUsers + currentFreeUsers;
 
-  const mrr = (currentProUsers * PLANS.pro.price) + (currentEnterpriseUsers * PLANS.enterprise.price);
+  // MRR from REAL Polar payments only
+  const mrr = (paidProUsers * PLANS.pro.price) + (paidEnterpriseUsers * PLANS.enterprise.price);
 
-  // Calculate last month MRR for comparison
-  const lastMonthProUsers = lastMonthSubs.find(s => s.status === "pro")?.count || 0;
-  const lastMonthEnterpriseUsers = lastMonthSubs.find(s => s.status === "enterprise")?.count || 0;
-  const lastMonthMrr = (lastMonthProUsers * PLANS.pro.price) + (lastMonthEnterpriseUsers * PLANS.enterprise.price);
+  // Calculate last month MRR for comparison (from real Polar payments)
+  const lastMonthPaidProUsers = lastMonthSubs.find(s => s.status === "pro")?.count || 0;
+  const lastMonthPaidEnterpriseUsers = lastMonthSubs.find(s => s.status === "enterprise")?.count || 0;
+  const lastMonthMrr = (lastMonthPaidProUsers * PLANS.pro.price) + (lastMonthPaidEnterpriseUsers * PLANS.enterprise.price);
 
   // MRR change percentage
   const mrrChange = lastMonthMrr > 0 ? ((mrr - lastMonthMrr) / lastMonthMrr) * 100 : (mrr > 0 ? 100 : 0);
@@ -342,20 +361,22 @@ async function getBusinessMetrics() {
   // ARPU (Average Revenue Per User) - across all users including free
   const avgRevenuePerUser = totalUsers > 0 ? mrr / totalUsers : 0;
 
-  // Paid user percentage
-  const paidUserPercentage = totalUsers > 0 ? ((currentProUsers + currentEnterpriseUsers) / totalUsers) * 100 : 0;
+  // Paid user percentage (users who actually paid, not just status)
+  const totalPaidUsers = paidProUsers + paidEnterpriseUsers;
+  const paidUserPercentage = totalUsers > 0 ? (totalPaidUsers / totalUsers) * 100 : 0;
 
-  // Conversion metrics
-  const proConversions = currentProUsers - lastMonthProUsers;
-  const enterpriseConversions = currentEnterpriseUsers - lastMonthEnterpriseUsers;
+  // Conversion metrics (based on actual Polar payments)
+  const proConversions = paidProUsers - lastMonthPaidProUsers;
+  const enterpriseConversions = paidEnterpriseUsers - lastMonthPaidEnterpriseUsers;
 
-  // Calculate conversion rate (paid users / total users)
-  const conversionRate = totalUsers > 0 ? ((currentProUsers + currentEnterpriseUsers) / totalUsers) * 100 : 0;
+  // Calculate conversion rate (actually paid users / total users)
+  const conversionRate = totalUsers > 0 ? (totalPaidUsers / totalUsers) * 100 : 0;
 
   // Last month conversion rate for comparison
-  const lastMonthTotalUsers = lastMonthProUsers + lastMonthEnterpriseUsers + (lastMonthSubs.find(s => s.status === "free")?.count || 0);
+  const lastMonthTotalPaidUsers = lastMonthPaidProUsers + lastMonthPaidEnterpriseUsers;
+  const lastMonthTotalUsers = currentSubs.reduce((sum, s) => sum + (s.count || 0), 0) - (monthlySignups[0]?.count || 0);
   const lastMonthConversionRate = lastMonthTotalUsers > 0
-    ? ((lastMonthProUsers + lastMonthEnterpriseUsers) / lastMonthTotalUsers) * 100
+    ? (lastMonthTotalPaidUsers / lastMonthTotalUsers) * 100
     : 0;
   const conversionRateChange = conversionRate - lastMonthConversionRate;
 

@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import Link from "next/link";
 import { markAllResultsViewed } from "@/app/(dashboard)/dashboard/results/actions";
-import { getPlatformBadgeColor, getSentimentBadgeColor } from "@/lib/platform-utils";
+import { getPlatformBadgeColor, getSentimentBadgeColor, getPlatformDisplayName } from "@/lib/platform-utils";
 import type { PlanKey } from "@/lib/plans";
 
 type ConversationCategory = "pain_point" | "solution_request" | "advice_request" | "money_talk" | "hot_discussion";
@@ -257,8 +257,8 @@ function MobileResultCard({ result, allMarkedRead }: { result: Result; allMarked
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap mb-1">
-                <Badge variant="outline" className="capitalize text-xs">
-                  {result.platform}
+                <Badge variant="outline" className="text-xs">
+                  {getPlatformDisplayName(result.platform)}
                 </Badge>
                 {result.sentiment && (
                   <Badge className={`text-xs ${getSentimentBadgeColor(result.sentiment)}`}>

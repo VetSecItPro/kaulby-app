@@ -2,31 +2,19 @@
 
 import { useMemo } from "react";
 import { StatCard, generateSparklineData } from "./stat-card";
-import { Radio, MessageSquare, TrendingUp } from "lucide-react";
-import Link from "next/link";
-import type { PlanKey } from "@/lib/plans";
+import { Radio, MessageSquare } from "lucide-react";
 
 interface DashboardStatsProps {
   monitorsCount: number;
   resultsCount: number;
-  userPlan: PlanKey;
   limits: {
     monitors: number;
-    resultsVisible: number;
   };
 }
-
-// Map internal plan names to display names
-const planDisplayNames: Record<PlanKey, string> = {
-  free: "Free",
-  pro: "Pro",
-  enterprise: "Team", // "enterprise" is internal code name, "Team" is user-facing
-};
 
 export function DashboardStats({
   monitorsCount,
   resultsCount,
-  userPlan,
   limits,
 }: DashboardStatsProps) {
   // Generate sparkline data once (memoized to prevent regeneration on re-renders)
@@ -50,13 +38,13 @@ export function DashboardStats({
   };
 
   return (
-    <div className="grid gap-4 grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-4 grid-cols-2">
       <StatCard
         title="Active Monitors"
         value={monitorsCount}
         description={
           limits.monitors === -1
-            ? "Unlimited"
+            ? "No limit"
             : `of ${limits.monitors} available`
         }
         icon={Radio}
@@ -67,32 +55,11 @@ export function DashboardStats({
       <StatCard
         title="Results This Month"
         value={resultsCount}
-        description={
-          limits.resultsVisible === -1
-            ? "Unlimited visible"
-            : `${limits.resultsVisible} visible (free tier)`
-        }
+        description="Across all monitors"
         icon={MessageSquare}
         sparklineData={resultsSparkline}
         trend={getResultsTrend()}
         delay={0.05}
-      />
-
-      <StatCard
-        title="Current Plan"
-        value={planDisplayNames[userPlan] || userPlan}
-        description={
-          userPlan === "free" ? (
-            <Link href="/dashboard/settings" className="text-primary hover:underline">
-              Upgrade for more
-            </Link>
-          ) : (
-            "Active subscription"
-          )
-        }
-        icon={TrendingUp}
-        delay={0.1}
-        className="col-span-2 lg:col-span-1"
       />
     </div>
   );

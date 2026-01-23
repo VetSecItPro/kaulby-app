@@ -1,4 +1,3 @@
-import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { monitors, results } from "@/lib/db/schema";
@@ -6,6 +5,7 @@ import { eq, desc, inArray, count, and } from "drizzle-orm";
 import { ResponsiveResults } from "@/components/dashboard/responsive-results";
 import { getUserPlan, getRefreshDelay } from "@/lib/limits";
 import { getPlanLimits } from "@/lib/plans";
+import { getEffectiveUserId, isLocalDev } from "@/lib/dev-auth";
 
 interface ResultsPageProps {
   searchParams: Promise<{ page?: string }>;
@@ -14,17 +14,31 @@ interface ResultsPageProps {
 const RESULTS_PER_PAGE = 50;
 
 export default async function ResultsPage({ searchParams }: ResultsPageProps) {
-  const isDev = process.env.NODE_ENV === "development";
+  const userId = await getEffectiveUserId();
 
-  let userId: string | null = null;
-
-  if (!isDev) {
-    const authResult = await auth();
-    userId = authResult.userId;
-
-    if (!userId) {
+  if (!userId) {
+    if (!isLocalDev()) {
       redirect("/sign-in");
     }
+    // In dev mode with no users in DB, show empty state
+    return (
+      <ResponsiveResults
+        results={[]}
+        totalCount={0}
+        page={1}
+        totalPages={0}
+        hasMonitors={false}
+        planInfo={{
+          plan: "enterprise",
+          visibleLimit: -1,
+          isLimited: false,
+          hiddenCount: 0,
+          hasUnlimitedAi: true,
+          refreshDelayHours: 0,
+          nextRefreshAt: null,
+        }}
+      />
+    );
   }
 
   const params = await searchParams;
@@ -32,16 +46,13 @@ export default async function ResultsPage({ searchParams }: ResultsPageProps) {
   const offset = (page - 1) * RESULTS_PER_PAGE;
 
   // Run initial queries in parallel for better performance
-  // In dev mode, default to enterprise (Team) for full feature testing
-  const [userPlan, refreshInfo, userMonitors] = userId
-    ? await Promise.all([
-        getUserPlan(userId),
-        getRefreshDelay(userId),
-        db.query.monitors.findMany({
-          where: eq(monitors.userId, userId),
-        }),
-      ])
-    : [isDev ? "enterprise" as const : "free" as const, null, []];
+  const [userPlan, refreshInfo, userMonitors] = await Promise.all([
+    getUserPlan(userId),
+    getRefreshDelay(userId),
+    db.query.monitors.findMany({
+      where: eq(monitors.userId, userId),
+    }),
+  ]);
 
   const planLimits = getPlanLimits(userPlan);
   const monitorIds = userMonitors.map((m) => m.id);

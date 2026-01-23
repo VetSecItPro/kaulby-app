@@ -42,7 +42,7 @@ import {
   toggleResultSaved,
   toggleResultHidden,
 } from "@/app/(dashboard)/dashboard/results/actions";
-import { getPlatformBadgeColor } from "@/lib/platform-utils";
+import { getPlatformBadgeColor, getPlatformDisplayName } from "@/lib/platform-utils";
 import { BlurredAiAnalysis } from "./upgrade-prompt";
 import { LeadScoreBadge } from "./lead-score-badge";
 import { calculateLeadScore, type LeadScoreFactors } from "@/lib/ai/lead-scoring";
@@ -204,7 +204,7 @@ export const ResultCard = memo(function ResultCard({
                 variant="outline"
                 className={cn("capitalize", getPlatformBadgeColor(result.platform, "light"))}
               >
-                {result.platform}
+                {getPlatformDisplayName(result.platform)}
               </Badge>
               {result.sentiment && sentimentIcons[result.sentiment]}
               {/* Conversation Category Badge - GummySearch-style high-value classification */}
@@ -283,7 +283,7 @@ export const ResultCard = memo(function ResultCard({
               rel="noopener noreferrer"
               onClick={handleClick}
             >
-              <Button variant="outline" size="sm" className="gap-1">
+              <Button size="sm" className="gap-1 bg-teal-500 text-black hover:bg-teal-600">
                 <ExternalLink className="h-3 w-3" />
                 View
               </Button>
@@ -504,10 +504,10 @@ export const ResultsFilterBar = memo(function ResultsFilterBar({
 
         {unviewedCount > 0 && onMarkAllRead && (
           <Button
-            variant="outline"
             size="sm"
             onClick={onMarkAllRead}
             disabled={isPending}
+            className="bg-teal-500 text-black hover:bg-teal-600"
           >
             {isPending ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />

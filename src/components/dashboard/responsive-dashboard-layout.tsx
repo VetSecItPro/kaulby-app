@@ -8,7 +8,6 @@ import { Sidebar } from "./sidebar";
 interface ResponsiveDashboardLayoutProps {
   children: ReactNode;
   isAdmin: boolean;
-  title?: string;
   subscriptionStatus?: string;
   hasActiveDayPass?: boolean;
   workspaceRole?: "owner" | "member" | null;
@@ -19,7 +18,6 @@ interface ResponsiveDashboardLayoutProps {
 export function ResponsiveDashboardLayout({
   children,
   isAdmin,
-  title,
   subscriptionStatus = "free",
   hasActiveDayPass = false,
   workspaceRole = null,
@@ -28,7 +26,12 @@ export function ResponsiveDashboardLayout({
     <>
       {/* Mobile/Tablet Layout - visible below lg breakpoint */}
       <div className="flex flex-col min-h-screen bg-background lg:hidden">
-        <MobileHeader title={title} />
+        <MobileHeader
+          subscriptionStatus={subscriptionStatus}
+          hasActiveDayPass={hasActiveDayPass}
+          workspaceRole={workspaceRole}
+          isAdmin={isAdmin}
+        />
         <main className="flex-1 overflow-auto pb-20 px-4 pt-4">
           {children}
         </main>

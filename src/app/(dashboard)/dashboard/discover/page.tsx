@@ -1,9 +1,9 @@
-import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { db, monitors, results } from "@/lib/db";
 import { eq, desc, gte } from "drizzle-orm";
 import { DiscoverView } from "@/components/dashboard/discover-view";
 import { getUserPlan } from "@/lib/limits";
+import { getEffectiveUserId, isLocalDev } from "@/lib/dev-auth";
 
 /**
  * Get user's current platforms and keywords for context-aware suggestions
@@ -88,14 +88,9 @@ async function getTrendingTopics() {
 }
 
 export default async function DiscoverPage() {
-  const { userId } = await auth();
+  const userId = await getEffectiveUserId();
 
-  const isProduction =
-    process.env.NODE_ENV === "production" ||
-    process.env.VERCEL ||
-    process.env.VERCEL_ENV;
-
-  if (!userId && isProduction) {
+  if (!userId && !isLocalDev()) {
     redirect("/sign-in");
   }
 

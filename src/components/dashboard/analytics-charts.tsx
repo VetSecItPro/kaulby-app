@@ -79,6 +79,18 @@ const PLATFORM_COLORS: Record<string, string> = {
   quora: "#B92B27",
 };
 
+const PLATFORM_LABELS: Record<string, string> = {
+  reddit: "Reddit",
+  hackernews: "Hacker News",
+  producthunt: "Product Hunt",
+  devto: "Dev.to",
+  googlereviews: "Google Reviews",
+  trustpilot: "Trustpilot",
+  appstore: "App Store",
+  playstore: "Play Store",
+  quora: "Quora",
+};
+
 const SENTIMENT_COLORS = {
   positive: "#22c55e",
   negative: "#ef4444",
@@ -233,7 +245,7 @@ export function AnalyticsCharts({ subscriptionStatus = "free" }: AnalyticsCharts
           <CardContent>
             <div className="text-2xl font-bold">{data.totals.mentions}</div>
             <p className="text-xs text-muted-foreground">
-              in the last {range.replace("d", " days").replace("y", " year")}
+              in the last {range === "7d" ? "7 days" : range === "30d" ? "30 days" : range === "90d" ? "90 days" : "1 year"}
             </p>
           </CardContent>
         </Card>
@@ -289,6 +301,43 @@ export function AnalyticsCharts({ subscriptionStatus = "free" }: AnalyticsCharts
           </CardContent>
         </Card>
       </div>
+
+      {/* Share of Voice - Team Tier Feature */}
+      {isTeam ? (
+        sovLoading ? (
+          <Card>
+            <CardContent className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </CardContent>
+          </Card>
+        ) : sovData?.yourBrand ? (
+          <ShareOfVoice
+            yourBrand={sovData.yourBrand}
+            competitors={sovData.competitors}
+            period={sovData.period}
+            showDetails={true}
+          />
+        ) : (
+          <Card>
+            <CardContent className="py-8 text-center">
+              <p className="text-muted-foreground">
+                Share of Voice data will appear once you have multiple monitors tracking different brands.
+              </p>
+            </CardContent>
+          </Card>
+        )
+      ) : (
+        <Card className="border-dashed">
+          <CardContent className="p-6 text-center">
+            <Lock className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+            <h3 className="font-semibold mb-1">Share of Voice</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Compare your brand&apos;s mentions against competitors. See who dominates the conversation.
+            </p>
+            <Badge variant="outline">Team Plan Feature</Badge>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Volume Over Time Chart */}
       <Card>
@@ -422,14 +471,6 @@ export function AnalyticsCharts({ subscriptionStatus = "free" }: AnalyticsCharts
                     />
                   ))}
                 </Pie>
-                <Tooltip
-                  formatter={(value, name) => [value, CATEGORY_LABELS[name as string] || name]}
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--popover))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px",
-                  }}
-                />
               </PieChart>
             </ResponsiveContainer>
           </CardContent>
@@ -444,20 +485,13 @@ export function AnalyticsCharts({ subscriptionStatus = "free" }: AnalyticsCharts
           <CardContent>
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={data.platformBreakdown} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis type="number" tick={{ fill: "hsl(var(--muted-foreground))" }} />
                 <YAxis
                   dataKey="platform"
                   type="category"
                   tick={{ fill: "hsl(var(--muted-foreground))" }}
-                  width={80}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--popover))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px",
-                  }}
+                  tickFormatter={(value) => PLATFORM_LABELS[value] || value}
+                  width={110}
                 />
                 <Bar dataKey="count" name="Mentions">
                   {data.platformBreakdown.map((entry, index) => (
@@ -472,43 +506,6 @@ export function AnalyticsCharts({ subscriptionStatus = "free" }: AnalyticsCharts
           </CardContent>
         </Card>
       </div>
-
-      {/* Share of Voice - Team Tier Feature */}
-      {isTeam ? (
-        sovLoading ? (
-          <Card>
-            <CardContent className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </CardContent>
-          </Card>
-        ) : sovData?.yourBrand ? (
-          <ShareOfVoice
-            yourBrand={sovData.yourBrand}
-            competitors={sovData.competitors}
-            period={sovData.period}
-            showDetails={true}
-          />
-        ) : (
-          <Card>
-            <CardContent className="py-8 text-center">
-              <p className="text-muted-foreground">
-                Share of Voice data will appear once you have multiple monitors tracking different brands.
-              </p>
-            </CardContent>
-          </Card>
-        )
-      ) : (
-        <Card className="border-dashed">
-          <CardContent className="p-6 text-center">
-            <Lock className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-            <h3 className="font-semibold mb-1">Share of Voice</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Compare your brand&apos;s mentions against competitors. See who dominates the conversation.
-            </p>
-            <Badge variant="outline">Team Plan Feature</Badge>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

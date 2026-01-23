@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useMemo, useRef, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useMemo, ReactNode } from "react";
 
 type DeviceType = "mobile" | "tablet" | "desktop";
 
@@ -9,6 +9,7 @@ interface DeviceContextType {
   isTablet: boolean;
   isDesktop: boolean;
   deviceType: DeviceType;
+  isHydrated: boolean;
 }
 
 const DeviceContext = createContext<DeviceContextType>({
@@ -16,6 +17,7 @@ const DeviceContext = createContext<DeviceContextType>({
   isTablet: false,
   isDesktop: true,
   deviceType: "desktop",
+  isHydrated: false,
 });
 
 // Debounce helper to prevent excessive state updates during resize
@@ -27,41 +29,42 @@ function debounce<T extends (...args: unknown[]) => void>(fn: T, ms: number): T 
   }) as T;
 }
 
+// Get initial device type from window (only call on client)
+function getDeviceType(): DeviceType {
+  if (typeof window === "undefined") return "desktop";
+  const width = window.innerWidth;
+  if (width < 768) return "mobile";
+  if (width < 1024) return "tablet";
+  return "desktop";
+}
+
 export function DeviceProvider({ children }: { children: ReactNode }) {
+  // Start with "desktop" for SSR consistency, then update after hydration
   const [deviceType, setDeviceType] = useState<DeviceType>("desktop");
-  const isInitialized = useRef(false);
+  const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
-    const checkDevice = () => {
-      const width = window.innerWidth;
-      if (width < 768) {
-        setDeviceType("mobile");
-      } else if (width < 1024) {
-        setDeviceType("tablet");
-      } else {
-        setDeviceType("desktop");
-      }
-    };
+    // Mark as hydrated and set correct device type
+    setDeviceType(getDeviceType());
+    setIsHydrated(true);
 
-    // Initial check (immediate, no debounce)
-    if (!isInitialized.current) {
-      checkDevice();
-      isInitialized.current = true;
-    }
+    // Debounced resize handler
+    const debouncedCheck = debounce(() => {
+      setDeviceType(getDeviceType());
+    }, 300);
 
-    // Debounced resize handler (300ms delay)
-    const debouncedCheck = debounce(checkDevice, 300);
     window.addEventListener("resize", debouncedCheck);
     return () => window.removeEventListener("resize", debouncedCheck);
   }, []);
 
-  // Memoize context value to prevent unnecessary re-renders of consumers
+  // Memoize context value to prevent unnecessary re-renders
   const value = useMemo<DeviceContextType>(() => ({
     isMobile: deviceType === "mobile",
     isTablet: deviceType === "tablet",
     isDesktop: deviceType === "desktop",
     deviceType,
-  }), [deviceType]);
+    isHydrated,
+  }), [deviceType, isHydrated]);
 
   return (
     <DeviceContext.Provider value={value}>

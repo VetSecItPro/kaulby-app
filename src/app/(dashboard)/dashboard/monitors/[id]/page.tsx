@@ -1,4 +1,3 @@
-import { auth } from "@clerk/nextjs/server";
 import { redirect, notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { monitors, results } from "@/lib/db/schema";
@@ -12,6 +11,7 @@ import { getPlatformDisplayName } from "@/lib/platform-utils";
 import { getUserPlan, getRefreshDelay } from "@/lib/limits";
 import { getPlanLimits } from "@/lib/plans";
 import { HiddenResultsBanner, RefreshDelayBanner, BlurredAiAnalysis } from "@/components/dashboard/upgrade-prompt";
+import { getEffectiveUserId, isLocalDev } from "@/lib/dev-auth";
 
 interface MonitorPageProps {
   params: { id: string };
@@ -21,10 +21,13 @@ interface MonitorPageProps {
 const RESULTS_PER_PAGE = 20;
 
 export default async function MonitorDetailPage({ params, searchParams }: MonitorPageProps) {
-  const { userId } = await auth();
+  const userId = await getEffectiveUserId();
 
   if (!userId) {
-    redirect("/sign-in");
+    if (!isLocalDev()) {
+      redirect("/sign-in");
+    }
+    notFound();
   }
 
   const monitor = await db.query.monitors.findFirst({
@@ -204,7 +207,7 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
                           target="_blank"
                           rel="noopener noreferrer"
                         >
-                          <Button variant="outline" size="sm" className="gap-1">
+                          <Button size="sm" className="gap-1 bg-teal-500 text-black hover:bg-teal-600">
                             <ExternalLink className="h-3 w-3" />
                             View
                           </Button>

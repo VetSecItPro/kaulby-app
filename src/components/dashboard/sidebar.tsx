@@ -59,7 +59,7 @@ const sidebarLinks = [
     icon: Compass,
   },
   {
-    title: "Ask AI",
+    title: "Ask Kaulby AI",
     href: "/dashboard/ask",
     icon: Sparkles,
   },

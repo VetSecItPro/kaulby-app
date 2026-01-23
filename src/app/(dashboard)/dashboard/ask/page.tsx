@@ -1,9 +1,9 @@
-import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { db, monitors, audiences } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import { getUserPlan } from "@/lib/limits";
 import { AIChat } from "@/components/dashboard/ai-chat";
+import { getEffectiveUserId, isLocalDev } from "@/lib/dev-auth";
 
 /**
  * Get user's monitors and audiences for scoping
@@ -56,14 +56,9 @@ async function getUserContext(userId: string) {
 }
 
 export default async function AskPage() {
-  const { userId } = await auth();
+  const userId = await getEffectiveUserId();
 
-  const isProduction =
-    process.env.NODE_ENV === "production" ||
-    process.env.VERCEL ||
-    process.env.VERCEL_ENV;
-
-  if (!userId && isProduction) {
+  if (!userId && !isLocalDev()) {
     redirect("/sign-in");
   }
 
@@ -80,7 +75,7 @@ export default async function AskPage() {
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col">
       <div className="border-b px-6 py-4">
-        <h1 className="text-2xl font-bold">Ask AI</h1>
+        <h1 className="text-2xl font-bold">Ask Kaulby AI</h1>
         <p className="text-sm text-muted-foreground">
           Chat with your data using natural language
         </p>

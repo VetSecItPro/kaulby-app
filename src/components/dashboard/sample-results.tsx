@@ -11,6 +11,7 @@ import {
   Zap
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getPlatformDisplayName } from "@/lib/platform-utils";
 import Link from "next/link";
 
 // Sample results to show users what the product does
@@ -132,7 +133,7 @@ function SampleResultCard({ result }: SampleResultCardProps) {
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 mb-1">
                 <Badge variant="secondary" className="text-xs capitalize">
-                  {result.platform}
+                  {getPlatformDisplayName(result.platform)}
                 </Badge>
                 {result.subreddit && (
                   <span className="text-xs text-muted-foreground">{result.subreddit}</span>
@@ -204,7 +205,7 @@ export function SampleResultsCompact() {
           >
             <div className="flex items-center gap-1">
               <Badge variant="secondary" className="text-[10px] px-1 py-0">
-                {result.platform}
+                {getPlatformDisplayName(result.platform)}
               </Badge>
               <span className="text-[10px] text-muted-foreground">{result.timeAgo}</span>
             </div>

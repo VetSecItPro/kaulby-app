@@ -1,14 +1,19 @@
-import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { getUserPlan } from "@/lib/limits";
 import { getPlanLimits } from "@/lib/plans";
 import { NewMonitorForm } from "./new-monitor-form";
+import { getEffectiveUserId, isLocalDev } from "@/lib/dev-auth";
 
 export default async function NewMonitorPage() {
-  const { userId } = await auth();
+  const userId = await getEffectiveUserId();
 
   if (!userId) {
-    redirect("/sign-in");
+    if (!isLocalDev()) {
+      redirect("/sign-in");
+    }
+    // In dev mode with no user, use enterprise defaults
+    const limits = getPlanLimits("enterprise");
+    return <NewMonitorForm limits={limits} userPlan="enterprise" />;
   }
 
   // Fetch user's plan and limits

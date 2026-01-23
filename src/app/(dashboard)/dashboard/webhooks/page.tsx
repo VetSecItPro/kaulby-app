@@ -1,15 +1,25 @@
-import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { users, webhooks, webhookDeliveries } from "@/lib/db/schema";
 import { eq, desc, and, gte } from "drizzle-orm";
 import { WebhookManagement } from "@/components/dashboard/webhook-management";
+import { getEffectiveUserId, isLocalDev } from "@/lib/dev-auth";
 
 export default async function WebhooksPage() {
-  const { userId } = await auth();
+  const userId = await getEffectiveUserId();
 
   if (!userId) {
-    redirect("/sign-in");
+    if (!isLocalDev()) {
+      redirect("/sign-in");
+    }
+    // In dev mode with no user, show enterprise view with empty webhooks
+    return (
+      <WebhookManagement
+        isEnterprise={true}
+        webhooks={[]}
+        recentDeliveries={[]}
+      />
+    );
   }
 
   // Check if user is enterprise

@@ -60,6 +60,16 @@ export default async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // SECURITY: Verified local development bypass
+  // Allow dashboard routes without auth in local dev for easier testing
+  const isLocalDev = process.env.NODE_ENV === "development" &&
+                     !process.env.VERCEL &&
+                     !process.env.VERCEL_ENV;
+
+  if (isLocalDev && (pathname.startsWith("/dashboard") || pathname.startsWith("/manage"))) {
+    return NextResponse.next();
+  }
+
   // Check if Clerk is configured at runtime
   const isClerkConfigured =
     process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY &&

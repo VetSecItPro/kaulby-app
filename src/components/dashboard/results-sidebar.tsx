@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, memo } from "react";
-import { ChevronDown, ChevronRight, MessageSquare, Globe, Smile, BarChart3, Loader2 } from "lucide-react";
+import { ChevronDown, ChevronRight, MessageSquare, Globe, Smile, BarChart3, Loader2, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -97,6 +97,9 @@ export const ResultsSidebar = memo(function ResultsSidebar({
   const [communitiesOpen, setCommunitiesOpen] = useState(true);
   const [sentimentsOpen, setSentimentsOpen] = useState(true);
   const [engagementOpen, setEngagementOpen] = useState(true);
+
+  // Track which platforms have expanded community lists
+  const [expandedPlatforms, setExpandedPlatforms] = useState<Record<string, boolean>>({});
 
   // Fetch aggregations data
   useEffect(() => {
@@ -255,8 +258,9 @@ export const ResultsSidebar = memo(function ResultsSidebar({
             <CollapsibleContent className="space-y-3 mt-2">
               {Object.entries(communitiesByPlatform).map(([platform, communities]) => {
                 const platformLabel = platformConfig[platform]?.label || platform;
-                // Show top 5 communities per platform
-                const topCommunities = communities.slice(0, 5);
+                const isExpanded = expandedPlatforms[platform] || false;
+                // Show top 5 communities per platform, or all if expanded
+                const visibleCommunities = isExpanded ? communities : communities.slice(0, 5);
                 const hasMore = communities.length > 5;
 
                 return (
@@ -264,7 +268,7 @@ export const ResultsSidebar = memo(function ResultsSidebar({
                     <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide px-2">
                       {platformLabel}
                     </div>
-                    {topCommunities.map(({ community, count }) => {
+                    {visibleCommunities.map(({ community, count }) => {
                       const isSelected = selectedCommunity === `${platform}:${community}`;
 
                       return (
@@ -290,9 +294,27 @@ export const ResultsSidebar = memo(function ResultsSidebar({
                       );
                     })}
                     {hasMore && (
-                      <div className="text-xs text-muted-foreground px-2">
-                        +{communities.length - 5} more
-                      </div>
+                      <button
+                        onClick={() =>
+                          setExpandedPlatforms((prev) => ({
+                            ...prev,
+                            [platform]: !prev[platform],
+                          }))
+                        }
+                        className="w-full flex items-center gap-1 px-2 py-1 text-xs text-teal-500 hover:text-teal-600 transition-colors"
+                      >
+                        {isExpanded ? (
+                          <>
+                            <ChevronUp className="h-3 w-3" />
+                            Show less
+                          </>
+                        ) : (
+                          <>
+                            <ChevronDown className="h-3 w-3" />
+                            Show {communities.length - 5} more
+                          </>
+                        )}
+                      </button>
                     )}
                   </div>
                 );

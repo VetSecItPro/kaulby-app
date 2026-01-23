@@ -83,19 +83,21 @@ export default function HomePage() {
         <section className="pt-16 pb-10 md:pt-24 md:pb-14 lg:pt-32 lg:pb-16 px-4 relative">
           <div className="container mx-auto text-center max-w-5xl">
 <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-4 md:mb-6 animate-fade-up leading-tight" style={{ animationDelay: "0.1s" }}>
-              Know What People Say
+              Your{" "}
+              <span className="relative inline-block">
+                <span className="relative z-10">Brand</span>
+                <span className="absolute -inset-x-1 top-1/3 bottom-0 bg-yellow-400/50 -rotate-2 -z-0 rounded-sm" />
+              </span>{" "}
+              Is Being Discussed.
               <br className="hidden sm:block" />
               <span className="sm:hidden"> </span>
-              <span className="relative inline-block">
-                <span className="relative z-10">About You</span>
-                <span className="absolute -inset-x-1 top-1/3 bottom-0 bg-yellow-400/50 -rotate-2 -z-0 rounded-sm" />
-              </span>
-              <span className="gradient-text">. Everywhere.</span>
+              <span className="gradient-text">Are You Listening?</span>
             </h1>
 
             <p className="text-base md:text-lg lg:text-xl text-muted-foreground mb-8 md:mb-10 max-w-2xl mx-auto animate-fade-up px-2" style={{ animationDelay: "0.2s" }}>
-              Find customers where they&apos;re already talking.
-              AI-powered monitoring across Reddit, Hacker News, Product Hunt, and review sites.
+              Reddit. Hacker News. Product Hunt. Reviews. One dashboard.
+              <br />
+              <span className="font-medium text-foreground">Never miss a mention again.</span>
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center animate-fade-up px-4 sm:px-0" style={{ animationDelay: "0.3s" }}>

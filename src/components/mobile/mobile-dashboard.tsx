@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Radio, MessageSquare, TrendingUp, ChevronRight } from "lucide-react";
+import { Radio, MessageSquare, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 interface MobileDashboardProps {
   monitorsCount: number;
   resultsCount: number;
-  subscriptionStatus: string;
   limits: {
     monitors: number;
     results: number;
@@ -38,7 +37,6 @@ const itemVariants = {
 export function MobileDashboard({
   monitorsCount,
   resultsCount,
-  subscriptionStatus,
   limits,
 }: MobileDashboardProps) {
   return (
@@ -80,33 +78,6 @@ export function MobileDashboard({
           }
           color="bg-blue-500/10 text-blue-500"
         />
-      </motion.div>
-
-      {/* Plan Card */}
-      <motion.div variants={itemVariants}>
-        <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-full bg-primary/20">
-                  <TrendingUp className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Current Plan</p>
-                  <p className="font-semibold capitalize text-lg">{subscriptionStatus}</p>
-                </div>
-              </div>
-              {subscriptionStatus === "free" && (
-                <Link href="/dashboard/settings">
-                  <Button size="sm" className="gap-1 bg-teal-500 hover:bg-teal-600 text-black">
-                    Upgrade
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </Link>
-              )}
-            </div>
-          </CardContent>
-        </Card>
       </motion.div>
 
       {/* Quick Actions */}
