@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { UserButton } from "@clerk/nextjs";
+import { UserButton, useUser } from "@clerk/nextjs";
 import {
   LayoutDashboard,
   Radio,
@@ -103,11 +103,17 @@ export function Sidebar({ isAdmin = false, subscriptionStatus = "free", hasActiv
   const pathname = usePathname();
   const planBadge = getPlanBadge(subscriptionStatus, hasActiveDayPass);
   const [mounted, setMounted] = useState(false);
+  const { user } = useUser();
 
   // Prevent hydration mismatch by only rendering UserButton after mount
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Get user's display name
+  const displayName = user?.firstName && user?.lastName
+    ? `${user.firstName} ${user.lastName}`
+    : user?.firstName || user?.emailAddresses?.[0]?.emailAddress?.split("@")[0] || "My Account";
 
   return (
     <div className="flex h-full w-64 flex-col border-r bg-muted/40">
@@ -226,7 +232,7 @@ export function Sidebar({ isAdmin = false, subscriptionStatus = "free", hasActiv
             <div className="h-8 w-8 rounded-full bg-muted animate-pulse" />
           )}
           <Link href="/dashboard/settings" className="flex flex-col hover:opacity-80 transition-opacity">
-            <span className="text-sm font-medium">My Account</span>
+            <span className="text-sm font-medium truncate max-w-[140px]">{displayName}</span>
             <span className="text-xs text-muted-foreground">Manage settings</span>
           </Link>
         </div>
