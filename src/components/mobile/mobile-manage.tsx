@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { getPlatformBarColor, getSentimentBarColor } from "@/lib/platform-utils";
+import { getPlatformBarColor, getSentimentBarColor, getPlatformDisplayName } from "@/lib/platform-utils";
 
 interface Stats {
   totalUsers: number;
@@ -233,7 +233,7 @@ export function MobileManage({
                 return (
                   <div key={p.platform} className="space-y-1">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="capitalize">{p.platform}</span>
+                      <span>{getPlatformDisplayName(p.platform)}</span>
                       <span className="text-muted-foreground">
                         {p.count} ({percentage.toFixed(0)}%)
                       </span>
