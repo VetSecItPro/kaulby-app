@@ -150,12 +150,6 @@ export function Sidebar({ isAdmin = false, subscriptionStatus = "free", hasActiv
             {workspaceRole === "owner" ? "Owner" : "Member"}
           </span>
         )}
-        {/* Admin Badge */}
-        {isAdmin && (
-          <span className="ml-1 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide rounded-full bg-red-500 text-white">
-            Admin
-          </span>
-        )}
       </div>
 
       {/* Navigation */}
@@ -186,18 +180,23 @@ export function Sidebar({ isAdmin = false, subscriptionStatus = "free", hasActiv
 
           {/* Manage Link (Admin) */}
           {isAdmin && (
-            <Link
-              href="/manage"
-              className={cn(
-                "inline-flex w-fit items-center gap-2 rounded-full px-3 py-1.5 text-sm transition-colors mt-2",
-                pathname === "/manage" || pathname.startsWith("/manage/")
-                  ? "bg-amber-500 text-white"
-                  : "text-amber-500 hover:bg-amber-500/10"
-              )}
-            >
-              <ShieldCheck className="h-4 w-4" />
-              Admin Dashboard
-            </Link>
+            <div className="flex items-center gap-2 mt-2">
+              <Link
+                href="/manage"
+                className={cn(
+                  "inline-flex w-fit items-center gap-2 rounded-full px-3 py-1.5 text-sm transition-colors",
+                  pathname === "/manage" || pathname.startsWith("/manage/")
+                    ? "bg-amber-500 text-white"
+                    : "text-amber-500 hover:bg-amber-500/10"
+                )}
+              >
+                <ShieldCheck className="h-4 w-4" />
+                Admin Dashboard
+              </Link>
+              <span className="px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide rounded-full bg-red-500 text-white">
+                Admin
+              </span>
+            </div>
           )}
         </nav>
 

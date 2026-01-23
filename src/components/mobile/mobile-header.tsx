@@ -189,6 +189,9 @@ export const MobileHeader = memo(function MobileHeader({
                   >
                     <ShieldCheck className="h-5 w-5" />
                     <span className="font-medium">Admin Dashboard</span>
+                    <span className="px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide rounded-full bg-red-500 text-white">
+                      Admin
+                    </span>
                   </Link>
                 </SheetClose>
               )}
