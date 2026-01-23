@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -388,7 +389,7 @@ export function HiddenResultsBanner({ hiddenCount, totalCount }: HiddenResultsBa
 }
 
 // ============================================================================
-// REFRESH DELAY BANNER
+// REFRESH DELAY BANNER - Live countdown timer with gold styling
 // ============================================================================
 
 interface RefreshDelayBannerProps {
@@ -398,16 +399,31 @@ interface RefreshDelayBannerProps {
 }
 
 export function RefreshDelayBanner({ delayHours, nextRefreshAt, subscriptionStatus = "free" }: RefreshDelayBannerProps) {
-  const formatTimeRemaining = () => {
+  const [timeRemaining, setTimeRemaining] = useState<string>("");
+
+  // Calculate and format time remaining
+  const calculateTimeRemaining = () => {
     if (!nextRefreshAt) return `${delayHours} hours`;
     const now = new Date();
     const diff = nextRefreshAt.getTime() - now.getTime();
     if (diff <= 0) return "soon";
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    if (hours > 0) return `${hours}h ${minutes}m`;
-    return `${minutes} minutes`;
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+    if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+    if (minutes > 0) return `${minutes}m ${seconds}s`;
+    return `${seconds}s`;
   };
+
+  // Update timer every second
+  useEffect(() => {
+    setTimeRemaining(calculateTimeRemaining());
+    const interval = setInterval(() => {
+      setTimeRemaining(calculateTimeRemaining());
+    }, 1000);
+    return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nextRefreshAt, delayHours]);
 
   // Team (enterprise) is on the highest tier - no upgrade available
   const isHighestTier = subscriptionStatus === "enterprise";
@@ -425,34 +441,34 @@ export function RefreshDelayBanner({ delayHours, nextRefreshAt, subscriptionStat
 
   const upgradeMessage = getUpgradeMessage();
 
-  // For Team users, show a simpler informational banner (not an upgrade prompt)
+  // For Team users, show a compact gold banner with live countdown
   if (isHighestTier) {
     return (
-      <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border border-border">
-        <Clock className="h-5 w-5 text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">
-          Results refresh in {formatTimeRemaining()}
+      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/20 border border-amber-500/40">
+        <Clock className="h-4 w-4 text-amber-500" />
+        <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
+          Results refresh in <span className="font-mono tabular-nums">{timeRemaining}</span>
         </p>
       </div>
     );
   }
 
   return (
-    <div className="flex items-center justify-between p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
-      <div className="flex items-center gap-3">
-        <Clock className="h-5 w-5 text-amber-500" />
-        <div>
-          <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
-            Results refresh in {formatTimeRemaining()}
+    <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-amber-500/20 border border-amber-500/40">
+      <div className="flex items-center gap-2">
+        <Clock className="h-4 w-4 text-amber-500" />
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
+            Results refresh in <span className="font-mono tabular-nums">{timeRemaining}</span>
           </p>
           {upgradeMessage && (
-            <p className="text-xs text-amber-600/80 dark:text-amber-500/80">
-              {upgradeMessage}
-            </p>
+            <span className="text-xs text-amber-500/70">
+              • {upgradeMessage}
+            </span>
           )}
         </div>
       </div>
-      <Button size="sm" variant="outline" asChild className="border-amber-500/50 text-amber-700 hover:bg-amber-500/10">
+      <Button size="sm" asChild className="h-7 px-3 bg-amber-500 text-black hover:bg-amber-600">
         <Link href="/pricing">
           Upgrade
         </Link>

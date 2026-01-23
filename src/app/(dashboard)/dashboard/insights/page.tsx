@@ -1,11 +1,11 @@
-import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { InsightsView } from "@/components/dashboard/insights-view";
+import { getEffectiveUserId, isLocalDev } from "@/lib/dev-auth";
 
 export default async function InsightsPage() {
-  const { userId } = await auth();
+  const userId = await getEffectiveUserId();
 
-  if (!userId) {
+  if (!userId && !isLocalDev()) {
     redirect("/sign-in");
   }
 

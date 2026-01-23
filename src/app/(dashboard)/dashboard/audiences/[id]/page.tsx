@@ -1,8 +1,8 @@
-import { auth } from "@clerk/nextjs/server";
 import { redirect, notFound } from "next/navigation";
 import { db, audiences, audienceMonitors, results, monitors } from "@/lib/db";
 import { eq, and, inArray, desc, gte } from "drizzle-orm";
 import { AudienceDetail, type AudienceDetailStats } from "@/components/dashboard/audience-detail";
+import { getEffectiveUserId, isLocalDev } from "@/lib/dev-auth";
 
 interface AudiencePageProps {
   params: Promise<{ id: string }>;
@@ -93,15 +93,10 @@ function calculateDetailStats(
 }
 
 export default async function AudiencePage({ params }: AudiencePageProps) {
-  const { userId } = await auth();
+  const userId = await getEffectiveUserId();
   const { id } = await params;
 
-  const isProduction =
-    process.env.NODE_ENV === "production" ||
-    process.env.VERCEL ||
-    process.env.VERCEL_ENV;
-
-  if (!userId && isProduction) {
+  if (!userId && !isLocalDev()) {
     redirect("/sign-in");
   }
 

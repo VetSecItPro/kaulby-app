@@ -21,7 +21,7 @@ import {
   User,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getPlatformBadgeColor } from "@/lib/platform-utils";
+import { getPlatformBadgeColor, getPlatformDisplayName } from "@/lib/platform-utils";
 
 interface Citation {
   id: string;
@@ -29,6 +29,7 @@ interface Citation {
   platform: string;
   sourceUrl: string;
   snippet: string;
+  monitorName?: string;
 }
 
 interface ChatMessage {
@@ -62,7 +63,7 @@ const SUGGESTED_QUESTIONS = [
 ];
 
 /**
- * Citation Card - Shows a source reference
+ * Citation Card - Shows a source reference with monitor name
  */
 const CitationCard = memo(function CitationCard({ citation }: { citation: Citation }) {
   return (
@@ -75,12 +76,19 @@ const CitationCard = memo(function CitationCard({ citation }: { citation: Citati
       <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
         <CardContent className="p-3">
           <div className="flex items-start gap-2">
-            <Badge
-              variant="outline"
-              className={cn("capitalize text-[10px] shrink-0", getPlatformBadgeColor(citation.platform, "light"))}
-            >
-              {citation.platform}
-            </Badge>
+            <div className="flex flex-col gap-1 shrink-0">
+              {citation.monitorName && (
+                <Badge variant="secondary" className="text-[10px] font-medium">
+                  {citation.monitorName}
+                </Badge>
+              )}
+              <Badge
+                variant="outline"
+                className={cn("capitalize text-[10px]", getPlatformBadgeColor(citation.platform, "light"))}
+              >
+                {getPlatformDisplayName(citation.platform)}
+              </Badge>
+            </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium line-clamp-1">{citation.title}</p>
               <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{citation.snippet}</p>
@@ -92,6 +100,59 @@ const CitationCard = memo(function CitationCard({ citation }: { citation: Citati
     </a>
   );
 });
+
+/**
+ * Simple Markdown renderer for AI responses
+ * Supports: **bold**, bullet points (• or -)
+ */
+function renderMarkdown(text: string): React.ReactNode {
+  // Split by newlines to handle line-by-line
+  const lines = text.split('\n');
+
+  return lines.map((line, lineIndex) => {
+    // Process bold text within the line
+    const parts: React.ReactNode[] = [];
+    let remaining = line;
+    let keyIndex = 0;
+
+    // Match **text** pattern
+    const boldRegex = /\*\*([^*]+)\*\*/g;
+    let lastIndex = 0;
+    let match;
+
+    while ((match = boldRegex.exec(line)) !== null) {
+      // Add text before the match
+      if (match.index > lastIndex) {
+        parts.push(line.slice(lastIndex, match.index));
+      }
+      // Add bold text
+      parts.push(
+        <strong key={`bold-${lineIndex}-${keyIndex++}`} className="font-semibold">
+          {match[1]}
+        </strong>
+      );
+      lastIndex = match.index + match[0].length;
+    }
+
+    // Add remaining text after last match
+    if (lastIndex < line.length) {
+      parts.push(line.slice(lastIndex));
+    }
+
+    // If no bold found, just use the line
+    if (parts.length === 0) {
+      parts.push(line);
+    }
+
+    // Return with line break (except for last line)
+    return (
+      <span key={`line-${lineIndex}`}>
+        {parts}
+        {lineIndex < lines.length - 1 && <br />}
+      </span>
+    );
+  });
+}
 
 /**
  * Message Bubble Component
@@ -148,7 +209,7 @@ const MessageBubble = memo(function MessageBubble({
               <span className="text-sm">{message.error}</span>
             </div>
           ) : (
-            <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+            <div className="text-sm whitespace-pre-wrap">{renderMarkdown(message.content)}</div>
           )}
         </div>
 

@@ -33,7 +33,7 @@ export default async function ManageLayout({
   }
 
   return (
-    <ResponsiveDashboardLayout isAdmin={true} subscriptionStatus={subscriptionStatus} title="Admin">
+    <ResponsiveDashboardLayout isAdmin={true} subscriptionStatus={subscriptionStatus}>
       {children}
     </ResponsiveDashboardLayout>
   );

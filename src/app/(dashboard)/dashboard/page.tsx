@@ -1,31 +1,24 @@
-import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { monitors, results, users } from "@/lib/db/schema";
 import { eq, count, and, gte, inArray } from "drizzle-orm";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, ArrowRight, Eye } from "lucide-react";
+import { PlusCircle, Eye } from "lucide-react";
 import Link from "next/link";
 import { QuickStartGuide } from "@/components/dashboard/onboarding";
 import { SampleResultsPreview } from "@/components/dashboard/sample-results";
 import { UpgradeBanner } from "@/components/dashboard/upgrade-banner";
-import { DashboardStats } from "@/components/dashboard/dashboard-stats";
-import { getPlanLimits } from "@/lib/plans";
+import { DashboardInsights } from "@/components/dashboard/dashboard-insights";
 import { getUserPlan } from "@/lib/limits";
+import { getEffectiveUserId, isLocalDev } from "@/lib/dev-auth";
 
 export default async function DashboardPage() {
-  const isDev = process.env.NODE_ENV === "development";
+  const userId = await getEffectiveUserId();
+  const isDev = isLocalDev();
 
-  let userId: string | null = null;
-
-  if (!isDev) {
-    const authResult = await auth();
-    userId = authResult.userId;
-
-    if (!userId) {
-      redirect("/sign-in");
-    }
+  if (!userId && !isDev) {
+    redirect("/sign-in");
   }
 
   // Run initial queries in parallel for better performance
@@ -40,9 +33,7 @@ export default async function DashboardPage() {
       ])
     : [null, isDev ? "enterprise" as const : "free" as const];
 
-  const limits = getPlanLimits(userPlan);
-
-  // Get monitor count and IDs in a single query
+  // Get monitor count and check for results
   const userMonitors = user && userId
     ? await db.query.monitors.findMany({
         where: eq(monitors.userId, userId),
@@ -50,13 +41,12 @@ export default async function DashboardPage() {
       })
     : [];
 
-  const monitorsCount = [{ count: userMonitors.length }];
-  const userMonitorIds = userMonitors;
+  const hasMonitors = userMonitors.length > 0;
 
-  // Get results count using JOIN (avoids separate query for monitor IDs)
-  let resultsCount = 0;
-  if (userMonitorIds.length > 0) {
-    const monitorIdList = userMonitorIds.map(m => m.id);
+  // Check if user has any results
+  let hasResults = false;
+  if (hasMonitors) {
+    const monitorIdList = userMonitors.map(m => m.id);
     const resultsData = await db
       .select({ count: count() })
       .from(results)
@@ -66,28 +56,9 @@ export default async function DashboardPage() {
           inArray(results.monitorId, monitorIdList)
         )
       );
-    resultsCount = resultsData[0]?.count || 0;
+    hasResults = (resultsData[0]?.count || 0) > 0;
   }
-
-  const hasMonitors = (monitorsCount[0]?.count || 0) > 0;
-  const hasResults = resultsCount > 0;
   const showGettingStarted = !hasMonitors || !hasResults;
-
-  // Get recent results for quick preview
-  let recentResults: { title: string; platform: string; createdAt: Date }[] = [];
-  if (hasResults && userMonitorIds.length > 0) {
-    const monitorIdList = userMonitorIds.map(m => m.id);
-    recentResults = await db.query.results.findMany({
-      where: inArray(results.monitorId, monitorIdList),
-      orderBy: (results, { desc }) => [desc(results.createdAt)],
-      limit: 3,
-      columns: {
-        title: true,
-        platform: true,
-        createdAt: true,
-      },
-    });
-  }
 
   return (
     <div className="space-y-6">
@@ -117,50 +88,9 @@ export default async function DashboardPage() {
         <QuickStartGuide hasMonitors={hasMonitors} hasResults={hasResults} />
       )}
 
-      {/* Stats Cards with Sparklines */}
-      <DashboardStats
-        monitorsCount={monitorsCount[0]?.count || 0}
-        resultsCount={resultsCount}
-        userPlan={userPlan}
-        limits={{
-          monitors: limits.monitors,
-          resultsVisible: limits.resultsVisible,
-        }}
-      />
-
-      {/* Recent Activity Section - shown only when user has data */}
-      {hasResults && recentResults.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-lg">Recent Mentions</CardTitle>
-                <CardDescription>Latest results from your monitors</CardDescription>
-              </div>
-              <Link href="/dashboard/results">
-                <Button variant="ghost" size="sm" className="gap-1">
-                  View All
-                  <ArrowRight className="h-3 w-3" />
-                </Button>
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {recentResults.map((result, idx) => (
-                <div key={idx} className="flex items-start justify-between gap-4 rounded-lg border p-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium text-sm truncate">{result.title}</p>
-                    <p className="text-xs text-muted-foreground capitalize">{result.platform}</p>
-                  </div>
-                  <div className="text-xs text-muted-foreground whitespace-nowrap">
-                    {new Date(result.createdAt).toLocaleDateString()}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+      {/* Dashboard Actionable Cards */}
+      {hasMonitors && (
+        <DashboardInsights />
       )}
 
       {/* Empty state when user has monitors but no results yet */}

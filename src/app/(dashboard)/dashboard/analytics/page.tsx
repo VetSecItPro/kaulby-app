@@ -1,23 +1,26 @@
-import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db, users } from "@/lib/db";
 import { AnalyticsCharts } from "@/components/dashboard/analytics-charts";
+import { getEffectiveUserId, isLocalDev } from "@/lib/dev-auth";
 
 export default async function AnalyticsPage() {
-  const { userId } = await auth();
+  const userId = await getEffectiveUserId();
 
-  if (!userId) {
+  if (!userId && !isLocalDev()) {
     redirect("/sign-in");
   }
 
   // Get user's subscription status for feature gating
-  const user = await db.query.users.findFirst({
-    where: eq(users.id, userId),
-    columns: { subscriptionStatus: true },
-  });
+  const user = userId
+    ? await db.query.users.findFirst({
+        where: eq(users.id, userId),
+        columns: { subscriptionStatus: true },
+      })
+    : null;
 
-  const subscriptionStatus = user?.subscriptionStatus || "free";
+  // In dev mode without a user, default to enterprise for full feature testing
+  const subscriptionStatus = user?.subscriptionStatus || (isLocalDev() ? "enterprise" : "free");
 
   return (
     <div className="space-y-8">

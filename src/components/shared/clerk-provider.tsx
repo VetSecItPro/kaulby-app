@@ -35,21 +35,20 @@ interface ResilientClerkProviderProps {
   children: ReactNode;
 }
 
-export function ResilientClerkProvider({ children }: ResilientClerkProviderProps) {
-  const key = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+// Check for key at module level (consistent between server and client)
+const CLERK_KEY = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 
-  // If no key, render without Clerk
-  if (!key) {
-    if (typeof window !== "undefined") {
-      console.warn("[Clerk] No publishable key found - auth disabled");
-    }
+export function ResilientClerkProvider({ children }: ResilientClerkProviderProps) {
+  // If no key, render without Clerk (consistent on server and client)
+  if (!CLERK_KEY) {
     return <>{children}</>;
   }
 
+  // Always render ClerkProvider if key exists - let Clerk handle any issues
   return (
     <ClerkErrorBoundary fallback={children}>
       <ClerkProvider
-        publishableKey={key}
+        publishableKey={CLERK_KEY}
         appearance={{
           baseTheme: dark,
           variables: {

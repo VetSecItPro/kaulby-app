@@ -1,16 +1,11 @@
-import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { AudienceForm } from "@/components/dashboard/audience-form";
+import { getEffectiveUserId, isLocalDev } from "@/lib/dev-auth";
 
 export default async function NewAudiencePage() {
-  const { userId } = await auth();
+  const userId = await getEffectiveUserId();
 
-  const isProduction =
-    process.env.NODE_ENV === "production" ||
-    process.env.VERCEL ||
-    process.env.VERCEL_ENV;
-
-  if (!userId && isProduction) {
+  if (!userId && !isLocalDev()) {
     redirect("/sign-in");
   }
 
