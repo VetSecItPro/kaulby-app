@@ -98,7 +98,10 @@ const ALL_PLATFORMS = [
   { id: "appstore", name: "App Store", description: "iOS app reviews" },
   { id: "playstore", name: "Play Store", description: "Android app reviews" },
   { id: "quora", name: "Quora", description: "Q&A discussions" },
-  { id: "devto", name: "Dev.to", description: "Developer community" },
+  { id: "youtube", name: "YouTube", description: "Video comments" },
+  { id: "g2", name: "G2", description: "Software reviews" },
+  { id: "yelp", name: "Yelp", description: "Local business reviews" },
+  { id: "amazonreviews", name: "Amazon Reviews", description: "Product reviews" },
 ];
 
 // Free tier only gets Reddit
@@ -557,7 +560,7 @@ export function OnboardingWizard({ isOpen, onClose, userName, userPlan = "free" 
                 <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
                   <p className="text-sm text-center">
                     <Zap className="h-4 w-4 inline mr-1 text-primary" />
-                    <span className="font-medium">Upgrade to Pro</span> to monitor all 9 platforms
+                    <span className="font-medium">Upgrade to Pro</span> to monitor all 12 platforms
                   </p>
                 </div>
               )}

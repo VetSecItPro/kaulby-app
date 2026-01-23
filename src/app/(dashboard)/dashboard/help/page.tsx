@@ -301,7 +301,7 @@ export default function HelpPage() {
                 <li>Enter a descriptive <strong>Monitor Name</strong> (e.g., &quot;Brand Mentions&quot;, &quot;Competitor X Feedback&quot;)</li>
                 <li>Enter your <strong>Company/Brand Name</strong> — this is the primary search term</li>
                 <li>Optionally add <strong>Additional Keywords</strong> to narrow results (e.g., &quot;pricing&quot;, &quot;support&quot;)</li>
-                <li>Select which <strong>Platforms</strong> to monitor (Reddit is available on Free; all 9 platforms on Pro/Team)</li>
+                <li>Select which <strong>Platforms</strong> to monitor (Reddit is available on Free; all 12 platforms on Pro/Team)</li>
                 <li>Click <strong>Create Monitor</strong></li>
               </ol>
             </div>
@@ -431,7 +431,7 @@ export default function HelpPage() {
           <CardHeader>
             <CardTitle className="text-lg">Supported Platforms Overview</CardTitle>
             <CardDescription>
-              Kaulby monitors 9 platforms where your audience discusses products and services
+              Kaulby monitors 12 platforms where your audience discusses products and services
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -522,18 +522,48 @@ export default function HelpPage() {
 
               <div className="p-4 rounded-lg border space-y-2">
                 <div className="flex items-center justify-between">
-                  <Badge variant="outline">Dev.to</Badge>
+                  <Badge variant="outline">YouTube</Badge>
                   <Badge className="bg-primary/10 text-primary border-primary/20">Pro</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Developer community with tutorials and discussions. Perfect for dev tools, APIs, and technical products. Engaged, technical audience.
+                  Video comments and discussions. Great for consumer products, tech reviews, and brand mentions in video content.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-lg border space-y-2">
+                <div className="flex items-center justify-between">
+                  <Badge variant="outline">G2</Badge>
+                  <Badge className="bg-primary/10 text-primary border-primary/20">Pro</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  B2B software reviews and ratings. Essential for SaaS companies to track customer feedback and competitive positioning.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-lg border space-y-2">
+                <div className="flex items-center justify-between">
+                  <Badge variant="outline">Yelp</Badge>
+                  <Badge className="bg-primary/10 text-primary border-primary/20">Pro</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Local business reviews. Critical for restaurants, retail, and service businesses to monitor customer experiences.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-lg border space-y-2">
+                <div className="flex items-center justify-between">
+                  <Badge variant="outline">Amazon Reviews</Badge>
+                  <Badge className="bg-primary/10 text-primary border-primary/20">Pro</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Product reviews on Amazon. Essential for e-commerce brands to track customer sentiment and product feedback.
                 </p>
               </div>
             </div>
 
             <div className="p-4 rounded-lg bg-muted/50">
               <p className="text-sm text-muted-foreground">
-                <strong>Platform availability:</strong> Free users can monitor Reddit only. Pro and Team plans include access to all 9 platforms.
+                <strong>Platform availability:</strong> Free users can monitor Reddit only. Pro and Team plans include access to all 12 platforms.
               </p>
             </div>
           </CardContent>
@@ -1020,8 +1050,8 @@ export default function HelpPage() {
                   <tr className="border-b">
                     <td className="py-3 pr-4">Platforms</td>
                     <td className="text-center py-3 px-4">Reddit only</td>
-                    <td className="text-center py-3 px-4 bg-primary/5">All 9</td>
-                    <td className="text-center py-3 px-4">All 9</td>
+                    <td className="text-center py-3 px-4 bg-primary/5">All 12</td>
+                    <td className="text-center py-3 px-4">All 12</td>
                   </tr>
                   <tr className="border-b">
                     <td className="py-3 pr-4">History retention</td>
@@ -1100,7 +1130,7 @@ export default function HelpPage() {
               <h4 className="font-medium">What&apos;s Included</h4>
               <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-2">
                 <li>Up to 10 monitors during your 24-hour window</li>
-                <li>Access to all 9 platforms</li>
+                <li>Access to all 12 platforms</li>
                 <li>Unlimited AI analysis</li>
                 <li>20 keywords per monitor</li>
                 <li>CSV export</li>

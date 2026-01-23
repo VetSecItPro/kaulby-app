@@ -10,10 +10,10 @@ import { WebPageSchema, FAQSchema } from "@/lib/seo/structured-data";
 
 export const metadata: Metadata = {
   title: "Social Listening Tools for Startups | Kaulby",
-  description: "Discover Kaulby's suite of AI-powered social listening tools. Reddit monitoring, brand monitoring, competitor tracking, and more across 9 platforms.",
+  description: "Discover Kaulby's suite of AI-powered social listening tools. Reddit monitoring, brand monitoring, competitor tracking, and more across 12 platforms.",
   openGraph: {
     title: "Social Listening Tools for Startups",
-    description: "AI-powered social listening tools for monitoring Reddit, Hacker News, Product Hunt, and 6 more platforms.",
+    description: "AI-powered social listening tools for monitoring Reddit, Hacker News, Product Hunt, and 9 more platforms.",
     url: "https://kaulbyapp.com/tools",
   },
   alternates: {
@@ -32,9 +32,9 @@ const tools = [
   {
     slug: "brand-monitoring",
     name: "Brand Monitoring",
-    description: "Monitor your brand across 9 platforms. Get instant alerts when customers mention you on Reddit, HN, reviews, and more.",
+    description: "Monitor your brand across 12 platforms. Get instant alerts when customers mention you on Reddit, HN, reviews, and more.",
     icon: Building2,
-    features: ["9 platform coverage", "Sentiment tracking", "Share of voice", "Team collaboration"],
+    features: ["12 platform coverage", "Sentiment tracking", "Share of voice", "Team collaboration"],
   },
   {
     slug: "competitor-monitoring",
@@ -61,7 +61,10 @@ const platforms = [
   "App Store",
   "Play Store",
   "Quora",
-  "Dev.to",
+  "YouTube",
+  "G2",
+  "Yelp",
+  "Amazon Reviews",
 ];
 
 const faqs = [
@@ -71,7 +74,7 @@ const faqs = [
   },
   {
     question: "What platforms does Kaulby monitor?",
-    answer: "Kaulby monitors 9 platforms: Reddit, Hacker News, Product Hunt, Google Reviews, Trustpilot, App Store reviews, Play Store reviews, Quora, and Dev.to. These are the communities where startup customers actively discuss products.",
+    answer: "Kaulby monitors 12 platforms: Reddit, Hacker News, Product Hunt, Google Reviews, Trustpilot, App Store reviews, Play Store reviews, Quora, YouTube, G2, Yelp, and Amazon Reviews. These are the communities where startup customers actively discuss products.",
   },
   {
     question: "How is Kaulby different from other social listening tools?",
@@ -130,7 +133,7 @@ export default function ToolsPage() {
       {/* Platforms */}
       <section className="py-12 px-4 bg-muted/30 border-y">
         <div className="container mx-auto max-w-4xl">
-          <h2 className="text-xl font-semibold text-center mb-6">Monitor 9 Platforms</h2>
+          <h2 className="text-xl font-semibold text-center mb-6">Monitor 12 Platforms</h2>
           <div className="flex flex-wrap justify-center gap-3">
             {platforms.map((platform) => (
               <Badge key={platform} variant="outline" className="text-sm px-4 py-2">

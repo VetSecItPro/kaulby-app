@@ -8,7 +8,7 @@ const competitorMeta: Record<string, { name: string; description: string }> = {
   },
   brand24: {
     name: "Brand24",
-    description: "Compare Kaulby vs Brand24 for community monitoring. Kaulby offers 9 platforms, AI-powered insights, and startup-friendly pricing starting at $0.",
+    description: "Compare Kaulby vs Brand24 for community monitoring. Kaulby offers 12 platforms, AI-powered insights, and startup-friendly pricing starting at $0.",
   },
   brandwatch: {
     name: "Brandwatch",
@@ -20,7 +20,7 @@ const competitorMeta: Record<string, { name: string; description: string }> = {
   },
   sproutsocial: {
     name: "Sprout Social",
-    description: "Looking for a Sprout Social alternative? Kaulby offers dedicated community monitoring with 9 platforms, AI analysis, and pricing that starts at $0.",
+    description: "Looking for a Sprout Social alternative? Kaulby offers dedicated community monitoring with 12 platforms, AI analysis, and pricing that starts at $0.",
   },
   awario: {
     name: "Awario",
@@ -28,15 +28,15 @@ const competitorMeta: Record<string, { name: string; description: string }> = {
   },
   syften: {
     name: "Syften",
-    description: "Looking for a Syften alternative? Kaulby offers AI sentiment analysis, pain point detection, and 9 platforms vs Syften's limited coverage. Free tier available.",
+    description: "Looking for a Syften alternative? Kaulby offers AI sentiment analysis, pain point detection, and 12 platforms vs Syften's limited coverage. Free tier available.",
   },
   gummysearch: {
     name: "***",
-    description: "*** is shutting down. Kaulby offers everything *** had plus 8 more platforms, better AI, and active development. Migrate free today.",
+    description: "*** is shutting down. Kaulby offers everything *** had plus 11 more platforms, better AI, and active development. Migrate free today.",
   },
   redreach: {
     name: "RedReach",
-    description: "Compare Kaulby vs RedReach for Reddit marketing. Kaulby monitors 9 platforms, offers AI reply suggestions, and includes a free tier. No Reddit-only limitation.",
+    description: "Compare Kaulby vs RedReach for Reddit marketing. Kaulby monitors 12 platforms, offers AI reply suggestions, and includes a free tier. No Reddit-only limitation.",
   },
   subredditsignals: {
     name: "Subreddit Signals",
@@ -44,7 +44,7 @@ const competitorMeta: Record<string, { name: string; description: string }> = {
   },
   f5bot: {
     name: "F5Bot",
-    description: "Need more than F5Bot's basic alerts? Kaulby offers a dashboard, AI analysis, sentiment tracking, and 9 platforms. Free tier matches F5Bot's price.",
+    description: "Need more than F5Bot's basic alerts? Kaulby offers a dashboard, AI analysis, sentiment tracking, and 12 platforms. Free tier matches F5Bot's price.",
   },
 };
 
@@ -57,7 +57,7 @@ export async function generateMetadata({ params }: LayoutProps): Promise<Metadat
   const { competitor } = await params;
   const meta = competitorMeta[competitor] || {
     name: competitor.charAt(0).toUpperCase() + competitor.slice(1),
-    description: `Compare Kaulby vs ${competitor} for community monitoring. Kaulby offers 9 platforms, AI-powered insights, and a free tier.`,
+    description: `Compare Kaulby vs ${competitor} for community monitoring. Kaulby offers 12 platforms, AI-powered insights, and a free tier.`,
   };
 
   return {

@@ -23,13 +23,17 @@ export const platformEnum = pgEnum("platform", [
   "reddit",
   "hackernews",
   "producthunt",
-  "devto",
+  "devto", // DEPRECATED: kept for historical data, removed from active platforms
   // "twitter" - DEPRECATED: removed from active platforms, kept in DB enum for historical data
   "googlereviews",
   "trustpilot",
   "appstore",
   "playstore",
   "quora",
+  "youtube",        // NEW: Video comments and discussions
+  "g2",             // NEW: Software reviews
+  "yelp",           // NEW: Local business reviews
+  "amazonreviews",  // NEW: Product reviews
 ]);
 
 export const alertChannelEnum = pgEnum("alert_channel", [
@@ -224,6 +228,9 @@ export const monitors = pgTable("monitors", {
   // Manual scan tracking
   lastManualScanAt: timestamp("last_manual_scan_at"), // When the user last triggered a manual scan
   isScanning: boolean("is_scanning").default(false).notNull(), // Whether a scan is currently in progress
+  // Batch AI analysis - for cost-efficient analysis of large volumes (>50 results)
+  batchAnalysis: jsonb("batch_analysis"), // Stores BatchSummaryResult from batch-summary.ts
+  lastBatchAnalyzedAt: timestamp("last_batch_analyzed_at"), // When batch analysis was last run
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
@@ -286,6 +293,8 @@ export const results = pgTable("results", {
   clickedAt: timestamp("clicked_at"),
   isSaved: boolean("is_saved").default(false).notNull(),
   isHidden: boolean("is_hidden").default(false).notNull(),
+  // Batch analysis flag - true if this result was part of a batch analysis instead of individual AI analysis
+  batchAnalyzed: boolean("batch_analyzed").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("results_monitor_id_idx").on(table.monitorId),

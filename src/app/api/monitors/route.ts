@@ -100,8 +100,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "At least one platform is required" }, { status: 400 });
     }
 
-    // Validate platforms
-    const validPlatforms = ["reddit", "hackernews", "producthunt", "devto", "googlereviews", "trustpilot", "appstore", "playstore", "quora"];
+    // Validate platforms (12 total - devto deprecated)
+    const validPlatforms = ["reddit", "hackernews", "producthunt", "googlereviews", "trustpilot", "appstore", "playstore", "quora", "youtube", "g2", "yelp", "amazonreviews"];
     const invalidPlatforms = platforms.filter((p: string) => !validPlatforms.includes(p));
     if (invalidPlatforms.length > 0) {
       return NextResponse.json({ error: `Invalid platforms: ${invalidPlatforms.join(", ")}` }, { status: 400 });
