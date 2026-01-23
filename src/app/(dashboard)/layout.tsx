@@ -36,7 +36,7 @@ export default async function DashboardLayout({
   }
 
   // Get user data and monitor count in parallel
-  const [dbUser, monitorsCountResult] = await Promise.all([
+  const [dbUserById, monitorsCountResult] = await Promise.all([
     db.query.users.findFirst({
       where: (users, { eq }) => eq(users.id, userId),
       columns: { isAdmin: true, subscriptionStatus: true, isBanned: true, onboardingCompleted: true, dayPassExpiresAt: true, workspaceRole: true },
@@ -46,6 +46,17 @@ export default async function DashboardLayout({
       .from(monitors)
       .where(eq(monitors.userId, userId)),
   ]);
+
+  // Fallback: if not found by Clerk ID, try by email (handles Clerk ID mismatch)
+  // This prevents paying customers from seeing "FREE" badge due to ID sync issues
+  let dbUser = dbUserById;
+  const clerkEmail = user?.emailAddresses[0]?.emailAddress;
+  if (!dbUser && clerkEmail) {
+    dbUser = await db.query.users.findFirst({
+      where: (users, { eq }) => eq(users.email, clerkEmail),
+      columns: { isAdmin: true, subscriptionStatus: true, isBanned: true, onboardingCompleted: true, dayPassExpiresAt: true, workspaceRole: true },
+    });
+  }
 
   // Block banned users from accessing the dashboard
   if (dbUser?.isBanned) {
