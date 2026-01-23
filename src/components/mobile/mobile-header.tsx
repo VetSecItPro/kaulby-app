@@ -15,7 +15,7 @@ import {
   SheetClose,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { UserButton } from "@clerk/nextjs";
+import { UserButton, useUser } from "@clerk/nextjs";
 
 // Navigation items not in the bottom nav
 const menuItems = [
@@ -86,12 +86,18 @@ export const MobileHeader = memo(function MobileHeader({
 }: MobileHeaderProps) {
   const pathname = usePathname();
   const planBadge = getPlanBadge(subscriptionStatus, hasActiveDayPass);
+  const { user } = useUser();
 
   // Mounted state to prevent hydration mismatch with Clerk's UserButton
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Get user's display name
+  const displayName = user?.firstName && user?.lastName
+    ? `${user.firstName} ${user.lastName}`
+    : user?.firstName || user?.emailAddresses?.[0]?.emailAddress?.split("@")[0] || "My Account";
 
   return (
     <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-lg border-b safe-area-top">
@@ -222,7 +228,7 @@ export const MobileHeader = memo(function MobileHeader({
                   <div className="h-10 w-10 rounded-full bg-muted animate-pulse" />
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">My Account</p>
+                  <p className="text-sm font-medium truncate">{displayName}</p>
                   <p className="text-xs text-muted-foreground">Manage profile</p>
                 </div>
               </div>
