@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { workspaces, users, monitors, audiences } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
+import { findUserWithFallback } from "@/lib/auth-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -15,10 +16,8 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get user
-    const user = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-    });
+    // Get user (with email fallback for Clerk ID mismatch)
+    const user = await findUserWithFallback(userId);
 
     if (!user?.workspaceId) {
       return NextResponse.json({ error: "You are not in a workspace" }, { status: 400 });
@@ -35,7 +34,7 @@ export async function GET() {
         email: m.email,
         name: m.name,
         role: m.workspaceRole,
-        isCurrentUser: m.id === userId,
+        isCurrentUser: m.id === user.id,
       })),
     });
   } catch (error) {
@@ -60,17 +59,15 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "Member ID is required" }, { status: 400 });
     }
 
-    // Get current user
-    const user = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-    });
+    // Get current user (with email fallback for Clerk ID mismatch)
+    const user = await findUserWithFallback(userId);
 
     if (!user?.workspaceId || user.workspaceRole !== "owner") {
       return NextResponse.json({ error: "Only workspace owners can remove members" }, { status: 403 });
     }
 
-    // Can't remove yourself (owner)
-    if (memberId === userId) {
+    // Can't remove yourself (owner) - compare with actual user ID
+    if (memberId === user.id) {
       return NextResponse.json({ error: "You cannot remove yourself. Transfer ownership first." }, { status: 400 });
     }
 

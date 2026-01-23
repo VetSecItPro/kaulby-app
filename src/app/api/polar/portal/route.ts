@@ -1,8 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { getPolarClient } from "@/lib/polar";
-import { db, users } from "@/lib/db";
-import { eq } from "drizzle-orm";
+import { findUserWithFallback } from "@/lib/auth-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -26,11 +25,8 @@ export async function POST() {
       );
     }
 
-    // Get user's Polar customer ID
-    const user = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: { polarCustomerId: true },
-    });
+    // Get user's Polar customer ID (with email fallback for Clerk ID mismatch)
+    const user = await findUserWithFallback(userId);
 
     if (!user?.polarCustomerId) {
       return NextResponse.json(

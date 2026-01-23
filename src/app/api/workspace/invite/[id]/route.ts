@@ -1,8 +1,9 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { workspaceInvites, users } from "@/lib/db/schema";
+import { workspaceInvites } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
+import { findUserWithFallback } from "@/lib/auth-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -20,10 +21,8 @@ export async function DELETE(
 
     const { id: inviteId } = await params;
 
-    // Get user
-    const user = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-    });
+    // Get user (with email fallback for Clerk ID mismatch)
+    const user = await findUserWithFallback(userId);
 
     if (!user?.workspaceId || user.workspaceRole !== "owner") {
       return NextResponse.json({ error: "Only workspace owners can revoke invites" }, { status: 403 });

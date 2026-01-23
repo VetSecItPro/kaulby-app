@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { workspaces, workspaceInvites, users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { sendInviteAcceptedEmail } from "@/lib/email";
+import { findUserWithFallback } from "@/lib/auth-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -95,10 +96,8 @@ export async function POST(
       return NextResponse.json({ error: "This invite has already been used" }, { status: 410 });
     }
 
-    // Get user
-    const user = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-    });
+    // Get user (with email fallback for Clerk ID mismatch)
+    const user = await findUserWithFallback(userId);
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -137,7 +136,7 @@ export async function POST(
       );
     }
 
-    // Add user to workspace
+    // Add user to workspace (use user.id for Clerk ID mismatch compatibility)
     await db
       .update(users)
       .set({
@@ -145,7 +144,7 @@ export async function POST(
         workspaceRole: "member",
         updatedAt: new Date(),
       })
-      .where(eq(users.id, userId));
+      .where(eq(users.id, user.id));
 
     // Update invite status
     await db
