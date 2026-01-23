@@ -5,6 +5,7 @@ import { workspaces, workspaceInvites, users } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { sendWorkspaceInviteEmail } from "@/lib/email";
+import { findUserWithFallback } from "@/lib/auth-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -22,10 +23,8 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get user
-    const user = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-    });
+    // Get user (with email fallback for Clerk ID mismatch)
+    const user = await findUserWithFallback(userId);
 
     if (!user?.workspaceId || user.workspaceRole !== "owner") {
       return NextResponse.json({ error: "Only workspace owners can view invites" }, { status: 403 });
@@ -80,10 +79,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
     }
 
-    // Get user
-    const user = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-    });
+    // Get user (with email fallback for Clerk ID mismatch)
+    const user = await findUserWithFallback(userId);
 
     if (!user?.workspaceId || user.workspaceRole !== "owner") {
       return NextResponse.json({ error: "Only workspace owners can invite members" }, { status: 403 });
@@ -136,12 +133,13 @@ export async function POST(request: Request) {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiration
 
+    // Use user.id (database ID) instead of Clerk userId in case of ID mismatch
     const [invite] = await db
       .insert(workspaceInvites)
       .values({
         workspaceId: workspace.id,
         email: email.toLowerCase(),
-        invitedBy: userId,
+        invitedBy: user.id,
         token,
         status: "pending",
         expiresAt,
