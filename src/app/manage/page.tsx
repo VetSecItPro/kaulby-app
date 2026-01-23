@@ -282,9 +282,30 @@ async function getCostBreakdown() {
   const paidTotalCost = Number(paidUsersCostQuery[0]?.totalCost) || 0;
   const paidUserCount = Number(paidUsersCostQuery[0]?.userCount) || 0;
 
+  // Get cost by model
+  const costByModelQuery = await db
+    .select({
+      model: aiLogs.model,
+      totalCost: sum(aiLogs.costUsd),
+      totalCalls: count(),
+      totalTokens: sum(sql`${aiLogs.promptTokens} + ${aiLogs.completionTokens}`),
+    })
+    .from(aiLogs)
+    .where(gte(aiLogs.createdAt, thirtyDaysAgo))
+    .groupBy(aiLogs.model)
+    .orderBy(desc(sum(aiLogs.costUsd)));
+
+  const costByModel = costByModelQuery.map((item) => ({
+    model: item.model,
+    totalCost: Number(item.totalCost) || 0,
+    totalCalls: Number(item.totalCalls) || 0,
+    totalTokens: Number(item.totalTokens) || 0,
+  }));
+
   return {
     costByPlan,
     topUsersByCost,
+    costByModel,
     avgCostPerUser: totalUsersWithCost > 0 ? totalCost / totalUsersWithCost : 0,
     avgCostPerPaidUser: paidUserCount > 0 ? paidTotalCost / paidUserCount : 0,
     costPerResult: totalResults > 0 ? totalCost / totalResults : 0,

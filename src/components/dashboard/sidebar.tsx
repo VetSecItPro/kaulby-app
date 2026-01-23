@@ -79,27 +79,67 @@ interface SidebarProps {
   isAdmin?: boolean;
   subscriptionStatus?: string;
   hasActiveDayPass?: boolean;
+  dayPassExpiresAt?: string | null;
   workspaceRole?: "owner" | "member" | null;
 }
 
 // Get display name and styling for plan badge
-function getPlanBadge(subscriptionStatus: string, hasActiveDayPass: boolean): { label: string; show: boolean } {
+function getPlanBadge(subscriptionStatus: string, hasActiveDayPass: boolean): { label: string; className: string; show: boolean } {
   // Day pass takes priority if active
   if (hasActiveDayPass) {
-    return { label: "Day Pass", show: true };
+    return { label: "Day Pass", className: "bg-purple-500 text-white", show: true };
   }
 
   switch (subscriptionStatus) {
     case "enterprise":
-      return { label: "Team", show: true };
+      return { label: "Team", className: "bg-amber-400 text-black", show: true };
     case "pro":
-      return { label: "Pro", show: true };
+      return { label: "Pro", className: "bg-teal-500 text-black", show: true };
     default:
-      return { label: "Free", show: true };
+      return { label: "Free", className: "bg-gray-500 text-white", show: true };
   }
 }
 
-export function Sidebar({ isAdmin = false, subscriptionStatus = "free", hasActiveDayPass = false, workspaceRole = null }: SidebarProps) {
+// Day Pass countdown timer component
+function DayPassTimer({ expiresAt }: { expiresAt: string }) {
+  const [timeRemaining, setTimeRemaining] = useState<string>("");
+
+  useEffect(() => {
+    const calculateTime = () => {
+      const now = new Date();
+      const expires = new Date(expiresAt);
+      const diff = expires.getTime() - now.getTime();
+
+      if (diff <= 0) {
+        return "Expired";
+      }
+
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+      if (hours > 0) {
+        return `${hours}h ${String(minutes).padStart(2, '0')}m`;
+      }
+      return `${minutes}m ${String(seconds).padStart(2, '0')}s`;
+    };
+
+    setTimeRemaining(calculateTime());
+    const interval = setInterval(() => {
+      setTimeRemaining(calculateTime());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [expiresAt]);
+
+  return (
+    <span className="ml-1 px-1.5 py-0.5 text-[9px] font-mono font-semibold tracking-wide rounded-full bg-purple-600/20 text-purple-400 border border-purple-500/30">
+      {timeRemaining}
+    </span>
+  );
+}
+
+export function Sidebar({ isAdmin = false, subscriptionStatus = "free", hasActiveDayPass = false, dayPassExpiresAt = null, workspaceRole = null }: SidebarProps) {
   const pathname = usePathname();
   const planBadge = getPlanBadge(subscriptionStatus, hasActiveDayPass);
   const [mounted, setMounted] = useState(false);
@@ -133,9 +173,16 @@ export function Sidebar({ isAdmin = false, subscriptionStatus = "free", hasActiv
         </Link>
         {/* Plan Badge */}
         {planBadge.show && (
-          <span className="ml-2 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide rounded-full bg-amber-400 text-black">
+          <span className={cn(
+            "ml-2 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide rounded-full",
+            planBadge.className
+          )}>
             {planBadge.label}
           </span>
+        )}
+        {/* Day Pass Timer */}
+        {hasActiveDayPass && dayPassExpiresAt && (
+          <DayPassTimer expiresAt={dayPassExpiresAt} />
         )}
         {/* Workspace Role Badge - only for Team accounts */}
         {subscriptionStatus === "enterprise" && workspaceRole && (
