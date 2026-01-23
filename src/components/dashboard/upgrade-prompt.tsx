@@ -389,7 +389,7 @@ export function HiddenResultsBanner({ hiddenCount, totalCount }: HiddenResultsBa
 }
 
 // ============================================================================
-// REFRESH DELAY BANNER - Live countdown timer with gold styling
+// REFRESH DELAY BANNER - Full-width gold banner with live countdown timer
 // ============================================================================
 
 interface RefreshDelayBannerProps {
@@ -403,14 +403,14 @@ export function RefreshDelayBanner({ delayHours, nextRefreshAt, subscriptionStat
 
   // Calculate and format time remaining
   const calculateTimeRemaining = () => {
-    if (!nextRefreshAt) return `${delayHours} hours`;
+    if (!nextRefreshAt) return `${delayHours}h 0m`;
     const now = new Date();
     const diff = nextRefreshAt.getTime() - now.getTime();
     if (diff <= 0) return "soon";
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
     const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-    if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+    if (hours > 0) return `${hours}h ${minutes}m`;
     if (minutes > 0) return `${minutes}m ${seconds}s`;
     return `${seconds}s`;
   };
@@ -441,38 +441,29 @@ export function RefreshDelayBanner({ delayHours, nextRefreshAt, subscriptionStat
 
   const upgradeMessage = getUpgradeMessage();
 
-  // For Team users, show a compact gold banner with live countdown
-  if (isHighestTier) {
-    return (
-      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/20 border border-amber-500/40">
-        <Clock className="h-4 w-4 text-amber-500" />
-        <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
-          Results refresh in <span className="font-mono tabular-nums">{timeRemaining}</span>
-        </p>
-      </div>
-    );
-  }
-
   return (
-    <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-amber-500/20 border border-amber-500/40">
-      <div className="flex items-center gap-2">
-        <Clock className="h-4 w-4 text-amber-500" />
-        <div className="flex items-center gap-2">
-          <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
-            Results refresh in <span className="font-mono tabular-nums">{timeRemaining}</span>
-          </p>
-          {upgradeMessage && (
-            <span className="text-xs text-amber-500/70">
-              • {upgradeMessage}
-            </span>
-          )}
-        </div>
+    <div className="w-full flex items-center justify-between px-4 py-3 rounded-lg bg-amber-400 border border-amber-500">
+      <div className="flex items-center gap-3">
+        <Clock className="h-5 w-5 text-black" />
+        <p className="text-sm font-semibold text-black">
+          Results refresh in{" "}
+          <span className="font-mono tabular-nums bg-black/10 px-1.5 py-0.5 rounded">
+            {timeRemaining}
+          </span>
+        </p>
+        {upgradeMessage && !isHighestTier && (
+          <span className="text-sm text-black/70">
+            • {upgradeMessage}
+          </span>
+        )}
       </div>
-      <Button size="sm" asChild className="h-7 px-3 bg-amber-500 text-black hover:bg-amber-600">
-        <Link href="/pricing">
-          Upgrade
-        </Link>
-      </Button>
+      {!isHighestTier && (
+        <Button size="sm" asChild className="bg-black text-amber-400 hover:bg-black/80">
+          <Link href="/pricing">
+            Upgrade
+          </Link>
+        </Button>
+      )}
     </div>
   );
 }
