@@ -1,9 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { createApiKey, listApiKeys, revokeApiKey } from "@/lib/api-auth";
-import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { findUserWithFallback } from "@/lib/auth-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -18,20 +16,18 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Check if user has Team plan
-    const user = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: { subscriptionStatus: true },
-    });
+    // Check if user has Team plan (with email fallback for Clerk ID mismatch)
+    const user = await findUserWithFallback(userId);
 
-    if (user?.subscriptionStatus !== "enterprise") {
+    if (!user || user.subscriptionStatus !== "enterprise") {
       return NextResponse.json(
         { error: "API access requires Team plan" },
         { status: 403 }
       );
     }
 
-    const keys = await listApiKeys(userId);
+    // Use user.id for database operations (handles Clerk ID mismatch)
+    const keys = await listApiKeys(user.id);
 
     return NextResponse.json({ keys });
   } catch (error) {
@@ -64,6 +60,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Find user with email fallback for Clerk ID mismatch
+    const user = await findUserWithFallback(userId);
+    if (!user || user.subscriptionStatus !== "enterprise") {
+      return NextResponse.json(
+        { error: "API access requires Team plan" },
+        { status: 403 }
+      );
+    }
+
     // Calculate expiration date if provided
     let expiresAt: Date | undefined;
     if (expiresInDays && typeof expiresInDays === "number") {
@@ -71,7 +76,8 @@ export async function POST(request: NextRequest) {
       expiresAt.setDate(expiresAt.getDate() + expiresInDays);
     }
 
-    const result = await createApiKey(userId, name, expiresAt);
+    // Use user.id for database operations (handles Clerk ID mismatch)
+    const result = await createApiKey(user.id, name, expiresAt);
 
     if (!result) {
       return NextResponse.json(
@@ -126,7 +132,14 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await revokeApiKey(keyId, userId);
+    // Find user with email fallback for Clerk ID mismatch
+    const user = await findUserWithFallback(userId);
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // Use user.id for database operations (handles Clerk ID mismatch)
+    await revokeApiKey(keyId, user.id);
 
     return NextResponse.json({ success: true });
   } catch (error) {

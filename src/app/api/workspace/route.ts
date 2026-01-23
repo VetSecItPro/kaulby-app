@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { workspaces, users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { findUserWithFallback } from "@/lib/auth-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -15,10 +16,8 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get user with workspace
-    const user = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-    });
+    // Get user with workspace (with email fallback for Clerk ID mismatch)
+    const user = await findUserWithFallback(userId);
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -77,10 +76,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Workspace name is required" }, { status: 400 });
     }
 
-    // Get user
-    const user = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-    });
+    // Get user (with email fallback for Clerk ID mismatch)
+    const user = await findUserWithFallback(userId);
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -103,11 +100,12 @@ export async function POST(request: Request) {
     }
 
     // Create workspace and update user in transaction
+    // Use user.id (database ID) instead of Clerk userId in case of ID mismatch
     const [newWorkspace] = await db
       .insert(workspaces)
       .values({
         name: name.trim().slice(0, 100),
-        ownerId: userId,
+        ownerId: user.id,
         seatLimit: 5,
         seatCount: 1,
       })
@@ -121,7 +119,7 @@ export async function POST(request: Request) {
         workspaceRole: "owner",
         updatedAt: new Date(),
       })
-      .where(eq(users.id, userId));
+      .where(eq(users.id, user.id));
 
     return NextResponse.json({ workspace: newWorkspace }, { status: 201 });
   } catch (error) {
