@@ -106,9 +106,11 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // 12 platforms (devto deprecated)
       const validPlatforms = [
-        "reddit", "hackernews", "producthunt", "devto",
-        "googlereviews", "trustpilot", "appstore", "playstore", "quora"
+        "reddit", "hackernews", "producthunt",
+        "googlereviews", "trustpilot", "appstore", "playstore", "quora",
+        "youtube", "g2", "yelp", "amazonreviews"
       ];
 
       const invalidPlatforms = platformsList.filter(p => !validPlatforms.includes(p));

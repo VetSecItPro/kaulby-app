@@ -13,17 +13,20 @@ import Link from "next/link";
 import { SearchQueryInput } from "@/components/search-query-input";
 import type { PlanLimits } from "@/lib/plans";
 
-// All available platforms
+// All platforms in specified order
 const ALL_PLATFORMS = [
   { id: "reddit", name: "Reddit", description: "Track subreddits and discussions", tier: "free", needsUrl: false },
   { id: "hackernews", name: "Hacker News", description: "Tech and startup discussions", tier: "pro", needsUrl: false },
   { id: "producthunt", name: "Product Hunt", description: "Product launches and reviews", tier: "pro", needsUrl: false },
-  { id: "devto", name: "Dev.to", description: "Developer community articles", tier: "pro", needsUrl: false },
-  { id: "googlereviews", name: "Google Reviews", description: "Business reviews on Google", tier: "pro", needsUrl: true, urlPlaceholder: "https://www.google.com/maps/place/... or Place ID", urlHelp: "Google Maps URL or Place ID (ChI...)" },
+  { id: "quora", name: "Quora", description: "Q&A discussions", tier: "pro", needsUrl: false },
   { id: "trustpilot", name: "Trustpilot", description: "Customer reviews and ratings", tier: "pro", needsUrl: true, urlPlaceholder: "https://www.trustpilot.com/review/example.com", urlHelp: "Trustpilot company review page URL" },
+  { id: "g2", name: "G2", description: "Software reviews and ratings", tier: "pro", needsUrl: true, urlPlaceholder: "https://www.g2.com/products/your-product/reviews", urlHelp: "G2 product reviews page URL" },
+  { id: "googlereviews", name: "Google Reviews", description: "Business reviews on Google", tier: "pro", needsUrl: true, urlPlaceholder: "https://www.google.com/maps/place/... or Place ID", urlHelp: "Google Maps URL or Place ID (ChI...)" },
+  { id: "amazonreviews", name: "Amazon Reviews", description: "Product reviews on Amazon", tier: "pro", needsUrl: true, urlPlaceholder: "https://amazon.com/dp/B08N5WRWNW or ASIN", urlHelp: "Amazon product URL or ASIN (10-character code)" },
+  { id: "yelp", name: "Yelp", description: "Local business reviews", tier: "pro", needsUrl: true, urlPlaceholder: "https://www.yelp.com/biz/business-name-city", urlHelp: "Yelp business page URL" },
   { id: "appstore", name: "App Store", description: "iOS app reviews", tier: "pro", needsUrl: true, urlPlaceholder: "https://apps.apple.com/us/app/name/id123456", urlHelp: "App Store URL for your iOS app" },
   { id: "playstore", name: "Play Store", description: "Android app reviews", tier: "pro", needsUrl: true, urlPlaceholder: "https://play.google.com/store/apps/details?id=com.app", urlHelp: "Play Store URL for your Android app" },
-  { id: "quora", name: "Quora", description: "Q&A discussions", tier: "pro", needsUrl: false },
+  { id: "youtube", name: "YouTube", description: "Video comments and discussions", tier: "pro", needsUrl: true, urlPlaceholder: "https://www.youtube.com/watch?v=...", urlHelp: "YouTube video URL to monitor comments" },
 ];
 
 // Dynamic keyword suggestions based on monitor name
@@ -338,11 +341,14 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
             </div>
 
             {/* Platforms */}
-            <div className="space-y-2">
-              <Label>Platforms</Label>
-              <p className="text-xs text-muted-foreground mb-2">
-                {isPaidUser ? "All 9 platforms available" : "Upgrade to Pro to unlock all platforms"}
-              </p>
+            <div className="space-y-4">
+              <div>
+                <Label>Platforms</Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {isPaidUser ? "All 12 platforms available" : "Upgrade to Pro to unlock all platforms"}
+                </p>
+              </div>
+
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {ALL_PLATFORMS.map((platform) => {
                   const isLocked = platform.tier !== "free" && !isPaidUser;

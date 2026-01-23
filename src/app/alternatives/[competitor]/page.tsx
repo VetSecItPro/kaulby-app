@@ -67,6 +67,10 @@ const competitorData: Record<string, {
       { feature: "Hacker News Monitoring", competitor: false, kaulby: true },
       { feature: "Product Hunt Monitoring", competitor: false, kaulby: true },
       { feature: "Google Reviews Monitoring", competitor: false, kaulby: true },
+      { feature: "YouTube Comments", competitor: false, kaulby: true },
+      { feature: "G2 Reviews", competitor: false, kaulby: true },
+      { feature: "Yelp Reviews", competitor: false, kaulby: true },
+      { feature: "Amazon Reviews", competitor: false, kaulby: true },
       { feature: "AI Sentiment Analysis", competitor: "Premium only", kaulby: true },
       { feature: "Pain Point Detection", competitor: false, kaulby: true },
       { feature: "Boolean Search", competitor: true, kaulby: true },
@@ -81,7 +85,7 @@ const competitorData: Record<string, {
       },
       {
         question: "How does Kaulby's pricing compare to Mention?",
-        answer: "Mention starts at $41/month with limited features. Kaulby offers a free forever tier with 1 Reddit monitor, Pro at $29/month with 10 monitors across all 9 platforms, and Team at $79/month with 30 monitors and team collaboration. For startups, Kaulby provides better value with more platforms and AI features at a lower price point.",
+        answer: "Mention starts at $41/month with limited features. Kaulby offers a free forever tier with 1 Reddit monitor, Pro at $29/month with 10 monitors across all 12 platforms, and Team at $79/month with 30 monitors and team collaboration. For startups, Kaulby provides better value with more platforms and AI features at a lower price point.",
       },
       {
         question: "Can I monitor Reddit better with Kaulby vs Mention?",
@@ -89,7 +93,7 @@ const competitorData: Record<string, {
       },
       {
         question: "Does Kaulby have the same features as Mention?",
-        answer: "Kaulby matches Mention's core monitoring features and adds more. Both offer keyword tracking, alerts, and Boolean search. But Kaulby adds AI pain point detection, conversation categorization, 9 platform support (vs Mention's focus on traditional social), and a free tier. Mention has stronger Twitter/Facebook coverage; Kaulby has stronger Reddit/HN/community coverage.",
+        answer: "Kaulby matches Mention's core monitoring features and adds more. Both offer keyword tracking, alerts, and Boolean search. But Kaulby adds AI pain point detection, conversation categorization, 12 platform support (vs Mention's focus on traditional social), and a free tier. Mention has stronger Twitter/Facebook coverage; Kaulby has stronger Reddit/HN/community coverage.",
       },
       {
         question: "How do I migrate from Mention to Kaulby?",
@@ -121,6 +125,10 @@ const competitorData: Record<string, {
       { feature: "Reddit Monitoring", competitor: "Basic", kaulby: true },
       { feature: "Hacker News Monitoring", competitor: false, kaulby: true },
       { feature: "Product Hunt Monitoring", competitor: false, kaulby: true },
+      { feature: "YouTube Comments", competitor: false, kaulby: true },
+      { feature: "G2 Reviews", competitor: false, kaulby: true },
+      { feature: "Yelp Reviews", competitor: false, kaulby: true },
+      { feature: "Amazon Reviews", competitor: false, kaulby: true },
       { feature: "AI Sentiment Analysis", competitor: "Basic", kaulby: true },
       { feature: "Pain Point Detection", competitor: false, kaulby: true },
       { feature: "Conversation Categories", competitor: false, kaulby: true },
@@ -132,11 +140,11 @@ const competitorData: Record<string, {
     faqs: [
       {
         question: "Why choose Kaulby over Brand24?",
-        answer: "Kaulby is purpose-built for startup and developer communities while Brand24 is a general media monitoring tool. Kaulby monitors 9 platforms including Reddit, Hacker News, and Product Hunt with deep AI analysis. Brand24 starts at $79/month; Kaulby has a free tier and Pro at $29/month. If you need Reddit/community monitoring, Kaulby is the better choice.",
+        answer: "Kaulby is purpose-built for startup and developer communities while Brand24 is a general media monitoring tool. Kaulby monitors 12 platforms including Reddit, Hacker News, and Product Hunt with deep AI analysis. Brand24 starts at $79/month; Kaulby has a free tier and Pro at $29/month. If you need Reddit/community monitoring, Kaulby is the better choice.",
       },
       {
         question: "How does Brand24's pricing compare to Kaulby?",
-        answer: "Brand24 starts at $79/month for their Individual plan. Kaulby offers: Free tier (1 Reddit monitor forever), Pro at $29/month (10 monitors, 9 platforms), and Team at $79/month (30 monitors, team features). For the same price as Brand24's entry plan, you get Kaulby's full Team tier with more features.",
+        answer: "Brand24 starts at $79/month for their Individual plan. Kaulby offers: Free tier (1 Reddit monitor forever), Pro at $29/month (10 monitors, 12 platforms), and Team at $79/month (30 monitors, team features). For the same price as Brand24's entry plan, you get Kaulby's full Team tier with more features.",
       },
       {
         question: "Does Kaulby have sentiment analysis like Brand24?",
@@ -176,6 +184,10 @@ const competitorData: Record<string, {
       { feature: "Reddit Monitoring", competitor: true, kaulby: true },
       { feature: "Hacker News Monitoring", competitor: false, kaulby: true },
       { feature: "Product Hunt Monitoring", competitor: false, kaulby: true },
+      { feature: "YouTube Comments", competitor: true, kaulby: true },
+      { feature: "G2 Reviews", competitor: false, kaulby: true },
+      { feature: "Yelp Reviews", competitor: false, kaulby: true },
+      { feature: "Amazon Reviews", competitor: false, kaulby: true },
       { feature: "AI Sentiment Analysis", competitor: true, kaulby: true },
       { feature: "Pain Point Detection", competitor: false, kaulby: true },
       { feature: "Self-Serve Signup", competitor: false, kaulby: true },
@@ -209,7 +221,7 @@ const competitorData: Record<string, {
     migrationSteps: [
       { name: "Sign up instantly", text: "Create a Kaulby account in 30 seconds - no sales call needed." },
       { name: "Define your monitors", text: "Set up keyword tracking for your brand and competitors." },
-      { name: "Select platforms", text: "Choose from 9 platforms: Reddit, HN, Product Hunt, reviews, etc." },
+      { name: "Select platforms", text: "Choose from 12 platforms: Reddit, HN, Product Hunt, reviews, etc." },
       { name: "Configure alerts", text: "Set up Slack, email, or webhook notifications." },
       { name: "Start monitoring immediately", text: "See results within hours, not weeks." },
     ],
@@ -230,6 +242,10 @@ const competitorData: Record<string, {
       { feature: "Reddit Monitoring", competitor: "Very limited", kaulby: true },
       { feature: "Hacker News Monitoring", competitor: false, kaulby: true },
       { feature: "Product Hunt Monitoring", competitor: false, kaulby: true },
+      { feature: "YouTube Comments", competitor: true, kaulby: true },
+      { feature: "G2 Reviews", competitor: false, kaulby: true },
+      { feature: "Yelp Reviews", competitor: false, kaulby: true },
+      { feature: "Amazon Reviews", competitor: false, kaulby: true },
       { feature: "AI Sentiment Analysis", competitor: "Basic", kaulby: true },
       { feature: "Pain Point Detection", competitor: false, kaulby: true },
       { feature: "Social Posting", competitor: true, kaulby: false },
@@ -283,6 +299,10 @@ const competitorData: Record<string, {
       { feature: "Reddit Monitoring", competitor: "Limited", kaulby: true },
       { feature: "Hacker News Monitoring", competitor: false, kaulby: true },
       { feature: "Product Hunt Monitoring", competitor: false, kaulby: true },
+      { feature: "YouTube Comments", competitor: true, kaulby: true },
+      { feature: "G2 Reviews", competitor: false, kaulby: true },
+      { feature: "Yelp Reviews", competitor: false, kaulby: true },
+      { feature: "Amazon Reviews", competitor: false, kaulby: true },
       { feature: "AI Sentiment Analysis", competitor: true, kaulby: true },
       { feature: "Pain Point Detection", competitor: false, kaulby: true },
       { feature: "Developer Communities", competitor: false, kaulby: true },
@@ -315,7 +335,7 @@ const competitorData: Record<string, {
     migrationSteps: [
       { name: "Evaluate your needs", text: "Determine if you need posting (Sprout) or just monitoring (Kaulby)." },
       { name: "Start Kaulby free", text: "Test community monitoring with no commitment." },
-      { name: "Set up your monitors", text: "Create keyword and brand monitors across 9 platforms." },
+      { name: "Set up your monitors", text: "Create keyword and brand monitors across 12 platforms." },
       { name: "Compare results", text: "Run both tools to see community coverage differences." },
       { name: "Optimize your stack", text: "Keep tools that provide value for your specific needs." },
     ],
@@ -337,6 +357,10 @@ const competitorData: Record<string, {
       { feature: "Hacker News Monitoring", competitor: false, kaulby: true },
       { feature: "Product Hunt Monitoring", competitor: false, kaulby: true },
       { feature: "Google Reviews", competitor: false, kaulby: true },
+      { feature: "YouTube Comments", competitor: false, kaulby: true },
+      { feature: "G2 Reviews", competitor: false, kaulby: true },
+      { feature: "Yelp Reviews", competitor: false, kaulby: true },
+      { feature: "Amazon Reviews", competitor: false, kaulby: true },
       { feature: "AI Sentiment Analysis", competitor: "Basic", kaulby: true },
       { feature: "Pain Point Detection", competitor: false, kaulby: true },
       { feature: "Boolean Search", competitor: true, kaulby: true },
@@ -390,6 +414,10 @@ const competitorData: Record<string, {
       { feature: "Reddit Monitoring", competitor: true, kaulby: true },
       { feature: "Hacker News Monitoring", competitor: true, kaulby: true },
       { feature: "Product Hunt Monitoring", competitor: false, kaulby: true },
+      { feature: "YouTube Comments", competitor: true, kaulby: true },
+      { feature: "G2 Reviews", competitor: false, kaulby: true },
+      { feature: "Yelp Reviews", competitor: false, kaulby: true },
+      { feature: "Amazon Reviews", competitor: false, kaulby: true },
       { feature: "AI Sentiment Analysis", competitor: false, kaulby: true },
       { feature: "Pain Point Detection", competitor: false, kaulby: true },
       { feature: "Conversation Categories", competitor: false, kaulby: true },
@@ -401,7 +429,7 @@ const competitorData: Record<string, {
     faqs: [
       {
         question: "Is Kaulby better than Syften?",
-        answer: "Kaulby offers more features: 9 platforms (vs Syften's 4-5), AI sentiment analysis, pain point detection, and conversation categorization. Syften is simpler and slightly cheaper but lacks AI features. If you want basic alerts, Syften works. If you want AI-powered insights, Kaulby is better.",
+        answer: "Kaulby offers more features: 12 platforms (vs Syften's 4-5), AI sentiment analysis, pain point detection, and conversation categorization. Syften is simpler and slightly cheaper but lacks AI features. If you want basic alerts, Syften works. If you want AI-powered insights, Kaulby is better.",
       },
       {
         question: "Does Syften have AI features like Kaulby?",
@@ -413,7 +441,7 @@ const competitorData: Record<string, {
       },
       {
         question: "Can Kaulby monitor the same platforms as Syften?",
-        answer: "Yes, and more. Syften monitors Reddit, HN, GitHub, YouTube, and a few others. Kaulby monitors Reddit, HN, Product Hunt, Google Reviews, Trustpilot, App Store, Play Store, Quora, and Dev.to - 9 platforms total, including review sites Syften doesn't cover.",
+        answer: "Yes, and more. Syften monitors Reddit, HN, GitHub, YouTube, and a few others. Kaulby monitors Reddit, HN, Product Hunt, Google Reviews, Trustpilot, App Store, Play Store, Quora, YouTube, G2, Yelp, and Amazon Reviews - 12 platforms total, including review sites Syften doesn't cover.",
       },
       {
         question: "Should I switch from Syften to Kaulby?",
@@ -444,6 +472,10 @@ const competitorData: Record<string, {
       { feature: "Reddit Monitoring", competitor: true, kaulby: true },
       { feature: "Hacker News Monitoring", competitor: false, kaulby: true },
       { feature: "Product Hunt Monitoring", competitor: false, kaulby: true },
+      { feature: "YouTube Comments", competitor: false, kaulby: true },
+      { feature: "G2 Reviews", competitor: false, kaulby: true },
+      { feature: "Yelp Reviews", competitor: false, kaulby: true },
+      { feature: "Amazon Reviews", competitor: false, kaulby: true },
       { feature: "AI Sentiment Analysis", competitor: true, kaulby: true },
       { feature: "Pain Point Detection", competitor: true, kaulby: true },
       { feature: "Multi-Platform Support", competitor: false, kaulby: true },
@@ -455,15 +487,15 @@ const competitorData: Record<string, {
     faqs: [
       {
         question: "*** is shutting down - what should I use instead?",
-        answer: "Kaulby is the best *** alternative. It offers the same Reddit monitoring with AI analysis, PLUS 8 more platforms (Hacker News, Product Hunt, review sites). Unlike ***, Kaulby isn't dependent on a single platform, so you're protected from future API changes.",
+        answer: "Kaulby is the best *** alternative. It offers the same Reddit monitoring with AI analysis, PLUS 11 more platforms (Hacker News, Product Hunt, review sites). Unlike ***, Kaulby isn't dependent on a single platform, so you're protected from future API changes.",
       },
       {
         question: "Does Kaulby have the same features as ***?",
-        answer: "Yes, and more. Kaulby offers: AI sentiment analysis, pain point detection, conversation categorization (Solution Requests, Pain Points, Money Talk) - just like ***. Plus: 8 additional platforms, review site monitoring, and a free tier. *** was Reddit-only; Kaulby monitors 9 platforms.",
+        answer: "Yes, and more. Kaulby offers: AI sentiment analysis, pain point detection, conversation categorization (Solution Requests, Pain Points, Money Talk) - just like ***. Plus: 8 additional platforms, review site monitoring, and a free tier. *** was Reddit-only; Kaulby monitors 12 platforms.",
       },
       {
         question: "Why did *** shut down?",
-        answer: "*** was 100% dependent on Reddit's API. When Reddit changed their API terms in 2023, *** couldn't reach an agreement. This shows the risk of single-platform tools. Kaulby monitors 9 platforms precisely to avoid this vulnerability.",
+        answer: "*** was 100% dependent on Reddit's API. When Reddit changed their API terms in 2023, *** couldn't reach an agreement. This shows the risk of single-platform tools. Kaulby monitors 12 platforms precisely to avoid this vulnerability.",
       },
       {
         question: "How do I migrate from *** to Kaulby?",
@@ -471,7 +503,7 @@ const competitorData: Record<string, {
       },
       {
         question: "Is Kaulby as good as *** for Reddit?",
-        answer: "*** users report that Kaulby matches its Reddit features (AI analysis, conversation categories, pain point detection). Kaulby adds 8 more platforms, a free tier, and isn't dependent on any single platform's API. Many *** refugees have switched successfully.",
+        answer: "*** users report that Kaulby matches its Reddit features (AI analysis, conversation categories, pain point detection). Kaulby adds 11 more platforms, a free tier, and isn't dependent on any single platform's API. Many *** refugees have switched successfully.",
       },
     ],
     migrationSteps: [
@@ -479,7 +511,7 @@ const competitorData: Record<string, {
       { name: "Recreate your audiences", text: "Set up monitors for the same subreddits and keywords." },
       { name: "Configure alerts", text: "Set up email or Slack notifications for new mentions." },
       { name: "Explore new platforms", text: "Add Hacker News, Product Hunt, and review sites." },
-      { name: "Enjoy platform resilience", text: "Kaulby monitors 9 platforms - never depend on one API again." },
+      { name: "Enjoy platform resilience", text: "Kaulby monitors 12 platforms - never depend on one API again." },
     ],
     relatedTools: ["reddit-monitoring", "social-listening-for-startups"],
   },
@@ -498,6 +530,10 @@ const competitorData: Record<string, {
       { feature: "Reddit Monitoring", competitor: true, kaulby: true },
       { feature: "Hacker News Monitoring", competitor: false, kaulby: true },
       { feature: "Product Hunt Monitoring", competitor: false, kaulby: true },
+      { feature: "YouTube Comments", competitor: false, kaulby: true },
+      { feature: "G2 Reviews", competitor: false, kaulby: true },
+      { feature: "Yelp Reviews", competitor: false, kaulby: true },
+      { feature: "Amazon Reviews", competitor: false, kaulby: true },
       { feature: "AI Reply Suggestions", competitor: true, kaulby: true },
       { feature: "Multi-Platform Support", competitor: false, kaulby: true },
       { feature: "Review Site Monitoring", competitor: false, kaulby: true },
@@ -508,7 +544,7 @@ const competitorData: Record<string, {
     faqs: [
       {
         question: "How does Kaulby compare to RedReach?",
-        answer: "Both offer Reddit monitoring with AI features. RedReach is Reddit-only and focused on reply assistance. Kaulby monitors 9 platforms with sentiment analysis, pain point detection, and conversation categorization. If you only care about Reddit replies, RedReach is focused. For broader monitoring, Kaulby is more comprehensive.",
+        answer: "Both offer Reddit monitoring with AI features. RedReach is Reddit-only and focused on reply assistance. Kaulby monitors 12 platforms with sentiment analysis, pain point detection, and conversation categorization. If you only care about Reddit replies, RedReach is focused. For broader monitoring, Kaulby is more comprehensive.",
       },
       {
         question: "Does Kaulby have AI reply suggestions like RedReach?",
@@ -516,7 +552,7 @@ const competitorData: Record<string, {
       },
       {
         question: "Is RedReach or Kaulby better for finding customers?",
-        answer: "Both help find customers, but differently. RedReach focuses on Reddit replies and engagement. Kaulby finds customers across 9 platforms, categorizes posts by intent (Solution Requests, Pain Points), and offers broader reach. For Reddit-only focus, RedReach. For multi-platform customer discovery, Kaulby.",
+        answer: "Both help find customers, but differently. RedReach focuses on Reddit replies and engagement. Kaulby finds customers across 12 platforms, categorizes posts by intent (Solution Requests, Pain Points), and offers broader reach. For Reddit-only focus, RedReach. For multi-platform customer discovery, Kaulby.",
       },
       {
         question: "Can I monitor review sites with RedReach?",
@@ -524,7 +560,7 @@ const competitorData: Record<string, {
       },
       {
         question: "Should I use both RedReach and Kaulby?",
-        answer: "Probably not necessary. Kaulby covers Reddit monitoring with AI features plus 8 more platforms. Unless you specifically need RedReach's unique engagement tools, Kaulby alone should cover your needs at a better value.",
+        answer: "Probably not necessary. Kaulby covers Reddit monitoring with AI features plus 11 more platforms. Unless you specifically need RedReach's unique engagement tools, Kaulby alone should cover your needs at a better value.",
       },
     ],
     migrationSteps: [
@@ -532,7 +568,7 @@ const competitorData: Record<string, {
       { name: "Compare Reddit coverage", text: "Ensure Kaulby finds the same mentions." },
       { name: "Test reply suggestions", text: "Compare AI reply quality between tools." },
       { name: "Add more platforms", text: "Monitor HN, Product Hunt, and reviews." },
-      { name: "Evaluate total value", text: "Kaulby's 9 platforms may replace RedReach." },
+      { name: "Evaluate total value", text: "Kaulby's 12 platforms may replace RedReach." },
     ],
     relatedTools: ["reddit-monitoring", "competitor-monitoring"],
   },
@@ -549,6 +585,12 @@ const competitorData: Record<string, {
     ],
     features: [
       { feature: "Reddit Monitoring", competitor: true, kaulby: true },
+      { feature: "Hacker News Monitoring", competitor: false, kaulby: true },
+      { feature: "Product Hunt Monitoring", competitor: false, kaulby: true },
+      { feature: "YouTube Comments", competitor: false, kaulby: true },
+      { feature: "G2 Reviews", competitor: false, kaulby: true },
+      { feature: "Yelp Reviews", competitor: false, kaulby: true },
+      { feature: "Amazon Reviews", competitor: false, kaulby: true },
       { feature: "CRM Integration", competitor: true, kaulby: "Coming Soon" },
       { feature: "Lead Scoring", competitor: true, kaulby: true },
       { feature: "AI Sentiment Analysis", competitor: false, kaulby: true },
@@ -561,7 +603,7 @@ const competitorData: Record<string, {
     faqs: [
       {
         question: "Is Kaulby a good Subreddit Signals alternative?",
-        answer: "Yes, especially if you want broader monitoring beyond Reddit. Subreddit Signals excels at Reddit lead generation with CRM integration. Kaulby offers 9-platform monitoring with AI sentiment analysis, pain point detection, and conversation categorization. Choose Subreddit Signals for pure sales focus, Kaulby for comprehensive monitoring.",
+        answer: "Yes, especially if you want broader monitoring beyond Reddit. Subreddit Signals excels at Reddit lead generation with CRM integration. Kaulby offers 12-platform monitoring with AI sentiment analysis, pain point detection, and conversation categorization. Choose Subreddit Signals for pure sales focus, Kaulby for comprehensive monitoring.",
       },
       {
         question: "Does Kaulby have CRM integration like Subreddit Signals?",
@@ -569,7 +611,7 @@ const competitorData: Record<string, {
       },
       {
         question: "Which is better for lead generation?",
-        answer: "Both are good but different. Subreddit Signals is laser-focused on Reddit sales leads with CRM workflow. Kaulby identifies leads across 9 platforms with AI categorization (Solution Requests, Pain Points). Subreddit Signals for Reddit sales automation, Kaulby for multi-platform lead discovery.",
+        answer: "Both are good but different. Subreddit Signals is laser-focused on Reddit sales leads with CRM workflow. Kaulby identifies leads across 12 platforms with AI categorization (Solution Requests, Pain Points). Subreddit Signals for Reddit sales automation, Kaulby for multi-platform lead discovery.",
       },
       {
         question: "Does Kaulby have lead scoring?",
@@ -577,7 +619,7 @@ const competitorData: Record<string, {
       },
       {
         question: "Can I monitor more than Reddit with Subreddit Signals?",
-        answer: "No, Subreddit Signals is Reddit-only. Kaulby monitors 9 platforms: Reddit, Hacker News, Product Hunt, Google Reviews, Trustpilot, App Store, Play Store, Quora, and Dev.to. If your customers are on multiple platforms, Kaulby offers broader coverage.",
+        answer: "No, Subreddit Signals is Reddit-only. Kaulby monitors 12 platforms: Reddit, Hacker News, Product Hunt, Google Reviews, Trustpilot, App Store, Play Store, Quora, YouTube, G2, Yelp, and Amazon Reviews. If your customers are on multiple platforms, Kaulby offers broader coverage.",
       },
     ],
     migrationSteps: [
@@ -604,6 +646,11 @@ const competitorData: Record<string, {
     features: [
       { feature: "Reddit Monitoring", competitor: true, kaulby: true },
       { feature: "Hacker News Monitoring", competitor: true, kaulby: true },
+      { feature: "Product Hunt Monitoring", competitor: false, kaulby: true },
+      { feature: "YouTube Comments", competitor: false, kaulby: true },
+      { feature: "G2 Reviews", competitor: false, kaulby: true },
+      { feature: "Yelp Reviews", competitor: false, kaulby: true },
+      { feature: "Amazon Reviews", competitor: false, kaulby: true },
       { feature: "Dashboard", competitor: false, kaulby: true },
       { feature: "AI Sentiment Analysis", competitor: false, kaulby: true },
       { feature: "Pain Point Detection", competitor: false, kaulby: true },
@@ -628,7 +675,7 @@ const competitorData: Record<string, {
       },
       {
         question: "What can Kaulby do that F5Bot can't?",
-        answer: "Dashboard with visual analytics, AI sentiment analysis, pain point detection, conversation categorization, Slack/Discord alerts, team collaboration, 9 platforms (not just Reddit/HN), export features, historical data, and much more. F5Bot is just basic email alerts.",
+        answer: "Dashboard with visual analytics, AI sentiment analysis, pain point detection, conversation categorization, Slack/Discord alerts, team collaboration, 12 platforms (not just Reddit/HN), export features, historical data, and much more. F5Bot is just basic email alerts.",
       },
       {
         question: "Should I switch from F5Bot to Kaulby?",
@@ -648,8 +695,8 @@ const competitorData: Record<string, {
 
 const kaulbyAdvantages = [
   {
-    title: "9 Platforms in One",
-    description: "Monitor Reddit, Hacker News, Product Hunt, Google Reviews, Trustpilot, App Store, Play Store, Quora, and Dev.to - all from one dashboard.",
+    title: "12 Platforms in One",
+    description: "Monitor Reddit, Hacker News, Product Hunt, Google Reviews, Trustpilot, App Store, Play Store, Quora, YouTube, G2, Yelp, and Amazon Reviews - all from one dashboard.",
   },
   {
     title: "AI-Powered Insights",
@@ -679,7 +726,7 @@ export default function AlternativePage() {
   const defaultFaqs = [
     {
       question: `Is Kaulby a good ${slug} alternative?`,
-      answer: `Yes, Kaulby is an excellent alternative offering 9-platform monitoring, AI-powered sentiment analysis, pain point detection, and a free tier. Compare features above to see the differences.`,
+      answer: `Yes, Kaulby is an excellent alternative offering 12-platform monitoring, AI-powered sentiment analysis, pain point detection, and a free tier. Compare features above to see the differences.`,
     },
     {
       question: "Does Kaulby have a free tier?",
@@ -687,7 +734,7 @@ export default function AlternativePage() {
     },
     {
       question: "What platforms does Kaulby monitor?",
-      answer: "Kaulby monitors 9 platforms: Reddit, Hacker News, Product Hunt, Google Reviews, Trustpilot, App Store reviews, Play Store reviews, Quora, and Dev.to.",
+      answer: "Kaulby monitors 12 platforms: Reddit, Hacker News, Product Hunt, Google Reviews, Trustpilot, App Store reviews, Play Store reviews, Quora, YouTube, G2, Yelp, and Amazon Reviews.",
     },
   ];
 
@@ -706,7 +753,7 @@ export default function AlternativePage() {
     limitations: ["Limited community coverage", "No free tier"],
     features: [
       { feature: "Reddit Monitoring", competitor: "Limited", kaulby: true },
-      { feature: "9 Platform Coverage", competitor: false, kaulby: true },
+      { feature: "12 Platform Coverage", competitor: false, kaulby: true },
       { feature: "AI Sentiment Analysis", competitor: "Varies", kaulby: true },
       { feature: "Pain Point Detection", competitor: false, kaulby: true },
       { feature: "Free Tier", competitor: false, kaulby: true },

@@ -24,6 +24,15 @@ export type Events = {
       userId: string;
     };
   };
+  "content/analyze-batch": {
+    data: {
+      monitorId: string;
+      userId: string;
+      platform: string;
+      resultIds: string[];
+      totalCount: number;
+    };
+  };
   "alert/send": {
     data: {
       alertId: string;

@@ -179,7 +179,10 @@ export function shouldUseFallback(platform: string): { useFallback: boolean; rea
  * Get API health status for all platforms (for dashboard display)
  */
 export function getApiHealth(): Record<string, { status: string; details: unknown }> {
-  const platforms = ["reddit", "hackernews", "producthunt", "googlereviews", "trustpilot", "appstore", "playstore", "quora"];
+  const platforms = [
+    "reddit", "hackernews", "producthunt", "googlereviews", "trustpilot",
+    "appstore", "playstore", "quora", "youtube", "g2", "yelp", "amazonreviews"
+  ];
   const health: Record<string, { status: string; details: unknown }> = {};
 
   for (const platform of platforms) {
@@ -218,6 +221,11 @@ const ACTORS = {
   appStore: "thewolves/appstore-reviews-scraper", // Pay per result ($0.10/1000 reviews)
   playStore: "neatrat/google-play-store-reviews-scraper", // Free tier available
   quora: "jupri/quora-scraper", // Note: requires paid rental
+  // NEW PLATFORMS (Phase 2)
+  youtube: "streamers/youtube-comment-scraper", // Video comments
+  g2: "epctex/g2-scraper", // Software reviews
+  yelp: "maxcopell/yelp-scraper", // Local business reviews
+  amazonReviews: "junglee/amazon-reviews-scraper", // Product reviews
 } as const;
 
 interface ApifyRunResponse {
@@ -289,6 +297,66 @@ interface QuoraAnswerItem {
   upvotes?: number;
   views?: number;
   answerUrl?: string;
+}
+
+// ============================================
+// NEW PLATFORM INTERFACES (Phase 2)
+// ============================================
+
+interface YouTubeCommentItem {
+  commentId: string;
+  text: string;
+  author: string;
+  authorChannelUrl?: string;
+  publishedAt: string;
+  likeCount: number;
+  replyCount?: number;
+  videoId: string;
+  videoTitle?: string;
+  videoUrl?: string;
+}
+
+interface G2ReviewItem {
+  reviewId: string;
+  title: string;
+  text: string;
+  pros?: string;
+  cons?: string;
+  rating: number;
+  date: string;
+  author: string;
+  authorRole?: string;
+  companySize?: string;
+  industry?: string;
+  productName?: string;
+  url?: string;
+}
+
+interface YelpReviewItem {
+  reviewId: string;
+  text: string;
+  rating: number;
+  date: string;
+  author: string;
+  authorLocation?: string;
+  businessName?: string;
+  businessUrl?: string;
+  photos?: string[];
+  url?: string;
+}
+
+interface AmazonReviewItem {
+  reviewId: string;
+  title: string;
+  text: string;
+  rating: number;
+  date: string;
+  author: string;
+  verifiedPurchase: boolean;
+  helpfulVotes?: number;
+  productName?: string;
+  productAsin?: string;
+  url?: string;
 }
 
 function getApiKey(): string {
@@ -519,6 +587,172 @@ export async function fetchQuoraAnswers(
   return runActor<QuoraAnswerItem>(ACTORS.quora, input);
 }
 
+// ============================================
+// NEW PLATFORM FETCH FUNCTIONS (Phase 2)
+// ============================================
+
+/**
+ * Fetch YouTube video comments
+ * @param videoUrl - YouTube video URL (e.g., https://www.youtube.com/watch?v=abc123)
+ * @param maxComments - Maximum number of comments to fetch (default 100)
+ *
+ * Uses streamers/youtube-comment-scraper actor
+ */
+export async function fetchYouTubeComments(
+  videoUrl: string,
+  maxComments: number = 100
+): Promise<YouTubeCommentItem[]> {
+  // Extract video ID from URL if needed
+  let videoId = videoUrl;
+  if (videoUrl.includes("youtube.com") || videoUrl.includes("youtu.be")) {
+    const urlObj = new URL(videoUrl);
+    if (urlObj.hostname === "youtu.be") {
+      videoId = urlObj.pathname.slice(1);
+    } else {
+      videoId = urlObj.searchParams.get("v") || videoUrl;
+    }
+  }
+
+  const input = {
+    startUrls: [{ url: `https://www.youtube.com/watch?v=${videoId}` }],
+    maxComments,
+    sortBy: "newest",
+  };
+
+  const items = await runActor<Record<string, unknown>>(ACTORS.youtube, input);
+
+  return items.map((item) => ({
+    commentId: String(item.commentId || item.id || ""),
+    text: String(item.text || item.content || ""),
+    author: String(item.author || item.authorName || ""),
+    authorChannelUrl: item.authorChannelUrl ? String(item.authorChannelUrl) : undefined,
+    publishedAt: String(item.publishedAt || item.date || ""),
+    likeCount: Number(item.likeCount || item.likes || 0),
+    replyCount: item.replyCount ? Number(item.replyCount) : undefined,
+    videoId: String(item.videoId || videoId),
+    videoTitle: item.videoTitle ? String(item.videoTitle) : undefined,
+    videoUrl: `https://www.youtube.com/watch?v=${item.videoId || videoId}`,
+  }));
+}
+
+/**
+ * Fetch G2 software reviews
+ * @param productUrl - G2 product page URL (e.g., https://www.g2.com/products/slack/reviews)
+ * @param maxReviews - Maximum number of reviews to fetch (default 50)
+ *
+ * Uses epctex/g2-scraper actor
+ */
+export async function fetchG2Reviews(
+  productUrl: string,
+  maxReviews: number = 50
+): Promise<G2ReviewItem[]> {
+  // Ensure URL has /reviews suffix
+  let url = productUrl;
+  if (!url.includes("/reviews")) {
+    url = url.replace(/\/?$/, "/reviews");
+  }
+
+  const input = {
+    startUrls: [{ url }],
+    maxItems: maxReviews,
+  };
+
+  const items = await runActor<Record<string, unknown>>(ACTORS.g2, input);
+
+  return items.map((item) => ({
+    reviewId: String(item.reviewId || item.id || ""),
+    title: String(item.title || item.headline || ""),
+    text: String(item.text || item.body || item.reviewText || ""),
+    pros: item.pros ? String(item.pros) : undefined,
+    cons: item.cons ? String(item.cons) : undefined,
+    rating: Number(item.rating || item.stars || 0),
+    date: String(item.date || item.publishedDate || ""),
+    author: String(item.author || item.reviewerName || ""),
+    authorRole: item.authorRole ? String(item.authorRole) : undefined,
+    companySize: item.companySize ? String(item.companySize) : undefined,
+    industry: item.industry ? String(item.industry) : undefined,
+    productName: item.productName ? String(item.productName) : undefined,
+    url: item.url ? String(item.url) : undefined,
+  }));
+}
+
+/**
+ * Fetch Yelp business reviews
+ * @param businessUrl - Yelp business page URL (e.g., https://www.yelp.com/biz/restaurant-name-city)
+ * @param maxReviews - Maximum number of reviews to fetch (default 50)
+ *
+ * Uses maxcopell/yelp-scraper actor
+ */
+export async function fetchYelpReviews(
+  businessUrl: string,
+  maxReviews: number = 50
+): Promise<YelpReviewItem[]> {
+  const input = {
+    startUrls: [{ url: businessUrl }],
+    maxItems: maxReviews,
+    scrapeReviews: true,
+  };
+
+  const items = await runActor<Record<string, unknown>>(ACTORS.yelp, input);
+
+  return items.map((item) => ({
+    reviewId: String(item.reviewId || item.id || ""),
+    text: String(item.text || item.comment || ""),
+    rating: Number(item.rating || item.stars || 0),
+    date: String(item.date || item.publishedDate || ""),
+    author: String(item.author || item.userName || ""),
+    authorLocation: item.authorLocation ? String(item.authorLocation) : undefined,
+    businessName: item.businessName ? String(item.businessName) : undefined,
+    businessUrl: item.businessUrl ? String(item.businessUrl) : businessUrl,
+    photos: Array.isArray(item.photos) ? item.photos.map(String) : undefined,
+    url: item.url ? String(item.url) : undefined,
+  }));
+}
+
+/**
+ * Fetch Amazon product reviews
+ * @param productUrl - Amazon product URL or ASIN (e.g., https://amazon.com/dp/B08N5WRWNW or B08N5WRWNW)
+ * @param maxReviews - Maximum number of reviews to fetch (default 50)
+ *
+ * Uses junglee/amazon-reviews-scraper actor
+ */
+export async function fetchAmazonReviews(
+  productUrl: string,
+  maxReviews: number = 50
+): Promise<AmazonReviewItem[]> {
+  // Extract ASIN from URL if provided
+  let asin = productUrl;
+  if (productUrl.includes("amazon.com") || productUrl.includes("amazon.")) {
+    // URL patterns: /dp/ASIN, /gp/product/ASIN, /product-reviews/ASIN
+    const asinMatch = productUrl.match(/\/(?:dp|gp\/product|product-reviews)\/([A-Z0-9]{10})/i);
+    if (asinMatch) {
+      asin = asinMatch[1];
+    }
+  }
+
+  const input = {
+    productUrls: [`https://www.amazon.com/dp/${asin}`],
+    maxReviews,
+    sortBy: "recent",
+  };
+
+  const items = await runActor<Record<string, unknown>>(ACTORS.amazonReviews, input);
+
+  return items.map((item) => ({
+    reviewId: String(item.reviewId || item.id || ""),
+    title: String(item.title || item.headline || ""),
+    text: String(item.text || item.body || item.reviewText || ""),
+    rating: Number(item.rating || item.stars || 0),
+    date: String(item.date || item.reviewDate || ""),
+    author: String(item.author || item.reviewerName || ""),
+    verifiedPurchase: Boolean(item.verifiedPurchase || item.verified || false),
+    helpfulVotes: item.helpfulVotes ? Number(item.helpfulVotes) : undefined,
+    productName: item.productName ? String(item.productName) : undefined,
+    productAsin: item.asin ? String(item.asin) : asin,
+    url: item.url ? String(item.url) : undefined,
+  }));
+}
+
 /**
  * Check if Apify is configured
  */
@@ -645,4 +879,16 @@ export async function fetchRedditWithFallback(
 }
 
 // Export types for use in monitor functions
-export type { GoogleReviewItem, TrustpilotReviewItem, AppStoreReviewItem, PlayStoreReviewItem, QuoraAnswerItem, RedditPostItem };
+export type {
+  GoogleReviewItem,
+  TrustpilotReviewItem,
+  AppStoreReviewItem,
+  PlayStoreReviewItem,
+  QuoraAnswerItem,
+  RedditPostItem,
+  // New platforms
+  YouTubeCommentItem,
+  G2ReviewItem,
+  YelpReviewItem,
+  AmazonReviewItem,
+};

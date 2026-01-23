@@ -1,5 +1,6 @@
 // Platform types
-export type Platform = "reddit" | "hackernews" | "producthunt" | "devto" | "googlereviews" | "trustpilot" | "appstore" | "playstore" | "quora";
+// Note: "devto" is included for backward compatibility with historical data but is no longer actively supported
+export type Platform = "reddit" | "hackernews" | "producthunt" | "devto" | "googlereviews" | "trustpilot" | "appstore" | "playstore" | "quora" | "youtube" | "g2" | "yelp" | "amazonreviews";
 
 // Digest frequency types
 export type DigestFrequency = "weekly" | "daily" | "realtime";
@@ -104,7 +105,7 @@ export const PLANS: Record<"free" | "pro" | "enterprise", PlanDefinition> = {
     trialDays: 14,
     features: [
       "10 monitors",
-      "All 9 platforms",
+      "All 12 platforms",
       "20 keywords per monitor",
       "Unlimited results",
       "90-day history",
@@ -120,7 +121,7 @@ export const PLANS: Record<"free" | "pro" | "enterprise", PlanDefinition> = {
       resultsHistoryDays: 90,
       resultsVisible: -1, // unlimited
       refreshDelayHours: 4, // 4-hour refresh cycle (6x faster than free)
-      platforms: ["reddit", "hackernews", "producthunt", "devto", "googlereviews", "trustpilot", "appstore", "playstore", "quora"],
+      platforms: ["reddit", "hackernews", "producthunt", "googlereviews", "trustpilot", "appstore", "playstore", "quora", "youtube", "g2", "yelp", "amazonreviews"],
       digestFrequencies: ["daily"], // Pro only gets daily digest
       aiFeatures: {
         sentiment: true,
@@ -168,7 +169,7 @@ export const PLANS: Record<"free" | "pro" | "enterprise", PlanDefinition> = {
       resultsHistoryDays: 365,
       resultsVisible: -1, // unlimited
       refreshDelayHours: 2, // 2-hour refresh (was real-time)
-      platforms: ["reddit", "hackernews", "producthunt", "devto", "googlereviews", "trustpilot", "appstore", "playstore", "quora"],
+      platforms: ["reddit", "hackernews", "producthunt", "googlereviews", "trustpilot", "appstore", "playstore", "quora", "youtube", "g2", "yelp", "amazonreviews"],
       digestFrequencies: ["daily", "weekly", "realtime"],
       aiFeatures: {
         sentiment: true,

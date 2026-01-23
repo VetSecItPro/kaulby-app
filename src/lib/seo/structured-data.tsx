@@ -11,7 +11,7 @@ export function OrganizationSchema() {
     url: BASE_URL,
     logo: `${BASE_URL}/logo.jpg`,
     description:
-      "AI-powered social listening tool for startups. Monitor brand mentions across 9 platforms including Reddit, Hacker News, and Product Hunt.",
+      "AI-powered social listening tool for startups. Monitor brand mentions across 12 platforms including Reddit, Hacker News, and Product Hunt.",
     foundingDate: "2024",
     sameAs: [],
     contactPoint: {
@@ -53,7 +53,7 @@ export function SoftwareApplicationSchema() {
       worstRating: "1",
     },
     description:
-      "Monitor brand mentions across 9 platforms with AI-powered sentiment analysis. Track Reddit, Hacker News, Product Hunt, reviews, and more.",
+      "Monitor brand mentions across 12 platforms with AI-powered sentiment analysis. Track Reddit, Hacker News, Product Hunt, reviews, and more.",
     featureList: [
       "Reddit Monitoring",
       "Hacker News Tracking",
@@ -263,7 +263,7 @@ export function PricingSchema({ tiers }: PricingSchemaProps) {
     "@type": "Product",
     name: "Kaulby Social Listening Platform",
     description:
-      "AI-powered social listening tool for startups. Monitor brand mentions across 9 platforms.",
+      "AI-powered social listening tool for startups. Monitor brand mentions across 12 platforms.",
     brand: {
       "@type": "Brand",
       name: "Kaulby",

@@ -13,8 +13,8 @@ import { Platform } from "@/lib/plans";
 
 export const dynamic = "force-dynamic";
 
-// All valid platforms (must match POST route)
-const VALID_PLATFORMS = ["reddit", "hackernews", "producthunt", "devto", "googlereviews", "trustpilot", "appstore", "playstore", "quora"];
+// All valid platforms (12 total - must match POST route, devto deprecated)
+const VALID_PLATFORMS = ["reddit", "hackernews", "producthunt", "googlereviews", "trustpilot", "appstore", "playstore", "quora", "youtube", "g2", "yelp", "amazonreviews"];
 
 // Sanitize user input to prevent XSS and injection attacks
 function sanitizeInput(input: string): string {
