@@ -26,6 +26,7 @@ interface Citation {
   platform: string;
   sourceUrl: string;
   snippet: string;
+  monitorName: string;
 }
 
 interface SearchResult {
@@ -40,6 +41,9 @@ interface SearchResult {
   engagementScore: number | null;
   leadScore: number | null;
   postedAt: Date | null;
+  monitorId: string;
+  monitorName: string;
+  companyName: string | null;
   relevanceScore?: number;
 }
 
@@ -73,11 +77,13 @@ async function searchRelevantResults(
   const keywords = extractKeywords(question);
   const lowerQuestion = question.toLowerCase();
 
-  // Get user's monitor IDs
+  // Get user's monitors with names
   const userMonitors = await db.query.monitors.findMany({
     where: eq(monitors.userId, userId),
-    columns: { id: true },
+    columns: { id: true, name: true, companyName: true },
   });
+
+  const monitorMap = new Map(userMonitors.map((m) => [m.id, { name: m.name, companyName: m.companyName }]));
 
   const validMonitorIds = monitorIds?.length
     ? monitorIds.filter((id) => userMonitors.some((m) => m.id === id))
@@ -87,7 +93,7 @@ async function searchRelevantResults(
 
   // Determine time filter from question
   let daysBack = 30;
-  if (lowerQuestion.includes("last 7 days") || lowerQuestion.includes("this week")) {
+  if (lowerQuestion.includes("last 7 days") || lowerQuestion.includes("this week") || lowerQuestion.includes("last week")) {
     daysBack = 7;
   } else if (lowerQuestion.includes("today") || lowerQuestion.includes("24 hours")) {
     daysBack = 1;
@@ -105,7 +111,7 @@ async function searchRelevantResults(
       eq(results.isHidden, false)
     ),
     orderBy: [desc(results.engagementScore), desc(results.createdAt)],
-    limit: 50, // Reduced from 100 for cost efficiency
+    limit: 50,
     columns: {
       id: true,
       title: true,
@@ -118,13 +124,15 @@ async function searchRelevantResults(
       engagementScore: true,
       leadScore: true,
       postedAt: true,
+      monitorId: true,
     },
   });
 
-  // Score and rank results
+  // Score and rank results, adding monitor info
   const scored = searchResults.map((r) => {
     let score = 0;
     const text = `${r.title} ${r.aiSummary || ""}`.toLowerCase();
+    const monitorInfo = monitorMap.get(r.monitorId) || { name: "Unknown", companyName: null };
 
     // Keyword matching (use summary, not full content for efficiency)
     keywords.forEach((kw) => { if (text.includes(kw)) score += 10; });
@@ -138,14 +146,19 @@ async function searchRelevantResults(
     if (lowerQuestion.includes("positive") && r.sentiment === "positive") score += 15;
     if (r.engagementScore && r.engagementScore > 50) score += 5;
 
-    return { ...r, relevanceScore: score };
+    return {
+      ...r,
+      monitorName: monitorInfo.name,
+      companyName: monitorInfo.companyName,
+      relevanceScore: score,
+    };
   });
 
   return scored.sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0)).slice(0, 15);
 }
 
 /**
- * Format results context (compact for token efficiency)
+ * Format results context with monitor names for actionable insights
  */
 function formatResultsContext(results: SearchResult[]): string {
   if (results.length === 0) return "No relevant results found.";
@@ -153,26 +166,41 @@ function formatResultsContext(results: SearchResult[]): string {
   return results.map((r, i) => {
     // Use aiSummary if available, otherwise truncate content
     const summary = r.aiSummary || (r.content ? r.content.slice(0, 150) + "..." : "");
+    // Include monitor/brand name prominently
+    const brandLabel = r.companyName || r.monitorName;
     const meta = [
-      r.platform,
       r.sentiment,
       r.conversationCategory?.replace(/_/g, " "),
-      r.leadScore ? `lead:${r.leadScore}` : null,
+      r.leadScore && r.leadScore > 50 ? `lead score: ${r.leadScore}` : null,
     ].filter(Boolean).join(", ");
 
-    return `[${i + 1}] "${r.title}" (${meta})\n${summary}`;
+    return `[${i + 1}] MONITOR: "${brandLabel}" | PLATFORM: ${r.platform}${meta ? ` | ${meta}` : ""}
+TITLE: "${r.title}"
+SUMMARY: ${summary}`;
   }).join("\n\n");
 }
 
-// Optimized system prompt (shorter = fewer tokens)
-const SYSTEM_PROMPT = `You analyze social listening data from Reddit, HackerNews, ProductHunt, and other platforms.
+// Conversational system prompt with actionable focus
+const SYSTEM_PROMPT = `You are Kaulby AI, a helpful assistant that analyzes the user's social listening data.
 
-Rules:
-- Answer based ONLY on the provided results
-- Cite sources as [1], [2], etc.
-- Be concise (2-3 paragraphs max)
-- Highlight high-intent leads (lead score > 70)
-- If no relevant data, say so
+CRITICAL RULES:
+1. ALWAYS mention which monitor/brand each insight comes from. The user may have multiple monitors.
+2. ALWAYS cite sources as [1], [2], etc. linking to specific mentions.
+3. Be conversational and actionable - this is a chat, not a report.
+4. When summarizing complaints or feedback, specify: "For [Monitor Name], customers on [Platform] are saying..."
+5. If lead score > 70, call it out as a "hot lead" worth responding to.
+6. Keep responses focused and scannable - use bullet points for multiple items.
+7. If no relevant data exists, say so clearly.
+
+FORMAT EXAMPLE:
+"Looking at your monitors, here's what I found:
+
+**For Dunkin** (from Google Reviews):
+- Multiple customers complaining about slow service [1][3]
+- One hot lead asking about franchise opportunities [2]
+
+**For Starbucks** (from Reddit):
+- Discussion about new seasonal drinks getting mixed reviews [4]"
 
 Results from user's monitors:`;
 
@@ -265,7 +293,7 @@ export async function POST(req: Request) {
 
     await flushAI();
 
-    // Extract citations
+    // Extract citations with monitor names
     const citedNumbers = response.content.match(/\[(\d+)\]/g) || [];
     const citedIndices = Array.from(new Set(citedNumbers.map((n) => parseInt(n.slice(1, -1)) - 1)));
 
@@ -280,6 +308,7 @@ export async function POST(req: Request) {
           platform: r.platform,
           sourceUrl: r.sourceUrl,
           snippet: r.aiSummary?.slice(0, 80) || r.title,
+          monitorName: r.companyName || r.monitorName,
         };
       });
 

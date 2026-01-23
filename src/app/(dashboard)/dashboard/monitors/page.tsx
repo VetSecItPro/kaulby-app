@@ -1,27 +1,21 @@
-import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { monitors } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { ResponsiveMonitors } from "@/components/dashboard/responsive-monitors";
+import { getEffectiveUserId, isLocalDev } from "@/lib/dev-auth";
 
 export default async function MonitorsPage() {
-  const { userId } = await auth();
+  const effectiveUserId = await getEffectiveUserId();
 
-  // In production, redirect to sign-in if not authenticated
-  // In dev mode, userId may be null but we still query (returns empty)
-  const isProduction = process.env.NODE_ENV === "production" ||
-                       process.env.VERCEL ||
-                       process.env.VERCEL_ENV;
-
-  if (!userId && isProduction) {
+  if (!effectiveUserId && !isLocalDev()) {
     redirect("/sign-in");
   }
 
   // Fetch monitors for the authenticated user
-  const userMonitors = userId
+  const userMonitors = effectiveUserId
     ? await db.query.monitors.findMany({
-        where: eq(monitors.userId, userId),
+        where: eq(monitors.userId, effectiveUserId),
         orderBy: [desc(monitors.createdAt)],
       })
     : [];

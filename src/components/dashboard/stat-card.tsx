@@ -57,9 +57,9 @@ export function StatCard({
       }}
     >
       <Card className={cn("transition-shadow duration-200 hover:shadow-lg hover:shadow-primary/5", className)}>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardHeader className="flex flex-row items-center space-y-0 pb-2">
+          <Icon className="h-4 w-4 text-muted-foreground mr-2" />
           <CardTitle className="text-sm font-medium">{title}</CardTitle>
-          <Icon className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
           <div className="flex items-end justify-between gap-2">

@@ -1,23 +1,18 @@
-import { auth } from "@clerk/nextjs/server";
 import { redirect, notFound } from "next/navigation";
 import { db, audiences } from "@/lib/db";
 import { eq, and } from "drizzle-orm";
 import { AudienceForm } from "@/components/dashboard/audience-form";
+import { getEffectiveUserId, isLocalDev } from "@/lib/dev-auth";
 
 interface EditAudiencePageProps {
   params: Promise<{ id: string }>;
 }
 
 export default async function EditAudiencePage({ params }: EditAudiencePageProps) {
-  const { userId } = await auth();
+  const userId = await getEffectiveUserId();
   const { id } = await params;
 
-  const isProduction =
-    process.env.NODE_ENV === "production" ||
-    process.env.VERCEL ||
-    process.env.VERCEL_ENV;
-
-  if (!userId && isProduction) {
+  if (!userId && !isLocalDev()) {
     redirect("/sign-in");
   }
 

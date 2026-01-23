@@ -1,10 +1,10 @@
-import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { db, audiences, audienceMonitors, results, monitors } from "@/lib/db";
 import { eq, inArray, gte, and } from "drizzle-orm";
 import { AudiencesList } from "@/components/dashboard/audiences-list";
 import type { AudienceStats } from "@/components/dashboard/audience-card";
 import { getSuggestionsFromMonitors } from "@/lib/community-suggestions";
+import { getEffectiveUserId, isLocalDev } from "@/lib/dev-auth";
 
 /**
  * Calculate audience stats from results
@@ -96,14 +96,9 @@ async function calculateAudienceStats(
 }
 
 export default async function AudiencesPage() {
-  const { userId } = await auth();
+  const userId = await getEffectiveUserId();
 
-  const isProduction =
-    process.env.NODE_ENV === "production" ||
-    process.env.VERCEL ||
-    process.env.VERCEL_ENV;
-
-  if (!userId && isProduction) {
+  if (!userId && !isLocalDev()) {
     redirect("/sign-in");
   }
 
