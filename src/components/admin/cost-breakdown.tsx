@@ -27,9 +27,17 @@ interface TopUserCost {
   aiCalls: number;
 }
 
+interface CostByModel {
+  model: string;
+  totalCost: number;
+  totalCalls: number;
+  totalTokens: number;
+}
+
 interface CostBreakdownProps {
   costByPlan: CostByPlan[];
   topUsersByCost: TopUserCost[];
+  costByModel?: CostByModel[];
   avgCostPerUser: number;
   avgCostPerPaidUser: number;
   costPerResult: number;
@@ -38,6 +46,7 @@ interface CostBreakdownProps {
 export function CostBreakdown({
   costByPlan,
   topUsersByCost,
+  costByModel = [],
   avgCostPerUser,
   avgCostPerPaidUser,
   costPerResult,
@@ -115,82 +124,35 @@ export function CostBreakdown({
         </Card>
       </div>
 
-      {/* Cost by Plan */}
+      {/* Cost by Model */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Cost by Plan</CardTitle>
-          <CardDescription>AI costs breakdown by subscription tier</CardDescription>
+          <CardTitle className="text-lg">Cost by Model</CardTitle>
+          <CardDescription>AI costs breakdown by model (last 30 days)</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {costByPlan.map((item) => {
-              const maxCost = Math.max(...costByPlan.map((c) => c.totalCost));
-              const percentage = maxCost > 0 ? (item.totalCost / maxCost) * 100 : 0;
-              return (
-                <div key={item.plan} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      {getPlanBadge(item.plan)}
-                      <span className="text-sm text-muted-foreground">
-                        {item.userCount} users
-                      </span>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-medium">{formatCurrencyShort(item.totalCost)}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {formatCurrencyShort(item.avgCostPerUser)} / user
-                      </div>
-                    </div>
-                  </div>
-                  <div className="h-2 w-full rounded-full bg-muted">
-                    <div
-                      className={`h-2 rounded-full ${
-                        item.plan === "enterprise"
-                          ? "bg-amber-500"
-                          : item.plan === "pro"
-                          ? "bg-primary"
-                          : "bg-muted-foreground/50"
-                      }`}
-                      style={{ width: `${percentage}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Top Users by Cost */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Top Users by AI Cost</CardTitle>
-          <CardDescription>Highest AI usage in the last 30 days</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {topUsersByCost.length > 0 ? (
+          {costByModel.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Plan</TableHead>
-                  <TableHead className="text-right">AI Calls</TableHead>
-                  <TableHead className="text-right">Total Cost</TableHead>
+                  <TableHead>Model</TableHead>
+                  <TableHead className="text-right">Calls</TableHead>
+                  <TableHead className="text-right">Tokens</TableHead>
+                  <TableHead className="text-right">Cost</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {topUsersByCost.map((user) => (
-                  <TableRow key={user.userId}>
+                {costByModel.map((item) => (
+                  <TableRow key={item.model}>
                     <TableCell>
-                      <div>
-                        <p className="font-medium">{user.name || "Unnamed"}</p>
-                        <p className="text-xs text-muted-foreground">{user.email}</p>
-                      </div>
+                      <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                        {item.model}
+                      </code>
                     </TableCell>
-                    <TableCell>{getPlanBadge(user.plan)}</TableCell>
-                    <TableCell className="text-right">{user.aiCalls.toLocaleString()}</TableCell>
-                    <TableCell className="text-right font-medium">
-                      {formatCurrencyShort(user.totalCost)}
+                    <TableCell className="text-right">{item.totalCalls.toLocaleString()}</TableCell>
+                    <TableCell className="text-right">{item.totalTokens.toLocaleString()}</TableCell>
+                    <TableCell className="text-right font-medium text-amber-500">
+                      {formatCurrencyShort(item.totalCost)}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -203,6 +165,89 @@ export function CostBreakdown({
           )}
         </CardContent>
       </Card>
+
+      {/* Cost by Plan and Top Users - side by side */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        {/* Cost by Plan */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Cost by Plan</CardTitle>
+            <CardDescription>AI costs by subscription tier</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {costByPlan.map((item) => {
+                const maxCost = Math.max(...costByPlan.map((c) => c.totalCost));
+                const percentage = maxCost > 0 ? (item.totalCost / maxCost) * 100 : 0;
+                return (
+                  <div key={item.plan} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {getPlanBadge(item.plan)}
+                        <span className="text-sm text-muted-foreground">
+                          {item.userCount} users
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-medium">{formatCurrencyShort(item.totalCost)}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {formatCurrencyShort(item.avgCostPerUser)} / user
+                        </div>
+                      </div>
+                    </div>
+                    <div className="h-2 w-full rounded-full bg-muted">
+                      <div
+                        className={`h-2 rounded-full ${
+                          item.plan === "enterprise"
+                            ? "bg-amber-500"
+                            : item.plan === "pro"
+                            ? "bg-primary"
+                            : "bg-muted-foreground/50"
+                        }`}
+                        style={{ width: `${percentage}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Top Users by Cost */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Top Users by AI Cost</CardTitle>
+            <CardDescription>Highest usage (last 30 days)</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {topUsersByCost.length > 0 ? (
+              <div className="space-y-3">
+                {topUsersByCost.slice(0, 5).map((user) => (
+                  <div key={user.userId} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm truncate">{user.name || "Unnamed"}</p>
+                        <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {getPlanBadge(user.plan)}
+                      <span className="font-medium text-amber-500">
+                        {formatCurrencyShort(user.totalCost)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center text-muted-foreground py-8">
+                No AI usage data yet
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

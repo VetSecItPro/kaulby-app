@@ -30,6 +30,7 @@ const menuItems = [
 interface MobileHeaderProps {
   subscriptionStatus?: string;
   hasActiveDayPass?: boolean;
+  dayPassExpiresAt?: string | null;
   workspaceRole?: "owner" | "member" | null;
   isAdmin?: boolean;
 }
@@ -47,6 +48,45 @@ function getPlanBadge(subscriptionStatus: string, hasActiveDayPass: boolean): { 
     default:
       return { label: "Free", className: "bg-gray-500 text-white" };
   }
+}
+
+// Day Pass countdown timer component
+function DayPassTimer({ expiresAt }: { expiresAt: string }) {
+  const [timeRemaining, setTimeRemaining] = useState<string>("");
+
+  useEffect(() => {
+    const calculateTime = () => {
+      const now = new Date();
+      const expires = new Date(expiresAt);
+      const diff = expires.getTime() - now.getTime();
+
+      if (diff <= 0) {
+        return "Expired";
+      }
+
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+      if (hours > 0) {
+        return `${hours}h ${String(minutes).padStart(2, '0')}m`;
+      }
+      return `${minutes}m ${String(seconds).padStart(2, '0')}s`;
+    };
+
+    setTimeRemaining(calculateTime());
+    const interval = setInterval(() => {
+      setTimeRemaining(calculateTime());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [expiresAt]);
+
+  return (
+    <span className="px-1.5 py-0.5 text-[9px] font-mono font-semibold tracking-wide rounded-full bg-purple-600/20 text-purple-400 border border-purple-500/30">
+      {timeRemaining}
+    </span>
+  );
 }
 
 const NavLink = memo(function NavLink({
@@ -81,6 +121,7 @@ const NavLink = memo(function NavLink({
 export const MobileHeader = memo(function MobileHeader({
   subscriptionStatus = "free",
   hasActiveDayPass = false,
+  dayPassExpiresAt = null,
   workspaceRole = null,
   isAdmin = false,
 }: MobileHeaderProps) {
@@ -124,6 +165,10 @@ export const MobileHeader = memo(function MobileHeader({
           )}>
             {planBadge.label}
           </span>
+          {/* Day Pass Timer */}
+          {hasActiveDayPass && dayPassExpiresAt && (
+            <DayPassTimer expiresAt={dayPassExpiresAt} />
+          )}
           {/* Workspace Role Badge */}
           {subscriptionStatus === "enterprise" && workspaceRole && (
             <span

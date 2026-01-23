@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { users, monitors, communities, usage } from "@/lib/db/schema";
 import { eq, and, count, gte } from "drizzle-orm";
 import { PLANS, PlanKey, Platform, getPlanLimits } from "@/lib/plans";
+import { currentUser } from "@clerk/nextjs/server";
 
 // ============================================================================
 // TYPES
@@ -30,6 +31,34 @@ export interface FeatureAccess {
 // ============================================================================
 
 /**
+ * Find user by ID with email fallback
+ * This handles Clerk ID mismatches between sessions and database records
+ */
+async function findUserByIdOrEmail(userId: string) {
+  // First try by ID
+  let user = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+  });
+
+  // If not found, try email fallback
+  if (!user) {
+    try {
+      const clerkUser = await currentUser();
+      const clerkEmail = clerkUser?.emailAddresses[0]?.emailAddress;
+      if (clerkEmail) {
+        user = await db.query.users.findFirst({
+          where: eq(users.email, clerkEmail),
+        });
+      }
+    } catch {
+      // currentUser() may fail in some contexts - that's okay, just return undefined
+    }
+  }
+
+  return user;
+}
+
+/**
  * Get the user's current subscription plan
  * Priority order:
  * 1. Admin users always get Enterprise (Team) tier
@@ -37,14 +66,7 @@ export interface FeatureAccess {
  * 3. Otherwise, use subscriptionStatus from database
  */
 export async function getUserPlan(userId: string): Promise<PlanKey> {
-  const user = await db.query.users.findFirst({
-    where: eq(users.id, userId),
-    columns: {
-      subscriptionStatus: true,
-      dayPassExpiresAt: true,
-      isAdmin: true,
-    },
-  });
+  const user = await findUserByIdOrEmail(userId);
 
   if (!user) return "free";
 
@@ -69,10 +91,7 @@ export async function hasActiveDayPass(userId: string): Promise<{
   expiresAt: Date | null;
   hoursRemaining: number | null;
 }> {
-  const user = await db.query.users.findFirst({
-    where: eq(users.id, userId),
-    columns: { dayPassExpiresAt: true },
-  });
+  const user = await findUserByIdOrEmail(userId);
 
   if (!user?.dayPassExpiresAt) {
     return { active: false, expiresAt: null, hoursRemaining: null };
@@ -99,16 +118,7 @@ export async function hasActiveDayPass(userId: string): Promise<{
  * Get the user record with subscription info
  */
 export async function getUserWithSubscription(userId: string) {
-  return db.query.users.findFirst({
-    where: eq(users.id, userId),
-    columns: {
-      id: true,
-      email: true,
-      subscriptionStatus: true,
-      currentPeriodStart: true,
-      currentPeriodEnd: true,
-    },
-  });
+  return findUserByIdOrEmail(userId);
 }
 
 // ============================================================================
@@ -923,10 +933,7 @@ export async function getManualScanCooldown(userId: string): Promise<number> {
  * Check if user is an admin
  */
 export async function isAdmin(userId: string): Promise<boolean> {
-  const user = await db.query.users.findFirst({
-    where: eq(users.id, userId),
-    columns: { isAdmin: true },
-  });
+  const user = await findUserByIdOrEmail(userId);
 
   return user?.isAdmin ?? false;
 }
