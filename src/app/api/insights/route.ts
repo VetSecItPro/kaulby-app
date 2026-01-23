@@ -108,6 +108,7 @@ interface TopicCluster {
   topic: string;
   keywords: string[];
   platforms: string[];
+  monitors: string[]; // Monitor names this topic pulls from
   results: {
     id: string;
     title: string;
@@ -115,6 +116,7 @@ interface TopicCluster {
     sentiment: string | null;
     sourceUrl: string;
     createdAt: Date;
+    monitorName?: string; // Which monitor this result belongs to
   }[];
   sentimentBreakdown: {
     positive: number;
@@ -184,6 +186,7 @@ function findTopicClusters(
     sentiment: string | null;
     sourceUrl: string;
     createdAt: Date;
+    monitorName?: string;
   }[],
   thresholds: typeof THRESHOLDS[keyof typeof THRESHOLDS]
 ): TopicCluster[] {
@@ -249,6 +252,11 @@ function findTopicClusters(
       // Create topic name from top keywords
       const topicName = keywords.slice(0, 3).join(" ") || keyword;
 
+      // Get unique monitor names for this topic
+      const monitorNames = Array.from(new Set(
+        groupResults.map((r) => r.monitorName).filter((n): n is string => !!n)
+      ));
+
       clusters.push({
         topic: topicName
           .split(" ")
@@ -256,6 +264,7 @@ function findTopicClusters(
           .join(" "),
         keywords,
         platforms,
+        monitors: monitorNames,
         results: groupResults.map((r) => ({
           id: r.id,
           title: r.title,
@@ -263,6 +272,7 @@ function findTopicClusters(
           sentiment: r.sentiment,
           sourceUrl: r.sourceUrl,
           createdAt: r.createdAt,
+          monitorName: r.monitorName,
         })),
         sentimentBreakdown: { positive, negative, neutral },
         trendDirection,
@@ -284,6 +294,7 @@ function findSinglePlatformTopics(
     sentiment: string | null;
     sourceUrl: string;
     createdAt: Date;
+    monitorName?: string;
   }[],
   thresholds: typeof THRESHOLDS[keyof typeof THRESHOLDS]
 ): TopicCluster[] {
@@ -337,6 +348,11 @@ function findSinglePlatformTopics(
 
       const topicName = keywords.slice(0, 3).join(" ") || keyword;
 
+      // Get unique monitor names for this topic
+      const monitorNames = Array.from(new Set(
+        groupResults.map((r) => r.monitorName).filter((n): n is string => !!n)
+      ));
+
       clusters.push({
         topic: topicName
           .split(" ")
@@ -344,6 +360,7 @@ function findSinglePlatformTopics(
           .join(" "),
         keywords,
         platforms,
+        monitors: monitorNames,
         results: groupResults.map((r) => ({
           id: r.id,
           title: r.title,
@@ -351,6 +368,7 @@ function findSinglePlatformTopics(
           sentiment: r.sentiment,
           sourceUrl: r.sourceUrl,
           createdAt: r.createdAt,
+          monitorName: r.monitorName,
         })),
         sentimentBreakdown: { positive, negative, neutral },
         trendDirection,
@@ -372,6 +390,7 @@ function convertAITopicsToCluster(
     sentiment: string | null;
     sourceUrl: string;
     createdAt: Date;
+    monitorName?: string;
   }[]
 ): TopicCluster[] {
   const resultMap = new Map(resultsData.map(r => [r.id, r]));
@@ -382,6 +401,9 @@ function convertAITopicsToCluster(
       .filter((r): r is NonNullable<typeof r> => r !== undefined);
 
     const platforms = Array.from(new Set(matchedResults.map(r => r.platform)));
+    const monitorNames = Array.from(new Set(
+      matchedResults.map(r => r.monitorName).filter((n): n is string => !!n)
+    ));
 
     // Calculate sentiment from matched results
     let positive = 0, negative = 0, neutral = 0;
@@ -400,6 +422,7 @@ function convertAITopicsToCluster(
       topic: aiTopic.topic,
       keywords: aiTopic.keywords,
       platforms,
+      monitors: monitorNames,
       results: matchedResults.map(r => ({
         id: r.id,
         title: r.title,
@@ -407,6 +430,7 @@ function convertAITopicsToCluster(
         sentiment: r.sentiment,
         sourceUrl: r.sourceUrl,
         createdAt: r.createdAt,
+        monitorName: r.monitorName,
       })),
       sentimentBreakdown: { positive, negative, neutral },
       trendDirection,
@@ -449,10 +473,10 @@ export async function GET(request: Request) {
         startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     }
 
-    // Get user's monitors
+    // Get user's monitors with names for context
     const userMonitors = await db.query.monitors.findMany({
       where: eq(monitors.userId, userId),
-      columns: { id: true },
+      columns: { id: true, name: true },
     });
 
     if (userMonitors.length === 0) {
@@ -468,9 +492,10 @@ export async function GET(request: Request) {
     }
 
     const monitorIds = userMonitors.map((m) => m.id);
+    const monitorNameMap = new Map(userMonitors.map((m) => [m.id, m.name]));
 
-    // Fetch results for analysis
-    const userResults = await db.query.results.findMany({
+    // Fetch results for analysis with monitor ID
+    const rawResults = await db.query.results.findMany({
       where: and(
         inArray(results.monitorId, monitorIds),
         gte(results.createdAt, startDate)
@@ -483,10 +508,17 @@ export async function GET(request: Request) {
         sentiment: true,
         sourceUrl: true,
         createdAt: true,
+        monitorId: true,
       },
       orderBy: desc(results.createdAt),
       limit: 500, // Analyze up to 500 recent results
     });
+
+    // Enrich results with monitor names
+    const userResults = rawResults.map((r) => ({
+      ...r,
+      monitorName: monitorNameMap.get(r.monitorId) || "Unknown",
+    }));
 
     // Calculate which platforms appear in the user's data
     const platformsInData = Array.from(new Set(userResults.map((r) => r.platform)));
