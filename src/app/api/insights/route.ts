@@ -80,6 +80,7 @@ Rules:
 - Identify pain points, feature requests, and sentiment trends`;
 
   try {
+    console.log(`[Insights AI] Calling AI with ${limitedResults.length} results`);
     const response = await jsonCompletion<{ topics: Array<{
       topic: string;
       description: string;
@@ -91,6 +92,8 @@ Rules:
       model: MODELS.primary, // Gemini Flash - very cheap
     });
 
+    console.log(`[Insights AI] Got ${response.data.topics?.length || 0} topics from AI`);
+
     // Map result indices back to actual IDs
     return response.data.topics.map(t => ({
       ...t,
@@ -99,7 +102,7 @@ Rules:
         .map(idx => limitedResults[idx - 1].id),
     }));
   } catch (error) {
-    console.error("AI topic extraction failed:", error);
+    console.error("[Insights AI] AI topic extraction failed:", error);
     return [];
   }
 }
