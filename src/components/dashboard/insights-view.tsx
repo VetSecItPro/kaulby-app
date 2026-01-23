@@ -23,6 +23,7 @@ interface TopicCluster {
   topic: string;
   keywords: string[];
   platforms: string[];
+  monitors: string[]; // Monitor names this topic pulls from
   results: {
     id: string;
     title: string;
@@ -30,6 +31,7 @@ interface TopicCluster {
     sentiment: string | null;
     sourceUrl: string;
     createdAt: string;
+    monitorName?: string;
   }[];
   sentimentBreakdown: {
     positive: number;
@@ -110,8 +112,8 @@ function TopicCard({
     >
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between">
-          <div>
-            <div className="flex items-center gap-2">
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2 flex-wrap">
               <CardTitle className="text-base">{topic.topic}</CardTitle>
               {topic.isAIGenerated && (
                 <Badge variant="outline" className="text-xs text-purple-500 border-purple-500/50">
@@ -120,7 +122,28 @@ function TopicCard({
                 </Badge>
               )}
             </div>
-            <CardDescription className="flex items-center gap-1 mt-1">
+            {/* Monitor badges - show which monitors this topic comes from */}
+            {topic.monitors && topic.monitors.length > 0 && (
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {topic.monitors.slice(0, 3).map((monitorName) => (
+                  <Button
+                    key={monitorName}
+                    variant="secondary"
+                    size="sm"
+                    className="h-5 px-2 text-xs font-medium text-black bg-gray-200 hover:bg-gray-300"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {monitorName}
+                  </Button>
+                ))}
+                {topic.monitors.length > 3 && (
+                  <span className="text-xs text-muted-foreground">
+                    +{topic.monitors.length - 3} more
+                  </span>
+                )}
+              </div>
+            )}
+            <CardDescription className="flex items-center gap-1">
               {getTrendIcon(topic.trendDirection)}
               <span>{getTrendLabel(topic.trendDirection)}</span>
             </CardDescription>
@@ -370,6 +393,61 @@ export function InsightsView() {
             </div>
           </div>
 
+          {/* Summary Stats */}
+          {(() => {
+            const risingCount = topicsToShow.filter((t) => t.trendDirection === "rising").length;
+            const totalMentions = topicsToShow.reduce((sum, t) => sum + t.results.length, 0);
+
+            return (
+              <div className="grid gap-4 md:grid-cols-3">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-amber-500" />
+                      Discovered Topics
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{topicsToShow.length}</div>
+                    <p className="text-xs text-muted-foreground">
+                      From your monitored results
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-green-500" />
+                      Rising Topics
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{risingCount}</div>
+                    <p className="text-xs text-muted-foreground">
+                      Gaining traction this period
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      <Network className="h-4 w-4 text-blue-500" />
+                      Total Mentions
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{totalMentions}</div>
+                    <p className="text-xs text-muted-foreground">
+                      Across {data?.platformsInData?.length ?? 0} platform{(data?.platformsInData?.length ?? 0) !== 1 ? "s" : ""}
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            );
+          })()}
+
           {/* Combined topics (single-platform + AI) */}
           <div className="space-y-4">
             <h2 className="text-lg font-semibold flex items-center gap-2">
@@ -437,54 +515,67 @@ export function InsightsView() {
       </div>
 
       {/* Summary Stats */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-amber-500" />
-              Cross-Platform Topics
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{data.topics.length}</div>
-            <p className="text-xs text-muted-foreground">
-              Topics appearing on multiple platforms
-            </p>
-          </CardContent>
-        </Card>
+      {(() => {
+        // Combine all topic sources for stats
+        const allTopics = [
+          ...data.topics,
+          ...(data.singlePlatformTopics || []),
+          ...(data.aiTopics || []),
+        ];
+        const risingCount = allTopics.filter((t) => t.trendDirection === "rising").length;
+        const totalMentions = allTopics.reduce((sum, t) => sum + t.results.length, 0);
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-green-500" />
-              Rising Topics
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {data.topics.filter((t) => t.trendDirection === "rising").length}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Gaining traction this period
-            </p>
-          </CardContent>
-        </Card>
+        return (
+          <div className="grid gap-4 md:grid-cols-3">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-amber-500" />
+                  Discovered Topics
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{allTopics.length}</div>
+                <p className="text-xs text-muted-foreground">
+                  {data.topics.length > 0
+                    ? `${data.topics.length} cross-platform`
+                    : "From your monitored results"}
+                </p>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Network className="h-4 w-4 text-blue-500" />
-              Platform Pairs
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{data.platformCorrelation.length}</div>
-            <p className="text-xs text-muted-foreground">
-              Platforms discussing same topics
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-green-500" />
+                  Rising Topics
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{risingCount}</div>
+                <p className="text-xs text-muted-foreground">
+                  Gaining traction this period
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Network className="h-4 w-4 text-blue-500" />
+                  Total Mentions
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{totalMentions}</div>
+                <p className="text-xs text-muted-foreground">
+                  Across {data.platformsInData.length} platform{data.platformsInData.length !== 1 ? "s" : ""}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        );
+      })()}
 
       {/* Topic Cards */}
       <div className="space-y-4">
