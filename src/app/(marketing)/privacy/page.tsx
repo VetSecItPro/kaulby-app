@@ -1,5 +1,8 @@
 import { Metadata } from "next";
 
+// Static generation - revalidate every day
+export const revalidate = 86400;
+
 export const metadata: Metadata = {
   title: "Privacy Policy | Kaulby",
   description: "How Kaulby collects, uses, and protects your personal information.",

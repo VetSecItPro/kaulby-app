@@ -6,6 +6,7 @@ import { incrementResultsCount, canAccessPlatform, shouldProcessMonitor } from "
 import { findRelevantSubredditsCached } from "@/lib/ai";
 import { contentMatchesMonitor } from "@/lib/content-matcher";
 import { searchRedditResilient } from "@/lib/reddit";
+import { calculateStaggerDelay, formatStaggerDuration, addJitter, getStaggerWindow } from "../utils/stagger";
 
 // Scan Reddit for new posts matching monitor keywords
 export const monitorReddit = inngest.createFunction(
@@ -34,7 +35,20 @@ export const monitorReddit = inngest.createFunction(
     let totalResults = 0;
     const monitorResults: Record<string, number> = {};
 
-    for (const monitor of redditMonitors) {
+    // Calculate stagger window based on number of monitors
+    const staggerWindow = getStaggerWindow("reddit");
+
+    for (let i = 0; i < redditMonitors.length; i++) {
+      const monitor = redditMonitors[i];
+
+      // Stagger execution to prevent thundering herd
+      if (i > 0 && redditMonitors.length > 3) {
+        const baseDelay = calculateStaggerDelay(i, redditMonitors.length, staggerWindow);
+        const delayWithJitter = addJitter(baseDelay, 10);
+        const delayStr = formatStaggerDuration(delayWithJitter);
+        await step.sleep(`stagger-${monitor.id}`, delayStr);
+      }
+
       // Check if user has access to Reddit platform
       const access = await canAccessPlatform(monitor.userId, "reddit");
       if (!access.hasAccess) {
