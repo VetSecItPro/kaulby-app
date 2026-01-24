@@ -22,7 +22,7 @@ type ConversationCategory = "pain_point" | "solution_request" | "advice_request"
 
 interface Result {
   id: string;
-  platform: "reddit" | "hackernews" | "producthunt" | "devto" | "googlereviews" | "trustpilot" | "appstore" | "playstore" | "quora" | "youtube" | "g2" | "yelp" | "amazonreviews";
+  platform: "reddit" | "hackernews" | "producthunt" | "devto" | "googlereviews" | "trustpilot" | "appstore" | "playstore" | "quora" | "youtube" | "g2" | "yelp" | "amazonreviews" | "indiehackers" | "github" | "hashnode";
   sourceUrl: string;
   title: string;
   content: string | null;

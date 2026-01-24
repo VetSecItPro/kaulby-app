@@ -288,7 +288,7 @@ export function InsightsView() {
               <h3 className="text-lg font-semibold mb-2">Unlock Cross-Platform Insights</h3>
               <p className="text-muted-foreground mb-4">
                 You&apos;re currently on the Free plan which only monitors Reddit.
-                Upgrade to Pro to track conversations across all 12 platforms and discover
+                Upgrade to Pro to track conversations across all 16 platforms and discover
                 trends that span Reddit, Hacker News, Product Hunt, Google Reviews, and more.
               </p>
               <div className="flex flex-wrap gap-2 justify-center md:justify-start">

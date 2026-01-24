@@ -141,6 +141,31 @@ const PLATFORM_RECOMMENDATIONS: Record<Platform, {
     bestFor: "E-commerce brands and product manufacturers",
     tip: "Track competitor products and feature requests",
   },
+  // New developer/indie platforms
+  indiehackers: {
+    headline: "Indie Maker Community",
+    description: "Where solo founders share their journey",
+    bestFor: "Bootstrapped startups and indie products",
+    tip: "Find your target audience building in public",
+  },
+  github: {
+    headline: "Developer Discussions",
+    description: "Issues and discussions on open source projects",
+    bestFor: "Developer tools, APIs, and technical products",
+    tip: "Monitor discussions in relevant repositories",
+  },
+  devto: {
+    headline: "Developer Blog Community",
+    description: "Technical articles and developer discussions",
+    bestFor: "Developer-focused products and tools",
+    tip: "Track articles mentioning your tech stack",
+  },
+  hashnode: {
+    headline: "Tech Blog Network",
+    description: "Developer-authored technical content",
+    bestFor: "Developer relations and technical content",
+    tip: "Monitor industry trends and mentions",
+  },
 };
 
 /**
@@ -346,7 +371,7 @@ export function DiscoverView({
           Discover
         </h1>
         <p className="text-muted-foreground mt-1">
-          Expand your monitoring coverage and find new opportunities across all 12 platforms.
+          Expand your monitoring coverage and find new opportunities across all 16 platforms.
         </p>
       </div>
 

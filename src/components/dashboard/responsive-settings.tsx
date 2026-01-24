@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { MobileSettings } from "@/components/mobile/mobile-settings";
 import { TeamSettings } from "@/components/dashboard/team-settings";
 import { ApiKeysSettings } from "@/components/dashboard/api-keys-settings";
@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Check, Download, Trash2, Database, Clock, FileJson, FileSpreadsheet, Settings2, ShieldAlert } from "lucide-react";
+import { Check, Download, Trash2, Database, Clock, FileJson, FileSpreadsheet, Settings2, ShieldAlert, Loader2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -115,6 +115,7 @@ export function ResponsiveSettings({
   const [isSavingTimezone, setIsSavingTimezone] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [switchingPlan, setSwitchingPlan] = useState<string | null>(null);
 
   const CONFIRM_DELETE_PHRASE = "delete my account";
   const canDelete = deleteConfirmText.toLowerCase() === CONFIRM_DELETE_PHRASE;
@@ -187,6 +188,60 @@ export function ResponsiveSettings({
     setDeleteConfirmText("");
   };
 
+  // Handle plan switching
+  const handlePlanSwitch = useCallback(async (targetPlanName: string) => {
+    const targetTier = PLAN_TO_TIER[targetPlanName] || "free";
+    const currentTierLevel = TIER_ORDER[subscriptionStatus] ?? 0;
+    const targetTierLevel = TIER_ORDER[targetTier] ?? 0;
+    const isUpgrade = targetTierLevel > currentTierLevel;
+
+    setSwitchingPlan(targetPlanName);
+
+    try {
+      if (isUpgrade && targetTier !== "free") {
+        // Upgrade: Create checkout session
+        const response = await fetch("/api/polar/checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ plan: targetTier, billingInterval: "monthly" }),
+        });
+
+        if (response.ok) {
+          const { url } = await response.json();
+          window.location.href = url;
+        } else {
+          const error = await response.json();
+          console.error("Checkout error:", error);
+          alert(error.error || "Failed to create checkout session");
+        }
+      } else {
+        // Downgrade or cancel: Go to customer portal
+        const response = await fetch("/api/polar/portal", {
+          method: "POST",
+        });
+
+        if (response.ok) {
+          const { url } = await response.json();
+          window.location.href = url;
+        } else {
+          const error = await response.json();
+          // If no Polar customer (free user trying to downgrade), show message
+          if (response.status === 400) {
+            alert("You're already on the Free plan.");
+          } else {
+            console.error("Portal error:", error);
+            alert(error.error || "Failed to open billing portal");
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Plan switch error:", error);
+      alert("Something went wrong. Please try again.");
+    } finally {
+      setSwitchingPlan(null);
+    }
+  }, [subscriptionStatus]);
+
   const formatNumber = (num: number) => {
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
     if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
@@ -216,6 +271,8 @@ export function ResponsiveSettings({
           setDeleteConfirmText={setDeleteConfirmText}
           canDelete={canDelete}
           confirmDeletePhrase={CONFIRM_DELETE_PHRASE}
+          onPlanSwitch={handlePlanSwitch}
+          switchingPlan={switchingPlan}
         />
       </div>
 
@@ -519,8 +576,20 @@ export function ResponsiveSettings({
                         Current Plan
                       </Button>
                     ) : (
-                      <Button size="sm" className="px-6 bg-teal-500 hover:bg-teal-600 text-black">
-                        {buttonText}
+                      <Button
+                        size="sm"
+                        className="px-6 bg-teal-500 hover:bg-teal-600 text-black"
+                        onClick={() => handlePlanSwitch(plan.name)}
+                        disabled={switchingPlan !== null}
+                      >
+                        {switchingPlan === plan.name ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Processing...
+                          </>
+                        ) : (
+                          buttonText
+                        )}
                       </Button>
                     )}
                   </div>

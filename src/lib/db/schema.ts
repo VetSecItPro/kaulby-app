@@ -23,17 +23,20 @@ export const platformEnum = pgEnum("platform", [
   "reddit",
   "hackernews",
   "producthunt",
-  "devto", // DEPRECATED: kept for historical data, removed from active platforms
-  // "twitter" - DEPRECATED: removed from active platforms, kept in DB enum for historical data
+  "devto",           // Developer blog articles
   "googlereviews",
   "trustpilot",
   "appstore",
   "playstore",
   "quora",
-  "youtube",        // NEW: Video comments and discussions
-  "g2",             // NEW: Software reviews
-  "yelp",           // NEW: Local business reviews
-  "amazonreviews",  // NEW: Product reviews
+  "youtube",         // Video comments and discussions
+  "g2",              // Software reviews
+  "yelp",            // Local business reviews
+  "amazonreviews",   // Product reviews
+  // NEW PLATFORMS (Phase 2 - Developer/Indie focus)
+  "indiehackers",    // Indie Hackers community posts
+  "github",          // GitHub Issues and Discussions
+  "hashnode",        // Hashnode blog articles
 ]);
 
 export const alertChannelEnum = pgEnum("alert_channel", [

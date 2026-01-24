@@ -154,7 +154,7 @@ export const POLAR_PLANS: Record<"free" | "pro" | "team", PolarPlanDefinition> =
     trialDays: 14,
     features: [
       "10 monitors",
-      "All 12 platforms",
+      "All 16 platforms",
       "20 keywords per monitor",
       "Unlimited results",
       "90-day history",

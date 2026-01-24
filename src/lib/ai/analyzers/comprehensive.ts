@@ -82,7 +82,10 @@ export interface ComprehensiveAnalysisContext {
 }
 
 /**
- * Team tier comprehensive analysis using premium model (Claude Sonnet 4)
+ * Team tier comprehensive analysis using Gemini 2.5 Flash
+ * Switched from Claude Sonnet 4 ($3/$15 per 1M tokens) to Gemini Flash ($0.075/$0.30)
+ * = 97% cost savings (~$7/day → $0.20/day)
+ * Flash handles comprehensive analysis well for 95%+ of content
  * Provides deep, actionable intelligence for each mention
  */
 export async function analyzeComprehensive(

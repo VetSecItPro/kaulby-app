@@ -13,7 +13,11 @@ export { monitorYouTube } from "./functions/monitor-youtube";
 export { monitorG2 } from "./functions/monitor-g2";
 export { monitorYelp } from "./functions/monitor-yelp";
 export { monitorAmazon } from "./functions/monitor-amazon";
-// monitorDevTo removed - Dev.to is deprecated
+// New platforms (Phase 4 - Developer/Indie focus)
+export { monitorIndieHackers } from "./functions/monitor-indiehackers";
+export { monitorGitHub } from "./functions/monitor-github";
+export { monitorDevTo } from "./functions/monitor-devto";
+export { monitorHashnode } from "./functions/monitor-hashnode";
 export { scanOnDemand } from "./functions/scan-on-demand";
 export { analyzeContent } from "./functions/analyze-content";
 export { analyzeContentBatch, shouldUseBatchMode } from "./functions/analyze-content-batch";
@@ -38,7 +42,11 @@ import { monitorYouTube } from "./functions/monitor-youtube";
 import { monitorG2 } from "./functions/monitor-g2";
 import { monitorYelp } from "./functions/monitor-yelp";
 import { monitorAmazon } from "./functions/monitor-amazon";
-// monitorDevTo removed - Dev.to is deprecated
+// New platforms (Phase 4 - Developer/Indie focus)
+import { monitorIndieHackers } from "./functions/monitor-indiehackers";
+import { monitorGitHub } from "./functions/monitor-github";
+import { monitorDevTo } from "./functions/monitor-devto";
+import { monitorHashnode } from "./functions/monitor-hashnode";
 import { scanOnDemand } from "./functions/scan-on-demand";
 import { analyzeContent } from "./functions/analyze-content";
 import { analyzeContentBatch } from "./functions/analyze-content-batch";
@@ -63,7 +71,11 @@ export const functions = [
   monitorG2,
   monitorYelp,
   monitorAmazon,
-  // monitorDevTo removed - Dev.to is deprecated
+  // New platforms (Phase 4 - Developer/Indie focus)
+  monitorIndieHackers,
+  monitorGitHub,
+  monitorDevTo,
+  monitorHashnode,
   scanOnDemand,
   analyzeContent,
   analyzeContentBatch,
