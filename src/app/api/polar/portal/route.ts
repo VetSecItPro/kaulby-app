@@ -29,13 +29,20 @@ export async function POST() {
     const user = await findUserWithFallback(userId);
 
     if (!user?.polarCustomerId) {
+      // No Polar customer ID - redirect to Polar dashboard for manual management
+      // This can happen if the webhook hasn't processed yet or there's a sync issue
+      console.log("No polarCustomerId found for user:", userId);
       return NextResponse.json(
-        { error: "No Polar customer found. Please subscribe first." },
+        {
+          error: "No subscription found. Please contact support if you believe this is an error.",
+          fallbackUrl: "https://polar.sh/settings"
+        },
         { status: 400 }
       );
     }
 
     // Create Polar customer session
+    console.log("Creating portal session for customer:", user.polarCustomerId);
     const session = await polar.customerSessions.create({
       customerId: user.polarCustomerId,
     });
@@ -45,8 +52,15 @@ export async function POST() {
     });
   } catch (error) {
     console.error("Polar portal error:", error);
+    // Log more details for debugging
+    if (error instanceof Error) {
+      console.error("Error message:", error.message);
+      console.error("Error stack:", error.stack);
+    }
+    // Check if it's a Polar API error with more details
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
-      { error: "Failed to create portal session" },
+      { error: "Failed to create portal session", details: errorMessage },
       { status: 500 }
     );
   }
