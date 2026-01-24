@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { incrementResultsCount, canAccessPlatform, shouldProcessMonitor } from "@/lib/limits";
 import { contentMatchesMonitor } from "@/lib/content-matcher";
 import { searchMultipleKeywords, getStoryUrl, type HNAlgoliaStory } from "@/lib/hackernews";
+import { calculateStaggerDelay, formatStaggerDuration, addJitter, getStaggerWindow } from "../utils/stagger";
 
 // Scan Hacker News for new posts matching monitor keywords
 // Uses Algolia HN Search API for efficient keyword-based searching
@@ -34,7 +35,20 @@ export const monitorHackerNews = inngest.createFunction(
     let totalResults = 0;
     const monitorResults: Record<string, number> = {};
 
-    for (const monitor of hnMonitors) {
+    // Calculate stagger window based on number of monitors
+    const staggerWindow = getStaggerWindow("hackernews");
+
+    for (let i = 0; i < hnMonitors.length; i++) {
+      const monitor = hnMonitors[i];
+
+      // Stagger execution to prevent thundering herd
+      if (i > 0 && hnMonitors.length > 3) {
+        const baseDelay = calculateStaggerDelay(i, hnMonitors.length, staggerWindow);
+        const delayWithJitter = addJitter(baseDelay, 10);
+        const delayStr = formatStaggerDuration(delayWithJitter);
+        await step.sleep(`stagger-${monitor.id}`, delayStr);
+      }
+
       // Check if user has access to Hacker News platform
       const access = await canAccessPlatform(monitor.userId, "hackernews");
       if (!access.hasAccess) {
