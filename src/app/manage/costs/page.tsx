@@ -229,7 +229,14 @@ export default async function CostsPage() {
             <p className="text-muted-foreground">Detailed breakdown of AI usage and costs (last 30 days)</p>
           </div>
         </div>
-        <Badge variant="outline">AI Usage</Badge>
+        <div className="flex gap-2">
+          <Link href="/manage/costs/services">
+            <Button variant="outline" size="sm" className="gap-2">
+              All Services <ChevronRight className="h-4 w-4" />
+            </Button>
+          </Link>
+          <Badge variant="outline">AI Usage</Badge>
+        </div>
       </div>
 
       {/* Summary Stats */}
