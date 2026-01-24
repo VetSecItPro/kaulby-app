@@ -1,81 +1,35 @@
 /**
- * SWR Fetcher for client-side data caching
- * Provides type-safe, error-handled data fetching
+ * SWR Fetcher utility
+ * Standard fetcher for JSON API responses
  */
 
-export class FetchError extends Error {
-  status: number;
-  info?: unknown;
+export async function fetcher<T>(url: string): Promise<T> {
+  const response = await fetch(url);
 
-  constructor(message: string, status: number, info?: unknown) {
-    super(message);
-    this.status = status;
-    this.info = info;
+  if (!response.ok) {
+    const error = new Error('An error occurred while fetching the data.');
+    throw error;
   }
+
+  return response.json();
 }
 
 /**
- * Default fetcher for SWR - handles JSON responses and errors
+ * Fetcher with POST method for mutations
  */
-export const fetcher = async <T>(url: string): Promise<T> => {
-  const res = await fetch(url);
-
-  if (!res.ok) {
-    const info = await res.json().catch(() => null);
-    throw new FetchError(
-      info?.error || `An error occurred while fetching ${url}`,
-      res.status,
-      info
-    );
-  }
-
-  return res.json();
-};
-
-/**
- * Fetcher with credentials for authenticated requests
- */
-export const authFetcher = async <T>(url: string): Promise<T> => {
-  const res = await fetch(url, {
-    credentials: "include",
-  });
-
-  if (!res.ok) {
-    const info = await res.json().catch(() => null);
-    throw new FetchError(
-      info?.error || `An error occurred while fetching ${url}`,
-      res.status,
-      info
-    );
-  }
-
-  return res.json();
-};
-
-/**
- * POST fetcher for mutations
- */
-export const postFetcher = async <T>(
-  url: string,
-  { arg }: { arg: unknown }
-): Promise<T> => {
-  const res = await fetch(url, {
-    method: "POST",
+export async function postFetcher<T>(url: string, { arg }: { arg: unknown }): Promise<T> {
+  const response = await fetch(url, {
+    method: 'POST',
     headers: {
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
     },
-    credentials: "include",
     body: JSON.stringify(arg),
   });
 
-  if (!res.ok) {
-    const info = await res.json().catch(() => null);
-    throw new FetchError(
-      info?.error || `An error occurred while posting to ${url}`,
-      res.status,
-      info
-    );
+  if (!response.ok) {
+    const error = new Error('An error occurred while posting the data.');
+    throw error;
   }
 
-  return res.json();
-};
+  return response.json();
+}
