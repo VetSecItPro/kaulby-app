@@ -123,7 +123,7 @@ async function main() {
           name: userData.name,
           subscriptionStatus: "enterprise",
           workspaceId: workspace.id,
-          workspaceRole: "member",
+          workspaceRole: "editor",
         });
         console.log(`✓ Created ${userData.name} (ID: ${userData.id})`);
       } else {
@@ -131,7 +131,7 @@ async function main() {
           .update(users)
           .set({
             workspaceId: workspace.id,
-            workspaceRole: "member",
+            workspaceRole: "editor",
             subscriptionStatus: "enterprise",
           })
           .where(eq(users.id, userData.id));

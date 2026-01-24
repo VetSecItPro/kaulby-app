@@ -8,13 +8,12 @@ Track features and improvements to implement after MVP launch.
 
 - [x] **Full IANA timezone list** ✅ - Changed timezone field from enum to text to support any IANA timezone
 - [x] **Auto-detect timezone from browser** ✅ - `useAutoTimezone` hook detects and saves timezone on first visit
-- [ ] **Update Inngest digest functions** - Ensure email scheduling respects user timezone from database
+- [x] **Update Inngest digest functions** ✅ - Worldwide timezone support: crons run hourly, query unique user timezones from DB, send at 9 AM local time
 
 ## User Experience
 
-- [ ] **Onboarding tour** - Guide new users through creating their first monitor
-- [ ] **Empty state improvements** - Better illustrations and CTAs when no data
-- [ ] **Dark mode toggle** - User preference for light/dark theme
+- [x] **Onboarding tour** ✅ - Spotlight tour using react-joyride + floating checklist sidebar
+- [x] **Empty state improvements** ✅ - Animated SVG illustrations with gradient effects and CTAs in `src/components/dashboard/empty-states.tsx`
 
 ## Monitor Management
 
@@ -28,27 +27,22 @@ Track features and improvements to implement after MVP launch.
 ## Analytics & Tracking
 
 - [x] **PostHog event tracking** ✅ - Typed tracking utility with conversion events (upgrade clicks, feature usage, limits)
-- [ ] **Funnel analysis** - Free → Pro conversion funnel in PostHog
+- [x] **Funnel analysis** ✅ - Conversion events tracked: `upgrade_clicked`, `upgrade_completed`, `day_pass_purchased`, limit hits
 
 ## Platform Expansion
 
-- [ ] **Twitter/X monitoring** - Research API costs and feasibility
-- [ ] **LinkedIn monitoring** - Company mention tracking
 - [ ] **YouTube comments** - Video comment monitoring
 
 ## Team Features (Enterprise)
 
 - [x] **Team workspaces** ✅ - Base implementation done (`workspaces`, `workspaceInvites` tables, APIs, UI)
-- [ ] **Team member roles** - Admin, Editor, Viewer permissions (currently just owner/member)
-- [ ] **Shared monitors** - Assign monitors to team members
+- [x] **Team member roles** ✅ - Admin/Editor/Viewer permissions with granular access control (`src/lib/permissions.ts`)
+- [x] **Shared monitors** ✅ - Monitor assignment API and UI in team-settings (`/api/workspace/monitors/[monitorId]/assign`)
 - [ ] **Activity log** - Track who did what in the workspace
 
 ## API & Integrations
 
-- [ ] **API key management** - Enterprise feature for programmatic access:
-  - `apiKeys` table (id, userId, name, keyHash, prefix, lastUsedAt, expiresAt, scopes)
-  - Key generation with `kaulby_` prefix, CRUD APIs, auth middleware
-  - Dashboard UI for managing keys, rate limiting
+- [x] **API key management** ✅ - `api_keys` table with hashed storage, prefix, expiration, request tracking
 - [ ] **Public API documentation** - OpenAPI spec for Team tier
 - [ ] **Zapier integration** - Connect to 5000+ apps
 - [x] **Webhook configurations** ✅ - Full implementation with retry logic already done
@@ -72,7 +66,7 @@ Track features and improvements to implement after MVP launch.
 
 ## Billing
 
-- [ ] **Annual pricing** - Offer 2 months free for annual commitment
+- [x] **Annual pricing** ✅ - 2 months free for annual ($290/yr Pro, $990/yr Team) with `annualPriceId` in Polar
 - [ ] **Usage-based pricing option** - Pay per result for high-volume users
 
 ---

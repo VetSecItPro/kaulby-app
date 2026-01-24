@@ -260,9 +260,18 @@ export type PolarPlanKey = keyof typeof POLAR_PLANS;
 export const DAY_PASS_PRODUCT_ID = process.env.POLAR_DAY_PASS_PRODUCT_ID || "";
 
 // Map Polar product ID to plan key (handles both monthly and annual)
+// IMPORTANT: Read env vars at runtime to avoid module load order issues
 export function getPlanFromProductId(productId: string): PolarPlanKey {
-  if (productId === POLAR_PLANS.pro.productId || productId === POLAR_PLANS.pro.annualProductId) return "pro";
-  if (productId === POLAR_PLANS.team.productId || productId === POLAR_PLANS.team.annualProductId) return "team";
+  if (!productId) return "free";
+
+  // Read directly from env vars at runtime for reliability
+  const proMonthly = process.env.POLAR_PRO_MONTHLY_PRODUCT_ID;
+  const proAnnual = process.env.POLAR_PRO_ANNUAL_PRODUCT_ID;
+  const teamMonthly = process.env.POLAR_TEAM_MONTHLY_PRODUCT_ID;
+  const teamAnnual = process.env.POLAR_TEAM_ANNUAL_PRODUCT_ID;
+
+  if (productId === proMonthly || productId === proAnnual) return "pro";
+  if (productId === teamMonthly || productId === teamAnnual) return "team";
   return "free";
 }
 
@@ -272,10 +281,24 @@ export function getPolarPlanLimits(plan: PolarPlanKey): PlanLimits {
 }
 
 // Get the appropriate product ID based on plan and billing interval
+// IMPORTANT: Read env vars at runtime to avoid module load order issues
 export function getProductId(plan: PolarPlanKey, interval: BillingInterval): string | null {
-  const planDef = POLAR_PLANS[plan];
-  if (!planDef) return null;
-  return interval === "annual" ? planDef.annualProductId : planDef.productId;
+  if (plan === "free") return null;
+
+  // Read directly from env vars at runtime for reliability
+  if (plan === "pro") {
+    return interval === "annual"
+      ? process.env.POLAR_PRO_ANNUAL_PRODUCT_ID || null
+      : process.env.POLAR_PRO_MONTHLY_PRODUCT_ID || null;
+  }
+
+  if (plan === "team") {
+    return interval === "annual"
+      ? process.env.POLAR_TEAM_ANNUAL_PRODUCT_ID || null
+      : process.env.POLAR_TEAM_MONTHLY_PRODUCT_ID || null;
+  }
+
+  return null;
 }
 
 // Get trial days for a plan
