@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { incrementResultsCount, canAccessPlatform, shouldProcessMonitor } from "@/lib/limits";
 import { fetchG2Reviews, isApifyConfigured, type G2ReviewItem } from "@/lib/apify";
 import { AI_BATCH_CONFIG } from "@/lib/ai/sampling";
+import { calculateStaggerDelay, formatStaggerDuration, addJitter, getStaggerWindow } from "../utils/stagger";
 
 /**
  * Monitor G2 software reviews
@@ -48,7 +49,20 @@ export const monitorG2 = inngest.createFunction(
     let totalResults = 0;
     const monitorResults: Record<string, number> = {};
 
-    for (const monitor of g2Monitors) {
+    // Calculate stagger window for G2 processing
+    const staggerWindow = getStaggerWindow("g2");
+
+    for (let i = 0; i < g2Monitors.length; i++) {
+      const monitor = g2Monitors[i];
+
+      // Stagger execution to prevent thundering herd
+      if (i > 0 && g2Monitors.length > 3) {
+        const baseDelay = calculateStaggerDelay(i, g2Monitors.length, staggerWindow);
+        const delayWithJitter = addJitter(baseDelay, 10);
+        const delayStr = formatStaggerDuration(delayWithJitter);
+        await step.sleep(`stagger-${monitor.id}`, delayStr);
+      }
+
       // Check if user has access to G2 platform
       const access = await canAccessPlatform(monitor.userId, "g2");
       if (!access.hasAccess) {

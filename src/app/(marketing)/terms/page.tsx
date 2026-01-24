@@ -1,5 +1,8 @@
 import { Metadata } from "next";
 
+// Static generation - revalidate every day
+export const revalidate = 86400;
+
 export const metadata: Metadata = {
   title: "Terms of Service | Kaulby",
   description: "Terms and conditions for using Kaulby's community monitoring service.",

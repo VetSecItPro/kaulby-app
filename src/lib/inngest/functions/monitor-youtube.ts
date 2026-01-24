@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { incrementResultsCount, canAccessPlatform, shouldProcessMonitor } from "@/lib/limits";
 import { fetchYouTubeComments, isApifyConfigured, type YouTubeCommentItem } from "@/lib/apify";
 import { AI_BATCH_CONFIG } from "@/lib/ai/sampling";
+import { calculateStaggerDelay, formatStaggerDuration, addJitter, getStaggerWindow } from "../utils/stagger";
 
 /**
  * Monitor YouTube video comments
@@ -48,7 +49,20 @@ export const monitorYouTube = inngest.createFunction(
     let totalResults = 0;
     const monitorResults: Record<string, number> = {};
 
-    for (const monitor of youtubeMonitors) {
+    // Calculate stagger window for high-volume YouTube processing
+    const staggerWindow = getStaggerWindow("youtube");
+
+    for (let i = 0; i < youtubeMonitors.length; i++) {
+      const monitor = youtubeMonitors[i];
+
+      // Stagger execution to prevent thundering herd
+      if (i > 0 && youtubeMonitors.length > 3) {
+        const baseDelay = calculateStaggerDelay(i, youtubeMonitors.length, staggerWindow);
+        const delayWithJitter = addJitter(baseDelay, 10);
+        const delayStr = formatStaggerDuration(delayWithJitter);
+        await step.sleep(`stagger-${monitor.id}`, delayStr);
+      }
+
       // Check if user has access to YouTube platform
       const access = await canAccessPlatform(monitor.userId, "youtube");
       if (!access.hasAccess) {

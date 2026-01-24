@@ -1,8 +1,26 @@
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
+import dynamic from "next/dynamic";
 import { db, users } from "@/lib/db";
-import { AnalyticsCharts } from "@/components/dashboard/analytics-charts";
 import { getEffectiveUserId, isLocalDev } from "@/lib/dev-auth";
+import { Skeleton } from "@/components/ui/skeleton";
+
+// Dynamic import for heavy recharts bundle - only loads when needed
+const AnalyticsCharts = dynamic(
+  () => import("@/components/dashboard/analytics-charts").then(mod => mod.AnalyticsCharts),
+  {
+    loading: () => (
+      <div className="space-y-6">
+        <div className="grid gap-6 md:grid-cols-2">
+          <Skeleton className="h-[300px] rounded-lg" />
+          <Skeleton className="h-[300px] rounded-lg" />
+        </div>
+        <Skeleton className="h-[400px] rounded-lg" />
+      </div>
+    ),
+    ssr: false, // Recharts doesn't work well with SSR
+  }
+);
 
 export default async function AnalyticsPage() {
   const userId = await getEffectiveUserId();

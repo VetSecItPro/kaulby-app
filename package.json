@@ -51,6 +51,7 @@
     "recharts": "^2.15.3",
     "resend": "^6.8.0",
     "svix": "^1.84.1",
+    "swr": "^2.3.8",
     "tailwind-merge": "^3.4.0",
     "tailwindcss-animate": "^1.0.7",
     "zod": "^4.3.4"

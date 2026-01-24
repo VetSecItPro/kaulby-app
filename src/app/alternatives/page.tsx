@@ -8,6 +8,9 @@ import { MarketingHeader } from "@/components/shared/marketing-header";
 import { MarketingFooter } from "@/components/shared/marketing-footer";
 import { WebPageSchema, FAQSchema } from "@/lib/seo/structured-data";
 
+// Static generation - revalidate every hour
+export const revalidate = 3600;
+
 export const metadata: Metadata = {
   title: "Kaulby Alternatives - Compare Social Listening Tools | Kaulby",
   description: "Compare Kaulby to popular social listening tools like GummySearch, Brand24, Mention, Hootsuite, and more. See why startups choose Kaulby for community monitoring.",
