@@ -6,8 +6,27 @@ import { MobileMonitors } from "@/components/mobile/mobile-monitors";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { PlusCircle, Radio, Loader2, RefreshCw } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { PlusCircle, Radio, Loader2, RefreshCw, MoreVertical, Pause, Play, Copy, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { getPlatformDisplayName } from "@/lib/platform-utils";
 import { EmptyState } from "./empty-states";
 import { RefreshDelayBanner } from "./upgrade-prompt";
@@ -210,11 +229,153 @@ function ScanButton({ monitorId, isActive, initialIsScanning, onScanComplete }: 
   );
 }
 
+// Monitor actions dropdown menu
+interface MonitorActionsProps {
+  monitor: Monitor;
+  onUpdate: () => void;
+}
+
+function MonitorActionsMenu({ monitor, onUpdate }: MonitorActionsProps) {
+  const router = useRouter();
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isToggling, setIsToggling] = useState(false);
+  const [isDuplicating, setIsDuplicating] = useState(false);
+
+  const handleTogglePause = async () => {
+    setIsToggling(true);
+    try {
+      const response = await fetch(`/api/monitors/${monitor.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: !monitor.isActive }),
+      });
+
+      if (!response.ok) throw new Error("Failed to update monitor");
+
+      toast.success(monitor.isActive ? "Monitor paused" : "Monitor resumed");
+      onUpdate();
+      router.refresh();
+    } catch {
+      toast.error("Failed to update monitor");
+    } finally {
+      setIsToggling(false);
+    }
+  };
+
+  const handleDuplicate = async () => {
+    setIsDuplicating(true);
+    try {
+      const response = await fetch(`/api/monitors/${monitor.id}/duplicate`, {
+        method: "POST",
+      });
+
+      if (!response.ok) throw new Error("Failed to duplicate monitor");
+
+      const data = await response.json();
+      toast.success("Monitor duplicated");
+      onUpdate();
+      router.refresh();
+      router.push(`/dashboard/monitors/${data.id}/edit`);
+    } catch {
+      toast.error("Failed to duplicate monitor");
+    } finally {
+      setIsDuplicating(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/monitors/${monitor.id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) throw new Error("Failed to delete monitor");
+
+      toast.success("Monitor deleted");
+      setShowDeleteDialog(false);
+      onUpdate();
+      router.refresh();
+    } catch {
+      toast.error("Failed to delete monitor");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8">
+            <MoreVertical className="h-4 w-4" />
+            <span className="sr-only">Open menu</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={handleTogglePause} disabled={isToggling}>
+            {monitor.isActive ? (
+              <>
+                <Pause className="mr-2 h-4 w-4" />
+                Pause Monitor
+              </>
+            ) : (
+              <>
+                <Play className="mr-2 h-4 w-4" />
+                Resume Monitor
+              </>
+            )}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={handleDuplicate} disabled={isDuplicating}>
+            <Copy className="mr-2 h-4 w-4" />
+            Duplicate
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={() => setShowDeleteDialog(true)}
+            className="text-destructive focus:text-destructive"
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Monitor</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete &quot;{monitor.name}&quot;? This will also delete all
+              associated results. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
 function DesktopMonitors({ monitors, refreshInfo }: ResponsiveMonitorsProps) {
   const [, setRefreshKey] = useState(0);
 
   const handleScanComplete = () => {
     // Force re-render to update results
+    setRefreshKey((k) => k + 1);
+  };
+
+  const handleMonitorUpdate = () => {
     setRefreshKey((k) => k + 1);
   };
 
@@ -263,17 +424,20 @@ function DesktopMonitors({ monitors, refreshInfo }: ResponsiveMonitorsProps) {
             >
             <Card className="transition-shadow duration-200 hover:shadow-lg hover:shadow-primary/5">
               <CardHeader>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <Radio className="h-4 w-4 text-primary" />
-                    <CardTitle className="text-lg">{monitor.name}</CardTitle>
-                    <Badge variant={monitor.isActive ? "default" : "secondary"}>
-                      {monitor.isActive ? "Active" : "Paused"}
-                    </Badge>
+                <div className="flex items-start justify-between">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Radio className="h-4 w-4 text-primary" />
+                      <CardTitle className="text-lg">{monitor.name}</CardTitle>
+                      <Badge variant={monitor.isActive ? "default" : "secondary"}>
+                        {monitor.isActive ? "Active" : "Paused"}
+                      </Badge>
+                    </div>
+                    <CardDescription>
+                      Keywords: {monitor.keywords.join(", ")}
+                    </CardDescription>
                   </div>
-                  <CardDescription>
-                    Keywords: {monitor.keywords.join(", ")}
-                  </CardDescription>
+                  <MonitorActionsMenu monitor={monitor} onUpdate={handleMonitorUpdate} />
                 </div>
               </CardHeader>
               <CardContent>
