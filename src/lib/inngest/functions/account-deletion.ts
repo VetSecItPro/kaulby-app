@@ -24,6 +24,7 @@ import {
   sendDeletionReminderEmail,
   sendDeletionConfirmedEmail,
 } from "@/lib/email";
+import { cancelSubscription } from "@/lib/polar";
 
 const DELETION_DELAY_DAYS = 7;
 
@@ -113,14 +114,19 @@ export const scheduledAccountDeletion = inngest.createFunction(
       return { status: "cancelled", reason: "User cancelled in final 24 hours" };
     }
 
-    // Step 7: Cancel Polar subscription if active
+    // Step 7: Cancel Polar subscription if active (immediate revocation for account deletion)
     if (userBeforeDeletion.polarSubscriptionId) {
       await step.run("cancel-polar-subscription", async () => {
         try {
-          // TODO: Implement Polar subscription cancellation
-          // const polar = new Polar({ accessToken: process.env.POLAR_ACCESS_TOKEN });
-          // await polar.subscriptions.cancel(userBeforeDeletion.polarSubscriptionId);
-          console.log(`[Account Deletion] Polar subscription cancelled for user ${userId}`);
+          const cancelled = await cancelSubscription(
+            userBeforeDeletion.polarSubscriptionId!,
+            { immediate: true }
+          );
+          if (cancelled) {
+            console.log(`[Account Deletion] Polar subscription revoked for user ${userId}`);
+          } else {
+            console.warn(`[Account Deletion] Could not revoke Polar subscription for user ${userId}`);
+          }
         } catch (error) {
           console.error(`[Account Deletion] Failed to cancel Polar subscription:`, error);
           // Don't fail the deletion if Polar cancellation fails

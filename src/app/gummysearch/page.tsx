@@ -1,5 +1,3 @@
-"use client";
-
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,6 +24,9 @@ import {
 } from "lucide-react";
 import { MarketingHeader } from "@/components/shared/marketing-header";
 import { MarketingFooter } from "@/components/shared/marketing-footer";
+
+// Static generation - revalidate every hour
+export const revalidate = 3600;
 
 // Feature comparison data
 const featureComparison = [

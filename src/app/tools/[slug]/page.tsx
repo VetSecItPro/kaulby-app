@@ -1,8 +1,8 @@
-"use client";
-
 import Link from "next/link";
-import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
+
+// Static generation - revalidate every hour
+export const revalidate = 3600;
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -497,9 +497,12 @@ const alternativeLabels: Record<string, string> = {
   brandwatch: "Brandwatch",
 };
 
-export default function ToolPage() {
-  const params = useParams();
-  const slug = params.slug as string;
+export default async function ToolPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
 
   const defaultTool = toolPages["social-listening-for-startups"];
   const tool = toolPages[slug] || {
