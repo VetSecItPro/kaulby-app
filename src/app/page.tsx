@@ -31,6 +31,9 @@ import {
 } from "@/components/shared/home-animations-lazy";
 import { PWAInstallButton } from "@/components/shared/pwa-install-button";
 
+// Static generation - revalidate every hour
+export const revalidate = 3600;
+
 export default function HomePage() {
   return (
     <div className="flex flex-col min-h-screen overflow-hidden">

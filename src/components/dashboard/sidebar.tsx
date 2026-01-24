@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { UserButton, useUser } from "@clerk/nextjs";
 import {
@@ -141,14 +141,24 @@ function DayPassTimer({ expiresAt }: { expiresAt: string }) {
 
 export function Sidebar({ isAdmin = false, subscriptionStatus = "free", hasActiveDayPass = false, dayPassExpiresAt = null, workspaceRole = null }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const planBadge = getPlanBadge(subscriptionStatus, hasActiveDayPass);
   const [mounted, setMounted] = useState(false);
+  const [prefetchedRoutes, setPrefetchedRoutes] = useState<Set<string>>(new Set());
   const { user } = useUser();
 
   // Prevent hydration mismatch by only rendering UserButton after mount
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Prefetch route on hover
+  const handleMouseEnter = (href: string) => {
+    if (!prefetchedRoutes.has(href)) {
+      router.prefetch(href);
+      setPrefetchedRoutes(prev => new Set(prev).add(href));
+    }
+  };
 
   // Get user's display name
   const displayName = user?.firstName && user?.lastName
@@ -212,6 +222,8 @@ export function Sidebar({ isAdmin = false, subscriptionStatus = "free", hasActiv
               <Link
                 key={link.href}
                 href={link.href}
+                prefetch={false}
+                onMouseEnter={() => handleMouseEnter(link.href)}
                 className={cn(
                   "inline-flex w-fit items-center gap-2 rounded-full px-3 py-1.5 text-sm transition-colors",
                   isActive

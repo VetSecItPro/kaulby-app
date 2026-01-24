@@ -4,6 +4,9 @@ import { ArrowLeft, BookOpen } from "lucide-react";
 import { MarketingHeader } from "@/components/shared/marketing-header";
 import { MarketingFooter } from "@/components/shared/marketing-footer";
 
+// Static generation - revalidate every hour
+export const revalidate = 3600;
+
 export default function ArticlesPage() {
   return (
     <div className="flex flex-col min-h-screen">
