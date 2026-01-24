@@ -2,8 +2,9 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Radio, Play, Pause, MoreHorizontal, Loader2, RefreshCw } from "lucide-react";
+import { Radio, Play, Pause, MoreHorizontal, Loader2, RefreshCw, Copy, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,8 +12,20 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 import { getPlatformDisplayName } from "@/lib/platform-utils";
 import { RefreshDelayBanner } from "@/components/dashboard/upgrade-prompt";
 import type { PlanKey } from "@/lib/plans";
@@ -122,9 +135,73 @@ export function MobileMonitors({ monitors, refreshInfo }: MobileMonitorsProps) {
 }
 
 function MonitorCard({ monitor }: { monitor: Monitor }) {
+  const router = useRouter();
   const [isScanning, setIsScanning] = useState(monitor.isScanning || false);
   const [canScan, setCanScan] = useState<boolean | null>(null); // null = loading
   const [cooldownText, setCooldownText] = useState<string | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isToggling, setIsToggling] = useState(false);
+  const [isDuplicating, setIsDuplicating] = useState(false);
+  const [currentIsActive, setCurrentIsActive] = useState(monitor.isActive);
+
+  const handleTogglePause = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsToggling(true);
+    try {
+      const response = await fetch(`/api/monitors/${monitor.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: !currentIsActive }),
+      });
+      if (!response.ok) throw new Error("Failed to update monitor");
+      setCurrentIsActive(!currentIsActive);
+      toast.success(currentIsActive ? "Monitor paused" : "Monitor resumed");
+      router.refresh();
+    } catch {
+      toast.error("Failed to update monitor");
+    } finally {
+      setIsToggling(false);
+    }
+  };
+
+  const handleDuplicate = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDuplicating(true);
+    try {
+      const response = await fetch(`/api/monitors/${monitor.id}/duplicate`, {
+        method: "POST",
+      });
+      if (!response.ok) throw new Error("Failed to duplicate monitor");
+      const data = await response.json();
+      toast.success("Monitor duplicated");
+      router.refresh();
+      router.push(`/dashboard/monitors/${data.id}/edit`);
+    } catch {
+      toast.error("Failed to duplicate monitor");
+    } finally {
+      setIsDuplicating(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/monitors/${monitor.id}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) throw new Error("Failed to delete monitor");
+      toast.success("Monitor deleted");
+      setShowDeleteDialog(false);
+      router.refresh();
+    } catch {
+      toast.error("Failed to delete monitor");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   // Check scan status
   const checkScanStatus = useCallback(async () => {
@@ -256,7 +333,7 @@ function MonitorCard({ monitor }: { monitor: Monitor }) {
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem
                     onClick={handleScan}
-                    disabled={!monitor.isActive || isScanning || !canScan || canScan === null}
+                    disabled={!currentIsActive || isScanning || !canScan || canScan === null}
                     className="gap-2"
                   >
                     {isScanning || canScan === null ? (
@@ -282,12 +359,64 @@ function MonitorCard({ monitor }: { monitor: Monitor }) {
                       Edit
                     </Link>
                   </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleTogglePause} disabled={isToggling}>
+                    {currentIsActive ? (
+                      <>
+                        <Pause className="mr-2 h-4 w-4" />
+                        Pause
+                      </>
+                    ) : (
+                      <>
+                        <Play className="mr-2 h-4 w-4" />
+                        Resume
+                      </>
+                    )}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleDuplicate} disabled={isDuplicating}>
+                    <Copy className="mr-2 h-4 w-4" />
+                    Duplicate
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setShowDeleteDialog(true);
+                    }}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
           </CardContent>
         </Card>
       </Link>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Monitor</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete &quot;{monitor.name}&quot;? This will also delete all
+              associated results. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </motion.div>
   );
 }
