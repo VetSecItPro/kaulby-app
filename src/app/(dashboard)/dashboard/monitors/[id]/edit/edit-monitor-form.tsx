@@ -80,24 +80,41 @@ export function EditMonitorForm({ monitorId, limits, userPlan }: EditMonitorForm
   const upgradePlanName = getUpgradePlanName();
 
   useEffect(() => {
+    const abortController = new AbortController();
+
     async function loadMonitor() {
       try {
-        const response = await fetch(`/api/monitors/${monitorId}`);
-        if (!response.ok) throw new Error("Failed to load monitor");
+        const response = await fetch(`/api/monitors/${monitorId}`, {
+          signal: abortController.signal,
+        });
+        if (!response.ok) {
+          if (response.status === 404) {
+            // Monitor was deleted - redirect to monitors list
+            router.push("/dashboard/monitors");
+            return;
+          }
+          throw new Error("Failed to load monitor");
+        }
         const data = await response.json();
         setName(data.monitor.name);
         setCompanyName(data.monitor.companyName || "");
         setKeywords(data.monitor.keywords || []);
         setSelectedPlatforms(data.monitor.platforms);
         setIsActive(data.monitor.isActive);
-      } catch {
+      } catch (err) {
+        // Ignore abort errors (happens during navigation)
+        if (err instanceof Error && err.name === "AbortError") return;
         setError("Failed to load monitor");
       } finally {
-        setIsLoading(false);
+        if (!abortController.signal.aborted) {
+          setIsLoading(false);
+        }
       }
     }
     loadMonitor();
-  }, [monitorId]);
+
+    return () => abortController.abort();
+  }, [monitorId, router]);
 
   const addKeyword = () => {
     if (isAtKeywordLimit) return;
