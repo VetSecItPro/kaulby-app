@@ -225,12 +225,27 @@ export function ResponsiveSettings({
           window.location.href = url;
         } else {
           const error = await response.json();
-          // If no Polar customer (free user trying to downgrade), show message
+          console.error("Portal error:", error);
+          // If no Polar customer (free user or subscription not synced)
           if (response.status === 400) {
-            alert("You're already on the Free plan.");
+            if (error.fallbackUrl) {
+              const goToSettings = confirm(
+                "Unable to load subscription manager. Would you like to manage your subscription directly on Polar?"
+              );
+              if (goToSettings) {
+                window.open(error.fallbackUrl, "_blank");
+              }
+            } else {
+              alert("You're already on the Free plan or your subscription is still being set up.");
+            }
           } else {
-            console.error("Portal error:", error);
-            alert(error.error || "Failed to open billing portal");
+            // Server error - offer manual management
+            const goToManual = confirm(
+              `${error.error || "Failed to open billing portal"}. Would you like to manage your subscription directly on Polar?`
+            );
+            if (goToManual) {
+              window.open("https://polar.sh/settings", "_blank");
+            }
           }
         }
       }
