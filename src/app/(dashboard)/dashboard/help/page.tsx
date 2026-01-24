@@ -121,17 +121,34 @@ export default function HelpPage() {
   }>({ type: null, message: "" });
 
   // Handle smooth scroll to section
+  // Note: Layout renders both mobile and desktop versions to DOM.
+  // We must find the VISIBLE element (non-zero height) to get correct position.
   const scrollToSection = useCallback((e: React.MouseEvent<HTMLAnchorElement>, sectionId: string) => {
     e.preventDefault();
 
-    const element = document.getElementById(sectionId);
-    if (!element) {
-      return;
+    // Find all elements with this ID and get the visible one
+    const allElements = document.querySelectorAll(`#${sectionId}`);
+    let element: HTMLElement | null = null;
+
+    for (let i = 0; i < allElements.length; i++) {
+      const el = allElements[i] as HTMLElement;
+      if (el.getBoundingClientRect().height > 0) {
+        element = el;
+        break;
+      }
     }
 
-    // Use native scrollIntoView - works with any scroll container
-    // The scroll-mt-20 class on sections handles the header offset
-    element.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (!element) return;
+
+    // Scroll to the visible element with offset for header
+    const rect = element.getBoundingClientRect();
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    const targetPosition = scrollTop + rect.top - 80;
+
+    window.scrollTo({
+      top: Math.max(0, targetPosition),
+      behavior: 'smooth'
+    });
   }, []);
 
   // Handle support form submission
