@@ -136,12 +136,13 @@ export async function POST(
       );
     }
 
-    // Add user to workspace (use user.id for Clerk ID mismatch compatibility)
+    // Add user to workspace as editor (default role for new members)
+    // Use user.id for Clerk ID mismatch compatibility
     await db
       .update(users)
       .set({
         workspaceId: workspace.id,
-        workspaceRole: "member",
+        workspaceRole: "editor",
         updatedAt: new Date(),
       })
       .where(eq(users.id, user.id));

@@ -34,11 +34,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
+import { permissions, getAssignableRoles, getRoleDescription, type WorkspaceRole } from "@/lib/permissions";
+
 interface Member {
   id: string;
   email: string;
   name: string | null;
-  role: "owner" | "member";
+  role: WorkspaceRole;
   isCurrentUser: boolean;
 }
 
@@ -80,7 +82,7 @@ interface TeamSettingsProps {
 
 export function TeamSettings({ subscriptionStatus }: TeamSettingsProps) {
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
-  const [role, setRole] = useState<"owner" | "member" | null>(null);
+  const [role, setRole] = useState<WorkspaceRole | null>(null);
   const [invites, setInvites] = useState<Invite[]>([]);
   const [loading, setLoading] = useState(true);
   const [inviteEmail, setInviteEmail] = useState("");
@@ -92,7 +94,7 @@ export function TeamSettings({ subscriptionStatus }: TeamSettingsProps) {
   // Team monitors state
   const [workspaceMonitors, setWorkspaceMonitors] = useState<WorkspaceMonitor[]>([]);
   const [reassigning, setReassigning] = useState<string | null>(null);
-  const [isOwner, setIsOwner] = useState(false);
+  const [changingRole, setChangingRole] = useState<string | null>(null);
 
   const isEnterprise = subscriptionStatus === "enterprise";
 
@@ -110,8 +112,8 @@ export function TeamSettings({ subscriptionStatus }: TeamSettingsProps) {
           setWorkspace(wsData.workspace);
           setRole(wsData.role);
 
-          // Fetch invites if owner
-          if (wsData.role === "owner") {
+          // Fetch invites if admin+
+          if (wsData.role === "owner" || wsData.role === "admin") {
             const invRes = await fetch("/api/workspace/invite");
             const invData = await invRes.json();
             if (invRes.ok) {
@@ -124,7 +126,6 @@ export function TeamSettings({ subscriptionStatus }: TeamSettingsProps) {
           const monitorsData = await monitorsRes.json();
           if (monitorsRes.ok) {
             setWorkspaceMonitors(monitorsData.monitors || []);
-            setIsOwner(monitorsData.isOwner || false);
           }
         }
       } catch (err) {
@@ -234,6 +235,34 @@ export function TeamSettings({ subscriptionStatus }: TeamSettingsProps) {
       }
     } catch {
       console.error("Failed to remove member");
+    }
+  }
+
+  // Change member role
+  async function handleChangeRole(memberId: string, newRole: WorkspaceRole) {
+    setChangingRole(memberId);
+    try {
+      const res = await fetch(`/api/workspace/members/${memberId}/role`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: newRole }),
+      });
+
+      if (res.ok && workspace) {
+        setWorkspace({
+          ...workspace,
+          members: workspace.members.map((m) =>
+            m.id === memberId ? { ...m, role: newRole } : m
+          ),
+        });
+      } else {
+        const data = await res.json();
+        setError(data.error || "Failed to change role");
+      }
+    } catch {
+      console.error("Failed to change role");
+    } finally {
+      setChangingRole(null);
     }
   }
 
@@ -399,10 +428,41 @@ export function TeamSettings({ subscriptionStatus }: TeamSettingsProps) {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge variant={member.role === "owner" ? "default" : "secondary"}>
-                    {member.role}
-                  </Badge>
-                  {role === "owner" && member.role !== "owner" && (
+                  {/* Role selector for non-owners, if current user can change roles */}
+                  {member.role !== "owner" && permissions.canModifyMember(role, member.role) ? (
+                    <Select
+                      value={member.role}
+                      onValueChange={(value) => handleChangeRole(member.id, value as WorkspaceRole)}
+                      disabled={changingRole === member.id}
+                    >
+                      <SelectTrigger className="w-[100px] h-8 text-xs">
+                        <SelectValue>
+                          {changingRole === member.id ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <span className="capitalize">{member.role}</span>
+                          )}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getAssignableRoles(role!).map((r) => (
+                          <SelectItem key={r} value={r}>
+                            <div className="flex flex-col">
+                              <span className="capitalize">{r}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {getRoleDescription(r)}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Badge variant={member.role === "owner" ? "default" : "secondary"}>
+                      {member.role}
+                    </Badge>
+                  )}
+                  {permissions.canModifyMember(role, member.role) && member.role !== "owner" && (
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" aria-label={`Remove ${member.name || member.email} from workspace`}>
@@ -435,8 +495,8 @@ export function TeamSettings({ subscriptionStatus }: TeamSettingsProps) {
           </div>
         </div>
 
-        {/* Pending Invites - Owner only */}
-        {role === "owner" && invites.length > 0 && (
+        {/* Pending Invites - Admin+ only */}
+        {permissions.canInviteMembers(role) && invites.length > 0 && (
           <div className="space-y-3">
             <h4 className="text-sm font-medium">Pending Invites</h4>
             <div className="space-y-2">
@@ -471,8 +531,8 @@ export function TeamSettings({ subscriptionStatus }: TeamSettingsProps) {
           </div>
         )}
 
-        {/* Invite Form - Owner only */}
-        {role === "owner" && workspace.seatCount < workspace.seatLimit && (
+        {/* Invite Form - Admin+ only */}
+        {permissions.canInviteMembers(role) && workspace.seatCount < workspace.seatLimit && (
           <div className="space-y-3 pt-4 border-t">
             <h4 className="text-sm font-medium flex items-center gap-2">
               <UserPlus className="h-4 w-4" />
@@ -505,7 +565,7 @@ export function TeamSettings({ subscriptionStatus }: TeamSettingsProps) {
         )}
 
         {/* Seat limit reached */}
-        {role === "owner" && workspace.seatCount >= workspace.seatLimit && (
+        {permissions.canInviteMembers(role) && workspace.seatCount >= workspace.seatLimit && (
           <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
             <p className="text-sm text-amber-600 dark:text-amber-400">
               You&apos;ve reached your seat limit. Contact support to add more seats (+$15/user).
@@ -547,7 +607,7 @@ export function TeamSettings({ subscriptionStatus }: TeamSettingsProps) {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 ml-4">
-                    {isOwner ? (
+                    {permissions.canReassignMonitors(role) ? (
                       <Select
                         value={monitor.assignee?.id || ""}
                         onValueChange={(value) => handleReassignMonitor(monitor.id, value)}
@@ -584,7 +644,7 @@ export function TeamSettings({ subscriptionStatus }: TeamSettingsProps) {
                 </div>
               ))}
             </div>
-            {isOwner && (
+            {permissions.canReassignMonitors(role) && (
               <p className="text-xs text-muted-foreground flex items-center gap-1">
                 <ArrowRightLeft className="h-3 w-3" />
                 Reassign monitors by selecting a team member

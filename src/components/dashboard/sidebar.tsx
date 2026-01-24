@@ -20,6 +20,7 @@ import {
   Compass,
   Sparkles,
 } from "lucide-react";
+import type { WorkspaceRole } from "@/lib/permissions";
 
 const sidebarLinks = [
   {
@@ -27,51 +28,61 @@ const sidebarLinks = [
     href: "/dashboard",
     icon: LayoutDashboard,
     exact: true,
+    tourId: "overview",
   },
   {
     title: "Monitors",
     href: "/dashboard/monitors",
     icon: Radio,
+    tourId: "monitors",
   },
   {
     title: "Audiences",
     href: "/dashboard/audiences",
     icon: Users,
+    tourId: "audiences",
   },
   {
     title: "Results",
     href: "/dashboard/results",
     icon: MessageSquare,
+    tourId: "results",
   },
   {
     title: "Analytics",
     href: "/dashboard/analytics",
     icon: BarChart3,
+    tourId: "analytics",
   },
   {
     title: "Insights",
     href: "/dashboard/insights",
     icon: Lightbulb,
+    tourId: "insights",
   },
   {
     title: "Discover",
     href: "/dashboard/discover",
     icon: Compass,
+    tourId: "discover",
   },
   {
     title: "Ask Kaulby AI",
     href: "/dashboard/ask",
     icon: Sparkles,
+    tourId: "ask-ai",
   },
   {
     title: "Settings",
     href: "/dashboard/settings",
     icon: Settings,
+    tourId: "settings",
   },
   {
     title: "Help",
     href: "/dashboard/help",
     icon: HelpCircle,
+    tourId: "help",
   },
 ];
 
@@ -80,7 +91,7 @@ interface SidebarProps {
   subscriptionStatus?: string;
   hasActiveDayPass?: boolean;
   dayPassExpiresAt?: string | null;
-  workspaceRole?: "owner" | "member" | null;
+  workspaceRole?: WorkspaceRole | null;
 }
 
 // Get display name and styling for plan badge
@@ -224,6 +235,7 @@ export function Sidebar({ isAdmin = false, subscriptionStatus = "free", hasActiv
                 href={link.href}
                 prefetch={false}
                 onMouseEnter={() => handleMouseEnter(link.href)}
+                data-tour={link.tourId}
                 className={cn(
                   "inline-flex w-fit items-center gap-2 rounded-full px-3 py-1.5 text-sm transition-colors",
                   isActive

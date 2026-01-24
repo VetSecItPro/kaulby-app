@@ -482,7 +482,7 @@ function DesktopMonitors({ monitors, refreshInfo }: ResponsiveMonitorsProps) {
             Track keywords and topics across platforms.
           </p>
         </div>
-        <Link href="/dashboard/monitors/new">
+        <Link href="/dashboard/monitors/new" data-tour="create-monitor">
           <Button className="gap-2">
             <PlusCircle className="h-4 w-4" />
             New Monitor
