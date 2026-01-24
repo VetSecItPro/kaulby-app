@@ -23,10 +23,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { PlusCircle, Radio, Loader2, RefreshCw, MoreVertical, Pause, Play, Copy, Trash2 } from "lucide-react";
+import { PlusCircle, Radio, Loader2, RefreshCw, MoreVertical, Pause, Play, Copy, Trash2, CheckSquare, X } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { tracking } from "@/lib/tracking";
 import { getPlatformDisplayName } from "@/lib/platform-utils";
 import { EmptyState } from "./empty-states";
 import { RefreshDelayBanner } from "./upgrade-prompt";
@@ -273,6 +275,7 @@ function MonitorActionsMenu({ monitor, onUpdate }: MonitorActionsProps) {
       if (!response.ok) throw new Error("Failed to duplicate monitor");
 
       const data = await response.json();
+      tracking.monitorDuplicated(monitor.id);
       toast.success("Monitor duplicated");
       onUpdate();
       router.refresh();
@@ -293,6 +296,7 @@ function MonitorActionsMenu({ monitor, onUpdate }: MonitorActionsProps) {
 
       if (!response.ok) throw new Error("Failed to delete monitor");
 
+      tracking.monitorDeleted(monitor.id);
       toast.success("Monitor deleted");
       setShowDeleteDialog(false);
       onUpdate();
@@ -368,7 +372,12 @@ function MonitorActionsMenu({ monitor, onUpdate }: MonitorActionsProps) {
 }
 
 function DesktopMonitors({ monitors, refreshInfo }: ResponsiveMonitorsProps) {
+  const router = useRouter();
   const [, setRefreshKey] = useState(0);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [isBulkPausing, setIsBulkPausing] = useState(false);
+  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
 
   const handleScanComplete = () => {
     // Force re-render to update results
@@ -378,6 +387,90 @@ function DesktopMonitors({ monitors, refreshInfo }: ResponsiveMonitorsProps) {
   const handleMonitorUpdate = () => {
     setRefreshKey((k) => k + 1);
   };
+
+  const toggleSelection = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    setSelectedIds(new Set(monitors.map((m) => m.id)));
+  };
+
+  const clearSelection = () => {
+    setSelectedIds(new Set());
+  };
+
+  const handleBulkPause = async () => {
+    setIsBulkPausing(true);
+    try {
+      const promises = Array.from(selectedIds).map((id) =>
+        fetch(`/api/monitors/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isActive: false }),
+        })
+      );
+      await Promise.all(promises);
+      toast.success(`${selectedIds.size} monitor${selectedIds.size > 1 ? "s" : ""} paused`);
+      clearSelection();
+      router.refresh();
+    } catch {
+      toast.error("Failed to pause monitors");
+    } finally {
+      setIsBulkPausing(false);
+    }
+  };
+
+  const handleBulkResume = async () => {
+    setIsBulkPausing(true);
+    try {
+      const promises = Array.from(selectedIds).map((id) =>
+        fetch(`/api/monitors/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isActive: true }),
+        })
+      );
+      await Promise.all(promises);
+      toast.success(`${selectedIds.size} monitor${selectedIds.size > 1 ? "s" : ""} resumed`);
+      clearSelection();
+      router.refresh();
+    } catch {
+      toast.error("Failed to resume monitors");
+    } finally {
+      setIsBulkPausing(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    setIsBulkDeleting(true);
+    try {
+      const promises = Array.from(selectedIds).map((id) => {
+        tracking.monitorDeleted(id);
+        return fetch(`/api/monitors/${id}`, { method: "DELETE" });
+      });
+      await Promise.all(promises);
+      toast.success(`${selectedIds.size} monitor${selectedIds.size > 1 ? "s" : ""} deleted`);
+      clearSelection();
+      setShowBulkDeleteDialog(false);
+      router.refresh();
+    } catch {
+      toast.error("Failed to delete monitors");
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
+
+  const hasSelection = selectedIds.size > 0;
+  const allSelected = monitors.length > 0 && selectedIds.size === monitors.length;
 
   return (
     <div className="hidden lg:block space-y-6">
@@ -396,6 +489,80 @@ function DesktopMonitors({ monitors, refreshInfo }: ResponsiveMonitorsProps) {
           </Button>
         </Link>
       </div>
+
+      {/* Bulk Actions Bar */}
+      {hasSelection && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center justify-between gap-4 p-3 bg-muted/50 rounded-lg border"
+        >
+          <div className="flex items-center gap-3">
+            <CheckSquare className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium">
+              {selectedIds.size} selected
+            </span>
+            <Button variant="ghost" size="sm" onClick={allSelected ? clearSelection : selectAll}>
+              {allSelected ? "Deselect all" : "Select all"}
+            </Button>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleBulkPause}
+              disabled={isBulkPausing}
+            >
+              <Pause className="h-4 w-4 mr-1" />
+              Pause
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleBulkResume}
+              disabled={isBulkPausing}
+            >
+              <Play className="h-4 w-4 mr-1" />
+              Resume
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setShowBulkDeleteDialog(true)}
+              disabled={isBulkDeleting}
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              Delete
+            </Button>
+            <Button variant="ghost" size="icon" onClick={clearSelection}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Bulk Delete Confirmation */}
+      <AlertDialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selectedIds.size} Monitor{selectedIds.size > 1 ? "s" : ""}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete {selectedIds.size} monitor{selectedIds.size > 1 ? "s" : ""} and all associated results.
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkDelete}
+              disabled={isBulkDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isBulkDeleting ? "Deleting..." : "Delete All"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Refresh Delay Banner */}
       {refreshInfo && refreshInfo.refreshDelayHours > 0 && (
@@ -422,20 +589,27 @@ function DesktopMonitors({ monitors, refreshInfo }: ResponsiveMonitorsProps) {
                 transition: { duration: 0.2 },
               }}
             >
-            <Card className="transition-shadow duration-200 hover:shadow-lg hover:shadow-primary/5">
+            <Card className={`transition-shadow duration-200 hover:shadow-lg hover:shadow-primary/5 ${selectedIds.has(monitor.id) ? "ring-2 ring-primary" : ""}`}>
               <CardHeader>
                 <div className="flex items-start justify-between">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <Radio className="h-4 w-4 text-primary" />
-                      <CardTitle className="text-lg">{monitor.name}</CardTitle>
+                  <div className="flex items-start gap-3">
+                    <Checkbox
+                      checked={selectedIds.has(monitor.id)}
+                      onCheckedChange={() => toggleSelection(monitor.id)}
+                      className="mt-1"
+                    />
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Radio className="h-4 w-4 text-primary" />
+                        <CardTitle className="text-lg">{monitor.name}</CardTitle>
                       <Badge variant={monitor.isActive ? "default" : "secondary"}>
                         {monitor.isActive ? "Active" : "Paused"}
                       </Badge>
                     </div>
-                    <CardDescription>
-                      Keywords: {monitor.keywords.join(", ")}
-                    </CardDescription>
+                      <CardDescription>
+                        Keywords: {monitor.keywords.join(", ")}
+                      </CardDescription>
+                    </div>
                   </div>
                   <MonitorActionsMenu monitor={monitor} onUpdate={handleMonitorUpdate} />
                 </div>

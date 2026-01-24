@@ -6,8 +6,8 @@ Track features and improvements to implement after MVP launch.
 
 ## Timezone & Internationalization
 
-- [ ] **Full IANA timezone list** - Replace US-only timezones with complete worldwide list
-- [ ] **Auto-detect timezone from browser** - Use `Intl.DateTimeFormat().resolvedOptions().timeZone` on signup
+- [x] **Full IANA timezone list** ✅ - Changed timezone field from enum to text to support any IANA timezone
+- [x] **Auto-detect timezone from browser** ✅ - `useAutoTimezone` hook detects and saves timezone on first visit
 - [ ] **Update Inngest digest functions** - Ensure email scheduling respects user timezone from database
 
 ## User Experience
@@ -18,16 +18,16 @@ Track features and improvements to implement after MVP launch.
 
 ## Monitor Management
 
-- [ ] **Monitor actions dropdown** - Add 3-dot menu on monitor cards with:
+- [x] **Monitor actions dropdown** ✅ - 3-dot menu on monitor cards with:
   - Pause/Resume monitor toggle
   - Delete monitor (with confirmation dialog)
   - Duplicate monitor
-- [ ] **Bulk monitor actions** - Select multiple monitors for bulk pause/delete
+- [x] **Bulk monitor actions** ✅ - Select multiple monitors for bulk pause/resume/delete with checkboxes
 - [ ] **Monitor scheduling** - Set active hours for monitoring
 
 ## Analytics & Tracking
 
-- [ ] **PostHog event tracking** - Track key conversion events (upgrade clicks, feature usage)
+- [x] **PostHog event tracking** ✅ - Typed tracking utility with conversion events (upgrade clicks, feature usage, limits)
 - [ ] **Funnel analysis** - Free → Pro conversion funnel in PostHog
 
 ## Platform Expansion
