@@ -326,6 +326,17 @@ RESPONSE DRAFT RULES:
 - Include a soft CTA when appropriate (happy to help, check us out, etc.)`,
 };
 
+// Lightweight prompts for batch processing (reduced token usage ~70%)
+export const LIGHTWEIGHT_PROMPTS = {
+  sentiment: `Classify sentiment. Return JSON: {"sentiment":"positive"|"negative"|"neutral","score":<-1 to 1>,"reason":"<10 words max>"}`,
+
+  category: `Classify into ONE category. Return JSON: {"category":"competitor_mention"|"pricing_concern"|"feature_request"|"support_need"|"negative_experience"|"positive_feedback"|"general_discussion","confidence":<0-1>}`,
+
+  conversation: `Classify conversation type. Return JSON: {"category":"pain_point"|"solution_request"|"advice_request"|"money_talk"|"hot_discussion","confidence":<0-1>}`,
+
+  summary: `Summarize in 1 sentence. Return JSON: {"summary":"<max 30 words>","actionable":<true/false>}`,
+};
+
 // Function to build prompts with context
 export function buildAnalysisPrompt(
   type: keyof typeof SYSTEM_PROMPTS,
@@ -341,4 +352,20 @@ export function buildAnalysisPrompt(
   }
 
   return { system, user };
+}
+
+// Build lightweight prompt for batch processing
+export function buildLightweightPrompt(
+  type: keyof typeof LIGHTWEIGHT_PROMPTS,
+  content: string
+): { system: string; user: string } {
+  return {
+    system: LIGHTWEIGHT_PROMPTS[type],
+    user: content.slice(0, 500), // Truncate to 500 chars for batch
+  };
+}
+
+// Check if batch processing should use lightweight prompts
+export function shouldUseLightweight(resultCount: number): boolean {
+  return resultCount >= 10; // Use lightweight for 10+ results
 }
