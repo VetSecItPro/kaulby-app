@@ -741,27 +741,6 @@ export function getUpgradePrompt(
 }
 
 /**
- * Get social proof message for upgrade prompts
- * This should be populated with real data from your analytics
- */
-export async function getUpgradeSocialProof(): Promise<{
-  proUsersCount: number;
-  mentionsTrackedThisWeek: number;
-  message: string;
-}> {
-  // TODO: Replace with real data from database
-  // For now, return placeholder data
-  const proUsersCount = 847;
-  const mentionsTrackedThisWeek = 12000;
-
-  return {
-    proUsersCount,
-    mentionsTrackedThisWeek,
-    message: `Join ${proUsersCount.toLocaleString()} Pro users who tracked ${mentionsTrackedThisWeek.toLocaleString()} mentions this week`,
-  };
-}
-
-/**
  * Check if user should see an upgrade prompt based on their activity
  * Returns the most relevant trigger if multiple apply
  */

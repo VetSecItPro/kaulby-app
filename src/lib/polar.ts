@@ -14,6 +14,15 @@ type PolarClient = {
   customerSessions: {
     create: (params: { customerId: string }) => Promise<{ customerPortalUrl: string }>;
   };
+  subscriptions: {
+    update: (params: {
+      id: string;
+      subscriptionUpdate: {
+        revoke?: boolean;
+        cancelAtPeriodEnd?: boolean;
+      };
+    }) => Promise<{ id: string; status: string }>;
+  };
 };
 
 // Polar client - initialized lazily to avoid import errors
@@ -48,8 +57,12 @@ export async function getPolarClient(): Promise<PolarClient | null> {
 // Legacy export for backwards compatibility (will be null until SDK is installed)
 export const polar: PolarClient | null = null;
 
-// Platform types (shared with plans.ts)
-export type Platform = "reddit" | "hackernews" | "producthunt" | "devto" | "googlereviews" | "trustpilot" | "appstore" | "playstore" | "quora" | "youtube" | "g2" | "yelp" | "amazonreviews";
+// Platform types (shared with plans.ts) - 16 total platforms
+export type Platform =
+  | "reddit" | "hackernews" | "producthunt" | "devto"
+  | "googlereviews" | "trustpilot" | "appstore" | "playstore"
+  | "quora" | "youtube" | "g2" | "yelp" | "amazonreviews"
+  | "indiehackers" | "github" | "hashnode";
 
 // Digest frequency types
 export type DigestFrequency = "weekly" | "daily" | "realtime";
@@ -154,8 +167,8 @@ export const POLAR_PLANS: Record<"free" | "pro" | "team", PolarPlanDefinition> =
     trialDays: 14,
     features: [
       "10 monitors",
-      "All 16 platforms",
-      "20 keywords per monitor",
+      "8 platforms (Reddit, HN, IH, PH, Google, YouTube, GitHub, Trustpilot)",
+      "10 keywords per monitor",
       "Unlimited results",
       "90-day history",
       "4-hour refresh cycle",
@@ -165,12 +178,12 @@ export const POLAR_PLANS: Record<"free" | "pro" | "team", PolarPlanDefinition> =
     ],
     limits: {
       monitors: 10,
-      keywordsPerMonitor: 20,
+      keywordsPerMonitor: 10,
       sourcesPerMonitor: 10,
       resultsHistoryDays: 90,
       resultsVisible: -1,
       refreshDelayHours: 4,
-      platforms: ["reddit", "hackernews", "producthunt", "googlereviews", "trustpilot", "appstore", "playstore", "quora", "youtube", "g2", "yelp", "amazonreviews"],
+      platforms: ["reddit", "hackernews", "indiehackers", "producthunt", "googlereviews", "youtube", "github", "trustpilot"],
       digestFrequencies: ["daily"],
       aiFeatures: {
         sentiment: true,
@@ -200,11 +213,12 @@ export const POLAR_PLANS: Record<"free" | "pro" | "team", PolarPlanDefinition> =
     trialDays: 14,
     features: [
       "Everything in Pro",
-      "Unlimited monitors",
-      "50 keywords per monitor",
+      "30 monitors",
+      "All 16 platforms",
+      "20 keywords per monitor",
       "1-year history",
-      "Real-time monitoring",
-      "Full AI analysis",
+      "2-hour refresh cycle",
+      "Comprehensive AI analysis",
       "Real-time email alerts",
       "Webhooks",
       "5 team seats (+$15/user)",
@@ -212,13 +226,13 @@ export const POLAR_PLANS: Record<"free" | "pro" | "team", PolarPlanDefinition> =
       "API access (coming soon)",
     ],
     limits: {
-      monitors: -1,
-      keywordsPerMonitor: 50,
+      monitors: 30,
+      keywordsPerMonitor: 20,
       sourcesPerMonitor: 25,
       resultsHistoryDays: 365,
       resultsVisible: -1,
-      refreshDelayHours: 0,
-      platforms: ["reddit", "hackernews", "producthunt", "googlereviews", "trustpilot", "appstore", "playstore", "quora", "youtube", "g2", "yelp", "amazonreviews"],
+      refreshDelayHours: 2,
+      platforms: ["reddit", "hackernews", "indiehackers", "producthunt", "googlereviews", "youtube", "github", "trustpilot", "devto", "hashnode", "appstore", "playstore", "quora", "g2", "yelp", "amazonreviews"],
       digestFrequencies: ["daily", "weekly", "realtime"],
       aiFeatures: {
         sentiment: true,
@@ -326,5 +340,30 @@ export async function createCustomerPortalUrl(customerId: string): Promise<strin
   } catch (error) {
     console.error("Failed to create Polar customer portal session:", error);
     return null;
+  }
+}
+
+// Cancel/revoke a subscription (for account deletion)
+export async function cancelSubscription(
+  subscriptionId: string,
+  options: { immediate?: boolean } = {}
+): Promise<boolean> {
+  const client = await getPolarClient();
+  if (!client) {
+    console.error("Polar client not initialized");
+    return false;
+  }
+
+  try {
+    await client.subscriptions.update({
+      id: subscriptionId,
+      subscriptionUpdate: options.immediate
+        ? { revoke: true }
+        : { cancelAtPeriodEnd: true },
+    });
+    return true;
+  } catch (error) {
+    console.error("Failed to cancel Polar subscription:", error);
+    return false;
   }
 }

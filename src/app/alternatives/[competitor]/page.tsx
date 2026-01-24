@@ -1,8 +1,8 @@
-"use client";
-
 import Link from "next/link";
-import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
+
+// Static generation - revalidate every hour
+export const revalidate = 3600;
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -719,9 +719,12 @@ const toolLabels: Record<string, string> = {
   "competitor-monitoring": "Competitor Monitoring",
 };
 
-export default function AlternativePage() {
-  const params = useParams();
-  const slug = params.competitor as string;
+export default async function AlternativePage({
+  params,
+}: {
+  params: Promise<{ competitor: string }>;
+}) {
+  const { competitor: slug } = await params;
 
   const defaultFaqs = [
     {

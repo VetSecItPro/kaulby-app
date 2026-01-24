@@ -1,8 +1,8 @@
-"use client";
-
 import Link from "next/link";
-import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
+
+// Static generation - revalidate every hour
+export const revalidate = 3600;
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -130,9 +130,12 @@ const features = [
   },
 ];
 
-export default function SubredditPage() {
-  const params = useParams();
-  const slug = params.slug as string;
+export default async function SubredditPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
 
   const subreddit = subredditData[slug] || {
     name: `r/${slug}`,

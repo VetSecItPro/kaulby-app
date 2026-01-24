@@ -166,9 +166,28 @@ export const scanOnDemand = inngest.createFunction(
             }
             break;
 
-          // Legacy platforms (no longer actively scanned, kept for historical data)
+          case "github":
+            platformCount = await step.run(`scan-github-${monitorId}`, async () => {
+              return scanGitHubForMonitor(monitor);
+            });
+            break;
+
+          case "hashnode":
+            platformCount = await step.run(`scan-hashnode-${monitorId}`, async () => {
+              return scanHashnodeForMonitor(monitor);
+            });
+            break;
+
+          case "indiehackers":
+            platformCount = await step.run(`scan-indiehackers-${monitorId}`, async () => {
+              return scanIndieHackersForMonitor(monitor);
+            });
+            break;
+
           case "devto":
-            // Skip - this platform is deprecated
+            platformCount = await step.run(`scan-devto-${monitorId}`, async () => {
+              return scanDevToForMonitor(monitor);
+            });
             break;
         }
 
@@ -1052,5 +1071,349 @@ async function scanAmazonReviewsForMonitor(monitor: MonitorData): Promise<number
   return count;
 }
 
-// Note: Legacy platform functions (devto, twitter) have been removed
-// Historical data remains in the database but new scans are skipped
+/**
+ * Scan GitHub Issues and Discussions for a monitor
+ * Uses GitHub API (free: 5000 requests/hour authenticated)
+ */
+async function scanGitHubForMonitor(monitor: MonitorData): Promise<number> {
+  let count = 0;
+  const token = process.env.GITHUB_TOKEN;
+  const headers: HeadersInit = {
+    "Accept": "application/vnd.github.v3+json",
+    "User-Agent": "Kaulby/1.0",
+  };
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  try {
+    // Search issues for each keyword
+    for (const keyword of monitor.keywords.slice(0, 5)) {
+      const query = encodeURIComponent(`${keyword} in:title,body type:issue`);
+      const response = await fetch(
+        `https://api.github.com/search/issues?q=${query}&sort=created&order=desc&per_page=30`,
+        { headers }
+      );
+
+      if (!response.ok) continue;
+      const data = await response.json();
+
+      for (const issue of data.items || []) {
+        const text = `${issue.title || ""} ${issue.body || ""}`.toLowerCase();
+        let isMatch = false;
+
+        if (monitor.companyName && text.includes(monitor.companyName.toLowerCase())) {
+          isMatch = true;
+        } else if (monitor.keywords.length > 0) {
+          isMatch = monitor.keywords.some((k) => text.includes(k.toLowerCase()));
+        }
+
+        if (isMatch) {
+          const existing = await db.query.results.findFirst({
+            where: eq(results.sourceUrl, issue.html_url),
+          });
+
+          if (!existing) {
+            const [newResult] = await db.insert(results).values({
+              monitorId: monitor.id,
+              platform: "github",
+              sourceUrl: issue.html_url,
+              title: `[Issue] ${issue.title}`,
+              content: issue.body || "",
+              author: issue.user?.login || "Unknown",
+              postedAt: new Date(issue.created_at),
+              metadata: {
+                type: "issue",
+                state: issue.state,
+                commentCount: issue.comments,
+                labels: issue.labels?.map((l: { name: string }) => l.name) || [],
+              },
+            }).returning();
+
+            count++;
+            await incrementResultsCount(monitor.userId, 1);
+            await inngest.send({
+              name: "content/analyze",
+              data: { resultId: newResult.id, userId: monitor.userId },
+            });
+          }
+        }
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+  } catch (error) {
+    console.error("[GitHub] Error scanning:", error);
+  }
+
+  return count;
+}
+
+/**
+ * Scan Hashnode for articles matching monitor keywords
+ * Uses Hashnode GraphQL API (free, public)
+ */
+async function scanHashnodeForMonitor(monitor: MonitorData): Promise<number> {
+  let count = 0;
+
+  try {
+    for (const keyword of monitor.keywords.slice(0, 5)) {
+      const query = `
+        query SearchPosts($query: String!) {
+          searchPostsOfFeed(first: 20, filter: { query: $query }) {
+            edges {
+              node {
+                id
+                title
+                brief
+                author { username name }
+                url
+                publishedAt
+                reactionCount
+                responseCount
+                readTimeInMinutes
+                tags { name }
+              }
+            }
+          }
+        }
+      `;
+
+      const response = await fetch("https://gql.hashnode.com/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "User-Agent": "Kaulby/1.0",
+        },
+        body: JSON.stringify({ query, variables: { query: keyword } }),
+      });
+
+      if (!response.ok) continue;
+      const data = await response.json();
+      const edges = data.data?.searchPostsOfFeed?.edges || [];
+
+      for (const edge of edges) {
+        const article = edge.node;
+        if (!article) continue;
+
+        const text = `${article.title || ""} ${article.brief || ""}`.toLowerCase();
+        let isMatch = false;
+
+        if (monitor.companyName && text.includes(monitor.companyName.toLowerCase())) {
+          isMatch = true;
+        } else if (monitor.keywords.length > 0) {
+          isMatch = monitor.keywords.some((k) => text.includes(k.toLowerCase()));
+        }
+
+        if (isMatch) {
+          const existing = await db.query.results.findFirst({
+            where: eq(results.sourceUrl, article.url),
+          });
+
+          if (!existing) {
+            const [newResult] = await db.insert(results).values({
+              monitorId: monitor.id,
+              platform: "hashnode",
+              sourceUrl: article.url,
+              title: article.title,
+              content: article.brief || "",
+              author: article.author?.username || "Unknown",
+              postedAt: new Date(article.publishedAt),
+              metadata: {
+                reactions: article.reactionCount,
+                commentCount: article.responseCount,
+                readingTime: article.readTimeInMinutes,
+                tags: article.tags?.map((t: { name: string }) => t.name) || [],
+              },
+            }).returning();
+
+            count++;
+            await incrementResultsCount(monitor.userId, 1);
+            await inngest.send({
+              name: "content/analyze",
+              data: { resultId: newResult.id, userId: monitor.userId },
+            });
+          }
+        }
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+  } catch (error) {
+    console.error("[Hashnode] Error scanning:", error);
+  }
+
+  return count;
+}
+
+/**
+ * Scan Indie Hackers for posts matching monitor keywords
+ * Uses IH feed or scraping fallback
+ */
+async function scanIndieHackersForMonitor(monitor: MonitorData): Promise<number> {
+  let count = 0;
+
+  try {
+    // Try to fetch the feed
+    const response = await fetch("https://www.indiehackers.com/feed.json", {
+      headers: {
+        "User-Agent": "Kaulby/1.0 (Community Monitoring Tool)",
+        "Accept": "application/json",
+      },
+    });
+
+    interface FeedItem {
+      id?: string;
+      url?: string;
+      title?: string;
+      content_text?: string;
+      content_html?: string;
+      author?: { name?: string };
+      authors?: Array<{ name?: string }>;
+      date_published?: string;
+    }
+
+    let posts: FeedItem[] = [];
+
+    if (response.ok) {
+      const data = await response.json();
+      posts = data.items || [];
+    }
+
+    for (const post of posts.slice(0, 50)) {
+      const text = `${post.title || ""} ${post.content_text || ""}`.toLowerCase();
+      let isMatch = false;
+
+      if (monitor.companyName && text.includes(monitor.companyName.toLowerCase())) {
+        isMatch = true;
+      } else if (monitor.keywords.length > 0) {
+        isMatch = monitor.keywords.some((k) => text.includes(k.toLowerCase()));
+      }
+
+      if (isMatch && post.url) {
+        const existing = await db.query.results.findFirst({
+          where: eq(results.sourceUrl, post.url),
+        });
+
+        if (!existing) {
+          const [newResult] = await db.insert(results).values({
+            monitorId: monitor.id,
+            platform: "indiehackers",
+            sourceUrl: post.url,
+            title: post.title || "Indie Hackers Post",
+            content: post.content_text || "",
+            author: post.author?.name || post.authors?.[0]?.name || "Unknown",
+            postedAt: post.date_published ? new Date(post.date_published) : new Date(),
+            metadata: {},
+          }).returning();
+
+          count++;
+          await incrementResultsCount(monitor.userId, 1);
+          await inngest.send({
+            name: "content/analyze",
+            data: { resultId: newResult.id, userId: monitor.userId },
+          });
+        }
+      }
+    }
+  } catch (error) {
+    console.error("[IndieHackers] Error scanning:", error);
+  }
+
+  return count;
+}
+
+/**
+ * Scan Dev.to for articles matching monitor keywords
+ * Uses Dev.to API (free, 30 requests/minute)
+ */
+async function scanDevToForMonitor(monitor: MonitorData): Promise<number> {
+  let count = 0;
+  const seenIds = new Set<number>();
+
+  try {
+    for (const keyword of monitor.keywords.slice(0, 5)) {
+      // Search by tag
+      const response = await fetch(
+        `https://dev.to/api/articles?tag=${encodeURIComponent(keyword)}&per_page=30&state=fresh`,
+        {
+          headers: {
+            "User-Agent": "Kaulby/1.0",
+            "Accept": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) continue;
+
+      interface DevToArticle {
+        id: number;
+        title: string;
+        description?: string;
+        body_markdown?: string;
+        user: { username: string; name?: string };
+        url: string;
+        published_at?: string;
+        created_at: string;
+        positive_reactions_count?: number;
+        comments_count?: number;
+        reading_time_minutes?: number;
+        tags?: string[];
+      }
+
+      const articles: DevToArticle[] = await response.json();
+
+      for (const article of articles) {
+        if (seenIds.has(article.id)) continue;
+        seenIds.add(article.id);
+
+        const text = `${article.title || ""} ${article.description || ""}`.toLowerCase();
+        let isMatch = false;
+
+        if (monitor.companyName && text.includes(monitor.companyName.toLowerCase())) {
+          isMatch = true;
+        } else if (monitor.keywords.length > 0) {
+          isMatch = monitor.keywords.some((k) => text.includes(k.toLowerCase()));
+        }
+
+        if (isMatch) {
+          const existing = await db.query.results.findFirst({
+            where: eq(results.sourceUrl, article.url),
+          });
+
+          if (!existing) {
+            const [newResult] = await db.insert(results).values({
+              monitorId: monitor.id,
+              platform: "devto",
+              sourceUrl: article.url,
+              title: article.title,
+              content: article.description || "",
+              author: article.user.username,
+              postedAt: new Date(article.published_at || article.created_at),
+              metadata: {
+                reactions: article.positive_reactions_count || 0,
+                commentCount: article.comments_count || 0,
+                readingTime: article.reading_time_minutes || 0,
+                tags: article.tags || [],
+              },
+            }).returning();
+
+            count++;
+            await incrementResultsCount(monitor.userId, 1);
+            await inngest.send({
+              name: "content/analyze",
+              data: { resultId: newResult.id, userId: monitor.userId },
+            });
+          }
+        }
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+  } catch (error) {
+    console.error("[Dev.to] Error scanning:", error);
+  }
+
+  return count;
+}
