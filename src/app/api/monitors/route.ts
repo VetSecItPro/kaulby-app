@@ -11,6 +11,7 @@ import {
   getUpgradePrompt,
 } from "@/lib/limits";
 import { Platform } from "@/lib/plans";
+import { captureEvent } from "@/lib/posthog";
 
 export const dynamic = "force-dynamic";
 
@@ -100,8 +101,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "At least one platform is required" }, { status: 400 });
     }
 
-    // Validate platforms (12 total - devto deprecated)
-    const validPlatforms = ["reddit", "hackernews", "producthunt", "googlereviews", "trustpilot", "appstore", "playstore", "quora", "youtube", "g2", "yelp", "amazonreviews"];
+    // Validate platforms (16 total platforms)
+    const validPlatforms = [
+      "reddit", "hackernews", "producthunt", "devto",
+      "googlereviews", "trustpilot", "appstore", "playstore",
+      "quora", "youtube", "g2", "yelp", "amazonreviews",
+      "indiehackers", "github", "hashnode"
+    ];
     const invalidPlatforms = platforms.filter((p: string) => !validPlatforms.includes(p));
     if (invalidPlatforms.length > 0) {
       return NextResponse.json({ error: `Invalid platforms: ${invalidPlatforms.join(", ")}` }, { status: 400 });
@@ -196,6 +202,25 @@ export async function POST(request: Request) {
         isActive: true,
       })
       .returning();
+
+    // Track monitor creation with platform analytics
+    captureEvent({
+      distinctId: userId,
+      event: "monitor_created",
+      properties: {
+        monitorId: newMonitor.id,
+        plan,
+        platformCount: allowedPlatforms.length,
+        platforms: allowedPlatforms,
+        keywordCount: sanitizedKeywords.length,
+        hasSearchQuery: !!sanitizedSearchQuery,
+        // Track new platforms specifically
+        hasIndieHackers: allowedPlatforms.includes("indiehackers"),
+        hasGitHub: allowedPlatforms.includes("github"),
+        hasDevTo: allowedPlatforms.includes("devto"),
+        hasHashnode: allowedPlatforms.includes("hashnode"),
+      },
+    });
 
     return NextResponse.json({
       monitor: newMonitor,

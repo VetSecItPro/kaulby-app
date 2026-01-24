@@ -465,14 +465,14 @@ export default function HelpPage() {
                 <li>Enter a descriptive <strong>Monitor Name</strong> (e.g., &quot;Brand Mentions&quot;, &quot;Competitor X Feedback&quot;)</li>
                 <li>Enter your <strong>Company/Brand Name</strong> — this is the primary search term</li>
                 <li>Optionally add <strong>Additional Keywords</strong> to narrow results (e.g., &quot;pricing&quot;, &quot;support&quot;)</li>
-                <li>Select which <strong>Platforms</strong> to monitor (Reddit is available on Free; all 12 platforms on Pro/Team)</li>
+                <li>Select which <strong>Platforms</strong> to monitor (Reddit on Free; 8 platforms on Pro; all 16 platforms on Team)</li>
                 <li>Click <strong>Create Monitor</strong></li>
               </ol>
             </div>
 
             <div className="p-4 rounded-lg bg-muted/50">
               <p className="text-xs text-muted-foreground">
-                <strong>Plan limits:</strong> Free: 1 monitor, 3 keywords · Pro: 10 monitors, 20 keywords each · Team: 30 monitors, 35 keywords each
+                <strong>Plan limits:</strong> Free: 1 monitor, 3 keywords · Pro: 10 monitors, 10 keywords each, 8 platforms · Team: 30 monitors, 20 keywords each, all 16 platforms
               </p>
             </div>
           </CardContent>
@@ -502,9 +502,13 @@ export default function HelpPage() {
                   <Badge variant="outline" className="text-xs">Hacker News</Badge>
                   <Badge variant="outline" className="text-xs">Product Hunt</Badge>
                   <Badge variant="outline" className="text-xs">Quora</Badge>
+                  <Badge variant="outline" className="text-xs">Indie Hackers</Badge>
+                  <Badge variant="outline" className="text-xs">GitHub</Badge>
+                  <Badge variant="outline" className="text-xs">Dev.to</Badge>
+                  <Badge variant="outline" className="text-xs">Hashnode</Badge>
                 </div>
                 <p className="text-xs text-muted-foreground mt-3">
-                  <strong>Best for:</strong> Brand mentions, competitor tracking, industry trends, finding people asking questions you can answer.
+                  <strong>Best for:</strong> Brand mentions, competitor tracking, industry trends, developer discussions, finding people asking questions you can answer.
                 </p>
               </div>
 
@@ -660,7 +664,7 @@ export default function HelpPage() {
           <CardHeader>
             <CardTitle className="text-lg">Supported Platforms Overview</CardTitle>
             <CardDescription>
-              Kaulby monitors 12 platforms where your audience discusses products and services
+              Kaulby monitors 16 platforms where your audience discusses products and services
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -792,7 +796,7 @@ export default function HelpPage() {
 
             <div className="p-4 rounded-lg bg-muted/50">
               <p className="text-sm text-muted-foreground">
-                <strong>Platform availability:</strong> Free users can monitor Reddit only. Pro and Team plans include access to all 12 platforms.
+                <strong>Platform availability:</strong> Free users can monitor Reddit only. Pro plans include 8 platforms. Team plans include all 16 platforms.
               </p>
             </div>
           </CardContent>
@@ -808,7 +812,7 @@ export default function HelpPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              You don&apos;t need to monitor all 12 platforms. Focus on where your customers actually spend time. Here are recommendations by business type:
+              You don&apos;t need to monitor all 16 platforms. Focus on where your customers actually spend time. Here are recommendations by business type:
             </p>
 
             <div className="space-y-4">
@@ -1432,8 +1436,8 @@ export default function HelpPage() {
                   <tr className="border-b">
                     <td className="py-3 pr-4">Platforms</td>
                     <td className="text-center py-3 px-4">Reddit only</td>
-                    <td className="text-center py-3 px-4 bg-primary/5">All 12</td>
-                    <td className="text-center py-3 px-4">All 12</td>
+                    <td className="text-center py-3 px-4 bg-primary/5">All 16</td>
+                    <td className="text-center py-3 px-4">All 16</td>
                   </tr>
                   <tr className="border-b">
                     <td className="py-3 pr-4">History retention</td>
@@ -1512,9 +1516,9 @@ export default function HelpPage() {
               <h4 className="font-medium">What&apos;s Included</h4>
               <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-2">
                 <li>Up to 10 monitors during your 24-hour window</li>
-                <li>Access to all 12 platforms</li>
+                <li>Access to 8 Pro platforms</li>
                 <li>Unlimited AI analysis</li>
-                <li>20 keywords per monitor</li>
+                <li>10 keywords per monitor</li>
                 <li>CSV export</li>
               </ul>
             </div>
@@ -1847,8 +1851,8 @@ export default function HelpPage() {
               <div className="p-4 rounded-lg border">
                 <h4 className="font-medium mb-2">Can&apos;t access certain platforms</h4>
                 <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• <strong>Plan restrictions:</strong> Free users only have Reddit access — upgrade for all 12 platforms</li>
-                  <li>• <strong>Grayed out:</strong> Platforms showing as locked require Pro or Team plan</li>
+                  <li>• <strong>Plan restrictions:</strong> Free users only have Reddit access — Pro has 8 platforms, Team has all 16</li>
+                  <li>• <strong>Grayed out:</strong> Platforms showing as locked require Pro or Team plan depending on the platform</li>
                   <li>• <strong>Day Pass:</strong> Need temporary access? Buy a 24-hour Day Pass for $9</li>
                 </ul>
               </div>

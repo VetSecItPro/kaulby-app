@@ -1,6 +1,23 @@
-// Platform types
-// Note: "devto" is included for backward compatibility with historical data but is no longer actively supported
-export type Platform = "reddit" | "hackernews" | "producthunt" | "devto" | "googlereviews" | "trustpilot" | "appstore" | "playstore" | "quora" | "youtube" | "g2" | "yelp" | "amazonreviews";
+// Platform types - 16 total platforms
+// Core 8 (Pro tier): reddit, hackernews, indiehackers, producthunt, googlereviews, youtube, github, trustpilot
+// Additional 8 (Team tier): devto, hashnode, appstore, playstore, quora, g2, yelp, amazonreviews
+export type Platform =
+  | "reddit" | "hackernews" | "producthunt" | "devto"
+  | "googlereviews" | "trustpilot" | "appstore" | "playstore"
+  | "quora" | "youtube" | "g2" | "yelp" | "amazonreviews"
+  | "indiehackers" | "github" | "hashnode";
+
+// Platform groupings for tier access
+export const PRO_PLATFORMS: Platform[] = [
+  "reddit", "hackernews", "indiehackers", "producthunt",
+  "googlereviews", "youtube", "github", "trustpilot"
+];
+
+export const ALL_PLATFORMS: Platform[] = [
+  ...PRO_PLATFORMS,
+  "devto", "hashnode", "appstore", "playstore",
+  "quora", "g2", "yelp", "amazonreviews"
+];
 
 // Digest frequency types
 export type DigestFrequency = "weekly" | "daily" | "realtime";
@@ -105,8 +122,8 @@ export const PLANS: Record<"free" | "pro" | "enterprise", PlanDefinition> = {
     trialDays: 14,
     features: [
       "10 monitors",
-      "All 12 platforms",
-      "20 keywords per monitor",
+      "8 platforms (Reddit, HN, IH, PH, Google, YouTube, GitHub, Trustpilot)",
+      "10 keywords per monitor",
       "Unlimited results",
       "90-day history",
       "4-hour refresh cycle",
@@ -116,12 +133,12 @@ export const PLANS: Record<"free" | "pro" | "enterprise", PlanDefinition> = {
     ],
     limits: {
       monitors: 10,
-      keywordsPerMonitor: 20,
+      keywordsPerMonitor: 10, // Reduced from 20 (still 2-3x more than competitors)
       sourcesPerMonitor: 10,
       resultsHistoryDays: 90,
       resultsVisible: -1, // unlimited
       refreshDelayHours: 4, // 4-hour refresh cycle (6x faster than free)
-      platforms: ["reddit", "hackernews", "producthunt", "googlereviews", "trustpilot", "appstore", "playstore", "quora", "youtube", "g2", "yelp", "amazonreviews"],
+      platforms: ["reddit", "hackernews", "indiehackers", "producthunt", "googlereviews", "youtube", "github", "trustpilot"],
       digestFrequencies: ["daily"], // Pro only gets daily digest
       aiFeatures: {
         sentiment: true,
@@ -152,10 +169,11 @@ export const PLANS: Record<"free" | "pro" | "enterprise", PlanDefinition> = {
     features: [
       "Everything in Pro",
       "30 monitors",
-      "35 keywords per monitor",
+      "All 16 platforms",
+      "20 keywords per monitor",
       "1-year history",
       "2-hour refresh cycle",
-      "Full AI analysis",
+      "Comprehensive AI analysis",
       "Real-time email alerts",
       "Webhooks",
       "5 team seats (+$15/user)",
@@ -163,20 +181,20 @@ export const PLANS: Record<"free" | "pro" | "enterprise", PlanDefinition> = {
       "API access (coming soon)",
     ],
     limits: {
-      monitors: 30, // 30 monitors (was unlimited)
-      keywordsPerMonitor: 35, // reduced from 50 to 35
+      monitors: 30,
+      keywordsPerMonitor: 20, // Reduced from 35 (still 4x more than competitors)
       sourcesPerMonitor: 25,
       resultsHistoryDays: 365,
       resultsVisible: -1, // unlimited
-      refreshDelayHours: 2, // 2-hour refresh (was real-time)
-      platforms: ["reddit", "hackernews", "producthunt", "googlereviews", "trustpilot", "appstore", "playstore", "quora", "youtube", "g2", "yelp", "amazonreviews"],
+      refreshDelayHours: 2, // 2-hour refresh
+      platforms: ["reddit", "hackernews", "indiehackers", "producthunt", "googlereviews", "youtube", "github", "trustpilot", "devto", "hashnode", "appstore", "playstore", "quora", "g2", "yelp", "amazonreviews"],
       digestFrequencies: ["daily", "weekly", "realtime"],
       aiFeatures: {
         sentiment: true,
         painPointCategories: true,
         askFeature: true,
         unlimitedAiAnalysis: true,
-        comprehensiveAnalysis: true, // Team tier: Claude Sonnet 4 comprehensive analysis
+        comprehensiveAnalysis: true, // Team tier: Gemini comprehensive analysis
       },
       alerts: {
         email: true,
