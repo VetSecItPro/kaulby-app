@@ -88,7 +88,7 @@ export const analyzeContent = inngest.createFunction(
     const traceId = trace.id;
 
     // =========================================================================
-    // TEAM TIER: Comprehensive Analysis (Claude Sonnet 4)
+    // TEAM TIER: Comprehensive Analysis (Gemini 2.5 Pro - 70% cheaper than Claude)
     // =========================================================================
     if (planCheck.useComprehensiveAnalysis) {
       // Get monitor info for context
@@ -191,7 +191,8 @@ export const analyzeContent = inngest.createFunction(
     }
 
     // =========================================================================
-    // PRO TIER: Standard Analysis (Gemini 2.5 Flash)
+    // PRO TIER: Standard Analysis (Gemini 2.5 Flash) - same model as Team tier
+    // All tiers now use Flash for maximum cost efficiency
     // =========================================================================
 
     // Type assertion for metadata

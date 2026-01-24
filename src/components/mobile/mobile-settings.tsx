@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Check, User, CreditCard, Database, Download, Trash2, Clock, ShieldAlert } from "lucide-react";
+import { Check, User, CreditCard, Database, Download, Trash2, Clock, ShieldAlert, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -65,6 +65,8 @@ interface MobileSettingsProps {
   setDeleteConfirmText: (text: string) => void;
   canDelete: boolean;
   confirmDeletePhrase: string;
+  onPlanSwitch: (planName: string) => void;
+  switchingPlan: string | null;
 }
 
 const containerVariants = {
@@ -134,6 +136,8 @@ export function MobileSettings({
   setDeleteConfirmText,
   canDelete,
   confirmDeletePhrase,
+  onPlanSwitch,
+  switchingPlan,
 }: MobileSettingsProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const planDisplayName = getPlanDisplayName(subscriptionStatus);
@@ -324,7 +328,13 @@ export function MobileSettings({
         </h2>
         <div className="space-y-3">
           {plans.map((plan) => (
-            <MobilePlanCard key={plan.name} plan={plan} subscriptionStatus={subscriptionStatus} />
+            <MobilePlanCard
+              key={plan.name}
+              plan={plan}
+              subscriptionStatus={subscriptionStatus}
+              onPlanSwitch={onPlanSwitch}
+              switchingPlan={switchingPlan}
+            />
           ))}
         </div>
       </motion.div>
@@ -332,7 +342,17 @@ export function MobileSettings({
   );
 }
 
-function MobilePlanCard({ plan, subscriptionStatus }: { plan: Plan; subscriptionStatus: string }) {
+function MobilePlanCard({
+  plan,
+  subscriptionStatus,
+  onPlanSwitch,
+  switchingPlan,
+}: {
+  plan: Plan;
+  subscriptionStatus: string;
+  onPlanSwitch: (planName: string) => void;
+  switchingPlan: string | null;
+}) {
   const isUpgrade = getButtonAction(subscriptionStatus, plan.name) === "upgrade";
   const buttonText = isUpgrade
     ? `Upgrade to ${plan.name}`
@@ -384,8 +404,20 @@ function MobilePlanCard({ plan, subscriptionStatus }: { plan: Plan; subscription
               Current Plan
             </Button>
           ) : (
-            <Button size="sm" className="bg-teal-500 hover:bg-teal-600 text-black">
-              {buttonText}
+            <Button
+              size="sm"
+              className="bg-teal-500 hover:bg-teal-600 text-black"
+              onClick={() => onPlanSwitch(plan.name)}
+              disabled={switchingPlan !== null}
+            >
+              {switchingPlan === plan.name ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                buttonText
+              )}
             </Button>
           )}
         </CardContent>

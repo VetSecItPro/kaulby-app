@@ -102,6 +102,27 @@ const platformMetadata: Record<Platform, {
     bestFor: ["e-commerce products", "consumer goods", "competitor products"],
     suggestFor: ["product", "e-commerce", "consumer", "amazon"],
   },
+  // New developer/indie platforms
+  indiehackers: {
+    description: "Community of indie makers and solo founders",
+    bestFor: ["indie products", "bootstrapped startups", "solo founders"],
+    suggestFor: ["indie", "startup", "founder", "bootstrap", "SaaS"],
+  },
+  github: {
+    description: "Developer discussions and issue tracking",
+    bestFor: ["developer tools", "open source", "APIs", "technical products"],
+    suggestFor: ["developer", "open source", "API", "library", "SDK"],
+  },
+  devto: {
+    description: "Developer blog platform and community",
+    bestFor: ["developer tools", "tutorials", "tech content"],
+    suggestFor: ["developer", "programming", "tutorial", "tech"],
+  },
+  hashnode: {
+    description: "Tech blog network for developers",
+    bestFor: ["developer content", "tech trends", "programming tutorials"],
+    suggestFor: ["developer", "blog", "programming", "tech", "tutorial"],
+  },
 };
 
 /**
@@ -238,7 +259,7 @@ const SuggestionCard = memo(function SuggestionCard({
  * Source Suggestions Component
  *
  * Intelligently suggests platforms users should consider monitoring
- * based on their current setup and keywords. Works across all 12 platforms.
+ * based on their current setup and keywords. Works across all 16 platforms.
  */
 export const SourceSuggestions = memo(function SourceSuggestions({
   currentPlatforms,

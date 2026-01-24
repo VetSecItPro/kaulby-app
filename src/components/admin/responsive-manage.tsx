@@ -191,30 +191,40 @@ export function ResponsiveManage({
           <StatsCard
             title="Total Users"
             value={stats.totalUsers}
-            description={`+${stats.usersToday} today • Click to manage`}
+            description={`+${stats.usersToday} today • Click to view`}
             icon={Users}
             trend="up"
+            clickable
           />
         </Link>
-        <StatsCard
-          title="Active Monitors"
-          value={stats.activeMonitors}
-          description={`${stats.totalMonitors} total`}
-          icon={Radio}
-        />
-        <StatsCard
-          title="Results Found"
-          value={stats.totalResults}
-          description={`+${stats.resultsToday} today`}
-          icon={MessageSquare}
-          trend="up"
-        />
-        <StatsCard
-          title="AI Costs (Total)"
-          value={`$${stats.totalAiCost.toFixed(2)}`}
-          description="All time"
-          icon={DollarSign}
-        />
+        <Link href="/manage/monitors" className="block">
+          <StatsCard
+            title="Active Monitors"
+            value={stats.activeMonitors}
+            description={`${stats.totalMonitors} total • Click to view`}
+            icon={Radio}
+            clickable
+          />
+        </Link>
+        <Link href="/manage/results" className="block">
+          <StatsCard
+            title="Results Found"
+            value={stats.totalResults}
+            description={`+${stats.resultsToday} today • Click to view`}
+            icon={MessageSquare}
+            trend="up"
+            clickable
+          />
+        </Link>
+        <Link href="/manage/costs" className="block">
+          <StatsCard
+            title="AI Costs (Total)"
+            value={`$${stats.totalAiCost.toFixed(2)}`}
+            description="Click for detailed breakdown"
+            icon={DollarSign}
+            clickable
+          />
+        </Link>
       </div>
 
       {/* Subscription Breakdown */}
@@ -270,13 +280,25 @@ export function ResponsiveManage({
       </div>
 
       {/* System Health - moved up for visibility */}
-      <SystemHealth {...systemHealth} />
+      <Link href="/manage/system" className="block">
+        <div className="transition-all hover:opacity-90 cursor-pointer">
+          <SystemHealth {...systemHealth} />
+        </div>
+      </Link>
 
       {/* Business Metrics */}
-      <BusinessMetrics {...businessMetrics} />
+      <Link href="/manage/business" className="block">
+        <div className="transition-all hover:opacity-90 cursor-pointer">
+          <BusinessMetrics {...businessMetrics} />
+        </div>
+      </Link>
 
       {/* Cost Breakdown */}
-      <CostBreakdown {...costBreakdown} />
+      <Link href="/manage/costs" className="block">
+        <div className="transition-all hover:opacity-90 cursor-pointer">
+          <CostBreakdown {...costBreakdown} />
+        </div>
+      </Link>
 
       {/* Charts */}
       <AdminCharts userGrowth={userGrowth} aiCosts={aiCosts} />
@@ -374,15 +396,17 @@ function StatsCard({
   description,
   icon: Icon,
   trend,
+  clickable,
 }: {
   title: string;
   value: string | number;
   description: string;
   icon: React.ElementType;
   trend?: "up" | "down";
+  clickable?: boolean;
 }) {
   return (
-    <Card>
+    <Card className={clickable ? "transition-all hover:border-primary hover:shadow-md cursor-pointer" : ""}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
         <Icon className="h-4 w-4 text-muted-foreground" />

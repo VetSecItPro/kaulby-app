@@ -13,21 +13,28 @@ import { ArrowLeft, X, Loader2, Trash2, Lock, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import type { PlanLimits } from "@/lib/plans";
 
-// All available platforms (12 total)
+// All 16 platforms with tier-based access
+// Pro tier (8 platforms): reddit, hackernews, indiehackers, producthunt, googlereviews, youtube, github, trustpilot
+// Team tier (16 platforms): + devto, hashnode, appstore, playstore, quora, g2, yelp, amazonreviews
 const ALL_PLATFORMS = [
+  // Pro tier platforms (8)
   { id: "reddit", name: "Reddit", description: "Track subreddits and discussions", tier: "free" },
   { id: "hackernews", name: "Hacker News", description: "Tech and startup discussions", tier: "pro" },
+  { id: "indiehackers", name: "Indie Hackers", description: "Indie makers and solo founders", tier: "pro" },
   { id: "producthunt", name: "Product Hunt", description: "Product launches and reviews", tier: "pro" },
   { id: "googlereviews", name: "Google Reviews", description: "Business reviews on Google", tier: "pro" },
-  { id: "trustpilot", name: "Trustpilot", description: "Customer reviews and ratings", tier: "pro" },
-  { id: "appstore", name: "App Store", description: "iOS app reviews", tier: "pro" },
-  { id: "playstore", name: "Play Store", description: "Android app reviews", tier: "pro" },
-  { id: "quora", name: "Quora", description: "Q&A discussions", tier: "pro" },
-  // New platforms
   { id: "youtube", name: "YouTube", description: "Video comments and discussions", tier: "pro" },
-  { id: "g2", name: "G2", description: "Software reviews and ratings", tier: "pro" },
-  { id: "yelp", name: "Yelp", description: "Local business reviews", tier: "pro" },
-  { id: "amazonreviews", name: "Amazon Reviews", description: "Product reviews on Amazon", tier: "pro" },
+  { id: "github", name: "GitHub", description: "Issues and discussions", tier: "pro" },
+  { id: "trustpilot", name: "Trustpilot", description: "Customer reviews and ratings", tier: "pro" },
+  // Team tier only platforms (8 more)
+  { id: "devto", name: "Dev.to", description: "Developer blog posts and discussions", tier: "team" },
+  { id: "hashnode", name: "Hashnode", description: "Tech blog network", tier: "team" },
+  { id: "appstore", name: "App Store", description: "iOS app reviews", tier: "team" },
+  { id: "playstore", name: "Play Store", description: "Android app reviews", tier: "team" },
+  { id: "quora", name: "Quora", description: "Q&A discussions", tier: "team" },
+  { id: "g2", name: "G2", description: "Software reviews and ratings", tier: "team" },
+  { id: "yelp", name: "Yelp", description: "Local business reviews", tier: "team" },
+  { id: "amazonreviews", name: "Amazon Reviews", description: "Product reviews on Amazon", tier: "team" },
 ];
 
 interface EditMonitorFormProps {
@@ -50,9 +57,18 @@ export function EditMonitorForm({ monitorId, limits, userPlan }: EditMonitorForm
   const [error, setError] = useState("");
 
   const isPaidUser = userPlan !== "free";
+  const isTeamUser = userPlan === "enterprise";
   const keywordLimit = limits.keywordsPerMonitor;
   const keywordsRemaining = keywordLimit - keywords.length;
   const isAtKeywordLimit = keywords.length >= keywordLimit;
+
+  // Check if a platform is locked based on user's tier
+  const isPlatformLocked = (platformTier: string): boolean => {
+    if (platformTier === "free") return false; // Reddit - always available
+    if (platformTier === "pro") return !isPaidUser; // Pro platforms locked for free users
+    if (platformTier === "team") return !isTeamUser; // Team platforms locked for free and pro users
+    return true;
+  };
 
   // Get upgrade plan name
   const getUpgradePlanName = () => {
@@ -344,11 +360,15 @@ export function EditMonitorForm({ monitorId, limits, userPlan }: EditMonitorForm
             <div className="space-y-2">
               <Label>Platforms</Label>
               <p className="text-xs text-muted-foreground mb-2">
-                {isPaidUser ? "All 12 platforms available" : "Upgrade to Pro to unlock all platforms"}
+                {isTeamUser
+                  ? "All 16 platforms available"
+                  : isPaidUser
+                    ? "8 Pro platforms available • Upgrade to Team for all 16"
+                    : "Upgrade to Pro for 8 platforms or Team for all 16"}
               </p>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {ALL_PLATFORMS.map((platform) => {
-                  const isLocked = platform.tier !== "free" && !isPaidUser;
+                  const isLocked = isPlatformLocked(platform.tier);
                   const isSelected = selectedPlatforms.includes(platform.id);
                   return (
                     <label
@@ -372,7 +392,12 @@ export function EditMonitorForm({ monitorId, limits, userPlan }: EditMonitorForm
                             {platform.name}
                           </span>
                           {isLocked && (
-                            <Lock className="h-3 w-3 text-muted-foreground" />
+                            <div className="flex items-center gap-1">
+                              <Lock className="h-3 w-3 text-muted-foreground" />
+                              <Badge variant="outline" className="text-[10px] px-1 py-0">
+                                {platform.tier === "team" ? "Team" : "Pro"}
+                              </Badge>
+                            </div>
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground truncate">

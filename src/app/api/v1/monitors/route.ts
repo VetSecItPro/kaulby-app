@@ -106,11 +106,12 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // 12 platforms (devto deprecated)
+      // 16 total platforms
       const validPlatforms = [
-        "reddit", "hackernews", "producthunt",
-        "googlereviews", "trustpilot", "appstore", "playstore", "quora",
-        "youtube", "g2", "yelp", "amazonreviews"
+        "reddit", "hackernews", "producthunt", "devto",
+        "googlereviews", "trustpilot", "appstore", "playstore",
+        "quora", "youtube", "g2", "yelp", "amazonreviews",
+        "indiehackers", "github", "hashnode"
       ];
 
       const invalidPlatforms = platformsList.filter(p => !validPlatforms.includes(p));

@@ -81,6 +81,12 @@ export const STAGGER_CONFIG = {
   // High-volume platforms: 10 minute window
   youtube: 10 * 60 * 1000,
   amazonreviews: 10 * 60 * 1000,
+
+  // Developer platforms (Phase 4): 5 minute window
+  indiehackers: 5 * 60 * 1000,
+  github: 5 * 60 * 1000,
+  devto: 5 * 60 * 1000,
+  hashnode: 5 * 60 * 1000,
 } as const;
 
 export type PlatformName = keyof typeof STAGGER_CONFIG;

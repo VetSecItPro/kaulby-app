@@ -10,7 +10,7 @@ import { WebPageSchema, FAQSchema } from "@/lib/seo/structured-data";
 
 export const metadata: Metadata = {
   title: "Social Listening Tools for Startups | Kaulby",
-  description: "Discover Kaulby's suite of AI-powered social listening tools. Reddit monitoring, brand monitoring, competitor tracking, and more across 12 platforms.",
+  description: "Discover Kaulby's suite of AI-powered social listening tools. Reddit monitoring, brand monitoring, competitor tracking, and more across 16 platforms.",
   openGraph: {
     title: "Social Listening Tools for Startups",
     description: "AI-powered social listening tools for monitoring Reddit, Hacker News, Product Hunt, and 9 more platforms.",
@@ -32,7 +32,7 @@ const tools = [
   {
     slug: "brand-monitoring",
     name: "Brand Monitoring",
-    description: "Monitor your brand across 12 platforms. Get instant alerts when customers mention you on Reddit, HN, reviews, and more.",
+    description: "Monitor your brand across 16 platforms. Get instant alerts when customers mention you on Reddit, HN, reviews, and more.",
     icon: Building2,
     features: ["12 platform coverage", "Sentiment tracking", "Share of voice", "Team collaboration"],
   },
@@ -74,7 +74,7 @@ const faqs = [
   },
   {
     question: "What platforms does Kaulby monitor?",
-    answer: "Kaulby monitors 12 platforms: Reddit, Hacker News, Product Hunt, Google Reviews, Trustpilot, App Store reviews, Play Store reviews, Quora, YouTube, G2, Yelp, and Amazon Reviews. These are the communities where startup customers actively discuss products.",
+    answer: "Kaulby monitors 16 platforms: Reddit, Hacker News, Product Hunt, Google Reviews, Trustpilot, App Store reviews, Play Store reviews, Quora, YouTube, G2, Yelp, and Amazon Reviews. These are the communities where startup customers actively discuss products.",
   },
   {
     question: "How is Kaulby different from other social listening tools?",
@@ -133,7 +133,7 @@ export default function ToolsPage() {
       {/* Platforms */}
       <section className="py-12 px-4 bg-muted/30 border-y">
         <div className="container mx-auto max-w-4xl">
-          <h2 className="text-xl font-semibold text-center mb-6">Monitor 12 Platforms</h2>
+          <h2 className="text-xl font-semibold text-center mb-6">Monitor 16 Platforms</h2>
           <div className="flex flex-wrap justify-center gap-3">
             {platforms.map((platform) => (
               <Badge key={platform} variant="outline" className="text-sm px-4 py-2">

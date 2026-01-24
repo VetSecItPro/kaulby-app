@@ -181,7 +181,9 @@ export function shouldUseFallback(platform: string): { useFallback: boolean; rea
 export function getApiHealth(): Record<string, { status: string; details: unknown }> {
   const platforms = [
     "reddit", "hackernews", "producthunt", "googlereviews", "trustpilot",
-    "appstore", "playstore", "quora", "youtube", "g2", "yelp", "amazonreviews"
+    "appstore", "playstore", "quora", "youtube", "g2", "yelp", "amazonreviews",
+    // Developer/Indie platforms (Phase 4)
+    "indiehackers", "github", "devto", "hashnode"
   ];
   const health: Record<string, { status: string; details: unknown }> = {};
 
