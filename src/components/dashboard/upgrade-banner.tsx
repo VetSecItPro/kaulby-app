@@ -4,7 +4,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Zap, Clock, Eye, Bell, X } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { tracking } from "@/lib/tracking";
 
 interface UpgradeBannerProps {
   plan: string;
@@ -14,11 +15,24 @@ interface UpgradeBannerProps {
 
 export function UpgradeBanner({ plan, variant = "full", context = "dashboard" }: UpgradeBannerProps) {
   const [dismissed, setDismissed] = useState(false);
+  const [hasTrackedImpression, setHasTrackedImpression] = useState(false);
+
+  // Track impression when banner is shown
+  useEffect(() => {
+    if (plan === "free" && !dismissed && !hasTrackedImpression) {
+      tracking.upgradePromptShown(context, plan);
+      setHasTrackedImpression(true);
+    }
+  }, [plan, dismissed, context, hasTrackedImpression]);
 
   // Only show for free users
   if (plan !== "free" || dismissed) {
     return null;
   }
+
+  const handleUpgradeClick = () => {
+    tracking.upgradeClicked(context, "pro", `banner-${variant}`);
+  };
 
   const painPoints = [
     {
@@ -53,7 +67,7 @@ export function UpgradeBanner({ plan, variant = "full", context = "dashboard" }:
       <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
         <painPoint.icon className="h-4 w-4 text-amber-500" />
         <span>{painPoint.description}</span>
-        <Link href="/dashboard/settings" className="text-primary hover:underline ml-1">
+        <Link href="/dashboard/settings" className="text-primary hover:underline ml-1" onClick={handleUpgradeClick}>
           Upgrade
         </Link>
       </div>
@@ -75,7 +89,7 @@ export function UpgradeBanner({ plan, variant = "full", context = "dashboard" }:
               </p>
             </div>
           </div>
-          <Link href="/dashboard/settings">
+          <Link href="/dashboard/settings" onClick={handleUpgradeClick}>
             <Button size="sm" className="shrink-0">
               Upgrade
             </Button>
@@ -114,7 +128,7 @@ export function UpgradeBanner({ plan, variant = "full", context = "dashboard" }:
             </div>
           </div>
           <div className="flex flex-col gap-2 shrink-0">
-            <Link href="/dashboard/settings">
+            <Link href="/dashboard/settings" onClick={handleUpgradeClick}>
               <Button className="w-full">
                 Start 14-Day Free Trial
               </Button>

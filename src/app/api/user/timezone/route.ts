@@ -6,12 +6,15 @@ import { findUserWithFallback } from "@/lib/auth-utils";
 
 export const dynamic = "force-dynamic";
 
-const VALID_TIMEZONES = [
-  "America/New_York",
-  "America/Chicago",
-  "America/Denver",
-  "America/Los_Angeles",
-] as const;
+// Validate IANA timezone string
+function isValidTimezone(tz: string): boolean {
+  try {
+    Intl.DateTimeFormat(undefined, { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export async function PATCH(request: NextRequest) {
   const { userId } = await auth();
@@ -23,7 +26,7 @@ export async function PATCH(request: NextRequest) {
   try {
     const { timezone } = await request.json();
 
-    if (!VALID_TIMEZONES.includes(timezone)) {
+    if (!timezone || typeof timezone !== "string" || !isValidTimezone(timezone)) {
       return NextResponse.json(
         { error: "Invalid timezone" },
         { status: 400 }

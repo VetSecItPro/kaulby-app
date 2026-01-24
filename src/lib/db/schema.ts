@@ -85,6 +85,8 @@ export const monitorTypeEnum = pgEnum("monitor_type", [
 ]);
 
 // IANA timezone strings for proper DST handling
+// NOTE: timezoneEnum kept for backwards compatibility but we now use text field
+// to support all worldwide timezones
 export const timezoneEnum = pgEnum("timezone", [
   "America/New_York",      // Eastern
   "America/Chicago",       // Central
@@ -121,7 +123,7 @@ export const users = pgTable("users", {
   id: text("id").primaryKey(), // Clerk user ID
   email: text("email").notNull(),
   name: text("name"),
-  timezone: timezoneEnum("timezone").default("America/New_York").notNull(),
+  timezone: text("timezone").default("America/New_York").notNull(), // IANA timezone (auto-detected from browser)
   isAdmin: boolean("is_admin").default(false).notNull(),
   isBanned: boolean("is_banned").default(false).notNull(),
   bannedAt: timestamp("banned_at"),

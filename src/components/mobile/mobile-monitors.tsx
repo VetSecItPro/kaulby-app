@@ -26,6 +26,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { tracking } from "@/lib/tracking";
 import { getPlatformDisplayName } from "@/lib/platform-utils";
 import { RefreshDelayBanner } from "@/components/dashboard/upgrade-prompt";
 import type { PlanKey } from "@/lib/plans";
@@ -176,6 +177,7 @@ function MonitorCard({ monitor }: { monitor: Monitor }) {
       });
       if (!response.ok) throw new Error("Failed to duplicate monitor");
       const data = await response.json();
+      tracking.monitorDuplicated(monitor.id);
       toast.success("Monitor duplicated");
       router.refresh();
       router.push(`/dashboard/monitors/${data.id}/edit`);
@@ -193,6 +195,7 @@ function MonitorCard({ monitor }: { monitor: Monitor }) {
         method: "DELETE",
       });
       if (!response.ok) throw new Error("Failed to delete monitor");
+      tracking.monitorDeleted(monitor.id);
       toast.success("Monitor deleted");
       setShowDeleteDialog(false);
       router.refresh();
