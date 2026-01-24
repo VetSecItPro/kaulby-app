@@ -45,8 +45,10 @@ import {
   ChevronUp,
   Send,
   Loader2,
+  Play,
 } from "lucide-react";
 import { submitSupportTicket } from "./actions";
+import { useOnboarding } from "@/components/dashboard/onboarding-provider";
 
 // Section navigation data
 const sections = [
@@ -99,6 +101,34 @@ const faqs = [
     answer: "Team plan includes 5 seats with shared access to all monitors and results. Additional members are $15/user/month. Each member can set their own notification preferences while sharing the same monitoring data.",
   },
 ];
+
+// Component to replay the onboarding tour
+function TakeTourCard() {
+  const { startTour } = useOnboarding();
+
+  return (
+    <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-full bg-primary/10">
+              <Play className="h-4 w-4 text-primary" />
+            </div>
+            <div>
+              <p className="font-medium text-sm">Interactive Tour</p>
+              <p className="text-xs text-muted-foreground">
+                Take a guided tour of all features
+              </p>
+            </div>
+          </div>
+          <Button size="sm" variant="outline" onClick={startTour}>
+            Start Tour
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function HelpPage() {
   // FAQ accordion state
@@ -330,6 +360,9 @@ export default function HelpPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Interactive Tour */}
+        <TakeTourCard />
 
         {/* Article: What to Expect */}
         <Card>

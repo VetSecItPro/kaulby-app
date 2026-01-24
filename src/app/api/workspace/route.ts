@@ -50,6 +50,7 @@ export async function GET() {
           email: m.email,
           name: m.name,
           role: m.workspaceRole,
+          isCurrentUser: m.id === user.id,
         })),
       },
       role: user.workspaceRole,

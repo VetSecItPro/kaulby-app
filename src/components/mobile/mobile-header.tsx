@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { UserButton, useUser } from "@clerk/nextjs";
+import type { WorkspaceRole } from "@/lib/permissions";
 
 // Navigation items not in the bottom nav
 const menuItems = [
@@ -31,7 +32,7 @@ interface MobileHeaderProps {
   subscriptionStatus?: string;
   hasActiveDayPass?: boolean;
   dayPassExpiresAt?: string | null;
-  workspaceRole?: "owner" | "member" | null;
+  workspaceRole?: WorkspaceRole | null;
   isAdmin?: boolean;
 }
 

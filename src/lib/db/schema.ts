@@ -94,10 +94,12 @@ export const timezoneEnum = pgEnum("timezone", [
   "America/Los_Angeles",   // Pacific
 ]);
 
-// Workspace role enum
+// Workspace role enum with granular permissions
 export const workspaceRoleEnum = pgEnum("workspace_role", [
-  "owner",   // Can manage billing, invite/remove members
-  "member",  // Can view/create/edit monitors and results
+  "owner",   // Full control: billing, delete workspace, manage all members
+  "admin",   // Can invite/remove members (except owner), manage all monitors
+  "editor",  // Can create/edit monitors and view all results
+  "viewer",  // Read-only: view monitors and results, no editing
 ]);
 
 // Invite status enum

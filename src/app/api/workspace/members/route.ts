@@ -1,47 +1,12 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { workspaces, users, monitors, audiences } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { users } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 import { findUserWithFallback } from "@/lib/auth-utils";
+import { permissions } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
-
-// GET - List workspace members
-export async function GET() {
-  try {
-    const { userId } = await auth();
-
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Get user (with email fallback for Clerk ID mismatch)
-    const user = await findUserWithFallback(userId);
-
-    if (!user?.workspaceId) {
-      return NextResponse.json({ error: "You are not in a workspace" }, { status: 400 });
-    }
-
-    // Get all members
-    const members = await db.query.users.findMany({
-      where: eq(users.workspaceId, user.workspaceId),
-    });
-
-    return NextResponse.json({
-      members: members.map((m) => ({
-        id: m.id,
-        email: m.email,
-        name: m.name,
-        role: m.workspaceRole,
-        isCurrentUser: m.id === user.id,
-      })),
-    });
-  } catch (error) {
-    console.error("Error fetching members:", error);
-    return NextResponse.json({ error: "Failed to fetch members" }, { status: 500 });
-  }
-}
 
 // DELETE - Remove a member from workspace
 export async function DELETE(request: Request) {
@@ -59,68 +24,55 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "Member ID is required" }, { status: 400 });
     }
 
-    // Get current user (with email fallback for Clerk ID mismatch)
-    const user = await findUserWithFallback(userId);
+    // Get current user
+    const currentUser = await findUserWithFallback(userId);
 
-    if (!user?.workspaceId || user.workspaceRole !== "owner") {
-      return NextResponse.json({ error: "Only workspace owners can remove members" }, { status: 403 });
+    if (!currentUser) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Can't remove yourself (owner) - compare with actual user ID
-    if (memberId === user.id) {
-      return NextResponse.json({ error: "You cannot remove yourself. Transfer ownership first." }, { status: 400 });
+    if (!currentUser.workspaceId) {
+      return NextResponse.json({ error: "You are not in a workspace" }, { status: 400 });
     }
 
-    // Get member
-    const member = await db.query.users.findFirst({
-      where: and(
-        eq(users.id, memberId),
-        eq(users.workspaceId, user.workspaceId)
-      ),
+    // Check permissions
+    if (!permissions.canRemoveMembers(currentUser.workspaceRole)) {
+      return NextResponse.json({ error: "You don't have permission to remove members" }, { status: 403 });
+    }
+
+    // Get the member to remove
+    const memberToRemove = await db.query.users.findFirst({
+      where: eq(users.id, memberId),
     });
 
-    if (!member) {
-      return NextResponse.json({ error: "Member not found in your workspace" }, { status: 404 });
+    if (!memberToRemove) {
+      return NextResponse.json({ error: "Member not found" }, { status: 404 });
     }
 
-    // Get workspace owner info
-    const workspace = await db.query.workspaces.findFirst({
-      where: eq(workspaces.id, user.workspaceId),
-    });
-
-    if (!workspace) {
-      return NextResponse.json({ error: "Workspace not found" }, { status: 404 });
+    // Can't remove yourself
+    if (memberToRemove.id === currentUser.id) {
+      return NextResponse.json({ error: "You cannot remove yourself" }, { status: 400 });
     }
 
-    // Transfer member's monitors to workspace owner (keep all data, just change ownership)
-    await db
-      .update(monitors)
-      .set({
-        userId: workspace.ownerId,
-        updatedAt: new Date(),
-      })
-      .where(
-        and(
-          eq(monitors.userId, memberId),
-          eq(monitors.workspaceId, user.workspaceId)
-        )
-      );
+    // Check if member is in the same workspace
+    if (memberToRemove.workspaceId !== currentUser.workspaceId) {
+      return NextResponse.json({ error: "Member is not in your workspace" }, { status: 400 });
+    }
 
-    // Transfer member's audiences to workspace owner
-    await db
-      .update(audiences)
-      .set({
-        userId: workspace.ownerId,
-        updatedAt: new Date(),
-      })
-      .where(
-        and(
-          eq(audiences.userId, memberId),
-          eq(audiences.workspaceId, user.workspaceId)
-        )
-      );
+    // Can't remove owner
+    if (memberToRemove.workspaceRole === "owner") {
+      return NextResponse.json({ error: "Cannot remove the workspace owner" }, { status: 400 });
+    }
 
-    // Remove from workspace
+    // Check if current user can modify this member
+    if (!permissions.canModifyMember(currentUser.workspaceRole, memberToRemove.workspaceRole!)) {
+      return NextResponse.json(
+        { error: "You don't have permission to remove this member" },
+        { status: 403 }
+      );
+    }
+
+    // Remove member from workspace
     await db
       .update(users)
       .set({
@@ -129,15 +81,6 @@ export async function DELETE(request: Request) {
         updatedAt: new Date(),
       })
       .where(eq(users.id, memberId));
-
-    // Update workspace seat count
-    await db
-      .update(workspaces)
-      .set({
-        seatCount: Math.max(1, workspace.seatCount - 1),
-        updatedAt: new Date(),
-      })
-      .where(eq(workspaces.id, workspace.id));
 
     return NextResponse.json({ success: true });
   } catch (error) {

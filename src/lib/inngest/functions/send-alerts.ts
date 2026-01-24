@@ -6,42 +6,44 @@ import { getPlanLimits } from "@/lib/plans";
 import { generateWeeklyInsights } from "@/lib/ai";
 import { sendWebhookNotification, type NotificationResult } from "@/lib/notifications";
 
-// Supported timezones (IANA format for DST handling)
-const SUPPORTED_TIMEZONES = [
-  "America/New_York",
-  "America/Chicago",
-  "America/Denver",
-  "America/Los_Angeles",
-] as const;
-
-type SupportedTimezone = (typeof SUPPORTED_TIMEZONES)[number];
-
 // Get current hour in a timezone (handles DST automatically)
 function getCurrentHourInTimezone(timezone: string): number {
-  const formatter = new Intl.DateTimeFormat("en-US", {
-    timeZone: timezone,
-    hour: "numeric",
-    hour12: false,
-  });
-  return parseInt(formatter.format(new Date()), 10);
+  try {
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      hour: "numeric",
+      hour12: false,
+    });
+    return parseInt(formatter.format(new Date()), 10);
+  } catch {
+    // Invalid timezone, default to UTC
+    return new Date().getUTCHours();
+  }
 }
 
 // Get current day of week in a timezone (0 = Sunday, 1 = Monday, etc.)
 function getCurrentDayInTimezone(timezone: string): number {
-  const formatter = new Intl.DateTimeFormat("en-US", {
-    timeZone: timezone,
-    weekday: "short",
-  });
-  const day = formatter.format(new Date());
-  const days: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
-  return days[day] ?? 0;
+  try {
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      weekday: "short",
+    });
+    const day = formatter.format(new Date());
+    const days: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+    return days[day] ?? 0;
+  } catch {
+    return new Date().getUTCDay();
+  }
 }
 
-// Get timezones where it's currently the target hour
-function getTimezonesAtHour(targetHour: number): SupportedTimezone[] {
-  return SUPPORTED_TIMEZONES.filter(
-    (tz) => getCurrentHourInTimezone(tz) === targetHour
-  );
+// Check if a timezone string is valid
+function isValidTimezone(tz: string): boolean {
+  try {
+    Intl.DateTimeFormat(undefined, { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -167,11 +169,11 @@ export const sendAlert = inngest.createFunction(
 
 // Shared daily digest logic for a specific timezone
 async function sendDailyDigestForTimezone(
-  timezone: SupportedTimezone,
+  timezone: string,
   step: InngestStep
 ) {
   // Get all users with daily email alerts in this timezone
-  const usersWithAlerts: UserWithMonitors[] = await step.run(`get-users-${timezone}`, async () => {
+  const usersWithAlerts: UserWithMonitors[] = await step.run(`get-users-${timezone.replace("/", "-")}`, async () => {
     return db.query.users.findMany({
       where: eq(users.timezone, timezone),
       with: {
@@ -277,11 +279,11 @@ async function sendDailyDigestForTimezone(
 
 // Shared weekly digest logic for a specific timezone
 async function sendWeeklyDigestForTimezone(
-  timezone: SupportedTimezone,
+  timezone: string,
   step: InngestStep
 ) {
   // Get all users with weekly email alerts in this timezone
-  const usersWithAlerts: UserWithMonitors[] = await step.run(`get-users-${timezone}`, async () => {
+  const usersWithAlerts: UserWithMonitors[] = await step.run(`get-users-${timezone.replace("/", "-")}`, async () => {
     return db.query.users.findMany({
       where: eq(users.timezone, timezone),
       with: {
@@ -403,68 +405,128 @@ async function sendWeeklyDigestForTimezone(
   };
 }
 
-// Daily digest - runs at hours when 9 AM occurs in US timezones
-// UTC 13-17 covers 9 AM for all US timezones during both DST and standard time
+// Daily digest - runs every hour to catch 9 AM in every timezone worldwide
 export const sendDailyDigest = inngest.createFunction(
   {
     id: "send-daily-digest",
-    name: "Daily Digest (DST-aware)",
+    name: "Daily Digest (Worldwide)",
     retries: 2,
   },
-  { cron: "0 13,14,15,16,17 * * *" }, // 5 runs/day instead of 24
+  { cron: "0 * * * *" }, // Run every hour to catch 9 AM in all timezones
   async ({ step }) => {
     const TARGET_HOUR = 9; // 9 AM local time
 
+    // Get all unique timezones from users with daily email alerts
+    const uniqueTimezones = await step.run("get-unique-timezones", async () => {
+      const usersWithDailyAlerts = await db.query.users.findMany({
+        columns: { timezone: true },
+        with: {
+          monitors: {
+            with: {
+              alerts: {
+                where: and(
+                  eq(alerts.isActive, true),
+                  eq(alerts.frequency, "daily"),
+                  eq(alerts.channel, "email")
+                ),
+              },
+            },
+          },
+        },
+      });
+
+      // Filter to users who actually have daily email alerts and get unique timezones
+      const timezones = new Set<string>();
+      for (const user of usersWithDailyAlerts) {
+        const hasDailyEmail = user.monitors.some(m => m.alerts.length > 0);
+        if (hasDailyEmail && user.timezone && isValidTimezone(user.timezone)) {
+          timezones.add(user.timezone);
+        }
+      }
+      return Array.from(timezones);
+    });
+
     // Find which timezones are currently at 9 AM
-    const timezonesAt9AM = getTimezonesAtHour(TARGET_HOUR);
+    const timezonesAt9AM = uniqueTimezones.filter(
+      tz => getCurrentHourInTimezone(tz) === TARGET_HOUR
+    );
 
     if (timezonesAt9AM.length === 0) {
       return {
-        message: "No timezones at 9 AM right now",
-        checkedTimezones: SUPPORTED_TIMEZONES.map(tz => ({
+        message: "No user timezones at 9 AM right now",
+        totalTimezones: uniqueTimezones.length,
+        checkedTimezones: uniqueTimezones.slice(0, 10).map(tz => ({
           timezone: tz,
           currentHour: getCurrentHourInTimezone(tz),
         })),
       };
     }
 
-    const results = [];
+    const digestResults = [];
     for (const timezone of timezonesAt9AM) {
       const result = await sendDailyDigestForTimezone(timezone, step);
-      results.push(result);
+      digestResults.push(result);
     }
 
     return {
       message: "Daily digest completed",
       processedTimezones: timezonesAt9AM,
-      results,
+      results: digestResults,
     };
   }
 );
 
-// Weekly digest - runs at hours when 9 AM Monday occurs in US timezones
+// Weekly digest - runs every hour on Mondays to catch 9 AM in every timezone
 export const sendWeeklyDigest = inngest.createFunction(
   {
     id: "send-weekly-digest",
-    name: "Weekly Digest (DST-aware)",
+    name: "Weekly Digest (Worldwide)",
     retries: 2,
   },
-  { cron: "0 13,14,15,16,17 * * 1" }, // 5 runs on Mondays
+  { cron: "0 * * * 1" }, // Run every hour on Mondays
   async ({ step }) => {
     const TARGET_HOUR = 9; // 9 AM local time
 
-    // Find which timezones are currently at 9 AM
-    const timezonesAt9AM = getTimezonesAtHour(TARGET_HOUR);
+    // Get all unique timezones from users with weekly email alerts
+    const uniqueTimezones = await step.run("get-unique-timezones", async () => {
+      const usersWithWeeklyAlerts = await db.query.users.findMany({
+        columns: { timezone: true },
+        with: {
+          monitors: {
+            with: {
+              alerts: {
+                where: and(
+                  eq(alerts.isActive, true),
+                  eq(alerts.frequency, "weekly"),
+                  eq(alerts.channel, "email")
+                ),
+              },
+            },
+          },
+        },
+      });
 
-    // Double-check it's Monday in those timezones (edge case around midnight)
-    const timezonesAt9AMOnMonday = timezonesAt9AM.filter(
-      tz => getCurrentDayInTimezone(tz) === 1
+      // Filter to users who actually have weekly email alerts and get unique timezones
+      const timezones = new Set<string>();
+      for (const user of usersWithWeeklyAlerts) {
+        const hasWeeklyEmail = user.monitors.some(m => m.alerts.length > 0);
+        if (hasWeeklyEmail && user.timezone && isValidTimezone(user.timezone)) {
+          timezones.add(user.timezone);
+        }
+      }
+      return Array.from(timezones);
+    });
+
+    // Find which timezones are at 9 AM AND it's Monday there
+    const timezonesAt9AMOnMonday = uniqueTimezones.filter(
+      tz => getCurrentHourInTimezone(tz) === TARGET_HOUR && getCurrentDayInTimezone(tz) === 1
     );
 
     if (timezonesAt9AMOnMonday.length === 0) {
       return {
-        message: "No timezones at 9 AM Monday right now",
-        checkedTimezones: SUPPORTED_TIMEZONES.map(tz => ({
+        message: "No user timezones at 9 AM Monday right now",
+        totalTimezones: uniqueTimezones.length,
+        checkedTimezones: uniqueTimezones.slice(0, 10).map(tz => ({
           timezone: tz,
           currentHour: getCurrentHourInTimezone(tz),
           currentDay: getCurrentDayInTimezone(tz),
@@ -472,16 +534,16 @@ export const sendWeeklyDigest = inngest.createFunction(
       };
     }
 
-    const results = [];
+    const digestResults = [];
     for (const timezone of timezonesAt9AMOnMonday) {
       const result = await sendWeeklyDigestForTimezone(timezone, step);
-      results.push(result);
+      digestResults.push(result);
     }
 
     return {
       message: "Weekly digest completed",
       processedTimezones: timezonesAt9AMOnMonday,
-      results,
+      results: digestResults,
     };
   }
 );

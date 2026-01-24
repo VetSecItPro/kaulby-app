@@ -5,6 +5,7 @@ import { MobileNav } from "@/components/mobile/mobile-nav";
 import { MobileHeader } from "@/components/mobile/mobile-header";
 import { Sidebar } from "./sidebar";
 import { DashboardPrefetch } from "./dashboard-prefetch";
+import type { WorkspaceRole } from "@/lib/permissions";
 
 interface ResponsiveDashboardLayoutProps {
   children: ReactNode;
@@ -12,7 +13,7 @@ interface ResponsiveDashboardLayoutProps {
   subscriptionStatus?: string;
   hasActiveDayPass?: boolean;
   dayPassExpiresAt?: string | null;
-  workspaceRole?: "owner" | "member" | null;
+  workspaceRole?: WorkspaceRole | null;
 }
 
 // CSS-based responsive layout - no JS device detection needed
