@@ -222,6 +222,11 @@ jobs:
           NEXT_PUBLIC_POSTHOG_KEY: ${{ secrets.NEXT_PUBLIC_POSTHOG_KEY }}
           NEXT_PUBLIC_POSTHOG_HOST: https://us.posthog.com
 
+      - name: Start server
+        run: |
+          npm run start &
+          npx wait-on http://localhost:3000 --timeout 60000
+
       - name: Run E2E tests
         run: npx playwright test --project=chromium
         env:
