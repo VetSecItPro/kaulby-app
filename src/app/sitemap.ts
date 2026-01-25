@@ -1,4 +1,5 @@
 import { MetadataRoute } from "next";
+import { ALL_TRACKED_SUBREDDITS } from "@/lib/inngest";
 
 // All tool slugs
 const toolSlugs = [
@@ -99,6 +100,22 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.8,
   }));
 
+  // Subreddit SEO pages - programmatic SEO for Reddit monitoring
+  const subredditPages: MetadataRoute.Sitemap = [
+    {
+      url: `${baseUrl}/subreddits`,
+      lastModified: currentDate,
+      changeFrequency: "weekly" as const,
+      priority: 0.85,
+    },
+    ...ALL_TRACKED_SUBREDDITS.map((slug) => ({
+      url: `${baseUrl}/subreddits/${slug}`,
+      lastModified: currentDate,
+      changeFrequency: "weekly" as const,
+      priority: 0.7,
+    })),
+  ];
+
   // Legal pages - lower priority
   const legalPages: MetadataRoute.Sitemap = [
     {
@@ -120,6 +137,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ...marketingPages,
     ...toolPages,
     ...alternativePages,
+    ...subredditPages,
     ...legalPages,
   ];
 }

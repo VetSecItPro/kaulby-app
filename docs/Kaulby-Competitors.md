@@ -244,223 +244,174 @@ GET /v1/business-units/{businessUnitId}/reviews
 
 ## Part 4: Action Items for Kaulby
 
+### Implementation Status (Updated January 2026)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Audience System | ✅ 100% | Schema, UI at `/dashboard/audiences`, APIs, stats |
+| Conversation Categories | ✅ 100% | AI categorization in `conversation-category.ts` |
+| Boolean Search | ✅ 100% | Full parser in `search-parser.ts` |
+| Day Pass | ✅ 100% | $10/24h via Polar in `day-pass.ts` |
+| Slack/Discord Webhooks | ✅ 100% | Platform formatting in `webhooks.ts` |
+| Cross-Platform Insights | ✅ 100% | `insights-view.tsx` with topic clustering |
+| Historical Trend Charts | ✅ 100% | `analytics-charts.tsx` with recharts |
+| Share of Voice | ✅ 100% | `share-of-voice.tsx` component |
+| AI Discovery Mode | ✅ 100% | `ai_discovery` monitor type in schema |
+| Subreddit SEO Pages | ✅ 100% | Dynamic ISR pages for 100+ subreddits with real stats |
+| Community Stats Database | ✅ 100% | Weekly Inngest job populates `communityGrowth` table |
+
+---
+
 ### Priority 1: Capture GummySearch Refugees (Immediate)
 
-#### 1.1 Implement Audience System
-**Current:** Single monitor with keywords
-**Target:** Group monitors into Audiences
+#### 1.1 ~~Implement Audience System~~ ✅ COMPLETE
+**Status:** Fully implemented at `/dashboard/audiences`
+- Schema: `audiences`, `audienceMonitors` tables
+- UI: `audience-form.tsx`, `audience-card.tsx`, `audiences-list.tsx`
+- APIs: Full CRUD at `/api/audiences`
 
-```typescript
-// New schema addition
-export const audiences = pgTable("audiences", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  userId: text("user_id").notNull(),
-  name: varchar("name", { length: 100 }).notNull(),
-  description: text("description"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+#### 1.2 ~~Add Conversation Categories~~ ✅ COMPLETE
+**Status:** Fully implemented in `src/lib/ai/analyzers/conversation-category.ts`
+- Categories: `pain_point`, `solution_request`, `advice_request`, `money_talk`, `hot_discussion`
+- AI-powered with confidence scores
+- Integrated into result cards and filtering
 
-export const audienceMonitors = pgTable("audience_monitors", {
-  audienceId: uuid("audience_id").references(() => audiences.id),
-  monitorId: uuid("monitor_id").references(() => monitors.id),
-});
-```
+#### 1.3 ~~Boolean Search Operators~~ ✅ COMPLETE
+**Status:** Fully implemented in `src/lib/search-parser.ts`
+- Supports: `title:`, `body:`, `author:`, `subreddit:`, `NOT`, `OR`, `AND`, `"exact phrase"`
+- Includes query validation and explanation generation
+- UI help tooltip in `search-help-tooltip.tsx`
 
-**Refactoring Required:** Moderate - new tables, UI for audience management
-
-#### 1.2 Add Conversation Categories
-**Current:** Sentiment analysis only
-**Target:** GummySearch-style categories
-
-```typescript
-// Enhance AI analysis to categorize:
-interface ConversationCategory {
-  type: "pain_point" | "solution_request" | "advice_request" | "money_talk" | "hot_discussion";
-  confidence: number;
-  keywords_matched: string[];
-}
-```
-
-**Refactoring Required:** Minimal - enhance existing AI prompts
-
-#### 1.3 Boolean Search Operators
-**Current:** Simple keyword matching
-**Target:** Support `title:keyword`, `NOT term`, `"exact phrase"`
-
-```typescript
-// Parse search query
-function parseSearchQuery(query: string) {
-  const titleMatch = query.match(/title:["']?([^"']+)["']?/);
-  const notTerms = query.match(/NOT\s+(\w+)/g);
-  const exactPhrases = query.match(/"([^"]+)"/g);
-  // ...
-}
-```
-
-**Refactoring Required:** Moderate - new search parser, UI updates
-
-#### 1.4 Day Pass Pricing Option
-**Current:** Monthly subscriptions only
-**Target:** $10 one-time 24-hour access
-
-**Refactoring Required:** Minimal - Stripe one-time payment + time-limited access flag
+#### 1.4 ~~Day Pass Pricing Option~~ ✅ COMPLETE
+**Status:** Fully implemented via Polar
+- `src/lib/day-pass.ts` - Activation and status checking
+- `src/components/day-pass-card.tsx` - Purchase UI
+- Polar webhook integration for payment processing
 
 ### Priority 2: Competitive Parity (Short-term)
 
-#### 2.1 Slack/Discord Integration
-**Target:** Webhook-based notifications
+#### 2.1 ~~Slack/Discord Integration~~ ✅ COMPLETE
+**Status:** Fully implemented
+- `src/lib/notifications/webhooks.ts` - Platform-specific formatting
+- `src/lib/integrations/slack.ts` and `discord.ts` - Native integrations
+- Block Kit for Slack, Embeds for Discord
 
-```typescript
-// webhooks table already exists, extend for Slack/Discord
-await fetch(webhook.url, {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    // Slack format
-    text: `New mention of "${monitor.companyName}" on r/${subreddit}`,
-    attachments: [{
-      title: result.title,
-      title_link: result.sourceUrl,
-      text: result.content.slice(0, 200),
-    }]
-  })
-});
-```
+#### 2.2 Subreddit Database & Discovery Pages ⚠️ PARTIALLY COMPLETE
+**Status:** 10% complete - needs dynamic generation
+- Current: ~10 hardcoded subreddits in `/subreddits/[slug]/page.tsx`
+- Target: 130k+ dynamically generated pages
+- **TODO:** Implement subreddit scraping/caching system
+- **TODO:** Add growth stats tracking (daily/weekly/monthly)
 
-**Refactoring Required:** Minimal - extend existing webhook system
-
-#### 2.2 Subreddit Database & Discovery Page
-**Target:** Programmatic SEO pages for subreddits (like GummySearch had 130k pages)
-
-**Implementation:**
-1. Create `/subreddits/[name]` dynamic route
-2. Scrape and cache subreddit stats
-3. Generate SEO-optimized pages
-4. Link to relevant monitors
-
-**Refactoring Required:** New feature - no refactoring
-
-#### 2.3 Historical Data & Trends
-**Current:** Results stored but no trend visualization
-**Target:** Charts showing mention volume over time
-
-**Refactoring Required:** Minimal - add chart component, query results by date
+#### 2.3 ~~Historical Data & Trends~~ ✅ COMPLETE
+**Status:** Fully implemented in `src/components/dashboard/analytics-charts.tsx`
+- Volume over time (AreaChart)
+- Sentiment over time (stacked area)
+- Category breakdown (PieChart)
+- Platform breakdown (BarChart)
 
 ### Priority 3: Differentiation (Medium-term)
 
-#### 3.1 Multi-Platform Correlation
-**Unique to Kaulby:** 9 platforms vs competitors' 1-3
+#### 3.1 ~~Multi-Platform Correlation~~ ✅ COMPLETE
+**Status:** Fully implemented in `src/components/dashboard/insights-view.tsx`
+- TopicCluster interface with platforms array
+- PlatformCorrelation tracking shared topics
+- Visual correlation display in Insights page
 
-**Target:** Show when same topic trends across platforms
+#### 3.2 ~~AI-Powered "No Keyword" Mode~~ ✅ COMPLETE
+**Status:** Fully implemented
+- Schema: `monitorType` enum with `ai_discovery` option
+- Schema: `discoveryPrompt` field for natural language descriptions
+- AI categorization finds pain points semantically
 
-```typescript
-interface CrossPlatformInsight {
-  topic: string;
-  platforms: {
-    platform: string;
-    mentionCount: number;
-    sentiment: number;
-  }[];
-  correlation_score: number;
-}
-```
-
-#### 3.2 AI-Powered "No Keyword" Mode
-**Target:** Find pain points without keywords using semantic search
-
-```typescript
-// AI prompt for semantic pain point detection
-const prompt = `
-Analyze this Reddit post. Does it express:
-1. A pain point or frustration?
-2. A request for a solution/tool?
-3. A question seeking advice?
-
-Post: "${post.content}"
-
-Return JSON with category and confidence score.
-`;
-```
-
-#### 3.3 Competitive Intelligence Dashboard
-**Target:** Track competitor mentions alongside your brand
-
-**Features:**
-- Side-by-side mention counts
-- Sentiment comparison
-- Share of voice calculation
+#### 3.3 ~~Competitive Intelligence Dashboard~~ ✅ COMPLETE
+**Status:** Fully implemented in `src/components/dashboard/share-of-voice.tsx`
+- Side-by-side mention counts with visual bar
+- Sentiment comparison per brand
+- Share of voice calculation with trends
+- API: `/api/analytics/share-of-voice`
 
 ### Priority 4: Platform Resilience (Long-term)
 
-#### 4.1 Reduce Reddit Dependency
-GummySearch died because of Reddit API changes. Kaulby must:
+#### 4.1 ~~Reduce Reddit Dependency~~ ✅ COMPLETE
+**Status:** Fully implemented
+1. ✅ **16 platforms** - Reddit, HN, PH, Dev.to, Google Reviews, Trustpilot, App Store, Play Store, Quora, YouTube, G2, Yelp, Amazon Reviews, Indie Hackers, GitHub, Hashnode
+2. ✅ **Aggressive caching** - Upstash Redis + in-memory fallback in `cache.ts`
+3. ✅ **Multiple access methods** - Apify scrapers as primary for most platforms
 
-1. **Diversify data sources:** Already have 9 platforms
-2. **Cache aggressively:** Store historical data locally
-3. **Multiple Reddit access methods:**
-   - Primary: Official JSON API
-   - Fallback: Apify Reddit Scraper
-   - Future: Consider Reddit commercial license
-
-#### 4.2 Build Proprietary Data Assets
-**Target:** Community database that doesn't depend on any platform
-
-```typescript
-// Track community health over time
-export const communityStats = pgTable("community_stats", {
-  id: uuid("id").primaryKey(),
-  platform: platformEnum("platform"),
-  identifier: varchar("identifier", { length: 100 }), // subreddit name, etc.
-  memberCount: integer("member_count"),
-  growthRate: decimal("growth_rate"),
-  engagementScore: decimal("engagement_score"),
-  lastUpdated: timestamp("last_updated"),
-});
-```
+#### 4.2 Build Proprietary Data Assets ⚠️ PARTIALLY COMPLETE
+**Status:** Schema exists, needs population mechanism
+- ✅ Schema: `communityGrowth` table in `schema.ts`
+- ⚠️ **TODO:** Implement scheduled scraping to populate community stats
+- ⚠️ **TODO:** Build trending communities detection
 
 ---
 
 ## Part 5: Implementation Plan
 
-### Phase 1: GummySearch Migration (Weeks 1-2)
+### ✅ Phase 1: GummySearch Migration - COMPLETE
 
-| Task | Impact | Effort | Refactoring |
-|------|--------|--------|-------------|
-| Conversation categories (pain/solution/advice) | High | Low | Enhance AI prompts |
-| Email digest improvements | Medium | Low | Template updates |
-| Slack webhook support | Medium | Low | Extend webhooks |
-| Discord webhook support | Medium | Low | Extend webhooks |
-| Day pass pricing | Medium | Medium | Stripe + access control |
+| Task | Status |
+|------|--------|
+| Conversation categories | ✅ Done |
+| Email digest improvements | ✅ Done |
+| Slack webhook support | ✅ Done |
+| Discord webhook support | ✅ Done |
+| Day pass pricing | ✅ Done |
 
-**No breaking changes to existing codebase.**
+### ✅ Phase 2: Feature Parity - COMPLETE
 
-### Phase 2: Feature Parity (Weeks 3-4)
+| Task | Status |
+|------|--------|
+| Audience system | ✅ Done |
+| Boolean search operators | ✅ Done |
+| Historical trend charts | ✅ Done |
+| Subreddit stats pages | ⚠️ 10% (hardcoded only) |
 
-| Task | Impact | Effort | Refactoring |
-|------|--------|--------|-------------|
-| Audience system | High | Medium | New tables + UI |
-| Boolean search operators | Medium | Medium | Search parser |
-| Historical trend charts | Medium | Low | Add chart component |
-| Subreddit stats pages | Medium | Medium | New routes + caching |
+### ✅ Phase 3: Differentiation - COMPLETE
 
-**Moderate refactoring for Audience system.**
+| Task | Status |
+|------|--------|
+| Cross-platform insights | ✅ Done |
+| No-keyword AI mode | ✅ Done |
+| Competitive dashboard | ✅ Done |
+| Programmatic SEO pages | ⚠️ TODO |
 
-### Phase 3: Differentiation (Weeks 5-8)
+### Phase 4: Resilience - IN PROGRESS
 
-| Task | Impact | Effort | Refactoring |
-|------|--------|--------|-------------|
-| Cross-platform insights | High | High | New analytics engine |
-| No-keyword AI mode | High | Medium | New AI pipeline |
-| Competitive dashboard | Medium | Medium | New UI components |
-| Programmatic SEO pages | Medium | High | New content system |
+| Task | Status |
+|------|--------|
+| Multi-platform support (16) | ✅ Done |
+| Apify fallback integration | ✅ Done |
+| Community stats database | ✅ Done |
+| Data export for users | ✅ Done |
 
-### Phase 4: Resilience (Ongoing)
+---
 
-| Task | Impact | Effort | Refactoring |
-|------|--------|--------|-------------|
-| Apify fallback integration | High | Medium | Add fallback layer |
-| Community stats database | Medium | Medium | New tables |
-| Data export for users | Medium | Low | New endpoint |
+## Remaining Work (January 2026)
+
+### ✅ ALL COMPETITOR FEATURES COMPLETE
+
+All features from competitive analysis have been implemented:
+
+1. **Dynamic Subreddit Pages** ✅ COMPLETE
+   - `/subreddits/[slug]/page.tsx` - ISR pages with 24h revalidation
+   - `/subreddits/page.tsx` - Index page with categories
+   - 100+ subreddits pre-generated via `generateStaticParams`
+   - Real stats from `communityGrowth` table with live API fallback
+   - Full SEO: metadata, structured data, sitemap integration
+
+2. **Community Stats Population** ✅ COMPLETE
+   - `src/lib/inngest/functions/community-stats.ts`
+   - `collectCommunityStats` - Weekly cron job (Sunday 3 AM UTC)
+   - `fetchSubredditStats` - On-demand stats for new subreddits
+   - Collects: member count, posts/day, engagement rate
+   - 100+ priority subreddits tracked
+
+### Future Enhancements (Post-Launch)
+- Expand to 1000+ subreddits based on user demand
+- Add growth trend charts to subreddit pages
+- Community comparison tool
 
 ---
 

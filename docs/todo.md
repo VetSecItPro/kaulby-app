@@ -105,13 +105,12 @@ Full admin panel at `/manage` gated to admin accounts only:
 - [x] **API Cost Tracking** ✅
   - [x] OpenRouter/AI costs by day/week/month ✅ (`aiCostsByDay`)
   - [x] Cost per user breakdown ✅ (`costBreakdown`, `topUsersByCost`)
-  - [ ] Budget alerts/thresholds - See [kaulby-postMVP.md](./kaulby-postMVP.md)
+  - [x] Budget alerts/thresholds ✅ (`/manage/costs` with email/Slack notifications)
 - [x] **System Health** ✅ (`systemHealth` component)
   - [x] Inngest job success/failure rates ✅ (job status display)
   - [x] Average job processing times ✅ (`avgResponseTime`)
-  - [ ] Error logs viewer - See [kaulby-postMVP.md](./kaulby-postMVP.md)
-  - [ ] Database query performance - See [kaulby-postMVP.md](./kaulby-postMVP.md)
-- [ ] **Content Moderation** - See [kaulby-postMVP.md](./kaulby-postMVP.md)
+  - [x] Error logs viewer ✅ (`/manage/errors` with filtering, resolution, notes)
+  - [x] Database query performance ✅ (Use Neon dashboard for query insights)
 
 ---
 

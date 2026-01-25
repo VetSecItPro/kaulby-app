@@ -66,6 +66,18 @@ Track features and improvements to implement after MVP launch.
 
 - [x] **Annual pricing** ✅ - 2 months free for annual ($290/yr Pro, $990/yr Team) with `annualPriceId` in Polar
 
+## SEO & Marketing
+
+- [x] **Subreddit SEO Pages** ✅ - Dynamic ISR pages for 100+ subreddits
+  - `/subreddits/[slug]/page.tsx` - Individual subreddit monitoring pages
+  - `/subreddits/page.tsx` - Index page with categorized listings
+  - Real stats from `communityGrowth` table + live API fallback
+  - Full SEO: metadata, structured data, sitemap integration
+- [x] **Community Stats Collection** ✅ - Weekly Inngest job (`collectCommunityStats`)
+  - Runs Sunday 3 AM UTC via cron
+  - Collects member count, posts/day, engagement rate
+  - 100+ priority subreddits in `PRIORITY_SUBREDDITS` and `EXTENDED_SUBREDDITS`
+
 ---
 
 ## Notes
