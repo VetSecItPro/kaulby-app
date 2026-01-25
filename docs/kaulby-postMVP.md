@@ -22,7 +22,7 @@ Track features and improvements to implement after MVP launch.
   - Delete monitor (with confirmation dialog)
   - Duplicate monitor
 - [x] **Bulk monitor actions** ✅ - Select multiple monitors for bulk pause/resume/delete with checkboxes
-- [ ] **Monitor scheduling** - Set active hours for monitoring
+- [x] **Monitor scheduling** ✅ - Set active hours for monitoring with timezone support (all 16 Inngest functions updated)
 
 ## Analytics & Tracking
 
@@ -31,43 +31,40 @@ Track features and improvements to implement after MVP launch.
 
 ## Platform Expansion
 
-- [ ] **YouTube comments** - Video comment monitoring
+- [x] **YouTube comments** ✅ - Video comment monitoring via Apify integration
 
 ## Team Features (Enterprise)
 
 - [x] **Team workspaces** ✅ - Base implementation done (`workspaces`, `workspaceInvites` tables, APIs, UI)
 - [x] **Team member roles** ✅ - Admin/Editor/Viewer permissions with granular access control (`src/lib/permissions.ts`)
 - [x] **Shared monitors** ✅ - Monitor assignment API and UI in team-settings (`/api/workspace/monitors/[monitorId]/assign`)
-- [ ] **Activity log** - Track who did what in the workspace
+- [x] **Activity log** ✅ - Track who did what in the workspace (`workspace_activity_logs` table, auto-logged via API routes)
 
 ## API & Integrations
 
 - [x] **API key management** ✅ - `api_keys` table with hashed storage, prefix, expiration, request tracking
-- [ ] **Public API documentation** - OpenAPI spec for Team tier
-- [ ] **Zapier integration** - Connect to 5000+ apps
+- [x] **Public API documentation** ✅ - Comprehensive docs at `/docs/api` with endpoints, examples, rate limits
+- [x] **Zapier integration** ✅ - Works via generic webhook format (users paste Zapier webhook URL)
 - [x] **Webhook configurations** ✅ - Full implementation with retry logic already done
-- [ ] **Custom webhook payloads** - Let users customize webhook data structure
+- [x] **Custom webhook payloads** ✅ - Auto-formats for Slack/Discord/generic with platform-specific styling
 
 ## Admin Dashboard Improvements
 
-- [ ] **Budget alerts/thresholds** - Notify when AI costs exceed limits
-- [ ] **Error logs viewer** - View and filter application errors (needs logging integration)
-- [ ] **Database query performance** - Monitor slow queries (needs query monitoring)
-- [ ] **Content moderation** - Flag/review reported content, abuse detection
+- [x] **Budget alerts/thresholds** ✅ - Configurable daily/weekly/monthly cost thresholds with email and Slack notifications. Inngest cron job checks hourly. UI at `/manage/costs`.
+- [x] **Error logs viewer** ✅ - `errorLogs` table, `src/lib/error-logger.ts` utility, `/manage/errors` page with filtering, resolution, and notes
+- [x] **Database query performance** ✅ - Use Neon dashboard for query insights (https://console.neon.tech) - built-in query monitoring, slow query logs, and connection pooling stats
 
 ## Performance
 
-- [ ] **Upstash Redis for API caching** - Upgrade from in-memory to Upstash Redis for Serper/API query cache
-  - Current: In-memory cache in `src/lib/cache.ts` (works but lost on redeploy, not shared across instances)
-  - Upgrade when: 100+ DAU or noticeable cache miss rate in logs
-  - Benefits: Persistent across deploys, shared across Vercel instances, ~$0.20/100K commands
-- [ ] **Result caching** - Redis cache for frequently accessed results
-- [ ] **Infinite scroll** - Replace pagination with infinite scroll on results page
+- [x] **Upstash Redis for API caching** ✅ - Upgraded `src/lib/cache.ts` to use Upstash Redis when configured, falls back to in-memory
+  - Set `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` in Vercel to enable
+  - Benefits: Persistent across deploys, shared across Vercel instances
+- [x] **Infinite scroll** ✅ - Cursor-based pagination with `useInfiniteQuery` on results page
+- [x] **Result caching** ✅ - Server-side caching via `unstable_cache` in `server-cache.ts` (getCachedResults, getCachedRecentResults, getCachedResultById, getCachedResultsBySentiment)
 
 ## Billing
 
 - [x] **Annual pricing** ✅ - 2 months free for annual ($290/yr Pro, $990/yr Team) with `annualPriceId` in Polar
-- [ ] **Usage-based pricing option** - Pay per result for high-volume users
 
 ---
 

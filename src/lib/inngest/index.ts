@@ -27,6 +27,7 @@ export { sendWebhookEvent, processWebhookDelivery, retryWebhookDeliveries, clean
 export { scheduledAccountDeletion } from "./functions/account-deletion";
 export { detectCrisis } from "./functions/crisis-detection";
 export { resetStuckScans } from "./functions/reset-stuck-scans";
+export { checkBudgetAlerts } from "./functions/budget-alerts";
 
 // All functions for the Inngest handler
 import { monitorReddit } from "./functions/monitor-reddit";
@@ -56,6 +57,7 @@ import { sendWebhookEvent, processWebhookDelivery, retryWebhookDeliveries, clean
 import { scheduledAccountDeletion } from "./functions/account-deletion";
 import { detectCrisis } from "./functions/crisis-detection";
 import { resetStuckScans } from "./functions/reset-stuck-scans";
+import { checkBudgetAlerts } from "./functions/budget-alerts";
 
 export const functions = [
   monitorReddit,
@@ -92,4 +94,5 @@ export const functions = [
   scheduledAccountDeletion,
   detectCrisis,
   resetStuckScans,
+  checkBudgetAlerts,
 ];

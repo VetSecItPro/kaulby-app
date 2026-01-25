@@ -8,10 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, X, Loader2, Sparkles, Lock, AlertCircle } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ArrowLeft, X, Loader2, Sparkles, Lock, AlertCircle, Clock } from "lucide-react";
 import Link from "next/link";
 import { SearchQueryInput } from "@/components/search-query-input";
 import type { PlanLimits } from "@/lib/plans";
+import { COMMON_TIMEZONES, WEEKDAYS } from "@/lib/monitor-schedule";
 
 // All 16 platforms with tier-based access
 // Pro tier (8 platforms): reddit, hackernews, indiehackers, producthunt, googlereviews, youtube, github, trustpilot
@@ -91,6 +94,13 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
   const [platformUrls, setPlatformUrls] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
 
+  // Schedule settings
+  const [scheduleEnabled, setScheduleEnabled] = useState(false);
+  const [scheduleStartHour, setScheduleStartHour] = useState(9);
+  const [scheduleEndHour, setScheduleEndHour] = useState(17);
+  const [scheduleDays, setScheduleDays] = useState<number[]>(WEEKDAYS);
+  const [scheduleTimezone, setScheduleTimezone] = useState("America/New_York");
+
   const isPaidUser = userPlan !== "free";
   const isTeamUser = userPlan === "enterprise";
   const keywordLimit = limits.keywordsPerMonitor;
@@ -165,6 +175,12 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
           searchQuery: searchQuery.trim() || undefined, // Advanced boolean search (Pro feature)
           platforms: selectedPlatforms,
           platformUrls, // Platform-specific URLs (Google Reviews, Trustpilot, etc.)
+          // Schedule settings
+          scheduleEnabled,
+          scheduleStartHour,
+          scheduleEndHour,
+          scheduleDays,
+          scheduleTimezone,
         }),
       });
 
@@ -460,6 +476,117 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
                 </div>
               </div>
             )}
+
+            {/* Schedule Settings */}
+            <div className="space-y-4 rounded-lg border p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <div className="space-y-0.5">
+                    <Label htmlFor="schedule">Schedule Active Hours</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Only scan during specific hours
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  id="schedule"
+                  checked={scheduleEnabled}
+                  onCheckedChange={setScheduleEnabled}
+                />
+              </div>
+
+              {scheduleEnabled && (
+                <div className="space-y-4 pt-4 border-t">
+                  {/* Time Range */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Start Time</Label>
+                      <Select
+                        value={String(scheduleStartHour)}
+                        onValueChange={(v) => setScheduleStartHour(parseInt(v))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: 24 }, (_, i) => (
+                            <SelectItem key={i} value={String(i)}>
+                              {i === 0 ? "12:00 AM" : i === 12 ? "12:00 PM" : i < 12 ? `${i}:00 AM` : `${i - 12}:00 PM`}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>End Time</Label>
+                      <Select
+                        value={String(scheduleEndHour)}
+                        onValueChange={(v) => setScheduleEndHour(parseInt(v))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: 24 }, (_, i) => (
+                            <SelectItem key={i} value={String(i)}>
+                              {i === 0 ? "12:00 AM" : i === 12 ? "12:00 PM" : i < 12 ? `${i}:00 AM` : `${i - 12}:00 PM`}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Days of Week */}
+                  <div className="space-y-2">
+                    <Label>Active Days</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day, i) => (
+                        <button
+                          key={day}
+                          type="button"
+                          onClick={() => {
+                            setScheduleDays((prev) =>
+                              prev.includes(i)
+                                ? prev.filter((d) => d !== i)
+                                : [...prev, i].sort()
+                            );
+                          }}
+                          className={`px-3 py-1.5 text-sm rounded-md border transition-colors ${
+                            scheduleDays.includes(i)
+                              ? "bg-teal-500 text-black border-teal-500"
+                              : "bg-background hover:bg-muted"
+                          }`}
+                        >
+                          {day}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Timezone */}
+                  <div className="space-y-2">
+                    <Label>Timezone</Label>
+                    <Select
+                      value={scheduleTimezone}
+                      onValueChange={setScheduleTimezone}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {COMMON_TIMEZONES.map((tz) => (
+                          <SelectItem key={tz.value} value={tz.value}>
+                            {tz.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Error */}
             {error && (

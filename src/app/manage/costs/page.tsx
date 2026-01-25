@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
-import { users, results, aiLogs } from "@/lib/db/schema";
+import { users, results, aiLogs, budgetAlerts, budgetAlertHistory } from "@/lib/db/schema";
 import { count, sum, desc, sql, gte, eq, and } from "drizzle-orm";
+import { BudgetAlerts } from "@/components/admin/budget-alerts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -187,6 +188,39 @@ async function getDetailedCostData() {
   };
 }
 
+async function getBudgetAlertsData() {
+  const alerts = await db.query.budgetAlerts.findMany({
+    orderBy: [desc(budgetAlerts.createdAt)],
+    with: {
+      history: {
+        orderBy: [desc(budgetAlertHistory.createdAt)],
+        limit: 5,
+      },
+    },
+  });
+
+  return alerts.map((alert) => ({
+    id: alert.id,
+    name: alert.name,
+    period: alert.period as "daily" | "weekly" | "monthly",
+    thresholdUsd: alert.thresholdUsd,
+    warningPercent: alert.warningPercent,
+    isActive: alert.isActive,
+    notifyEmail: alert.notifyEmail,
+    notifySlack: alert.notifySlack,
+    currentPeriodSpend: alert.currentPeriodSpend,
+    history: alert.history.map((h) => ({
+      id: h.id,
+      alertType: h.alertType,
+      spendUsd: h.spendUsd,
+      percentOfThreshold: h.percentOfThreshold,
+      createdAt: h.createdAt.toISOString(),
+    })),
+    lastTriggeredAt: alert.lastTriggeredAt?.toISOString() || null,
+    createdAt: alert.createdAt.toISOString(),
+  }));
+}
+
 function formatCurrency(value: number, decimals = 2) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -212,7 +246,10 @@ function getPlanBadge(plan: string) {
 }
 
 export default async function CostsPage() {
-  const data = await getDetailedCostData();
+  const [data, alertsData] = await Promise.all([
+    getDetailedCostData(),
+    getBudgetAlertsData(),
+  ]);
 
   return (
     <div className="flex-1 flex-col space-y-6 p-6">
@@ -433,6 +470,9 @@ export default async function CostsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Budget Alerts */}
+      <BudgetAlerts initialAlerts={alertsData} />
     </div>
   );
 }

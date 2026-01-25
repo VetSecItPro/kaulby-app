@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Users, UserPlus, Mail, Trash2, Crown, User, Loader2, Building2, Radio, ArrowRightLeft } from "lucide-react";
+import { Users, UserPlus, Mail, Trash2, Crown, User, Loader2, Building2, Radio, ArrowRightLeft, Activity, ChevronDown } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -76,6 +76,21 @@ interface WorkspaceMonitor {
   } | null;
 }
 
+interface ActivityLogItem {
+  id: string;
+  action: string;
+  targetType: string | null;
+  targetId: string | null;
+  targetName: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+  user: {
+    id: string;
+    name: string | null;
+    email: string;
+  };
+}
+
 interface TeamSettingsProps {
   subscriptionStatus: string;
 }
@@ -95,8 +110,39 @@ export function TeamSettings({ subscriptionStatus }: TeamSettingsProps) {
   const [workspaceMonitors, setWorkspaceMonitors] = useState<WorkspaceMonitor[]>([]);
   const [reassigning, setReassigning] = useState<string | null>(null);
   const [changingRole, setChangingRole] = useState<string | null>(null);
+  // Activity log state
+  const [activityLogs, setActivityLogs] = useState<ActivityLogItem[]>([]);
+  const [activityCursor, setActivityCursor] = useState<string | null>(null);
+  const [hasMoreActivity, setHasMoreActivity] = useState(false);
+  const [loadingActivity, setLoadingActivity] = useState(false);
 
   const isEnterprise = subscriptionStatus === "enterprise";
+
+  // Fetch activity logs
+  const fetchActivityLogs = useCallback(async (cursor?: string | null) => {
+    setLoadingActivity(true);
+    try {
+      const url = cursor
+        ? `/api/workspace/activity?cursor=${encodeURIComponent(cursor)}&limit=10`
+        : "/api/workspace/activity?limit=10";
+      const res = await fetch(url);
+      const data = await res.json();
+
+      if (res.ok) {
+        if (cursor) {
+          setActivityLogs((prev) => [...prev, ...data.items]);
+        } else {
+          setActivityLogs(data.items);
+        }
+        setActivityCursor(data.nextCursor);
+        setHasMoreActivity(data.hasMore);
+      }
+    } catch (err) {
+      console.error("Failed to fetch activity logs:", err);
+    } finally {
+      setLoadingActivity(false);
+    }
+  }, []);
 
   // Fetch workspace data
   useEffect(() => {
@@ -127,6 +173,9 @@ export function TeamSettings({ subscriptionStatus }: TeamSettingsProps) {
           if (monitorsRes.ok) {
             setWorkspaceMonitors(monitorsData.monitors || []);
           }
+
+          // Fetch activity logs
+          fetchActivityLogs();
         }
       } catch (err) {
         console.error("Failed to fetch workspace:", err);
@@ -136,7 +185,7 @@ export function TeamSettings({ subscriptionStatus }: TeamSettingsProps) {
     }
 
     fetchData();
-  }, [isEnterprise]);
+  }, [isEnterprise, fetchActivityLogs]);
 
   // Only show for Enterprise users
   if (!isEnterprise) {
@@ -652,7 +701,105 @@ export function TeamSettings({ subscriptionStatus }: TeamSettingsProps) {
             )}
           </div>
         )}
+
+        {/* Activity Log */}
+        <div className="space-y-3 pt-4 border-t">
+          <h4 className="text-sm font-medium flex items-center gap-2">
+            <Activity className="h-4 w-4" />
+            Activity Log
+          </h4>
+          {activityLogs.length === 0 && !loadingActivity ? (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              No activity yet. Actions will appear here.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {activityLogs.map((log) => (
+                <div
+                  key={log.id}
+                  className="flex items-start gap-3 p-3 rounded-lg border bg-card text-sm"
+                >
+                  <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                    <Activity className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm">
+                      <span className="font-medium">
+                        {log.user.name || log.user.email}
+                      </span>{" "}
+                      <span className="text-muted-foreground">
+                        {formatActivityAction(log.action, log.targetName)}
+                      </span>
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {formatRelativeTime(log.createdAt)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+              {hasMoreActivity && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => fetchActivityLogs(activityCursor)}
+                  disabled={loadingActivity}
+                >
+                  {loadingActivity ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 mr-2" />
+                  )}
+                  Load more
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
+}
+
+// Helper to format activity action into readable text
+function formatActivityAction(action: string, targetName?: string | null): string {
+  const target = targetName ? `"${targetName}"` : "";
+
+  switch (action) {
+    case "monitor_created": return `created monitor ${target}`;
+    case "monitor_updated": return `updated monitor ${target}`;
+    case "monitor_deleted": return `deleted monitor ${target}`;
+    case "monitor_paused": return `paused monitor ${target}`;
+    case "monitor_resumed": return `resumed monitor ${target}`;
+    case "monitor_duplicated": return `duplicated monitor ${target}`;
+    case "member_invited": return `invited ${target} to the workspace`;
+    case "member_joined": return "joined the workspace";
+    case "member_removed": return `removed ${target} from the workspace`;
+    case "member_role_changed": return `changed the role of ${target}`;
+    case "workspace_created": return "created the workspace";
+    case "workspace_updated": return "updated workspace settings";
+    case "workspace_settings_changed": return "changed workspace settings";
+    case "api_key_created": return "created an API key";
+    case "api_key_revoked": return `revoked API key ${target}`;
+    case "webhook_created": return `created webhook ${target}`;
+    case "webhook_updated": return `updated webhook ${target}`;
+    case "webhook_deleted": return `deleted webhook ${target}`;
+    default: return action.replace(/_/g, " ");
+  }
+}
+
+// Helper to format relative time
+function formatRelativeTime(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return "just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString();
 }

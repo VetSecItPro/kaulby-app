@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { db } from "@/lib/db";
 import { monitors } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
@@ -86,7 +87,8 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const { name, companyName, keywords, platforms, isActive } = body;
+    const { name, companyName, keywords, platforms, isActive,
+      scheduleEnabled, scheduleStartHour, scheduleEndHour, scheduleDays, scheduleTimezone } = body;
 
     // Validate input
     if (name !== undefined && (typeof name !== "string" || !name.trim())) {
@@ -188,10 +190,19 @@ export async function PATCH(
         ...(sanitizedKeywords !== undefined && { keywords: sanitizedKeywords }),
         ...(platforms !== undefined && { platforms: finalPlatforms }),
         ...(isActive !== undefined && { isActive }),
+        // Schedule settings
+        ...(scheduleEnabled !== undefined && { scheduleEnabled: scheduleEnabled === true }),
+        ...(scheduleStartHour !== undefined && typeof scheduleStartHour === "number" && { scheduleStartHour }),
+        ...(scheduleEndHour !== undefined && typeof scheduleEndHour === "number" && { scheduleEndHour }),
+        ...(scheduleDays !== undefined && { scheduleDays: Array.isArray(scheduleDays) ? scheduleDays : null }),
+        ...(scheduleTimezone !== undefined && typeof scheduleTimezone === "string" && { scheduleTimezone }),
         updatedAt: new Date(),
       })
       .where(eq(monitors.id, id))
       .returning();
+
+    // Revalidate cache
+    revalidateTag("monitors");
 
     return NextResponse.json({
       monitor: updatedMonitor,
@@ -226,6 +237,10 @@ export async function DELETE(
 
     // Delete monitor (cascade will delete results and alerts)
     await db.delete(monitors).where(eq(monitors.id, id));
+
+    // Revalidate cache
+    revalidateTag("monitors");
+    revalidateTag("results");
 
     return NextResponse.json({ success: true });
   } catch (error) {
