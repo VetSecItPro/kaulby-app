@@ -6,6 +6,7 @@ import {
   type DailyDigestData,
   type WeeklyReportData,
 } from "./email/digest-templates";
+import { escapeHtml } from "./security/sanitize";
 
 // Re-export types for convenience
 export type { DigestMention, DailyDigestData, WeeklyReportData };
@@ -133,9 +134,12 @@ export async function sendDigestEmail(params: {
       platform: string;
       sentiment?: string | null;
       summary?: string | null;
+      category?: string | null;
     }>;
   }>;
   aiInsights?: WeeklyInsights;
+  platformBreakdown?: Array<{ platform: string; count: number }>;
+  categoryBreakdown?: Array<{ category: string; count: number }>;
 }) {
   // Build AI insights section if available
   let aiInsightsHtml = "";
@@ -230,11 +234,62 @@ export async function sendDigestEmail(params: {
 
   const totalResults = params.monitors.reduce((sum, m) => sum + m.resultsCount, 0);
 
+  // Build platform/category breakdown section if available
+  let breakdownHtml = "";
+  if ((params.platformBreakdown && params.platformBreakdown.length > 0) ||
+      (params.categoryBreakdown && params.categoryBreakdown.length > 0)) {
+
+    const platformChips = params.platformBreakdown
+      ?.sort((a, b) => b.count - a.count)
+      .slice(0, 5)
+      .map(p => `<span style="display: inline-block; padding: 4px 10px; background: ${COLORS.bg}; border: 1px solid ${COLORS.cardBorder}; border-radius: 16px; font-size: 12px; color: ${COLORS.textMuted}; margin: 3px;">${escapeHtml(p.platform.charAt(0).toUpperCase() + p.platform.slice(1))} <strong style="color: ${COLORS.text};">${p.count}</strong></span>`)
+      .join("") || "";
+
+    const categoryEmojis: Record<string, string> = {
+      solution_request: "🎯",
+      money_talk: "💰",
+      pain_point: "😤",
+      advice_request: "❓",
+      hot_discussion: "🔥",
+    };
+
+    const categoryChips = params.categoryBreakdown
+      ?.sort((a, b) => b.count - a.count)
+      .slice(0, 5)
+      .map(c => `<span style="display: inline-block; padding: 4px 10px; background: ${COLORS.bg}; border: 1px solid ${COLORS.cardBorder}; border-radius: 16px; font-size: 12px; color: ${COLORS.textMuted}; margin: 3px;">${categoryEmojis[c.category] || "📌"} ${escapeHtml(c.category.replace(/_/g, " "))} <strong style="color: ${COLORS.text};">${c.count}</strong></span>`)
+      .join("") || "";
+
+    breakdownHtml = `
+      <tr>
+        <td style="padding: 0 24px 24px;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: ${COLORS.card}; border: 1px solid ${COLORS.cardBorder}; border-radius: 12px;">
+            <tr>
+              <td style="padding: 16px 20px;">
+                ${platformChips ? `
+                <div style="margin-bottom: 12px;">
+                  <p style="margin: 0 0 8px; font-size: 11px; font-weight: 600; color: ${COLORS.textDim}; text-transform: uppercase; letter-spacing: 0.5px;">By Platform</p>
+                  ${platformChips}
+                </div>
+                ` : ""}
+                ${categoryChips ? `
+                <div>
+                  <p style="margin: 0 0 8px; font-size: 11px; font-weight: 600; color: ${COLORS.textDim}; text-transform: uppercase; letter-spacing: 0.5px;">By Category</p>
+                  ${categoryChips}
+                </div>
+                ` : ""}
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    `;
+  }
+
   await getResend().emails.send({
     from: FROM_EMAIL,
     to: params.to,
     subject: `Your ${params.frequency} digest · ${totalResults} new mentions`,
-    html: getDigestEmailHtml(params.userName, params.frequency, totalResults, aiInsightsHtml, monitorsHtml),
+    html: getDigestEmailHtml(params.userName, params.frequency, totalResults, aiInsightsHtml, breakdownHtml, monitorsHtml),
   });
 }
 
@@ -359,16 +414,8 @@ export async function sendInviteAcceptedEmail(params: {
 }
 
 // Helper to escape HTML
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
-
 // Base email wrapper - elegant black theme with logo header
+// NOTE: escapeHtml is imported from @/lib/security/sanitize
 function getEmailWrapper(content: string): string {
   return `
 <!DOCTYPE html>
@@ -568,7 +615,7 @@ function getAlertEmailHtml(monitorName: string, resultsCount: number, resultsHtm
   return getEmailWrapper(content);
 }
 
-function getDigestEmailHtml(userName: string, frequency: string, totalResults: number, aiInsightsHtml: string, monitorsHtml: string): string {
+function getDigestEmailHtml(userName: string, frequency: string, totalResults: number, aiInsightsHtml: string, breakdownHtml: string, monitorsHtml: string): string {
   const content = `
     <tr>
       <td style="padding: 28px 24px 20px;">
@@ -591,6 +638,7 @@ function getDigestEmailHtml(userName: string, frequency: string, totalResults: n
       </td>
     </tr>
     ${aiInsightsHtml}
+    ${breakdownHtml}
     ${monitorsHtml}
     <tr>
       <td style="padding: 8px 24px 32px;">
@@ -998,6 +1046,165 @@ function getDeletionReminderEmailHtml(name: string): string {
               <p style="margin: 0; font-size: 13px; color: ${COLORS.textDim};">
                 If you intended to delete your account, no action is needed.<br/>
                 The deletion will proceed automatically tomorrow.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  `;
+  return getEmailWrapper(content);
+}
+
+// ============================================================================
+// RE-ENGAGEMENT EMAILS (Churn Prevention)
+// ============================================================================
+
+// Send re-engagement email to inactive users
+export async function sendReengagementEmail(params: {
+  email: string;
+  name?: string;
+  daysSinceActive: number;
+  stats: {
+    activeMonitors: number;
+    newMentions: number;
+    topMention?: {
+      title: string;
+      platform: string;
+      url: string;
+    };
+  };
+}) {
+  const { email, name = "there", daysSinceActive, stats } = params;
+
+  await getResend().emails.send({
+    from: FROM_EMAIL,
+    to: email,
+    subject: `${stats.newMentions > 0 ? `${stats.newMentions} new mentions` : "Your monitors are waiting"} - We miss you!`,
+    html: getReengagementEmailHtml(name, daysSinceActive, stats),
+  });
+}
+
+function getReengagementEmailHtml(
+  name: string,
+  daysSinceActive: number,
+  stats: {
+    activeMonitors: number;
+    newMentions: number;
+    topMention?: {
+      title: string;
+      platform: string;
+      url: string;
+    };
+  }
+): string {
+  // Build stats section
+  let statsHtml = "";
+  if (stats.newMentions > 0 || stats.activeMonitors > 0) {
+    statsHtml = `
+      <tr>
+        <td style="padding: 0 32px 24px;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: linear-gradient(135deg, rgba(94, 234, 212, 0.1) 0%, rgba(212, 165, 116, 0.1) 100%); border: 1px solid ${COLORS.cardBorder}; border-radius: 12px;">
+            <tr>
+              <td style="padding: 24px;">
+                <p style="margin: 0 0 16px; font-size: 13px; font-weight: 600; color: ${COLORS.accent}; text-transform: uppercase; letter-spacing: 0.5px;">While You Were Away</p>
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                  ${stats.newMentions > 0 ? `
+                  <tr>
+                    <td style="padding: 8px 0;">
+                      <table role="presentation" cellspacing="0" cellpadding="0">
+                        <tr>
+                          <td style="width: 48px; vertical-align: top;">
+                            <span style="display: inline-block; width: 40px; height: 40px; background: rgba(94, 234, 212, 0.2); border-radius: 10px; text-align: center; line-height: 40px; font-size: 18px;">💬</span>
+                          </td>
+                          <td style="padding-left: 12px; vertical-align: middle;">
+                            <p style="margin: 0; font-size: 24px; font-weight: 700; color: ${COLORS.text};">${stats.newMentions}</p>
+                            <p style="margin: 2px 0 0; font-size: 13px; color: ${COLORS.textMuted};">new mentions found</p>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                  ` : ""}
+                  ${stats.activeMonitors > 0 ? `
+                  <tr>
+                    <td style="padding: 8px 0;">
+                      <table role="presentation" cellspacing="0" cellpadding="0">
+                        <tr>
+                          <td style="width: 48px; vertical-align: top;">
+                            <span style="display: inline-block; width: 40px; height: 40px; background: rgba(212, 165, 116, 0.2); border-radius: 10px; text-align: center; line-height: 40px; font-size: 18px;">📡</span>
+                          </td>
+                          <td style="padding-left: 12px; vertical-align: middle;">
+                            <p style="margin: 0; font-size: 24px; font-weight: 700; color: ${COLORS.text};">${stats.activeMonitors}</p>
+                            <p style="margin: 2px 0 0; font-size: 13px; color: ${COLORS.textMuted};">active monitors running</p>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                  ` : ""}
+                </table>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    `;
+  }
+
+  // Build top mention highlight
+  let topMentionHtml = "";
+  if (stats.topMention) {
+    topMentionHtml = `
+      <tr>
+        <td style="padding: 0 32px 24px;">
+          <p style="margin: 0 0 12px; font-size: 12px; font-weight: 600; color: ${COLORS.textDim}; text-transform: uppercase; letter-spacing: 0.5px;">Top Mention</p>
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: ${COLORS.bg}; border: 1px solid ${COLORS.cardBorder}; border-radius: 12px;">
+            <tr>
+              <td style="padding: 16px 20px;">
+                <a href="${stats.topMention.url}" style="color: ${COLORS.accent}; font-weight: 500; text-decoration: none; font-size: 15px; line-height: 1.4;">${escapeHtml(stats.topMention.title)}</a>
+                <div style="margin-top: 8px;">
+                  <span style="display: inline-block; padding: 2px 8px; background: ${COLORS.card}; border: 1px solid ${COLORS.cardBorder}; border-radius: 4px; font-size: 11px; color: ${COLORS.textDim};">${stats.topMention.platform}</span>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    `;
+  }
+
+  const content = `
+    <tr>
+      <td style="padding: 40px 32px 24px; text-align: center;">
+        <div style="display: inline-block; width: 64px; height: 64px; background: linear-gradient(135deg, rgba(94, 234, 212, 0.2), rgba(212, 165, 116, 0.2)); border-radius: 50%; line-height: 64px; margin-bottom: 20px;">
+          <span style="font-size: 32px;">👋</span>
+        </div>
+        <h1 style="margin: 0 0 8px; font-size: 24px; font-weight: 700; color: ${COLORS.text};">We Miss You, ${escapeHtml(name)}!</h1>
+        <p style="margin: 0; font-size: 15px; color: ${COLORS.textMuted};">It's been ${daysSinceActive} days since your last visit</p>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 0 32px 24px;">
+        <p style="margin: 0; font-size: 15px; line-height: 1.7; color: ${COLORS.textMuted};">
+          Your monitors have been working hard while you were away${stats.newMentions > 0 ? `, and they've found ${stats.newMentions} new mentions waiting for you` : ""}. Don't miss out on valuable conversations about your brand!
+        </p>
+      </td>
+    </tr>
+    ${statsHtml}
+    ${topMentionHtml}
+    <tr>
+      <td style="padding: 0 32px 40px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+          <tr>
+            <td align="center">
+              <a href="${APP_URL}/dashboard" style="display: inline-block; padding: 14px 36px; background-color: ${COLORS.accent}; color: ${COLORS.bg}; text-decoration: none; font-weight: 600; font-size: 15px; border-radius: 50px;">View Your Dashboard</a>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding-top: 16px;">
+              <p style="margin: 0; font-size: 13px; color: ${COLORS.textDim};">
+                Your monitors are actively tracking conversations 24/7
               </p>
             </td>
           </tr>

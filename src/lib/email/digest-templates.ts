@@ -12,6 +12,7 @@
  */
 
 import type { WeeklyInsightsResult } from "../ai/analyzers/weekly-insights";
+import { escapeHtml, escapeRegExp, sanitizeUrl } from "../security/sanitize";
 
 // ============================================================================
 // TYPES
@@ -111,19 +112,30 @@ const SENTIMENT_DISPLAY: Record<string, { emoji: string; color: string }> = {
 /**
  * Highlight matched keywords in text for HTML emails
  * Wraps keywords in a styled span with background highlight
+ *
+ * SECURITY: Text is HTML-escaped first, then keywords are highlighted.
+ * Keywords are regex-escaped to prevent ReDoS attacks.
  */
 function highlightKeywordsHtml(text: string, keywords?: string[]): string {
-  if (!keywords || keywords.length === 0 || !text) return text;
+  if (!text) return "";
 
-  let result = text;
+  // SECURITY: Escape HTML first to prevent XSS
+  let result = escapeHtml(text);
+
+  if (!keywords || keywords.length === 0) return result;
+
   // Sort by length descending to match longer phrases first
   const sortedKeywords = [...keywords].sort((a, b) => b.length - a.length);
 
   for (const keyword of sortedKeywords) {
-    // Escape special regex characters in keyword
-    const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // SECURITY: Escape special regex characters to prevent ReDoS
+    const escapedKeyword = escapeRegExp(keyword);
+    // Also need to escape the keyword for matching against HTML-escaped text
+    const htmlEscapedKeyword = escapeHtml(keyword);
+    const escapedHtmlKeyword = escapeRegExp(htmlEscapedKeyword);
+
     // Case-insensitive match, preserve original casing
-    const regex = new RegExp(`(${escapedKeyword})`, "gi");
+    const regex = new RegExp(`(${escapedHtmlKeyword})`, "gi");
     result = result.replace(
       regex,
       '<span style="background-color: #fef08a; color: #854d0e; padding: 1px 4px; border-radius: 3px; font-weight: 500;">$1</span>'
@@ -136,17 +148,20 @@ function highlightKeywordsHtml(text: string, keywords?: string[]): string {
 /**
  * Highlight matched keywords in plain text
  * Wraps keywords in **asterisks** for emphasis
+ *
+ * SECURITY: Keywords are regex-escaped to prevent ReDoS attacks.
  */
 function highlightKeywordsText(text: string, keywords?: string[]): string {
-  if (!keywords || keywords.length === 0 || !text) return text;
+  if (!text) return "";
+  if (!keywords || keywords.length === 0) return text;
 
   let result = text;
   // Sort by length descending to match longer phrases first
   const sortedKeywords = [...keywords].sort((a, b) => b.length - a.length);
 
   for (const keyword of sortedKeywords) {
-    // Escape special regex characters in keyword
-    const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // SECURITY: Escape special regex characters to prevent ReDoS
+    const escapedKeyword = escapeRegExp(keyword);
     // Case-insensitive match, preserve original casing
     const regex = new RegExp(`(${escapedKeyword})`, "gi");
     result = result.replace(regex, "**$1**");
