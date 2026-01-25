@@ -25,3 +25,7 @@ drizzle.config.ts
 next.config.mjs
 tailwind.config.ts
 postcss.config.js
+
+# JSON-LD structured data - uses JSON.stringify() which is safe (no XSS risk)
+# dangerouslySetInnerHTML with JSON.stringify is the standard Next.js pattern
+src/lib/seo/structured-data.tsx
