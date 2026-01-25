@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { results, monitors, aiLogs } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { analyzeBatchSentiment } from "@/lib/ai/analyzers/batch-summary";
-import { selectRepresentativeSample, AI_BATCH_CONFIG, type SampleableItem } from "@/lib/ai/sampling";
+import { selectRepresentativeSample, AI_BATCH_CONFIG, getAdaptiveSamplingConfig, getAdaptiveSampleSize, type SampleableItem } from "@/lib/ai/sampling";
 import { createTrace, flushAI } from "@/lib/ai";
 import { incrementAiCallsCount } from "@/lib/limits";
 import { getPlatformDisplayName } from "@/lib/platform-utils";
@@ -12,7 +12,16 @@ import { getPlatformDisplayName } from "@/lib/platform-utils";
  * Batch analyze content - cost-efficient alternative for large volumes
  *
  * Instead of analyzing each result individually ($0.02-0.05 each),
- * this samples 25 representative items and generates a single summary ($0.10-0.20 total).
+ * this uses adaptive sampling to generate a single summary.
+ *
+ * Adaptive sampling scales with volume:
+ * - 50-100 results: 25 samples (~$0.15)
+ * - 100-250 results: 25-35 samples (~$0.15-0.20)
+ * - 250-500 results: 35-50 samples (~$0.20-0.25)
+ * - 500-1000 results: 50-75 samples (~$0.30-0.40)
+ * - 1000+ results: 75-100 samples (~$0.40-0.50)
+ *
+ * vs Individual: 500 × $0.02 = $10.00 (97%+ savings!)
  *
  * Triggered when a monitor scan returns >50 results.
  */
@@ -55,12 +64,15 @@ export const analyzeContentBatch = inngest.createFunction(
       };
     });
 
-    // Select representative sample
+    // Select representative sample using adaptive sizing
+    const adaptiveConfig = getAdaptiveSamplingConfig(totalCount);
+    const targetSampleSize = getAdaptiveSampleSize(totalCount);
+
     const sample = await step.run("select-sample", async () => {
-      return selectRepresentativeSample(sampleableItems, {
-        sampleSize: AI_BATCH_CONFIG.BATCH_SAMPLE_SIZE,
-      });
+      return selectRepresentativeSample(sampleableItems, adaptiveConfig);
     });
+
+    console.log(`[BatchAnalysis] Adaptive sampling: ${sample.length}/${totalCount} items (${((sample.length / totalCount) * 100).toFixed(1)}% coverage)`);
 
     // Get full result data for the sample
     const sampleResults = await step.run("get-sample-results", async () => {
@@ -78,9 +90,11 @@ export const analyzeContentBatch = inngest.createFunction(
         monitorId,
         platform,
         totalCount,
-        sampleSize: sample.length,
+        targetSampleSize,
+        actualSampleSize: sample.length,
+        coveragePercent: ((sample.length / totalCount) * 100).toFixed(1),
       },
-      tags: ["inngest", "batch-analysis", platform],
+      tags: ["inngest", "batch-analysis", platform, `samples-${sample.length}`],
     });
 
     const traceId = trace.id;
