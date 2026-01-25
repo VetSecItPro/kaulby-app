@@ -285,6 +285,7 @@ export const analyzeContent = inngest.createFunction(
       // Trigger webhooks for enterprise users
       await step.run("trigger-webhooks-team", async () => {
         const analysis = comprehensiveResult.result;
+        const webhookMetadata = result.metadata as Record<string, unknown> | null;
         await inngest.send({
           name: "webhook/send",
           data: {
@@ -303,6 +304,8 @@ export const analyzeContent = inngest.createFunction(
                 sentiment: analysis.sentiment.label,
                 conversationCategory: category.category,
                 aiSummary: analysis.executiveSummary,
+                engagement: (webhookMetadata?.upvotes as number) || (webhookMetadata?.score as number) || undefined,
+                commentCount: (webhookMetadata?.commentCount as number) || (webhookMetadata?.numComments as number) || undefined,
               },
             },
           },
@@ -462,6 +465,8 @@ export const analyzeContent = inngest.createFunction(
               sentiment: sentimentResult.result.sentiment,
               conversationCategory: categoryResult.result.category,
               aiSummary: summaryResult.result.summary,
+              engagement: (metadata?.upvotes as number) || (metadata?.score as number) || undefined,
+              commentCount: (metadata?.commentCount as number) || (metadata?.numComments as number) || undefined,
             },
           },
         },

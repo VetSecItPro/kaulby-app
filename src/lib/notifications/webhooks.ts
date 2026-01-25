@@ -34,6 +34,8 @@ interface NotificationResult {
   sentiment?: "positive" | "negative" | "neutral" | null;
   conversationCategory?: ConversationCategory | null;
   aiSummary?: string | null;
+  engagement?: number | null;
+  commentCount?: number | null;
 }
 
 interface WebhookPayload {
@@ -140,7 +142,7 @@ export function formatSlackPayload(payload: WebhookPayload): SlackPayload {
       },
     ];
 
-    // Add category and sentiment badges
+    // Add category, sentiment, and engagement badges
     const badges: string[] = [];
     badges.push(`\`${result.platform}\``);
     if (category) {
@@ -148,6 +150,12 @@ export function formatSlackPayload(payload: WebhookPayload): SlackPayload {
     }
     if (sentiment) {
       badges.push(`${sentiment.emoji} ${result.sentiment}`);
+    }
+    if (result.engagement) {
+      badges.push(`👍 ${result.engagement}`);
+    }
+    if (result.commentCount) {
+      badges.push(`💬 ${result.commentCount}`);
     }
 
     attachmentBlocks.push({
@@ -312,6 +320,22 @@ export function formatDiscordPayload(payload: WebhookPayload): DiscordPayload {
       fields.push({
         name: "Sentiment",
         value: `${sentiment.emoji} ${result.sentiment}`,
+        inline: true,
+      });
+    }
+
+    if (result.engagement) {
+      fields.push({
+        name: "Engagement",
+        value: `👍 ${result.engagement}`,
+        inline: true,
+      });
+    }
+
+    if (result.commentCount) {
+      fields.push({
+        name: "Comments",
+        value: `💬 ${result.commentCount}`,
         inline: true,
       });
     }

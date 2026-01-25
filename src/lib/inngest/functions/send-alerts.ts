@@ -1,6 +1,6 @@
 import { inngest } from "../client";
 import { db, alerts, results, users } from "@/lib/db";
-import { eq, and, gte, inArray } from "drizzle-orm";
+import { eq, and, gte, inArray, isNull } from "drizzle-orm";
 import { sendAlertEmail, sendDigestEmail, type WeeklyInsights } from "@/lib/email";
 import { getPlanLimits } from "@/lib/plans";
 import { generateWeeklyInsights } from "@/lib/ai";
@@ -210,7 +210,7 @@ async function sendDailyDigestForTimezone(
 
     if (!hasEmailAlerts) continue;
 
-    // Get results from last 24 hours
+    // Get results from last 24 hours that haven't been sent in a digest yet
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
 
@@ -221,7 +221,8 @@ async function sendDailyDigestForTimezone(
       return db.query.results.findMany({
         where: and(
           inArray(results.monitorId, monitorIds),
-          gte(results.createdAt, yesterday)
+          gte(results.createdAt, yesterday),
+          isNull(results.lastSentInDigestAt) // Don't resend already-sent results
         ),
         orderBy: (results, { desc }) => [desc(results.createdAt)],
       });
@@ -232,12 +233,19 @@ async function sendDailyDigestForTimezone(
       continue;
     }
 
-    // Group results by monitor
+    // Group results by monitor AND by platform for better organization
     const resultsByMonitor = new Map<string, ResultWithMonitor[]>();
+    const resultsByPlatform = new Map<string, ResultWithMonitor[]>();
     for (const result of userResults) {
-      const existing = resultsByMonitor.get(result.monitorId) || [];
-      existing.push(result);
-      resultsByMonitor.set(result.monitorId, existing);
+      // Group by monitor
+      const existingMonitor = resultsByMonitor.get(result.monitorId) || [];
+      existingMonitor.push(result);
+      resultsByMonitor.set(result.monitorId, existingMonitor);
+
+      // Group by platform
+      const existingPlatform = resultsByPlatform.get(result.platform) || [];
+      existingPlatform.push(result);
+      resultsByPlatform.set(result.platform, existingPlatform);
     }
 
     await step.run(`send-digest-${user.id}`, async () => {
@@ -254,16 +262,33 @@ async function sendDailyDigestForTimezone(
               platform: r.platform,
               sentiment: r.sentiment,
               summary: r.aiSummary,
+              category: r.conversationCategory,
             })),
           };
         });
+
+      // Add platform breakdown for digest
+      const platformBreakdown = Array.from(resultsByPlatform.entries()).map(([platform, platformResults]) => ({
+        platform,
+        count: platformResults.length,
+      }));
 
       await sendDigestEmail({
         to: user.email,
         userName: user.name || "there",
         frequency: "daily",
         monitors: monitorsData,
+        platformBreakdown,
       });
+
+      // Mark results as sent in digest (deduplication)
+      const resultIds = userResults.map(r => r.id);
+      if (resultIds.length > 0) {
+        await db
+          .update(results)
+          .set({ lastSentInDigestAt: new Date() })
+          .where(inArray(results.id, resultIds));
+      }
 
       digestsSent++;
     });
@@ -312,7 +337,7 @@ async function sendWeeklyDigestForTimezone(
 
     if (!hasEmailAlerts) continue;
 
-    // Get results from last 7 days
+    // Get results from last 7 days that haven't been sent in a weekly digest
     const weekAgo = new Date();
     weekAgo.setDate(weekAgo.getDate() - 7);
 
@@ -323,7 +348,8 @@ async function sendWeeklyDigestForTimezone(
       return db.query.results.findMany({
         where: and(
           inArray(results.monitorId, monitorIds),
-          gte(results.createdAt, weekAgo)
+          gte(results.createdAt, weekAgo),
+          isNull(results.lastSentInDigestAt) // Don't resend already-sent results
         ),
         orderBy: (results, { desc }) => [desc(results.createdAt)],
       });
@@ -334,12 +360,26 @@ async function sendWeeklyDigestForTimezone(
       continue;
     }
 
-    // Group results by monitor
+    // Group results by monitor, platform, and category
     const resultsByMonitor = new Map<string, ResultWithMonitor[]>();
+    const resultsByPlatform = new Map<string, ResultWithMonitor[]>();
+    const resultsByCategory = new Map<string, ResultWithMonitor[]>();
     for (const result of userResults) {
-      const existing = resultsByMonitor.get(result.monitorId) || [];
-      existing.push(result);
-      resultsByMonitor.set(result.monitorId, existing);
+      // Group by monitor
+      const existingMonitor = resultsByMonitor.get(result.monitorId) || [];
+      existingMonitor.push(result);
+      resultsByMonitor.set(result.monitorId, existingMonitor);
+
+      // Group by platform
+      const existingPlatform = resultsByPlatform.get(result.platform) || [];
+      existingPlatform.push(result);
+      resultsByPlatform.set(result.platform, existingPlatform);
+
+      // Group by category
+      const category = result.conversationCategory || "general";
+      const existingCategory = resultsByCategory.get(category) || [];
+      existingCategory.push(result);
+      resultsByCategory.set(category, existingCategory);
     }
 
     // Check if user has Pro+ plan for AI insights
@@ -382,9 +422,22 @@ async function sendWeeklyDigestForTimezone(
               platform: r.platform,
               sentiment: r.sentiment,
               summary: r.aiSummary,
+              category: r.conversationCategory,
             })),
           };
         });
+
+      // Platform breakdown for the digest
+      const platformBreakdown = Array.from(resultsByPlatform.entries()).map(([platform, platformResults]) => ({
+        platform,
+        count: platformResults.length,
+      }));
+
+      // Category breakdown for the digest
+      const categoryBreakdown = Array.from(resultsByCategory.entries()).map(([category, categoryResults]) => ({
+        category,
+        count: categoryResults.length,
+      }));
 
       await sendDigestEmail({
         to: user.email,
@@ -392,7 +445,18 @@ async function sendWeeklyDigestForTimezone(
         frequency: "weekly",
         monitors: monitorsData,
         aiInsights,
+        platformBreakdown,
+        categoryBreakdown,
       });
+
+      // Mark results as sent in digest (deduplication)
+      const resultIds = userResults.map(r => r.id);
+      if (resultIds.length > 0) {
+        await db
+          .update(results)
+          .set({ lastSentInDigestAt: new Date() })
+          .where(inArray(results.id, resultIds));
+      }
 
       digestsSent++;
     });

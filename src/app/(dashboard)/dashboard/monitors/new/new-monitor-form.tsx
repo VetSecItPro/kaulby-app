@@ -10,7 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, X, Loader2, Sparkles, Lock, AlertCircle, Clock } from "lucide-react";
+import { ArrowLeft, X, Loader2, Sparkles, Lock, AlertCircle, Clock, Wand2, Search } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import Link from "next/link";
 import { SearchQueryInput } from "@/components/search-query-input";
 import type { PlanLimits } from "@/lib/plans";
@@ -82,6 +83,8 @@ interface NewMonitorFormProps {
   userPlan: string;
 }
 
+type MonitorType = "keyword" | "ai_discovery";
+
 export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
@@ -93,6 +96,10 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [platformUrls, setPlatformUrls] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
+
+  // AI Discovery mode (Pro/Team feature)
+  const [monitorType, setMonitorType] = useState<MonitorType>("keyword");
+  const [discoveryPrompt, setDiscoveryPrompt] = useState("");
 
   // Schedule settings
   const [scheduleEnabled, setScheduleEnabled] = useState(false);
@@ -162,6 +169,12 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
       return;
     }
 
+    // Validate AI Discovery mode
+    if (monitorType === "ai_discovery" && !discoveryPrompt.trim()) {
+      setError("Please describe what you want to find for AI Discovery mode");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -171,8 +184,10 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
         body: JSON.stringify({
           name: name.trim(),
           companyName: companyName.trim(),
-          keywords, // Keywords are now optional additional terms
-          searchQuery: searchQuery.trim() || undefined, // Advanced boolean search (Pro feature)
+          monitorType, // keyword or ai_discovery
+          keywords: monitorType === "keyword" ? keywords : [], // Only for keyword mode
+          searchQuery: monitorType === "keyword" && searchQuery.trim() ? searchQuery.trim() : undefined,
+          discoveryPrompt: monitorType === "ai_discovery" ? discoveryPrompt.trim() : undefined,
           platforms: selectedPlatforms,
           platformUrls, // Platform-specific URLs (Google Reviews, Trustpilot, etc.)
           // Schedule settings
@@ -265,7 +280,98 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
               </p>
             </div>
 
-            {/* Keywords (Optional) */}
+            {/* Monitor Mode Selection (Pro/Team feature) */}
+            <div className="space-y-3">
+              <Label>Monitor Mode</Label>
+              <div className="grid grid-cols-2 gap-3">
+                {/* Keyword Mode */}
+                <button
+                  type="button"
+                  onClick={() => setMonitorType("keyword")}
+                  className={`relative flex flex-col items-start p-4 rounded-lg border-2 transition-all ${
+                    monitorType === "keyword"
+                      ? "border-teal-500 bg-teal-500/5"
+                      : "border-border hover:border-muted-foreground/50"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <Search className="h-4 w-4" />
+                    <span className="font-medium">Keyword Mode</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground text-left">
+                    Traditional keyword matching. Find posts containing specific terms.
+                  </p>
+                </button>
+
+                {/* AI Discovery Mode */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isPaidUser) {
+                      setMonitorType("ai_discovery");
+                    }
+                  }}
+                  disabled={!isPaidUser}
+                  className={`relative flex flex-col items-start p-4 rounded-lg border-2 transition-all ${
+                    monitorType === "ai_discovery"
+                      ? "border-purple-500 bg-purple-500/5"
+                      : !isPaidUser
+                        ? "border-border opacity-60 cursor-not-allowed"
+                        : "border-border hover:border-muted-foreground/50"
+                  }`}
+                >
+                  {!isPaidUser && (
+                    <div className="absolute -top-2 -right-2">
+                      <Badge variant="secondary" className="text-[10px] gap-1">
+                        <Lock className="h-3 w-3" />
+                        Pro
+                      </Badge>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 mb-1">
+                    <Wand2 className="h-4 w-4 text-purple-500" />
+                    <span className="font-medium">AI Discovery</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground text-left">
+                    AI finds relevant posts semantically, no keywords needed.
+                  </p>
+                </button>
+              </div>
+            </div>
+
+            {/* AI Discovery Prompt (shown when AI Discovery mode is selected) */}
+            {monitorType === "ai_discovery" && (
+              <div className="space-y-2 p-4 rounded-lg border bg-purple-500/5 border-purple-500/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <Wand2 className="h-4 w-4 text-purple-500" />
+                  <Label htmlFor="discoveryPrompt" className="text-purple-300">
+                    What are you looking for?
+                  </Label>
+                </div>
+                <Textarea
+                  id="discoveryPrompt"
+                  placeholder="e.g., People who are frustrated with their current project management tool and looking for alternatives&#10;&#10;or&#10;&#10;Developers asking for recommendations on API testing tools"
+                  value={discoveryPrompt}
+                  onChange={(e) => setDiscoveryPrompt(e.target.value)}
+                  rows={4}
+                  className="dark-input placeholder:text-gray-400 hover:border-purple-500 focus:border-purple-500 resize-none"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Describe in natural language what kind of posts you want to find. AI will semantically match content even without exact keyword matches.
+                </p>
+                <div className="mt-3 p-3 rounded bg-muted/50 text-xs">
+                  <p className="font-medium mb-1">Examples of what AI Discovery can find:</p>
+                  <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                    <li>&quot;Need help organizing my team&apos;s tasks&quot; → Project management need</li>
+                    <li>&quot;Waited 3 days for a response from support&quot; → Competitor complaint</li>
+                    <li>&quot;Is there anything better than X?&quot; → Buyer intent</li>
+                  </ul>
+                </div>
+              </div>
+            )}
+
+            {/* Keywords (Optional - only shown for keyword mode) */}
+            {monitorType === "keyword" && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="keywords">
@@ -363,8 +469,10 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
                 Add additional keywords to find mentions like &quot;{companyName || "your company"} customer service&quot; or &quot;{companyName || "your company"} alternative&quot;.
               </p>
             </div>
+            )}
 
-            {/* Advanced Search Query (Pro feature) */}
+            {/* Advanced Search Query (Pro feature) - only for keyword mode */}
+            {monitorType === "keyword" && (
             <div className="space-y-2">
               <SearchQueryInput
                 value={searchQuery}
@@ -372,6 +480,7 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
                 isPro={isPaidUser}
               />
             </div>
+            )}
 
             {/* Platforms */}
             <div className="space-y-4">

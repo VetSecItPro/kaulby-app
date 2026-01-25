@@ -90,4 +90,21 @@ export type Events = {
       hoursRemaining: number;
     };
   };
+  "user/reengagement.send": {
+    data: {
+      userId: string;
+      email: string;
+      name?: string;
+      daysSinceActive: number;
+      stats: {
+        activeMonitors: number;
+        newMentions: number;
+        topMention?: {
+          title: string;
+          platform: string;
+          url: string;
+        };
+      };
+    };
+  };
 };

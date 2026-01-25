@@ -29,6 +29,7 @@ export { detectCrisis } from "./functions/crisis-detection";
 export { resetStuckScans } from "./functions/reset-stuck-scans";
 export { checkBudgetAlerts } from "./functions/budget-alerts";
 export { collectCommunityStats, fetchSubredditStats, getLatestStats, ALL_TRACKED_SUBREDDITS } from "./functions/community-stats";
+export { detectInactiveUsers, sendReengagement } from "./functions/reengagement";
 
 // All functions for the Inngest handler
 import { monitorReddit } from "./functions/monitor-reddit";
@@ -60,6 +61,7 @@ import { detectCrisis } from "./functions/crisis-detection";
 import { resetStuckScans } from "./functions/reset-stuck-scans";
 import { checkBudgetAlerts } from "./functions/budget-alerts";
 import { collectCommunityStats, fetchSubredditStats } from "./functions/community-stats";
+import { detectInactiveUsers, sendReengagement } from "./functions/reengagement";
 
 export const functions = [
   monitorReddit,
@@ -99,4 +101,7 @@ export const functions = [
   checkBudgetAlerts,
   collectCommunityStats,
   fetchSubredditStats,
+  // Churn prevention
+  detectInactiveUsers,
+  sendReengagement,
 ];
