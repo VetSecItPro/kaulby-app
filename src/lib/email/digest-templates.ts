@@ -12,7 +12,7 @@
  */
 
 import type { WeeklyInsightsResult } from "../ai/analyzers/weekly-insights";
-import { escapeHtml, escapeRegExp, sanitizeUrl } from "../security/sanitize";
+import { escapeHtml, escapeRegExp } from "../security/sanitize";
 
 // ============================================================================
 // TYPES
@@ -128,9 +128,8 @@ function highlightKeywordsHtml(text: string, keywords?: string[]): string {
   const sortedKeywords = [...keywords].sort((a, b) => b.length - a.length);
 
   for (const keyword of sortedKeywords) {
-    // SECURITY: Escape special regex characters to prevent ReDoS
-    const escapedKeyword = escapeRegExp(keyword);
-    // Also need to escape the keyword for matching against HTML-escaped text
+    // SECURITY: First HTML-escape the keyword, then regex-escape for safe matching
+    // This ensures we match the keyword as it appears in the already-escaped text
     const htmlEscapedKeyword = escapeHtml(keyword);
     const escapedHtmlKeyword = escapeRegExp(htmlEscapedKeyword);
 
