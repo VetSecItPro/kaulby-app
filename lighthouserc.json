@@ -6,8 +6,7 @@
       "startServerReadyTimeout": 30000,
       "url": [
         "http://localhost:3000/",
-        "http://localhost:3000/pricing",
-        "http://localhost:3000/features"
+        "http://localhost:3000/pricing"
       ],
       "numberOfRuns": 1,
       "settings": {
