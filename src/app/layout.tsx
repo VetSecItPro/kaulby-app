@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { DeviceProvider } from "@/hooks/use-device";
 import { ResilientClerkProvider } from "@/components/shared/clerk-provider";
 import { OrganizationSchema, SoftwareApplicationSchema } from "@/lib/seo/structured-data";
+import { ServiceWorkerRegister } from "@/components/shared/service-worker-register";
 import "./globals.css";
 
 // Font configuration
@@ -104,6 +105,7 @@ export default function RootLayout({
             <Toaster />
           </DeviceProvider>
         </ResilientClerkProvider>
+        <ServiceWorkerRegister />
       </body>
     </html>
   );

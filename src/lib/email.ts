@@ -124,7 +124,7 @@ export interface WeeklyInsights {
 export async function sendDigestEmail(params: {
   to: string;
   userName: string;
-  frequency: "daily" | "weekly";
+  frequency: "daily" | "weekly" | "monthly";
   monitors: Array<{
     name: string;
     resultsCount: number;

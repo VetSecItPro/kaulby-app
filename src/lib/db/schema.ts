@@ -211,6 +211,12 @@ export const users = pgTable("users", {
   // Activity tracking for ***
   lastActiveAt: timestamp("last_active_at"), // Last meaningful activity (dashboard visit, monitor action)
   reengagementEmailSentAt: timestamp("reengagement_email_sent_at"), // Prevent duplicate re-engagement emails
+  // Scheduled PDF Reports (Team tier feature)
+  reportSchedule: text("report_schedule").default("off"), // 'off' | 'weekly' | 'monthly'
+  reportDay: integer("report_day").default(1), // Day of week (1=Mon) for weekly, day of month for monthly
+  reportLastSentAt: timestamp("report_last_sent_at"), // Track last report sent to prevent duplicates
+  // Email digest pause feature
+  digestPaused: boolean("digest_paused").default(false).notNull(), // Pause emails while keeping monitors active
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -657,6 +663,29 @@ export const savedSearches = pgTable("saved_searches", {
   index("saved_searches_user_id_idx").on(table.userId),
 ]);
 
+// Email Tracking - track opens, clicks, and engagement for digest emails
+export const emailEvents = pgTable("email_events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  emailType: text("email_type").notNull(), // 'daily_digest' | 'weekly_digest' | 'monthly_digest' | 'alert' | 'report'
+  emailId: text("email_id").notNull(), // Unique ID for the sent email (for deduplication)
+  eventType: text("event_type").notNull(), // 'sent' | 'opened' | 'clicked'
+  linkUrl: text("link_url"), // Only for click events
+  metadata: jsonb("metadata").$type<{
+    userAgent?: string;
+    ipCountry?: string;
+    resultId?: string;
+    monitorId?: string;
+  }>(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("email_events_user_id_idx").on(table.userId),
+  index("email_events_email_id_idx").on(table.emailId),
+  index("email_events_email_type_idx").on(table.emailType),
+]);
+
 // Relations
 export const workspacesRelations = relations(workspaces, ({ many }) => ({
   members: many(users),
@@ -884,3 +913,5 @@ export type CommunityGrowth = typeof communityGrowth.$inferSelect;
 export type NewCommunityGrowth = typeof communityGrowth.$inferInsert;
 export type SavedSearch = typeof savedSearches.$inferSelect;
 export type NewSavedSearch = typeof savedSearches.$inferInsert;
+export type EmailEvent = typeof emailEvents.$inferSelect;
+export type NewEmailEvent = typeof emailEvents.$inferInsert;

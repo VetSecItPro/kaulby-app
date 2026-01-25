@@ -10,7 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Check, Download, Trash2, Database, Clock, FileJson, FileSpreadsheet, Settings2, ShieldAlert, Loader2 } from "lucide-react";
+import { Check, Download, Trash2, Database, Clock, FileJson, FileSpreadsheet, Settings2, ShieldAlert, Loader2, Mail, FileText } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -66,6 +67,9 @@ interface ResponsiveSettingsProps {
   plans: Plan[];
   dataStats: DataStats;
   userId: string;
+  digestPaused?: boolean;
+  reportSchedule?: string;
+  reportDay?: number;
 }
 
 // Helper to convert internal plan names to display names
@@ -107,6 +111,9 @@ export function ResponsiveSettings({
   timezone: initialTimezone,
   plans,
   dataStats,
+  digestPaused: initialDigestPaused = false,
+  reportSchedule: initialReportSchedule = "off",
+  reportDay: initialReportDay = 1,
 }: ResponsiveSettingsProps) {
   const planDisplayName = getPlanDisplayName(subscriptionStatus);
   const [isExporting, setIsExporting] = useState(false);
@@ -116,6 +123,12 @@ export function ResponsiveSettings({
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [switchingPlan, setSwitchingPlan] = useState<string | null>(null);
+
+  // Email & Report preferences
+  const [digestPaused, setDigestPaused] = useState(initialDigestPaused);
+  const [reportSchedule, setReportSchedule] = useState(initialReportSchedule);
+  const [reportDay, setReportDay] = useState(initialReportDay);
+  const [isSavingEmailPrefs, setIsSavingEmailPrefs] = useState(false);
 
   const CONFIRM_DELETE_PHRASE = "delete my account";
   const canDelete = deleteConfirmText.toLowerCase() === CONFIRM_DELETE_PHRASE;
@@ -135,6 +148,30 @@ export function ResponsiveSettings({
       console.error("Failed to update timezone:", error);
     } finally {
       setIsSavingTimezone(false);
+    }
+  };
+
+  const handleEmailPrefsChange = async (updates: {
+    digestPaused?: boolean;
+    reportSchedule?: string;
+    reportDay?: number;
+  }) => {
+    setIsSavingEmailPrefs(true);
+    try {
+      const response = await fetch("/api/user/email-preferences", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      });
+      if (response.ok) {
+        if (updates.digestPaused !== undefined) setDigestPaused(updates.digestPaused);
+        if (updates.reportSchedule !== undefined) setReportSchedule(updates.reportSchedule);
+        if (updates.reportDay !== undefined) setReportDay(updates.reportDay);
+      }
+    } catch (error) {
+      console.error("Failed to update email preferences:", error);
+    } finally {
+      setIsSavingEmailPrefs(false);
     }
   };
 
@@ -356,6 +393,129 @@ export function ResponsiveSettings({
               Digest emails will be sent at 9 AM in your timezone
             </p>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Email & Reports */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Mail className="h-5 w-5" />
+            Email & Reports
+          </CardTitle>
+          <CardDescription>
+            Manage your email preferences and scheduled reports
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Pause Digests Toggle */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="pause-digests" className="text-sm font-medium">
+                Pause Email Digests
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Temporarily stop all digest emails while keeping monitors active
+              </p>
+            </div>
+            <Switch
+              id="pause-digests"
+              checked={digestPaused}
+              onCheckedChange={(checked) => handleEmailPrefsChange({ digestPaused: checked })}
+              disabled={isSavingEmailPrefs}
+            />
+          </div>
+
+          {/* Scheduled PDF Reports - Team tier only */}
+          {subscriptionStatus === "enterprise" && (
+            <div className="pt-4 border-t space-y-4">
+              <div className="flex items-center gap-2">
+                <FileText className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Scheduled PDF Reports</span>
+                <Badge variant="secondary" className="text-xs">Team</Badge>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Receive automated PDF reports summarizing your community monitoring data
+              </p>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="report-schedule" className="text-sm">
+                    Report Frequency
+                  </Label>
+                  <Select
+                    value={reportSchedule}
+                    onValueChange={(value) => handleEmailPrefsChange({ reportSchedule: value })}
+                    disabled={isSavingEmailPrefs}
+                  >
+                    <SelectTrigger id="report-schedule">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="off">Off</SelectItem>
+                      <SelectItem value="weekly">Weekly</SelectItem>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {reportSchedule !== "off" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="report-day" className="text-sm">
+                      {reportSchedule === "weekly" ? "Day of Week" : "Day of Month"}
+                    </Label>
+                    <Select
+                      value={reportDay.toString()}
+                      onValueChange={(value) => handleEmailPrefsChange({ reportDay: parseInt(value) })}
+                      disabled={isSavingEmailPrefs}
+                    >
+                      <SelectTrigger id="report-day">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {reportSchedule === "weekly" ? (
+                          <>
+                            <SelectItem value="1">Monday</SelectItem>
+                            <SelectItem value="2">Tuesday</SelectItem>
+                            <SelectItem value="3">Wednesday</SelectItem>
+                            <SelectItem value="4">Thursday</SelectItem>
+                            <SelectItem value="5">Friday</SelectItem>
+                            <SelectItem value="6">Saturday</SelectItem>
+                            <SelectItem value="7">Sunday</SelectItem>
+                          </>
+                        ) : (
+                          <>
+                            <SelectItem value="1">1st</SelectItem>
+                            <SelectItem value="15">15th</SelectItem>
+                          </>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+
+              {reportSchedule !== "off" && (
+                <p className="text-xs text-muted-foreground">
+                  Reports are sent at 6 AM UTC on your selected day
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Upsell for non-Team users */}
+          {subscriptionStatus !== "enterprise" && (
+            <div className="pt-4 border-t">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <FileText className="h-4 w-4" />
+                <span className="text-sm">Scheduled PDF Reports</span>
+                <Badge variant="outline" className="text-xs">Team</Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Upgrade to Team to receive automated weekly or monthly PDF reports
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
