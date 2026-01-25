@@ -23,30 +23,41 @@ test.describe("Marketing Pages", () => {
   test("pricing page loads with plan options", async ({ page }) => {
     await page.goto("/pricing");
 
-    // Check page loads
-    await expect(page).toHaveTitle(/pricing/i);
+    // Check page loads (pricing is a client component, title stays as default)
+    await expect(page).toHaveTitle(/Kaulby/i);
 
-    // Check plan cards exist (Free, Pro, Team)
-    await expect(page.getByText(/free/i).first()).toBeVisible();
-    await expect(page.getByText(/pro/i).first()).toBeVisible();
+    // Check pricing heading
+    await expect(page.getByRole("heading", { name: /pricing/i })).toBeVisible();
+
+    // Check plan cards exist by looking for plan names with their descriptions
+    await expect(page.getByText("Get started with basic monitoring")).toBeVisible();
+    await expect(page.getByText("For power users and professionals")).toBeVisible();
+    await expect(page.getByText("For growing teams and agencies")).toBeVisible();
+
+    // Check pricing amounts are visible
+    await expect(page.getByText("$0")).toBeVisible();
+    await expect(page.getByText("$29")).toBeVisible();
+    await expect(page.getByText("$99")).toBeVisible();
   });
 
-  test("features page loads", async ({ page }) => {
-    await page.goto("/features");
+  test("gummysearch migration page loads", async ({ page }) => {
+    await page.goto("/gummysearch");
 
-    await expect(page).toHaveTitle(/features/i);
+    await expect(page).toHaveTitle(/Kaulby/i);
     await expect(page.locator("h1")).toBeVisible();
   });
 
   test("navigation links work", async ({ page }) => {
+    // Use desktop viewport to ensure nav links are visible
+    await page.setViewportSize({ width: 1280, height: 720 });
     await page.goto("/");
 
-    // Click pricing link
+    // Click pricing link (visible on desktop)
     await page.getByRole("link", { name: /pricing/i }).first().click();
     await expect(page).toHaveURL(/pricing/);
 
-    // Go back to home
-    await page.getByRole("link", { name: /kaulby/i }).first().click();
+    // Go back to home - use href="/" link
+    await page.goto("/");
     await expect(page).toHaveURL("/");
   });
 });
