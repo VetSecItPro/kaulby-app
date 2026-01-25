@@ -26,6 +26,7 @@ import {
 import { MarketingHeader } from "@/components/shared/marketing-header";
 import { MarketingFooter } from "@/components/shared/marketing-footer";
 import { ALL_TRACKED_SUBREDDITS } from "@/lib/inngest";
+import { SubredditSchema } from "@/lib/seo/structured-data";
 
 // Subreddit metadata for SEO (descriptions, topics, use cases)
 const subredditMetadata: Record<string, {
@@ -531,40 +532,10 @@ export default async function SubredditPage({
       </section>
 
       {/* Schema.org Structured Data */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "WebPage",
-            name: `Monitor r/${normalizedSlug} | Kaulby`,
-            description: meta.description,
-            url: `https://kaulbyapp.com/subreddits/${normalizedSlug}`,
-            mainEntity: {
-              "@type": "SoftwareApplication",
-              name: "Kaulby",
-              applicationCategory: "BusinessApplication",
-              offers: {
-                "@type": "Offer",
-                price: "0",
-                priceCurrency: "USD",
-                description: "Free tier available",
-              },
-            },
-            about: {
-              "@type": "Thing",
-              name: `r/${normalizedSlug}`,
-              description: meta.description,
-              ...(memberCount > 0 && {
-                additionalProperty: {
-                  "@type": "PropertyValue",
-                  name: "members",
-                  value: memberCount,
-                },
-              }),
-            },
-          }),
-        }}
+      <SubredditSchema
+        subreddit={normalizedSlug}
+        description={meta.description}
+        memberCount={memberCount}
       />
 
       <MarketingFooter />

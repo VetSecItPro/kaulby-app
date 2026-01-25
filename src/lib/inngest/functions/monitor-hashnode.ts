@@ -6,6 +6,7 @@ import { incrementResultsCount, canAccessPlatform, shouldProcessMonitor } from "
 import { contentMatchesMonitor } from "@/lib/content-matcher";
 import { calculateStaggerDelay, formatStaggerDuration, addJitter, getStaggerWindow } from "../utils/stagger";
 import { isMonitorScheduleActive } from "@/lib/monitor-schedule";
+import { AI_BATCH_CONFIG } from "@/lib/ai/sampling";
 
 // Hashnode article interface
 interface HashnodeArticle {
@@ -230,6 +231,7 @@ export const monitorHashnode = inngest.createFunction(
       }
 
       let monitorMatchCount = 0;
+      const newResultIds: string[] = [];
 
       // Search Hashnode
       const articles = await step.run(`search-hashnode-${monitor.id}`, async () => {
@@ -280,17 +282,40 @@ export const monitorHashnode = inngest.createFunction(
 
             totalResults++;
             monitorMatchCount++;
+            newResultIds.push(newResult.id);
             await incrementResultsCount(monitor.userId, 1);
-
-            await inngest.send({
-              name: "content/analyze",
-              data: {
-                resultId: newResult.id,
-                userId: monitor.userId,
-              },
-            });
           }
         }
+      }
+
+      // Trigger AI analysis - batch mode for large volumes, individual for small
+      if (newResultIds.length > 0) {
+        await step.run(`trigger-analysis-${monitor.id}`, async () => {
+          if (newResultIds.length > AI_BATCH_CONFIG.BATCH_THRESHOLD) {
+            // Batch mode for cost efficiency (>50 results)
+            await inngest.send({
+              name: "content/analyze-batch",
+              data: {
+                monitorId: monitor.id,
+                userId: monitor.userId,
+                platform: "hashnode",
+                resultIds: newResultIds,
+                totalCount: newResultIds.length,
+              },
+            });
+          } else {
+            // Individual analysis for small volumes
+            for (const resultId of newResultIds) {
+              await inngest.send({
+                name: "content/analyze",
+                data: {
+                  resultId,
+                  userId: monitor.userId,
+                },
+              });
+            }
+          }
+        });
       }
 
       monitorResults[monitor.id] = monitorMatchCount;
