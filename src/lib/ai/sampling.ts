@@ -131,8 +131,72 @@ function shuffleArray<T>(array: T[]): T[] {
 export const AI_BATCH_CONFIG = {
   /** Number of results that triggers batch mode instead of per-item analysis */
   BATCH_THRESHOLD: 50,
-  /** How many items to sample for batch analysis */
-  BATCH_SAMPLE_SIZE: 25,
+  /** Minimum sample size (for small batches 50-100) */
+  MIN_SAMPLE_SIZE: 25,
+  /** Maximum sample size (cost cap for very large batches) */
+  MAX_SAMPLE_SIZE: 100,
+  /** Target coverage percentage for adaptive sampling */
+  TARGET_COVERAGE_PERCENT: 10,
   /** Model to use for batch analysis (use cheap/fast model) */
   BATCH_MODEL: "google/gemini-2.5-flash",
 } as const;
+
+/**
+ * Calculate adaptive sample size based on total count
+ *
+ * Strategy: Aim for ~10% coverage with diminishing returns at scale
+ * - 50-100 results: 25 samples (25-50% coverage) - good baseline
+ * - 100-250 results: 25-35 samples (10-25% coverage)
+ * - 250-500 results: 35-50 samples (10-14% coverage)
+ * - 500-1000 results: 50-75 samples (7.5-10% coverage)
+ * - 1000+ results: 75-100 samples (cap for cost control)
+ *
+ * Cost estimate (Gemini 2.5 Flash):
+ * - 25 samples: ~$0.10-0.15
+ * - 50 samples: ~$0.20-0.25
+ * - 75 samples: ~$0.30-0.40
+ * - 100 samples: ~$0.40-0.50
+ *
+ * vs Individual analysis: 500 results × $0.02 = $10.00 (97% savings!)
+ */
+export function getAdaptiveSampleSize(totalCount: number): number {
+  const { MIN_SAMPLE_SIZE, MAX_SAMPLE_SIZE, TARGET_COVERAGE_PERCENT } = AI_BATCH_CONFIG;
+
+  // Calculate target based on percentage
+  const targetSize = Math.ceil(totalCount * (TARGET_COVERAGE_PERCENT / 100));
+
+  // Apply bounds
+  return Math.max(MIN_SAMPLE_SIZE, Math.min(MAX_SAMPLE_SIZE, targetSize));
+}
+
+/**
+ * Get adaptive sampling configuration that scales category counts proportionally
+ *
+ * Categories (each gets ~20% of sample size):
+ * 1. Top engaged - most impactful voices
+ * 2. Most recent - current trends
+ * 3. Extreme ratings - complaints/issues
+ * 4. Detailed content - substantive feedback
+ * 5. Random - statistical representation
+ */
+export function getAdaptiveSamplingConfig(totalCount: number): SamplingConfig {
+  const sampleSize = getAdaptiveSampleSize(totalCount);
+
+  // Each category gets ~20% of samples (4 explicit + random fills the rest)
+  const categorySize = Math.floor(sampleSize / 5);
+
+  return {
+    sampleSize,
+    topEngagedCount: categorySize,
+    recentCount: categorySize,
+    extremeRatingCount: categorySize,
+    detailedCount: categorySize,
+    // Note: Random sampling automatically fills remaining slots in selectRepresentativeSample()
+  };
+}
+
+/**
+ * Legacy constant for backwards compatibility
+ * @deprecated Use getAdaptiveSampleSize() instead
+ */
+export const BATCH_SAMPLE_SIZE = AI_BATCH_CONFIG.MIN_SAMPLE_SIZE;
