@@ -36,6 +36,19 @@ function getCurrentDayInTimezone(timezone: string): number {
   }
 }
 
+// Get current day of month in a timezone (1-31)
+function getCurrentDayOfMonthInTimezone(timezone: string): number {
+  try {
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      day: "numeric",
+    });
+    return parseInt(formatter.format(new Date()), 10);
+  } catch {
+    return new Date().getUTCDate();
+  }
+}
+
 // Check if a timezone string is valid
 function isValidTimezone(tz: string): boolean {
   try {
@@ -607,6 +620,245 @@ export const sendWeeklyDigest = inngest.createFunction(
     return {
       message: "Weekly digest completed",
       processedTimezones: timezonesAt9AMOnMonday,
+      results: digestResults,
+    };
+  }
+);
+
+// Shared monthly digest logic for a specific timezone
+async function sendMonthlyDigestForTimezone(
+  timezone: string,
+  step: InngestStep
+) {
+  // Get all users with monthly email alerts in this timezone
+  const usersWithAlerts: UserWithMonitors[] = await step.run(`get-users-${timezone.replace("/", "-")}`, async () => {
+    return db.query.users.findMany({
+      where: eq(users.timezone, timezone),
+      with: {
+        monitors: {
+          with: {
+            alerts: {
+              where: and(
+                eq(alerts.isActive, true),
+                eq(alerts.frequency, "monthly"),
+                eq(alerts.channel, "email")
+              ),
+            },
+          },
+        },
+      },
+    });
+  });
+
+  let digestsSent = 0;
+  let skippedNoResults = 0;
+
+  for (const user of usersWithAlerts) {
+    const hasEmailAlerts = user.monitors.some((m) =>
+      m.alerts.some((a) => a.channel === "email" && a.frequency === "monthly")
+    );
+
+    if (!hasEmailAlerts) continue;
+
+    // Get results from last 30 days that haven't been sent in a monthly digest
+    const monthAgo = new Date();
+    monthAgo.setDate(monthAgo.getDate() - 30);
+
+    const userResults: ResultWithMonitor[] = await step.run(`get-results-${user.id}`, async () => {
+      const monitorIds = user.monitors.map((m) => m.id);
+      if (monitorIds.length === 0) return [];
+
+      return db.query.results.findMany({
+        where: and(
+          inArray(results.monitorId, monitorIds),
+          gte(results.createdAt, monthAgo),
+          isNull(results.lastSentInDigestAt) // Don't resend already-sent results
+        ),
+        orderBy: (results, { desc }) => [desc(results.createdAt)],
+      });
+    });
+
+    if (userResults.length === 0) {
+      skippedNoResults++;
+      continue;
+    }
+
+    // Group results by monitor, platform, and category
+    const resultsByMonitor = new Map<string, ResultWithMonitor[]>();
+    const resultsByPlatform = new Map<string, ResultWithMonitor[]>();
+    const resultsByCategory = new Map<string, ResultWithMonitor[]>();
+    for (const result of userResults) {
+      // Group by monitor
+      const existingMonitor = resultsByMonitor.get(result.monitorId) || [];
+      existingMonitor.push(result);
+      resultsByMonitor.set(result.monitorId, existingMonitor);
+
+      // Group by platform
+      const existingPlatform = resultsByPlatform.get(result.platform) || [];
+      existingPlatform.push(result);
+      resultsByPlatform.set(result.platform, existingPlatform);
+
+      // Group by category
+      const category = result.conversationCategory || "general";
+      const existingCategory = resultsByCategory.get(category) || [];
+      existingCategory.push(result);
+      resultsByCategory.set(category, existingCategory);
+    }
+
+    // Check if user has Pro+ plan for AI insights
+    const limits = getPlanLimits(user.subscriptionStatus);
+    const includeAiInsights = limits.aiFeatures.unlimitedAiAnalysis;
+
+    // Generate AI insights for Pro+ users
+    let aiInsights: WeeklyInsights | undefined;
+    if (includeAiInsights && userResults.length >= 5) {
+      try {
+        const insightsResult = await step.run(`generate-insights-${user.id}`, async () => {
+          const analysisResults = userResults.map(r => ({
+            title: r.title,
+            content: r.content,
+            platform: r.platform,
+            sentiment: r.sentiment,
+            painPointCategory: r.painPointCategory,
+            aiSummary: r.aiSummary,
+          }));
+          return generateWeeklyInsights(analysisResults);
+        });
+        aiInsights = insightsResult.result;
+      } catch (error) {
+        console.error(`Failed to generate AI insights for user ${user.id}:`, error);
+        // Continue without AI insights
+      }
+    }
+
+    await step.run(`send-digest-${user.id}`, async () => {
+      const monitorsData = user.monitors
+        .filter((m) => resultsByMonitor.has(m.id))
+        .map((m) => {
+          const monitorResults = resultsByMonitor.get(m.id) || [];
+          return {
+            name: m.name,
+            resultsCount: monitorResults.length,
+            topResults: monitorResults.slice(0, 15).map((r) => ({
+              title: r.title,
+              url: r.sourceUrl,
+              platform: r.platform,
+              sentiment: r.sentiment,
+              summary: r.aiSummary,
+              category: r.conversationCategory,
+            })),
+          };
+        });
+
+      // Platform breakdown for the digest
+      const platformBreakdown = Array.from(resultsByPlatform.entries()).map(([platform, platformResults]) => ({
+        platform,
+        count: platformResults.length,
+      }));
+
+      // Category breakdown for the digest
+      const categoryBreakdown = Array.from(resultsByCategory.entries()).map(([category, categoryResults]) => ({
+        category,
+        count: categoryResults.length,
+      }));
+
+      await sendDigestEmail({
+        to: user.email,
+        userName: user.name || "there",
+        frequency: "monthly",
+        monitors: monitorsData,
+        aiInsights,
+        platformBreakdown,
+        categoryBreakdown,
+      });
+
+      // Mark results as sent in digest (deduplication)
+      const resultIds = userResults.map(r => r.id);
+      if (resultIds.length > 0) {
+        await db
+          .update(results)
+          .set({ lastSentInDigestAt: new Date() })
+          .where(inArray(results.id, resultIds));
+      }
+
+      digestsSent++;
+    });
+  }
+
+  return {
+    timezone,
+    digestsSent,
+    skippedNoResults,
+  };
+}
+
+// Monthly digest - runs every hour on the 1st of each month to catch 9 AM in every timezone
+export const sendMonthlyDigest = inngest.createFunction(
+  {
+    id: "send-monthly-digest",
+    name: "Monthly Digest (Worldwide)",
+    retries: 2,
+  },
+  { cron: "0 * 1 * *" }, // Run every hour on the 1st of each month
+  async ({ step }) => {
+    const TARGET_HOUR = 9; // 9 AM local time
+
+    // Get all unique timezones from users with monthly email alerts
+    const uniqueTimezones = await step.run("get-unique-timezones", async () => {
+      const usersWithMonthlyAlerts = await db.query.users.findMany({
+        columns: { timezone: true },
+        with: {
+          monitors: {
+            with: {
+              alerts: {
+                where: and(
+                  eq(alerts.isActive, true),
+                  eq(alerts.frequency, "monthly"),
+                  eq(alerts.channel, "email")
+                ),
+              },
+            },
+          },
+        },
+      });
+
+      // Filter to users who actually have monthly email alerts and get unique timezones
+      const timezones = new Set<string>();
+      for (const user of usersWithMonthlyAlerts) {
+        const hasMonthlyEmail = user.monitors.some(m => m.alerts.length > 0);
+        if (hasMonthlyEmail && user.timezone && isValidTimezone(user.timezone)) {
+          timezones.add(user.timezone);
+        }
+      }
+      return Array.from(timezones);
+    });
+
+    // Find which timezones are at 9 AM AND it's the 1st of the month there
+    const timezonesAt9AMOn1st = uniqueTimezones.filter(
+      tz => getCurrentHourInTimezone(tz) === TARGET_HOUR && getCurrentDayOfMonthInTimezone(tz) === 1
+    );
+
+    if (timezonesAt9AMOn1st.length === 0) {
+      return {
+        message: "No user timezones at 9 AM on the 1st right now",
+        totalTimezones: uniqueTimezones.length,
+        checkedTimezones: uniqueTimezones.slice(0, 10).map(tz => ({
+          timezone: tz,
+          currentHour: getCurrentHourInTimezone(tz),
+          currentDayOfMonth: getCurrentDayOfMonthInTimezone(tz),
+        })),
+      };
+    }
+
+    const digestResults = [];
+    for (const timezone of timezonesAt9AMOn1st) {
+      const result = await sendMonthlyDigestForTimezone(timezone, step);
+      digestResults.push(result);
+    }
+
+    return {
+      message: "Monthly digest completed",
+      processedTimezones: timezonesAt9AMOn1st,
       results: digestResults,
     };
   }

@@ -21,7 +21,7 @@ export { monitorHashnode } from "./functions/monitor-hashnode";
 export { scanOnDemand } from "./functions/scan-on-demand";
 export { analyzeContent } from "./functions/analyze-content";
 export { analyzeContentBatch, shouldUseBatchMode } from "./functions/analyze-content-batch";
-export { sendAlert, sendDailyDigest, sendWeeklyDigest } from "./functions/send-alerts";
+export { sendAlert, sendDailyDigest, sendWeeklyDigest, sendMonthlyDigest } from "./functions/send-alerts";
 export { dataRetention, resetUsageCounters, cleanupAiLogs } from "./functions/data-retention";
 export { sendWebhookEvent, processWebhookDelivery, retryWebhookDeliveries, cleanupWebhookDeliveries } from "./functions/webhook-delivery";
 export { scheduledAccountDeletion } from "./functions/account-deletion";
@@ -30,6 +30,7 @@ export { resetStuckScans } from "./functions/reset-stuck-scans";
 export { checkBudgetAlerts } from "./functions/budget-alerts";
 export { collectCommunityStats, fetchSubredditStats, getLatestStats, ALL_TRACKED_SUBREDDITS } from "./functions/community-stats";
 export { detectInactiveUsers, sendReengagement } from "./functions/reengagement";
+export { sendScheduledReports } from "./functions/send-scheduled-reports";
 
 // All functions for the Inngest handler
 import { monitorReddit } from "./functions/monitor-reddit";
@@ -53,7 +54,7 @@ import { monitorHashnode } from "./functions/monitor-hashnode";
 import { scanOnDemand } from "./functions/scan-on-demand";
 import { analyzeContent } from "./functions/analyze-content";
 import { analyzeContentBatch } from "./functions/analyze-content-batch";
-import { sendAlert, sendDailyDigest, sendWeeklyDigest } from "./functions/send-alerts";
+import { sendAlert, sendDailyDigest, sendWeeklyDigest, sendMonthlyDigest } from "./functions/send-alerts";
 import { dataRetention, resetUsageCounters, cleanupAiLogs } from "./functions/data-retention";
 import { sendWebhookEvent, processWebhookDelivery, retryWebhookDeliveries, cleanupWebhookDeliveries } from "./functions/webhook-delivery";
 import { scheduledAccountDeletion } from "./functions/account-deletion";
@@ -62,6 +63,7 @@ import { resetStuckScans } from "./functions/reset-stuck-scans";
 import { checkBudgetAlerts } from "./functions/budget-alerts";
 import { collectCommunityStats, fetchSubredditStats } from "./functions/community-stats";
 import { detectInactiveUsers, sendReengagement } from "./functions/reengagement";
+import { sendScheduledReports } from "./functions/send-scheduled-reports";
 
 export const functions = [
   monitorReddit,
@@ -88,6 +90,7 @@ export const functions = [
   sendAlert,
   sendDailyDigest,
   sendWeeklyDigest,
+  sendMonthlyDigest,
   dataRetention,
   resetUsageCounters,
   cleanupAiLogs,
@@ -104,4 +107,6 @@ export const functions = [
   // Churn prevention
   detectInactiveUsers,
   sendReengagement,
+  // Scheduled reports
+  sendScheduledReports,
 ];

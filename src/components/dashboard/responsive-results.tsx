@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button";
 import { HiddenResultsBanner, RefreshDelayBanner } from "./upgrade-prompt";
 import { EmptyState, ScanningState } from "./empty-states";
 import { Download, Lock, SlidersHorizontal, X, Loader2, ChevronDown } from "lucide-react";
+import { SavedSearches } from "./saved-searches";
+import { SearchBuilder } from "./search-builder";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import type { PlanKey } from "@/lib/plans";
 import { parseSearchQuery, matchesQuery } from "@/lib/search-parser";
@@ -598,9 +600,38 @@ function DesktopResultsView(props: ViewProps) {
                 placeholder="Search results... (try: title:bug OR &quot;pricing feedback&quot;)"
               />
             </div>
+            <SearchBuilder onApply={setSearchQuery} />
             <DateRangePicker
               value={dateRange}
               onChange={setDateRange}
+            />
+            <SavedSearches
+              currentQuery={searchQuery}
+              currentFilters={{
+                platforms: selectedPlatform ? [selectedPlatform] : undefined,
+                sentiments: selectedSentiment ? [selectedSentiment] : undefined,
+                categories: selectedCategory ? [selectedCategory] : undefined,
+              }}
+              onSelectSearch={(query, filters) => {
+                setSearchQuery(query);
+                if (filters) {
+                  if (filters.platforms?.length) {
+                    setSelectedPlatform(filters.platforms[0]);
+                  } else {
+                    setSelectedPlatform(null);
+                  }
+                  if (filters.sentiments?.length) {
+                    setSelectedSentiment(filters.sentiments[0]);
+                  } else {
+                    setSelectedSentiment(null);
+                  }
+                  if (filters.categories?.length) {
+                    setSelectedCategory(filters.categories[0] as ConversationCategory);
+                  } else {
+                    setSelectedCategory(null);
+                  }
+                }
+              }}
             />
             <Button
               variant="outline"
