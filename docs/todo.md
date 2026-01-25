@@ -2,7 +2,7 @@
 
 Active gaps, migrations, and known issues. See also: `docs/platforms-research.md` for platform API research.
 
-**Last updated:** January 18, 2026
+**Last updated:** January 25, 2026
 
 ---
 
@@ -40,9 +40,9 @@ Run these in order after schema.ts updates:
 
 1. [x] Update `src/lib/db/schema.ts` with all missing fields ✅
 2. [x] Run `npm run db:push` to apply to Neon ✅
-3. [ ] Verify in Drizzle Studio (`npm run db:studio`)
-4. [ ] Update any affected queries/types in codebase
-5. [ ] Test locally with dev server
+3. [x] Verify in Drizzle Studio (`npm run db:studio`) ✅
+4. [x] Update any affected queries/types in codebase ✅
+5. [x] Test locally with dev server ✅
 
 ---
 
@@ -122,6 +122,36 @@ Track pre-existing bugs/errors discovered during development here. Fix after cur
 
 ---
 
+## Remaining Features To Implement
+
+Prioritized list of features not yet built. Update as items are completed.
+
+### Priority 1 - High Value / User Requested
+1. [ ] **AI Response Suggestions** - Generate reply drafts for mentions users want to respond to
+2. [ ] **Competitor Benchmarking** - Compare mention volume/sentiment vs competitor brands
+3. [ ] **Custom AI Prompts** - Let Pro+ users customize analysis prompts for their use case
+4. [ ] **Scheduled PDF Reports** - Weekly/monthly PDF exports sent via email
+
+### Priority 2 - Extensions & Integrations (Later)
+5. [ ] **Browser Extension** - Quick-add mentions from any webpage (uses existing auth + tier limits)
+6. [ ] **Slack Bot** - Interactive slash commands for monitoring from Slack
+
+### Priority 3 - Technical Improvements
+7. [x] **E2E Tests (Playwright)** ✅ - `e2e/` directory with marketing, auth, accessibility tests
+8. [x] **Lighthouse CI** ✅ - Performance audits in CI pipeline via `lighthouserc.json`
+9. [ ] **Migrate from `unstable_cache`** - When Next.js stabilizes caching API
+
+### Completed / Not Needed
+- [x] **Mobile App (PWA)** ✅ - Already implemented (`public/manifest.json`)
+- ~~X/Twitter Monitoring~~ - Deferred (platform risk)
+- ~~LinkedIn Monitoring~~ - Deferred (API limitations)
+- ~~Facebook Groups~~ - Deferred (platform risk)
+- ~~White-label Option~~ - Deferred (post-scale)
+- ~~SSO/SAML~~ - Deferred (need 2,000-4,000+ users first)
+- ~~Custom Domains~~ - Deferred (low priority vanity feature)
+
+---
+
 ## Completed
 
 - [x] CLAUDE.md updated with development philosophy and expanded limits (Jan 13, 2026)
@@ -134,3 +164,19 @@ Track pre-existing bugs/errors discovered during development here. Fix after cur
 - [x] Data retention enforcement - Inngest cron jobs for tier-based cleanup (already implemented)
 - [x] Webhook configurations with retry logic - Full implementation with delivery tracking (already implemented)
 - [x] Team workspaces - Schema, APIs, UI for Enterprise team management (already implemented)
+- [x] **Security Library** - Centralized sanitization utilities in `src/lib/security/` (Jan 25, 2026)
+  - XSS prevention (`escapeHtml`)
+  - ReDoS prevention (`escapeRegExp`)
+  - URL sanitization (`sanitizeUrl`)
+  - Log injection prevention (`sanitizeForLog`)
+- [x] **Churn Prevention System** (Jan 25, 2026)
+  - Activity tracking (`lastActiveAt`, `reengagementEmailSentAt` columns)
+  - Inngest cron job to detect inactive users (7+ days)
+  - Re-engagement emails with personalized stats
+- [x] **Navigation Prefetching** (Jan 25, 2026)
+  - `NavLink` component with hover-based prefetch
+  - `RoutePreloader` for critical dashboard routes
+- [x] **Server-side Caching** - `unstable_cache()` wrappers in `src/lib/server-cache.ts` (Jan 25, 2026)
+- [x] **CI/CD Improvements** - GitHub Actions fixes, Semgrep security scanning (Jan 25, 2026)
+- [x] **E2E Tests (Playwright)** - `e2e/` with marketing, auth, accessibility tests (Jan 25, 2026)
+- [x] **Lighthouse CI** - Performance audits in CI pipeline (Jan 25, 2026)
