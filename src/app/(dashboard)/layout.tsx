@@ -2,8 +2,9 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { DashboardClientWrapper } from "@/components/dashboard/dashboard-client-wrapper";
 import { ResponsiveDashboardLayout } from "@/components/dashboard/responsive-dashboard-layout";
+import { RoutePreloader } from "@/components/dashboard/route-preloader";
 import { db } from "@/lib/db";
-import { monitors } from "@/lib/db/schema";
+import { monitors, users } from "@/lib/db/schema";
 import { eq, count } from "drizzle-orm";
 
 export default async function DashboardLayout({
@@ -21,6 +22,7 @@ export default async function DashboardLayout({
   if (isLocalDev) {
     return (
       <ResponsiveDashboardLayout isAdmin={true} subscriptionStatus="enterprise">
+        <RoutePreloader />
         <DashboardClientWrapper isNewUser={false} userName="Dev User">
           {children}
         </DashboardClientWrapper>
@@ -63,6 +65,14 @@ export default async function DashboardLayout({
     redirect("/banned");
   }
 
+  // Track user activity for churn prevention (fire and forget, don't await)
+  // Updates lastActiveAt to detect inactive users later
+  db.update(users)
+    .set({ lastActiveAt: new Date() })
+    .where(eq(users.id, userId))
+    .execute()
+    .catch(() => {}); // Silently ignore errors
+
   const hasMonitors = (monitorsCountResult[0]?.count || 0) > 0;
   // Use database onboardingCompleted as source of truth, fall back to hasMonitors for legacy users
   const onboardingCompleted = dbUser?.onboardingCompleted ?? hasMonitors;
@@ -93,6 +103,7 @@ export default async function DashboardLayout({
       dayPassExpiresAt={dayPassExpiresAt}
       workspaceRole={workspaceRole}
     >
+      <RoutePreloader />
       <DashboardClientWrapper isNewUser={isNewUser} userName={userName} userPlan={userPlan}>
         {children}
       </DashboardClientWrapper>

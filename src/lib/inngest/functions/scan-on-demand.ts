@@ -239,6 +239,69 @@ interface MonitorData {
   companyName: string | null;
   keywords: string[];
   audienceId: string | null;
+  monitorType: "keyword" | "ai_discovery";
+  discoveryPrompt: string | null;
+}
+
+/**
+ * Check if content matches monitor criteria.
+ * For keyword monitors: uses keyword matching
+ * For AI Discovery monitors: uses semantic AI matching
+ */
+async function contentMatchesMonitor(
+  content: { title: string; body?: string; author?: string; platform?: string },
+  monitor: MonitorData
+): Promise<{ isMatch: boolean; matchInfo?: { type: string; signals?: string[] } }> {
+  const text = `${content.title} ${content.body || ""}`.toLowerCase();
+
+  // For keyword monitors, use traditional keyword matching
+  if (monitor.monitorType !== "ai_discovery") {
+    // Check company name match
+    if (monitor.companyName && text.includes(monitor.companyName.toLowerCase())) {
+      return { isMatch: true, matchInfo: { type: "company_mention" } };
+    }
+
+    // Check keyword match
+    if (monitor.keywords.length > 0) {
+      const matchedKeywords = monitor.keywords.filter((k) => text.includes(k.toLowerCase()));
+      if (matchedKeywords.length > 0) {
+        return { isMatch: true, matchInfo: { type: "keyword", signals: matchedKeywords } };
+      }
+    }
+
+    return { isMatch: false };
+  }
+
+  // For AI Discovery monitors, use semantic matching
+  if (!monitor.discoveryPrompt) {
+    console.warn(`[AI Discovery] Monitor ${monitor.id} has no discovery prompt`);
+    return { isMatch: false };
+  }
+
+  try {
+    // Use the AI Discovery analyzer
+    const { checkAIDiscoveryMatch } = await import("@/lib/ai/analyzers/ai-discovery");
+    const { result } = await checkAIDiscoveryMatch(
+      content,
+      monitor.discoveryPrompt,
+      monitor.companyName
+    );
+
+    if (result.isMatch && result.relevanceScore >= 0.5) {
+      return {
+        isMatch: true,
+        matchInfo: {
+          type: `ai_discovery_${result.matchType}`,
+          signals: result.signals,
+        },
+      };
+    }
+
+    return { isMatch: false };
+  } catch (error) {
+    console.error(`[AI Discovery] Error checking match for monitor ${monitor.id}:`, error);
+    return { isMatch: false };
+  }
 }
 
 async function scanRedditForMonitor(monitor: MonitorData): Promise<number> {
@@ -292,17 +355,13 @@ async function scanRedditForMonitor(monitor: MonitorData): Promise<number> {
       console.log(`[Reddit] Using ${searchResult.source} for r/${subreddit}, found ${searchResult.posts.length} posts`);
 
       for (const post of searchResult.posts) {
-        const text = `${post.title} ${post.selftext}`.toLowerCase();
+        // Check for matches using unified matching function
+        const matchResult = await contentMatchesMonitor(
+          { title: post.title, body: post.selftext, author: post.author, platform: "reddit" },
+          monitor
+        );
 
-        // Check for matches
-        let isMatch = false;
-        if (monitor.companyName && text.includes(monitor.companyName.toLowerCase())) {
-          isMatch = true;
-        } else if (monitor.keywords.length > 0) {
-          isMatch = monitor.keywords.some((k) => text.includes(k.toLowerCase()));
-        }
-
-        if (isMatch) {
+        if (matchResult.isMatch) {
           const sourceUrl = post.url || `https://reddit.com${post.permalink}`;
           const existing = await db.query.results.findFirst({
             where: eq(results.sourceUrl, sourceUrl),
@@ -363,16 +422,13 @@ async function scanHackerNewsForMonitor(monitor: MonitorData): Promise<number> {
         const story = await storyRes.json();
         if (!story || story.deleted || story.dead) continue;
 
-        const text = `${story.title || ""} ${story.text || ""}`.toLowerCase();
+        // Check for matches using unified matching function
+        const matchResult = await contentMatchesMonitor(
+          { title: story.title || "", body: story.text || "", author: story.by, platform: "hackernews" },
+          monitor
+        );
 
-        let isMatch = false;
-        if (monitor.companyName && text.includes(monitor.companyName.toLowerCase())) {
-          isMatch = true;
-        } else if (monitor.keywords.length > 0) {
-          isMatch = monitor.keywords.some((k) => text.includes(k.toLowerCase()));
-        }
-
-        if (isMatch) {
+        if (matchResult.isMatch) {
           const sourceUrl = `https://news.ycombinator.com/item?id=${id}`;
           const existing = await db.query.results.findFirst({
             where: eq(results.sourceUrl, sourceUrl),
@@ -769,13 +825,13 @@ async function scanProductHuntForMonitor(monitor: MonitorData): Promise<number> 
     const posts = data.data?.posts?.edges?.map((e: { node: unknown }) => e.node) || [];
 
     for (const post of posts) {
-      // Check if post matches monitor keywords
-      const text = `${post.name} ${post.tagline} ${post.description || ""}`.toLowerCase();
-      const isMatch = monitor.keywords.some((keyword: string) =>
-        text.includes(keyword.toLowerCase())
+      // Check for matches using unified matching function
+      const matchResult = await contentMatchesMonitor(
+        { title: `${post.name} - ${post.tagline}`, body: post.description || "", author: post.user?.name, platform: "producthunt" },
+        monitor
       );
 
-      if (!isMatch) continue;
+      if (!matchResult.isMatch) continue;
 
       // Check for existing result
       const existing = await db.query.results.findFirst({
@@ -1100,16 +1156,13 @@ async function scanGitHubForMonitor(monitor: MonitorData): Promise<number> {
       const data = await response.json();
 
       for (const issue of data.items || []) {
-        const text = `${issue.title || ""} ${issue.body || ""}`.toLowerCase();
-        let isMatch = false;
+        // Check for matches using unified matching function
+        const matchResult = await contentMatchesMonitor(
+          { title: issue.title || "", body: issue.body || "", author: issue.user?.login, platform: "github" },
+          monitor
+        );
 
-        if (monitor.companyName && text.includes(monitor.companyName.toLowerCase())) {
-          isMatch = true;
-        } else if (monitor.keywords.length > 0) {
-          isMatch = monitor.keywords.some((k) => text.includes(k.toLowerCase()));
-        }
-
-        if (isMatch) {
+        if (matchResult.isMatch) {
           const existing = await db.query.results.findFirst({
             where: eq(results.sourceUrl, issue.html_url),
           });
@@ -1197,16 +1250,13 @@ async function scanHashnodeForMonitor(monitor: MonitorData): Promise<number> {
         const article = edge.node;
         if (!article) continue;
 
-        const text = `${article.title || ""} ${article.brief || ""}`.toLowerCase();
-        let isMatch = false;
+        // Check for matches using unified matching function
+        const matchResult = await contentMatchesMonitor(
+          { title: article.title || "", body: article.brief || "", author: article.author?.username, platform: "hashnode" },
+          monitor
+        );
 
-        if (monitor.companyName && text.includes(monitor.companyName.toLowerCase())) {
-          isMatch = true;
-        } else if (monitor.keywords.length > 0) {
-          isMatch = monitor.keywords.some((k) => text.includes(k.toLowerCase()));
-        }
-
-        if (isMatch) {
+        if (matchResult.isMatch) {
           const existing = await db.query.results.findFirst({
             where: eq(results.sourceUrl, article.url),
           });
@@ -1282,16 +1332,15 @@ async function scanIndieHackersForMonitor(monitor: MonitorData): Promise<number>
     }
 
     for (const post of posts.slice(0, 50)) {
-      const text = `${post.title || ""} ${post.content_text || ""}`.toLowerCase();
-      let isMatch = false;
+      if (!post.url) continue;
 
-      if (monitor.companyName && text.includes(monitor.companyName.toLowerCase())) {
-        isMatch = true;
-      } else if (monitor.keywords.length > 0) {
-        isMatch = monitor.keywords.some((k) => text.includes(k.toLowerCase()));
-      }
+      // Check for matches using unified matching function
+      const matchResult = await contentMatchesMonitor(
+        { title: post.title || "", body: post.content_text || "", author: post.author?.name || post.authors?.[0]?.name, platform: "indiehackers" },
+        monitor
+      );
 
-      if (isMatch && post.url) {
+      if (matchResult.isMatch) {
         const existing = await db.query.results.findFirst({
           where: eq(results.sourceUrl, post.url),
         });
@@ -1368,16 +1417,13 @@ async function scanDevToForMonitor(monitor: MonitorData): Promise<number> {
         if (seenIds.has(article.id)) continue;
         seenIds.add(article.id);
 
-        const text = `${article.title || ""} ${article.description || ""}`.toLowerCase();
-        let isMatch = false;
+        // Check for matches using unified matching function
+        const matchResult = await contentMatchesMonitor(
+          { title: article.title || "", body: article.description || "", author: article.user.username, platform: "devto" },
+          monitor
+        );
 
-        if (monitor.companyName && text.includes(monitor.companyName.toLowerCase())) {
-          isMatch = true;
-        } else if (monitor.keywords.length > 0) {
-          isMatch = monitor.keywords.some((k) => text.includes(k.toLowerCase()));
-        }
-
-        if (isMatch) {
+        if (matchResult.isMatch) {
           const existing = await db.query.results.findFirst({
             where: eq(results.sourceUrl, article.url),
           });
