@@ -1,6 +1,6 @@
 import { inngest } from "../client";
 import { db } from "@/lib/db";
-import { results, aiLogs, monitors } from "@/lib/db/schema";
+import { results, aiLogs, monitors, painPointCategoryEnum, conversationCategoryEnum } from "@/lib/db/schema";
 import { eq, count } from "drizzle-orm";
 import {
   analyzeSentiment,
@@ -14,6 +14,23 @@ import {
 } from "@/lib/ai";
 import { incrementAiCallsCount, getUserPlan } from "@/lib/limits";
 import { getPlanLimits } from "@/lib/plans";
+import { cache } from "@/lib/cache";
+import crypto from "crypto";
+
+/**
+ * Generate a hash of content for cache key
+ * This enables cross-user caching - if two users have the same content,
+ * we can reuse the AI analysis instead of running it again
+ */
+function generateContentHash(content: string, tier: "pro" | "team"): string {
+  // Normalize content: trim, lowercase for matching
+  const normalized = content.trim().toLowerCase();
+  const hash = crypto.createHash("sha256").update(normalized).digest("hex").slice(0, 16);
+  return `ai-analysis:${tier}:${hash}`;
+}
+
+// Cache TTL for AI analysis - 24 hours (content analysis doesn't change)
+const AI_ANALYSIS_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
 // Analyze content with AI
 export const analyzeContent = inngest.createFunction(
@@ -72,6 +89,61 @@ export const analyzeContent = inngest.createFunction(
     }
 
     const contentToAnalyze = `${result.title}\n\n${result.content || ""}`;
+    const analysisTier = planCheck.useComprehensiveAnalysis ? "team" : "pro";
+    const cacheKey = generateContentHash(contentToAnalyze, analysisTier);
+
+    // =========================================================================
+    // CHECK CACHE: Reuse analysis if this content was already analyzed
+    // This saves 90%+ on AI costs when multiple users monitor similar content
+    // =========================================================================
+    const cachedAnalysis = await step.run("check-analysis-cache", async () => {
+      return cache.get<{
+        tier: string;
+        sentiment: string;
+        sentimentScore: number;
+        painPointCategory?: string;
+        conversationCategory: string;
+        conversationCategoryConfidence: number;
+        aiSummary: string;
+        aiAnalysis: string;
+      }>(cacheKey);
+    });
+
+    if (cachedAnalysis) {
+      console.log(`[AI Analysis] CACHE HIT for ${analysisTier} tier (key: ${cacheKey.slice(-8)})`);
+
+      // Apply cached analysis to this result
+      await step.run("apply-cached-analysis", async () => {
+        // Map "mixed" sentiment to "neutral" for database (schema only supports positive/negative/neutral)
+        const dbSentiment = cachedAnalysis.sentiment === "mixed"
+          ? "neutral"
+          : cachedAnalysis.sentiment as "positive" | "negative" | "neutral";
+
+        await db
+          .update(results)
+          .set({
+            sentiment: dbSentiment,
+            sentimentScore: cachedAnalysis.sentimentScore,
+            painPointCategory: cachedAnalysis.painPointCategory as typeof painPointCategoryEnum.enumValues[number] | null,
+            conversationCategory: cachedAnalysis.conversationCategory as typeof conversationCategoryEnum.enumValues[number],
+            conversationCategoryConfidence: cachedAnalysis.conversationCategoryConfidence,
+            aiSummary: cachedAnalysis.aiSummary,
+            aiAnalysis: cachedAnalysis.aiAnalysis,
+          })
+          .where(eq(results.id, resultId));
+      });
+
+      // No AI cost for cached analysis!
+      return {
+        tier: analysisTier,
+        cached: true,
+        cacheKey,
+        totalCost: 0,
+        message: "Used cached analysis - no AI cost",
+      };
+    }
+
+    console.log(`[AI Analysis] CACHE MISS for ${analysisTier} tier (key: ${cacheKey.slice(-8)}) - running AI`);
 
     // Create Langfuse trace
     const trace = createTrace({
@@ -155,6 +227,35 @@ export const analyzeContent = inngest.createFunction(
             }),
           })
           .where(eq(results.id, resultId));
+      });
+
+      // Cache the analysis for reuse by other users with same content
+      await step.run("cache-team-analysis", async () => {
+        const cacheData = {
+          tier: "team",
+          sentiment: analysis.sentiment.label,
+          sentimentScore: analysis.sentiment.score,
+          painPointCategory: analysis.classification.category,
+          conversationCategory: category.category,
+          conversationCategoryConfidence: category.confidence,
+          aiSummary: analysis.executiveSummary,
+          aiAnalysis: JSON.stringify({
+            tier: "team",
+            sentiment: analysis.sentiment,
+            classification: analysis.classification,
+            conversationCategory: category,
+            opportunity: analysis.opportunity,
+            competitive: analysis.competitive,
+            actions: analysis.actions,
+            suggestedResponse: analysis.suggestedResponse,
+            contentOpportunity: analysis.contentOpportunity,
+            platformContext: analysis.platformContext,
+            executiveSummary: analysis.executiveSummary,
+            analyzedAt: new Date().toISOString(),
+          }),
+        };
+        await cache.set(cacheKey, cacheData, AI_ANALYSIS_CACHE_TTL);
+        console.log(`[AI Analysis] Cached TEAM tier analysis (key: ${cacheKey.slice(-8)})`);
       });
 
       // Log AI usage for Team tier (comprehensive + categorization)
@@ -266,6 +367,29 @@ export const analyzeContent = inngest.createFunction(
           }),
         })
         .where(eq(results.id, resultId));
+    });
+
+    // Cache the analysis for reuse by other users with same content
+    await step.run("cache-pro-analysis", async () => {
+      const cacheData = {
+        tier: "pro",
+        sentiment: sentimentResult.result.sentiment,
+        sentimentScore: sentimentResult.result.score,
+        painPointCategory: painPointResult.result.category,
+        conversationCategory: categoryResult.result.category,
+        conversationCategoryConfidence: categoryResult.result.confidence,
+        aiSummary: summaryResult.result.summary,
+        aiAnalysis: JSON.stringify({
+          tier: "pro",
+          sentiment: sentimentResult.result,
+          painPoint: painPointResult.result,
+          summary: summaryResult.result,
+          conversationCategory: categoryResult.result,
+          analyzedAt: new Date().toISOString(),
+        }),
+      };
+      await cache.set(cacheKey, cacheData, AI_ANALYSIS_CACHE_TTL);
+      console.log(`[AI Analysis] Cached PRO tier analysis (key: ${cacheKey.slice(-8)})`);
     });
 
     // Log AI usage

@@ -134,9 +134,9 @@ export const AI_BATCH_CONFIG = {
   /** Minimum sample size (for small batches 50-100) */
   MIN_SAMPLE_SIZE: 25,
   /** Maximum sample size (cost cap for very large batches) */
-  MAX_SAMPLE_SIZE: 100,
-  /** Target coverage percentage for adaptive sampling */
-  TARGET_COVERAGE_PERCENT: 10,
+  MAX_SAMPLE_SIZE: 150,
+  /** Target coverage percentage for adaptive sampling (15% ensures good insight quality) */
+  TARGET_COVERAGE_PERCENT: 15,
   /** Model to use for batch analysis (use cheap/fast model) */
   BATCH_MODEL: "google/gemini-2.5-flash",
 } as const;
