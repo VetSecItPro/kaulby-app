@@ -1,16 +1,18 @@
 /**
  * Query Cache Module
  *
- * Implements in-memory caching with TTL for API calls (Serper, Reddit, etc.)
+ * Implements caching with TTL for API calls (Serper, Reddit, etc.)
+ * Uses Upstash Redis in production for cross-instance sharing,
+ * falls back to in-memory cache in development or when Redis is not configured.
+ *
  * This reduces API costs by 60-80% through:
  * 1. Query deduplication - same query returns cached result
  * 2. Cross-user sharing - multiple users with same keywords share cache
  * 3. Smart TTL - different cache durations based on content freshness needs
- *
- * Can be upgraded to Redis for production multi-instance deployments
  */
 
 import crypto from "crypto";
+import { Redis } from "@upstash/redis";
 
 // ============================================================================
 // TYPES
@@ -28,6 +30,7 @@ interface CacheStats {
   misses: number;
   entries: number;
   hitRate: number;
+  backend: "redis" | "memory";
 }
 
 // TTL configurations in milliseconds
@@ -50,15 +53,116 @@ export const CACHE_TTL = {
   // Reviews - rarely change
   REVIEWS: 6 * 60 * 60 * 1000, // 6 hours
 
+  // User data - short cache with frequent invalidation
+  USER_DATA: 5 * 60 * 1000, // 5 minutes
+
+  // Rate limits - very short
+  RATE_LIMIT: 60 * 1000, // 1 minute
+
   // Default
   DEFAULT: 2 * 60 * 60 * 1000, // 2 hours
+
+  // Results - moderate freshness, user-specific
+  RESULTS: 2 * 60 * 1000, // 2 minutes
+  RESULTS_ANALYTICS: 5 * 60 * 1000, // 5 minutes for analytics data
 } as const;
+
+// ============================================================================
+// CACHE INTERFACE
+// ============================================================================
+
+interface CacheBackend {
+  get<T>(key: string): Promise<T | null>;
+  set<T>(key: string, data: T, ttlMs: number): Promise<void>;
+  has(key: string): Promise<boolean>;
+  delete(key: string): Promise<boolean>;
+  getStats(): CacheStats;
+}
+
+// ============================================================================
+// REDIS CACHE IMPLEMENTATION
+// ============================================================================
+
+class RedisCache implements CacheBackend {
+  private redis: Redis;
+  private stats = { hits: 0, misses: 0 };
+
+  constructor() {
+    this.redis = new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL!,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+    });
+  }
+
+  generateKey(prefix: string, params: Record<string, unknown>): string {
+    const normalized = JSON.stringify(params, Object.keys(params).sort());
+    const hash = crypto.createHash("md5").update(normalized).digest("hex");
+    return `cache:${prefix}:${hash}`;
+  }
+
+  async get<T>(key: string): Promise<T | null> {
+    try {
+      const data = await this.redis.get<T>(key);
+      if (data !== null) {
+        this.stats.hits++;
+        return data;
+      }
+      this.stats.misses++;
+      return null;
+    } catch (error) {
+      console.error("[Redis Cache] Get error:", error);
+      this.stats.misses++;
+      return null;
+    }
+  }
+
+  async set<T>(key: string, data: T, ttlMs: number): Promise<void> {
+    try {
+      // Upstash uses seconds for EX
+      const ttlSeconds = Math.ceil(ttlMs / 1000);
+      await this.redis.set(key, data, { ex: ttlSeconds });
+    } catch (error) {
+      console.error("[Redis Cache] Set error:", error);
+    }
+  }
+
+  async has(key: string): Promise<boolean> {
+    try {
+      const exists = await this.redis.exists(key);
+      return exists === 1;
+    } catch (error) {
+      console.error("[Redis Cache] Exists error:", error);
+      return false;
+    }
+  }
+
+  async delete(key: string): Promise<boolean> {
+    try {
+      const deleted = await this.redis.del(key);
+      return deleted === 1;
+    } catch (error) {
+      console.error("[Redis Cache] Delete error:", error);
+      return false;
+    }
+  }
+
+  getStats(): CacheStats {
+    const total = this.stats.hits + this.stats.misses;
+    return {
+      hits: this.stats.hits,
+      misses: this.stats.misses,
+      entries: -1, // Redis doesn't easily expose this
+      hitRate: total > 0 ? this.stats.hits / total : 0,
+      backend: "redis",
+    };
+  }
+}
 
 // ============================================================================
 // IN-MEMORY CACHE IMPLEMENTATION
 // ============================================================================
 
-class QueryCache {
+class MemoryCache implements CacheBackend {
   private cache: Map<string, CacheEntry<unknown>> = new Map();
   private stats = { hits: 0, misses: 0 };
   private maxEntries: number;
@@ -69,19 +173,13 @@ class QueryCache {
     this.startCleanupInterval();
   }
 
-  /**
-   * Generate a cache key from query parameters
-   */
   generateKey(prefix: string, params: Record<string, unknown>): string {
     const normalized = JSON.stringify(params, Object.keys(params).sort());
     const hash = crypto.createHash("md5").update(normalized).digest("hex");
     return `${prefix}:${hash}`;
   }
 
-  /**
-   * Get a cached value
-   */
-  get<T>(key: string): T | null {
+  async get<T>(key: string): Promise<T | null> {
     const entry = this.cache.get(key);
 
     if (!entry) {
@@ -102,10 +200,7 @@ class QueryCache {
     return entry.data as T;
   }
 
-  /**
-   * Set a cached value
-   */
-  set<T>(key: string, data: T, ttlMs: number = CACHE_TTL.DEFAULT): void {
+  async set<T>(key: string, data: T, ttlMs: number = CACHE_TTL.DEFAULT): Promise<void> {
     // Evict old entries if at capacity
     if (this.cache.size >= this.maxEntries) {
       this.evictOldest();
@@ -120,10 +215,7 @@ class QueryCache {
     });
   }
 
-  /**
-   * Check if key exists and is valid
-   */
-  has(key: string): boolean {
+  async has(key: string): Promise<boolean> {
     const entry = this.cache.get(key);
     if (!entry) return false;
     if (Date.now() > entry.expiresAt) {
@@ -133,24 +225,10 @@ class QueryCache {
     return true;
   }
 
-  /**
-   * Delete a specific key
-   */
-  delete(key: string): boolean {
+  async delete(key: string): Promise<boolean> {
     return this.cache.delete(key);
   }
 
-  /**
-   * Clear all cache entries
-   */
-  clear(): void {
-    this.cache.clear();
-    this.stats = { hits: 0, misses: 0 };
-  }
-
-  /**
-   * Get cache statistics
-   */
   getStats(): CacheStats {
     const total = this.stats.hits + this.stats.misses;
     return {
@@ -158,6 +236,7 @@ class QueryCache {
       misses: this.stats.misses,
       entries: this.cache.size,
       hitRate: total > 0 ? this.stats.hits / total : 0,
+      backend: "memory",
     };
   }
 
@@ -206,6 +285,104 @@ class QueryCache {
       this.cleanupInterval = null;
     }
   }
+
+  /**
+   * Clear all cache entries
+   */
+  clear(): void {
+    this.cache.clear();
+    this.stats = { hits: 0, misses: 0 };
+  }
+
+  /**
+   * Get internal cache map (for prefix invalidation)
+   */
+  getInternalCache(): Map<string, CacheEntry<unknown>> {
+    return this.cache;
+  }
+}
+
+// ============================================================================
+// UNIFIED CACHE WRAPPER
+// ============================================================================
+
+class UnifiedCache {
+  private backend: CacheBackend;
+  private memoryCache: MemoryCache;
+  private useRedis: boolean;
+
+  constructor() {
+    // Check if Redis is configured
+    const hasRedisConfig = Boolean(
+      process.env.UPSTASH_REDIS_REST_URL &&
+      process.env.UPSTASH_REDIS_REST_TOKEN
+    );
+
+    this.useRedis = hasRedisConfig;
+    this.memoryCache = new MemoryCache(10000);
+
+    if (hasRedisConfig) {
+      console.log("[Cache] Using Upstash Redis backend");
+      this.backend = new RedisCache();
+    } else {
+      console.log("[Cache] Using in-memory backend (set UPSTASH_REDIS_* for Redis)");
+      this.backend = this.memoryCache;
+    }
+  }
+
+  generateKey(prefix: string, params: Record<string, unknown>): string {
+    const normalized = JSON.stringify(params, Object.keys(params).sort());
+    const hash = crypto.createHash("md5").update(normalized).digest("hex");
+    return `${prefix}:${hash}`;
+  }
+
+  async get<T>(key: string): Promise<T | null> {
+    return this.backend.get<T>(key);
+  }
+
+  async set<T>(key: string, data: T, ttlMs: number = CACHE_TTL.DEFAULT): Promise<void> {
+    return this.backend.set(key, data, ttlMs);
+  }
+
+  async has(key: string): Promise<boolean> {
+    return this.backend.has(key);
+  }
+
+  async delete(key: string): Promise<boolean> {
+    return this.backend.delete(key);
+  }
+
+  getStats(): CacheStats {
+    return this.backend.getStats();
+  }
+
+  clear(): void {
+    if (!this.useRedis) {
+      this.memoryCache.clear();
+    }
+    // For Redis, we don't clear all - that would be dangerous in production
+  }
+
+  /**
+   * Invalidate cache entries by prefix (memory only - Redis requires scan)
+   */
+  async invalidateByPrefix(prefix: string): Promise<number> {
+    if (!this.useRedis) {
+      const cache = this.memoryCache.getInternalCache();
+      const keysToDelete: string[] = [];
+
+      cache.forEach((_, key) => {
+        if (key.startsWith(prefix)) {
+          keysToDelete.push(key);
+        }
+      });
+
+      keysToDelete.forEach(key => cache.delete(key));
+      return keysToDelete.length;
+    }
+    // Redis prefix invalidation would require SCAN - skip for now
+    return 0;
+  }
 }
 
 // ============================================================================
@@ -213,7 +390,7 @@ class QueryCache {
 // ============================================================================
 
 // Global cache instance
-const globalCache = new QueryCache(10000);
+const globalCache = new UnifiedCache();
 
 // ============================================================================
 // PUBLIC API
@@ -239,7 +416,7 @@ export async function cachedQuery<T>(
   const cacheKey = globalCache.generateKey(prefix, params);
 
   // Try to get from cache
-  const cached = globalCache.get<T>(cacheKey);
+  const cached = await globalCache.get<T>(cacheKey);
   if (cached !== null) {
     console.log(`[Cache] HIT: ${prefix} (key: ${cacheKey.slice(-8)})`);
     return { data: cached, cached: true, cacheKey };
@@ -250,7 +427,7 @@ export async function cachedQuery<T>(
   const data = await fetchFn();
 
   // Store in cache
-  globalCache.set(cacheKey, data, ttlMs);
+  await globalCache.set(cacheKey, data, ttlMs);
 
   return { data, cached: false, cacheKey };
 }
@@ -258,19 +435,10 @@ export async function cachedQuery<T>(
 /**
  * Invalidate cache entries matching a prefix
  */
-export function invalidateCache(prefix: string): number {
-  const keysToDelete: string[] = [];
-
-  // Use forEach instead of iterator
-  (globalCache as unknown as { cache: Map<string, unknown> }).cache.forEach((_, key) => {
-    if (key.startsWith(prefix)) {
-      keysToDelete.push(key);
-    }
-  });
-
-  keysToDelete.forEach(key => globalCache.delete(key));
-  console.log(`[Cache] Invalidated ${keysToDelete.length} entries matching "${prefix}"`);
-  return keysToDelete.length;
+export async function invalidateCache(prefix: string): Promise<number> {
+  const count = await globalCache.invalidateByPrefix(prefix);
+  console.log(`[Cache] Invalidated ${count} entries matching "${prefix}"`);
+  return count;
 }
 
 /**
@@ -281,7 +449,7 @@ export function getCacheStats(): CacheStats {
 }
 
 /**
- * Clear all cache entries
+ * Clear all cache entries (memory only)
  */
 export function clearCache(): void {
   globalCache.clear();

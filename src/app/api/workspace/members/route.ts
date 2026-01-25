@@ -5,6 +5,7 @@ import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { findUserWithFallback } from "@/lib/auth-utils";
 import { permissions } from "@/lib/permissions";
+import { logActivity } from "@/lib/activity-log";
 
 export const dynamic = "force-dynamic";
 
@@ -81,6 +82,16 @@ export async function DELETE(request: Request) {
         updatedAt: new Date(),
       })
       .where(eq(users.id, memberId));
+
+    // Log activity
+    await logActivity({
+      workspaceId: currentUser.workspaceId,
+      userId: currentUser.id,
+      action: "member_removed",
+      targetType: "member",
+      targetId: memberId,
+      targetName: memberToRemove.name || memberToRemove.email,
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

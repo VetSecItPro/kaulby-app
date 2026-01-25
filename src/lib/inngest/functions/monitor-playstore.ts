@@ -4,6 +4,7 @@ import { monitors, results } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { incrementResultsCount, canAccessPlatform, shouldProcessMonitor } from "@/lib/limits";
 import { fetchPlayStoreReviews, isApifyConfigured, type PlayStoreReviewItem } from "@/lib/apify";
+import { isMonitorScheduleActive } from "@/lib/monitor-schedule";
 
 /**
  * Monitor Google Play Store reviews for Android apps
@@ -54,6 +55,11 @@ export const monitorPlayStore = inngest.createFunction(
       // Check refresh delay for free tier users
       const scheduleCheck = await shouldProcessMonitor(monitor.userId, monitor.lastCheckedAt);
       if (!scheduleCheck.shouldProcess) {
+        continue;
+      }
+
+      // Check if monitor is within its active schedule
+      if (!isMonitorScheduleActive(monitor)) {
         continue;
       }
 

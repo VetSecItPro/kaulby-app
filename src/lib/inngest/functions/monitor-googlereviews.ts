@@ -4,6 +4,7 @@ import { monitors, results } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { incrementResultsCount, canAccessPlatform, shouldProcessMonitor } from "@/lib/limits";
 import { fetchGoogleReviews, isApifyConfigured, type GoogleReviewItem } from "@/lib/apify";
+import { isMonitorScheduleActive } from "@/lib/monitor-schedule";
 
 /**
  * Monitor Google Reviews for businesses
@@ -58,6 +59,11 @@ export const monitorGoogleReviews = inngest.createFunction(
       // Check refresh delay for free tier users
       const scheduleCheck = await shouldProcessMonitor(monitor.userId, monitor.lastCheckedAt);
       if (!scheduleCheck.shouldProcess) {
+        continue;
+      }
+
+      // Check if monitor is within its active schedule
+      if (!isMonitorScheduleActive(monitor)) {
         continue;
       }
 

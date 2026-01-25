@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { users, monitors, results, aiLogs } from "@/lib/db/schema";
+import { users, monitors, results, aiLogs, errorLogs } from "@/lib/db/schema";
 import { count, sum, desc, sql, gte, and, lt, eq } from "drizzle-orm";
 import { ResponsiveManage } from "@/components/admin/responsive-manage";
 import { PLANS } from "@/lib/plans";
@@ -415,9 +415,61 @@ async function getBusinessMetrics() {
   };
 }
 
+async function getErrorLogsSummary() {
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  const [stats, recentErrors] = await Promise.all([
+    // Get error stats for last 7 days
+    db
+      .select({
+        total: count(),
+        unresolved: sql<number>`COUNT(*) FILTER (WHERE ${errorLogs.resolved} = false)`,
+        errorCount: sql<number>`COUNT(*) FILTER (WHERE ${errorLogs.level} = 'error')`,
+        warningCount: sql<number>`COUNT(*) FILTER (WHERE ${errorLogs.level} = 'warning')`,
+        fatalCount: sql<number>`COUNT(*) FILTER (WHERE ${errorLogs.level} = 'fatal')`,
+      })
+      .from(errorLogs)
+      .where(gte(errorLogs.createdAt, sevenDaysAgo)),
+    // Get recent unresolved errors
+    db.query.errorLogs.findMany({
+      where: and(
+        eq(errorLogs.resolved, false),
+        gte(errorLogs.createdAt, sevenDaysAgo)
+      ),
+      orderBy: [desc(errorLogs.createdAt)],
+      limit: 5,
+      columns: {
+        id: true,
+        level: true,
+        source: true,
+        message: true,
+        createdAt: true,
+      },
+    }),
+  ]);
+
+  return {
+    total: Number(stats[0]?.total) || 0,
+    unresolved: Number(stats[0]?.unresolved) || 0,
+    byLevel: {
+      error: Number(stats[0]?.errorCount) || 0,
+      warning: Number(stats[0]?.warningCount) || 0,
+      fatal: Number(stats[0]?.fatalCount) || 0,
+    },
+    recentErrors: recentErrors.map(e => ({
+      id: e.id,
+      level: e.level,
+      source: e.source,
+      message: e.message,
+      createdAt: e.createdAt?.toISOString() || new Date().toISOString(),
+    })),
+  };
+}
+
 export default async function ManagePage() {
   // Auth is handled by the layout - in dev mode, no auth required
-  const [stats, subscriptionBreakdown, recentUsers, aiCosts, userGrowth, platformDist, sentimentDist, businessMetrics, costBreakdown, systemHealth] = await Promise.all([
+  const [stats, subscriptionBreakdown, recentUsers, aiCosts, userGrowth, platformDist, sentimentDist, businessMetrics, costBreakdown, systemHealth, errorLogsSummary] = await Promise.all([
     getAdminStats(),
     getSubscriptionBreakdown(),
     getRecentUsers(),
@@ -428,6 +480,7 @@ export default async function ManagePage() {
     getBusinessMetrics(),
     getCostBreakdown(),
     getSystemHealth(),
+    getErrorLogsSummary(),
   ]);
 
   const freeUsers = subscriptionBreakdown.find(s => s.status === "free")?.count || 0;
@@ -448,6 +501,7 @@ export default async function ManagePage() {
       businessMetrics={businessMetrics}
       costBreakdown={costBreakdown}
       systemHealth={systemHealth}
+      errorLogsSummary={errorLogsSummary}
     />
   );
 }

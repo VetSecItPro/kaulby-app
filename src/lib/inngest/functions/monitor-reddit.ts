@@ -7,6 +7,7 @@ import { findRelevantSubredditsCached } from "@/lib/ai";
 import { contentMatchesMonitor } from "@/lib/content-matcher";
 import { searchRedditResilient } from "@/lib/reddit";
 import { calculateStaggerDelay, formatStaggerDuration, addJitter, getStaggerWindow } from "../utils/stagger";
+import { isMonitorScheduleActive } from "@/lib/monitor-schedule";
 
 // Scan Reddit for new posts matching monitor keywords
 export const monitorReddit = inngest.createFunction(
@@ -59,6 +60,11 @@ export const monitorReddit = inngest.createFunction(
       const scheduleCheck = await shouldProcessMonitor(monitor.userId, monitor.lastCheckedAt);
       if (!scheduleCheck.shouldProcess) {
         continue; // Skip monitors that are within refresh delay period
+      }
+
+      // Check if monitor is within its active schedule (if scheduling is enabled)
+      if (!isMonitorScheduleActive(monitor)) {
+        continue; // Skip monitors outside their scheduled active hours
       }
 
       let monitorMatchCount = 0;

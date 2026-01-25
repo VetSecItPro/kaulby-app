@@ -17,6 +17,7 @@ import { AiCostsTable } from "./ai-costs-table";
 import { BusinessMetrics } from "./business-metrics";
 import { CostBreakdown } from "./cost-breakdown";
 import { SystemHealth } from "./system-health";
+import { ErrorLogsCard } from "./error-logs-card";
 import { getPlatformBarColor, getSentimentBarColor, getPlatformDisplayName } from "@/lib/platform-utils";
 
 interface Stats {
@@ -125,6 +126,23 @@ interface SystemHealthData {
   };
 }
 
+interface ErrorLogsSummary {
+  total: number;
+  unresolved: number;
+  byLevel: {
+    error: number;
+    warning: number;
+    fatal: number;
+  };
+  recentErrors: Array<{
+    id: string;
+    level: string;
+    source: string;
+    message: string;
+    createdAt: string;
+  }>;
+}
+
 interface ResponsiveManageProps {
   stats: Stats;
   freeUsers: number;
@@ -138,6 +156,7 @@ interface ResponsiveManageProps {
   businessMetrics: BusinessMetricsData;
   costBreakdown: CostBreakdownData;
   systemHealth: SystemHealthData;
+  errorLogsSummary: ErrorLogsSummary;
 }
 
 
@@ -156,6 +175,7 @@ export function ResponsiveManage({
   businessMetrics,
   costBreakdown,
   systemHealth,
+  errorLogsSummary,
 }: ResponsiveManageProps) {
   return (
     <>
@@ -283,6 +303,13 @@ export function ResponsiveManage({
       <Link href="/manage/system" className="block">
         <div className="transition-all hover:opacity-90 cursor-pointer">
           <SystemHealth {...systemHealth} />
+        </div>
+      </Link>
+
+      {/* Error Logs Summary */}
+      <Link href="/manage/errors" className="block">
+        <div className="transition-all hover:opacity-90 cursor-pointer">
+          <ErrorLogsCard data={errorLogsSummary} />
         </div>
       </Link>
 

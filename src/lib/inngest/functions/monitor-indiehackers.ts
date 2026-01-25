@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { incrementResultsCount, canAccessPlatform, shouldProcessMonitor } from "@/lib/limits";
 import { contentMatchesMonitor } from "@/lib/content-matcher";
 import { calculateStaggerDelay, formatStaggerDuration, addJitter, getStaggerWindow } from "../utils/stagger";
+import { isMonitorScheduleActive } from "@/lib/monitor-schedule";
 
 // Indie Hackers post interface
 interface IndieHackersPost {
@@ -192,6 +193,11 @@ export const monitorIndieHackers = inngest.createFunction(
       // Check refresh delay for free tier users
       const scheduleCheck = await shouldProcessMonitor(monitor.userId, monitor.lastCheckedAt);
       if (!scheduleCheck.shouldProcess) {
+        continue;
+      }
+
+      // Check if monitor is within its active schedule
+      if (!isMonitorScheduleActive(monitor)) {
         continue;
       }
 

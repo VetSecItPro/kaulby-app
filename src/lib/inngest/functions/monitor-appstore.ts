@@ -4,6 +4,7 @@ import { monitors, results } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { incrementResultsCount, canAccessPlatform, shouldProcessMonitor } from "@/lib/limits";
 import { fetchAppStoreReviews, isApifyConfigured, type AppStoreReviewItem } from "@/lib/apify";
+import { isMonitorScheduleActive } from "@/lib/monitor-schedule";
 
 /**
  * Monitor App Store reviews for iOS apps
@@ -54,6 +55,11 @@ export const monitorAppStore = inngest.createFunction(
       // Check refresh delay for free tier users
       const scheduleCheck = await shouldProcessMonitor(monitor.userId, monitor.lastCheckedAt);
       if (!scheduleCheck.shouldProcess) {
+        continue;
+      }
+
+      // Check if monitor is within its active schedule
+      if (!isMonitorScheduleActive(monitor)) {
         continue;
       }
 

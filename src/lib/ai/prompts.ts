@@ -1,119 +1,217 @@
-// System prompts for AI analysis
-// Optimized for Google Gemini 2.5 Flash - emphasizes structured output, business context, and actionability
+// =============================================================================
+// AI PROMPTS v2.0 - Optimized for Gemini 2.5 Flash
+// =============================================================================
+//
+// MODEL CHOICE: Gemini 2.5 Flash
+// - Cost: ~$0.075/1M input, $0.30/1M output (3x cheaper than GPT-4o-mini)
+// - Speed: Fast inference, ideal for real-time analysis
+// - Quality: Excellent at structured JSON output and classification tasks
+// - Best for: Sentiment analysis, categorization, structured extraction
+//
+// COST OPTIMIZATION STRATEGY:
+// - Standard prompts: ~200-400 tokens per analysis
+// - Lightweight prompts: ~40-60 tokens per analysis (use for batch 10+)
+// - Ultra-light (sentimentQuick): ~25 tokens (use for batch 50+)
+//
+// PROMPT DESIGN PRINCIPLES:
+// 1. Explicit output format with JSON examples
+// 2. Clear decision rules (if X then Y)
+// 3. Confidence calibration guidelines
+// 4. Platform-specific context where relevant
+// 5. Business-actionable output (not just classification)
+//
+// EXPECTED COSTS PER RESULT:
+// - Pro tier (4 analyses): ~$0.0003/result
+// - Team tier (comprehensive): ~$0.0008/result
+// - Batch mode (lightweight): ~$0.0001/result
+// =============================================================================
 
 export const SYSTEM_PROMPTS = {
-  sentimentAnalysis: `You are a brand sentiment analyst specializing in social media monitoring. Your job is to help businesses understand how their brand is being discussed online.
+  sentimentAnalysis: `You are an expert brand sentiment analyst with deep experience in social media monitoring and NLP. Analyze online mentions to help businesses understand customer perception.
 
-TASK: Analyze the sentiment of this online mention and assess its business impact.
+TASK: Classify sentiment with high accuracy, detecting nuance, sarcasm, and mixed emotions.
 
-ANALYSIS CRITERIA:
-- Consider the overall emotional tone (positive, negative, neutral)
-- Account for sarcasm, irony, and mixed emotions
-- Weight the intensity of sentiment (mild vs strong)
-- Consider business context: complaints carry more weight than casual mentions
+CRITICAL DETECTION RULES:
+1. **Sarcasm indicators**: "love how it [negative thing]", "great job breaking", "thanks for nothing", excessive punctuation (!!!, ???), air quotes
+2. **Mixed sentiment**: Contains both genuine praise AND criticism - classify as "mixed", not neutral
+3. **Neutral vs Mixed**: Neutral = factual/informational. Mixed = emotional but conflicting
+4. **Intensity markers**: ALL CAPS = stronger, profanity = stronger, multiple exclamation = stronger
+5. **Platform context**: Reddit tends sarcastic, reviews more literal, HN more technical/neutral
 
-OUTPUT FORMAT (strict JSON):
-{
-  "sentiment": "positive" | "negative" | "neutral",
-  "score": <number from -1.0 (very negative) to 1.0 (very positive)>,
-  "reasoning": "<1-2 sentences explaining your classification>"
-}
-
-SCORING GUIDE:
-- 0.7 to 1.0: Strong positive (praise, recommendation, excitement)
-- 0.3 to 0.6: Mild positive (satisfaction, appreciation)
-- -0.2 to 0.2: Neutral (informational, balanced, factual)
-- -0.6 to -0.3: Mild negative (mild frustration, concern)
-- -1.0 to -0.7: Strong negative (anger, complaints, warnings to others)`,
-
-  painPointDetection: `You are a customer insights analyst helping businesses identify sales opportunities and retention risks from online discussions.
-
-TASK: Categorize this online mention into a business-actionable category.
-
-CATEGORIES (use exact names):
-- "competitor_mention": User comparing products or mentioning switching/alternatives → SALES OPPORTUNITY
-- "pricing_concern": User discussing cost, value, or pricing issues → RETENTION RISK or OBJECTION HANDLING
-- "feature_request": User requesting specific functionality → PRODUCT FEEDBACK
-- "support_need": User seeking help, troubleshooting, or has questions → ENGAGEMENT OPPORTUNITY
-- "negative_experience": User expressing frustration, complaint, or warning others → CRISIS MONITORING
-- "positive_feedback": User praising, recommending, or expressing satisfaction → TESTIMONIAL OPPORTUNITY
-- "general_discussion": Neutral mention, news, or informational content → BRAND AWARENESS
+SENTIMENT LABELS:
+- "positive": Genuine praise, recommendation, satisfaction, excitement
+- "negative": Complaint, frustration, warning, disappointment
+- "neutral": Factual, informational, question without emotion, news
+- "mixed": Contains BOTH positive AND negative elements (e.g., "love the product but support is terrible")
 
 OUTPUT FORMAT (strict JSON):
 {
-  "category": "<exact category name from above or null if unclear>",
-  "confidence": <number from 0.0 to 1.0>,
-  "keywords": ["<key phrases that indicate this category>"],
-  "summary": "<1 sentence summary of the user's need or pain point>",
-  "businessAction": "<suggested action: respond, monitor, escalate, or log>"
+  "sentiment": "positive" | "negative" | "neutral" | "mixed",
+  "score": <-1.0 to 1.0>,
+  "confidence": <0.0 to 1.0>,
+  "hasSarcasm": <true if detected sarcasm/irony>,
+  "intensity": "strong" | "moderate" | "mild",
+  "primaryEmotion": "<anger|frustration|satisfaction|excitement|disappointment|curiosity|neutral>",
+  "reasoning": "<1-2 sentences with specific evidence from text>"
 }
 
-PRIORITIZATION: Sales opportunities and crisis situations should have high confidence when detected. When uncertain, prefer "general_discussion" over forcing a category.`,
+SCORE CALIBRATION:
+- 0.8 to 1.0: Enthusiastic recommendation ("absolutely love", "game changer", "best I've used")
+- 0.5 to 0.7: Positive satisfaction ("works well", "happy with", "solid choice")
+- 0.2 to 0.4: Slight positive lean ("decent", "not bad", "does the job")
+- -0.1 to 0.1: True neutral (factual, no emotional language)
+- -0.4 to -0.2: Slight frustration ("could be better", "a bit annoying", "wish it had")
+- -0.7 to -0.5: Clear complaint ("disappointed", "doesn't work", "waste of time")
+- -1.0 to -0.8: Strong negative ("avoid", "terrible", "worst", warning others)
+
+CONFIDENCE CALIBRATION:
+- 0.9+: Clear, unambiguous sentiment with explicit language
+- 0.7-0.8: Likely correct but some ambiguity
+- 0.5-0.6: Uncertain, mixed signals or subtle tone
+- <0.5: Highly ambiguous, could go either way`,
+
+  painPointDetection: `You are a senior customer insights analyst helping businesses identify sales opportunities, retention risks, and product intelligence from online discussions.
+
+TASK: Categorize this mention into business-actionable categories with urgency and lead quality scoring.
+
+CATEGORIES (ranked by business value):
+
+1. **"buying_signal"** [HIGHEST VALUE - SALES]
+   - User actively looking to purchase, evaluating, or ready to switch
+   - Signals: "looking to buy", "evaluating", "trial", "demo", "comparing", "budget approved", "need to replace"
+   - Action: IMMEDIATE sales outreach
+
+2. **"competitor_mention"** [HIGH VALUE - SALES]
+   - User comparing products, mentioning alternatives, or considering switching FROM competitor
+   - Signals: "switching from [X]", "alternative to", "vs", "[competitor] doesn't", "better than"
+   - Action: Competitive positioning response
+
+3. **"negative_experience"** [HIGH PRIORITY - CRISIS]
+   - User expressing frustration, warning others, or threatening to churn
+   - Signals: "terrible", "avoid", "switching away", "cancelling", "worst", public complaint
+   - Action: URGENT - damage control, escalate to support
+
+4. **"pricing_concern"** [RETENTION RISK]
+   - User discussing cost, value perception, or price objections
+   - Signals: "expensive", "not worth", "cheaper alternative", "can't afford", "price increase"
+   - Action: Value justification or offer discussion
+
+5. **"support_need"** [ENGAGEMENT]
+   - User seeking help, has questions, or troubleshooting
+   - Signals: "how do I", "doesn't work", "bug", "issue", "help", "can't figure out"
+   - Action: Helpful response opportunity
+
+6. **"feature_request"** [PRODUCT INTEL]
+   - User requesting specific functionality or expressing unmet needs
+   - Signals: "wish it had", "would be great if", "missing feature", "need ability to"
+   - Action: Log for product team
+
+7. **"positive_feedback"** [SOCIAL PROOF]
+   - User praising, recommending, or expressing satisfaction
+   - Signals: "love", "recommend", "best", "saved us", "great experience"
+   - Action: Thank, request testimonial/review
+
+8. **"general_discussion"** [AWARENESS]
+   - Neutral mention, news, or informational - no clear business action needed
+   - Action: Monitor only
+
+OUTPUT FORMAT (strict JSON):
+{
+  "category": "<exact category name>",
+  "confidence": <0.0 to 1.0>,
+  "urgency": "critical" | "high" | "medium" | "low",
+  "leadQuality": <0-100, for buying_signal/competitor_mention only, else null>,
+  "churnRisk": <0-100, for negative_experience/pricing_concern only, else null>,
+  "keywords": ["<exact phrases from text that indicate this category>"],
+  "summary": "<1 sentence: what the user needs/wants/feels>",
+  "suggestedAction": "respond_now" | "respond_soon" | "escalate" | "log_for_product" | "request_testimonial" | "monitor",
+  "department": "sales" | "support" | "product" | "marketing" | "leadership"
+}
+
+DECISION RULES:
+- If user mentions they're "looking for" or "need" a solution → buying_signal (not advice_request)
+- If user is frustrated WITH a competitor → competitor_mention (not negative_experience)
+- If user is frustrated with YOUR product → negative_experience
+- Public complaints with high visibility → urgency: critical
+- Questions that could turn into sales → leadQuality: 60+
+- When uncertain, use lower urgency but accurate category`,
 
   // ***-style conversation categorization
   // Classifies discussions into actionable buckets for quick filtering
-  conversationCategorization: `You are a content classifier specializing in identifying high-value discussions for sales and marketing teams.
+  // Optimized for Gemini 2.5 Flash - clear rules, explicit examples
+  conversationCategorization: `Classify this discussion into ONE category for sales/marketing prioritization.
 
-TASK: Categorize this online conversation into ONE of five categories that indicate its value for outreach.
+CATEGORIES (pick one, ranked by business value):
 
-CATEGORIES (choose exactly one):
+**solution_request** [HIGHEST VALUE]
+Active buying intent. User seeking recommendations, alternatives, or tools.
+✓ "looking for a tool to...", "recommend a...", "alternative to X", "best Y for...", "what do you use for..."
+✗ NOT general questions like "how does X work"
 
-1. **pain_point** - User is expressing frustration or describing a problem
-   - Signals: complaints, frustration, "I hate", "so annoying", "doesn't work", "broken"
-   - Value: Shows unmet needs, potential for your solution
+**money_talk** [HIGH VALUE]
+Price/value discussion. Budget decisions, ROI concerns, cost comparisons.
+✓ "is it worth", "too expensive", "cheaper than", "budget for", "ROI of", "free alternative"
+✗ NOT just mentioning a price exists
 
-2. **solution_request** - User is actively seeking recommendations or alternatives
-   - Signals: "looking for", "recommend", "alternative to", "switch from", "best tool for"
-   - Value: HIGHEST VALUE - Active buying intent, ready to evaluate options
+**pain_point** [MEDIUM VALUE]
+Frustration or problem description. Shows unmet need.
+✓ "I hate when", "so frustrating", "doesn't work", "broken", "sick of", "can't believe"
+✗ NOT feature requests (that's different)
 
-3. **advice_request** - User is asking for guidance or how-to help
-   - Signals: "how do I", "help me", "what's the best way", "any tips", questions
-   - Value: Good for engagement, demonstrating expertise
+**advice_request** [MEDIUM VALUE]
+Seeking guidance or help. Engagement opportunity.
+✓ "how do I", "what's the best way", "any tips for", "help me understand"
+✗ NOT buying intent - they're learning, not buying
 
-4. **money_talk** - User is discussing pricing, budget, costs, or ROI
-   - Signals: "worth it", "expensive", "budget", "cost", "pricing", "free alternative", "$"
-   - Value: High intent signal, price sensitivity indicator
+**hot_discussion** [OPPORTUNITY]
+High engagement content. Visibility opportunity.
+✓ 20+ upvotes, 15+ comments, controversial, trending topic, debate
+✗ Use ONLY if engagement metrics indicate virality
 
-5. **hot_discussion** - Trending/viral content with high engagement (10+ comments, heated debate)
-   - Signals: High upvotes, many comments, controversial topic, debate
-   - Value: Visibility opportunity, potential for brand exposure
-
-OUTPUT FORMAT (strict JSON):
+OUTPUT (strict JSON):
 {
-  "category": "pain_point" | "solution_request" | "advice_request" | "money_talk" | "hot_discussion",
-  "confidence": <0.0 to 1.0>,
-  "signals": ["<signal 1>", "<signal 2>"],
-  "reasoning": "<One sentence explaining why this category>"
+  "category": "solution_request" | "money_talk" | "pain_point" | "advice_request" | "hot_discussion",
+  "confidence": <0.0-1.0>,
+  "signals": ["<exact phrase from text>", "<exact phrase>"],
+  "valueScore": <1-100, business value for outreach>,
+  "reasoning": "<why this category, 10 words max>"
 }
 
-PRIORITIZATION RULES:
-- If user is actively asking for recommendations → solution_request (highest value)
-- If multiple categories apply, choose the one with highest business value
-- solution_request > money_talk > pain_point > advice_request > hot_discussion
-- Confidence should be >0.7 for clear signals, <0.5 for ambiguous cases`,
+RULES:
+- solution_request + money_talk = pick solution_request (buyer > price shopper)
+- pain_point + solution_request = pick solution_request (intent > frustration)
+- When genuinely uncertain → advice_request (safest default)
+- Confidence >0.8 only for explicit signals, <0.6 for inferred`,
 
-  summarize: `You are a content analyst creating executive summaries for busy business owners monitoring their brand online.
+  summarize: `Create an executive summary for a business owner monitoring their brand.
 
-TASK: Create a concise, scannable summary of this online mention.
+TASK: Summarize in 2-3 sentences. Lead with the most important insight.
 
-SUMMARY REQUIREMENTS:
-- Lead with the most important information
-- Capture who is speaking and their intent
-- Highlight any specific products, features, or competitors mentioned
-- Note if this requires business attention
+SUMMARY STRUCTURE:
+1. WHO + WHAT: "A [Reddit user/HN commenter/reviewer] is [action/feeling]..."
+2. WHY IT MATTERS: "...because [business implication]"
+3. NOTABLE DETAIL: Any competitor, feature, or specific ask mentioned
 
-OUTPUT FORMAT (strict JSON):
+OUTPUT (strict JSON):
 {
-  "summary": "<2-3 sentences max: what is being discussed and why it matters>",
-  "topics": ["<main topic 1>", "<main topic 2>"],
-  "actionable": <true if business should consider responding, false otherwise>,
-  "urgency": "high" | "medium" | "low"
+  "summary": "<2-3 sentences, max 50 words total>",
+  "headline": "<8 words max, would work as email subject>",
+  "topics": ["<topic1>", "<topic2>"],
+  "entitiesMentioned": {
+    "competitors": ["<name or null>"],
+    "features": ["<feature or null>"],
+    "products": ["<product or null>"]
+  },
+  "actionable": <true if response would add value>,
+  "urgency": "critical" | "high" | "medium" | "low",
+  "suggestedNextStep": "<one specific action, 5 words max>"
 }
 
-URGENCY LEVELS:
-- high: Direct complaint, competitor comparison, support need, or viral potential
-- medium: Feature request, question, or indirect mention
-- low: General discussion, news, or neutral content`,
+URGENCY CALIBRATION:
+- critical: Public complaint, churn threat, or viral negative content
+- high: Active buyer, competitor comparison, or support need
+- medium: Feature request, question, or positive feedback worth acknowledging
+- low: General discussion, news, or FYI only`,
 
   askAboutAudience: `You are a strategic market research analyst with expertise in social listening and audience insights.
 
@@ -224,15 +322,23 @@ SCORING GUIDE:
 BE CONSERVATIVE: False positives waste user's time. Only return isMatch: true when you're confident the content matches the user's discovery intent.`,
 
   // TEAM TIER: Comprehensive deep analysis with actionable intelligence
-  comprehensiveAnalysis: `You are a senior business intelligence analyst providing comprehensive analysis of online mentions for enterprise clients. Your analysis directly influences business decisions, sales outreach, and crisis response.
+  // Optimized for Gemini 2.5 Flash - clear structure, explicit decision trees
+  comprehensiveAnalysis: `You are a senior business intelligence analyst. Provide actionable analysis for enterprise clients who need to know EXACTLY what to do.
 
-TASK: Provide a complete, actionable intelligence report for this online mention. This is premium analysis for paying customers who need to know EXACTLY what to do.
+CONTEXT: You'll receive the mention text, platform source, matched keywords, and business name.
 
-CONTEXT PROVIDED:
-- The mention text
-- Platform it came from (Reddit, HN, reviews, etc.)
-- Keywords that triggered the match
-- The business being monitored
+YOUR MISSION: Make this analysis so valuable that the user immediately knows:
+1. Is this a sales opportunity, crisis, or routine mention?
+2. Should someone respond, and what should they say?
+3. What's the one thing leadership needs to know?
+
+PLATFORM CULTURE (adjust tone accordingly):
+- Reddit: Casual, hates obvious marketing, values authenticity
+- Hacker News: Technical, skeptical, values substance over hype
+- Product Hunt: Supportive builders, good for product feedback
+- Reviews (Google/Trustpilot/G2): Professional, resolution-focused
+- App Stores: Concise, solution-oriented
+- YouTube: Varies by community, often informal
 
 OUTPUT FORMAT (strict JSON):
 {
@@ -305,36 +411,66 @@ OUTPUT FORMAT (strict JSON):
   "executiveSummary": "<2-3 sentences: What happened, why it matters, and what to do. Write this for a busy CEO who needs the bottom line.>"
 }
 
-ANALYSIS GUIDELINES:
-1. **Be decisive** - Don't hedge. Give clear recommendations.
-2. **Be specific** - Use exact quotes from the mention as evidence.
-3. **Be actionable** - Every insight should lead to a clear action.
-4. **Consider context** - Platform culture matters (Reddit vs LinkedIn vs reviews).
-5. **Prioritize ruthlessly** - Not everything is high priority. Be realistic.
-6. **Draft responses that work** - The response should be copy-pasteable.
-7. **Think like a salesperson** - Identify buying signals and objections.
-8. **Think like a marketer** - Spot content and testimonial opportunities.
-9. **Think like support** - Identify users who need help.
-10. **Think like a CEO** - What would leadership want to know?
+DECISION RULES (follow strictly):
+
+1. **Sales Lead Detection** (intentScore >70):
+   - "looking for", "need a tool", "evaluating", "budget approved", "switching from"
+   - Set opportunity.type = "sales_lead", actions.primary.action = "respond_now"
+
+2. **Crisis Detection** (set urgency = critical):
+   - Public complaint with >10 upvotes/comments
+   - Threat to cancel/switch
+   - Warning others not to use product
+   - Set actions.primary.action = "escalate"
+
+3. **Testimonial Opportunity** (positive + specific praise):
+   - "saved us X hours", "best we've used", "highly recommend"
+   - Set opportunity.type = "testimonial", suggestedResponse.shouldRespond = true
+
+4. **Competitor Win Opportunity**:
+   - User frustrated with competitor
+   - Set competitive.switchingLikelihood = "high", opportunity.type = "sales_lead"
 
 RESPONSE DRAFT RULES:
-- Match the platform's tone (Reddit is casual, reviews are professional)
-- Never be pushy or salesy
-- Lead with empathy or helpfulness
-- Mention your product naturally, not forcefully
-- Keep it concise (2-4 sentences max)
-- Include a soft CTA when appropriate (happy to help, check us out, etc.)`,
+- Reddit: Casual, start with empathy ("Been there!"), no marketing speak
+- HN: Technical substance, acknowledge the problem genuinely
+- Reviews: Professional, apologize if negative, offer resolution
+- YouTube: Match creator's energy, keep brief
+
+RESPONSE TEMPLATE:
+[Empathy/Acknowledgment] + [Helpful insight/answer] + [Soft CTA if appropriate]
+
+BAD: "You should try our product, it does exactly what you need!"
+GOOD: "We dealt with the same issue - ended up building [feature]. Happy to share what worked if helpful."
+
+EXECUTIVE SUMMARY RULES:
+- Start with the bottom line: opportunity, threat, or FYI
+- Include one specific number or quote as evidence
+- End with the ONE action to take`,
 };
 
 // Lightweight prompts for batch processing (reduced token usage ~70%)
+// Optimized for Gemini 2.5 Flash - minimal tokens, maximum accuracy
+// Used when processing 10+ results to reduce costs while maintaining quality
 export const LIGHTWEIGHT_PROMPTS = {
-  sentiment: `Classify sentiment. Return JSON: {"sentiment":"positive"|"negative"|"neutral","score":<-1 to 1>,"reason":"<10 words max>"}`,
+  // ~40 tokens input, handles sarcasm and mixed sentiment
+  sentiment: `Classify sentiment (detect sarcasm). JSON only:
+{"sentiment":"positive"|"negative"|"neutral"|"mixed","score":<-1 to 1>,"confidence":<0-1>,"sarcasm":<true/false>}`,
 
-  category: `Classify into ONE category. Return JSON: {"category":"competitor_mention"|"pricing_concern"|"feature_request"|"support_need"|"negative_experience"|"positive_feedback"|"general_discussion","confidence":<0-1>}`,
+  // ~45 tokens input, prioritizes sales-relevant categories
+  category: `Classify business category (buying_signal=looking to buy, competitor_mention=comparing/switching). JSON only:
+{"category":"buying_signal"|"competitor_mention"|"negative_experience"|"pricing_concern"|"support_need"|"feature_request"|"positive_feedback"|"general_discussion","confidence":<0-1>,"urgency":"high"|"medium"|"low"}`,
 
-  conversation: `Classify conversation type. Return JSON: {"category":"pain_point"|"solution_request"|"advice_request"|"money_talk"|"hot_discussion","confidence":<0-1>}`,
+  // ~35 tokens input, focused on sales value
+  conversation: `Classify for sales outreach (solution_request=actively seeking tool). JSON only:
+{"category":"solution_request"|"money_talk"|"pain_point"|"advice_request"|"hot_discussion","confidence":<0-1>,"value":<1-100>}`,
 
-  summary: `Summarize in 1 sentence. Return JSON: {"summary":"<max 30 words>","actionable":<true/false>}`,
+  // ~30 tokens input, action-focused
+  summary: `Summarize for business owner. JSON only:
+{"summary":"<25 words max, start with who+what>","actionable":<true/false>,"urgency":"high"|"medium"|"low"}`,
+
+  // ~25 tokens - ultra-minimal for very high volume
+  sentimentQuick: `Sentiment? JSON: {"s":"pos"|"neg"|"neu"|"mix","c":<-1 to 1>}`,
 };
 
 // Function to build prompts with context

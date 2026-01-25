@@ -1,5 +1,6 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { db } from "@/lib/db";
 import { monitors, users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -79,7 +80,8 @@ export async function POST(request: Request) {
     await ensureDevUserExists(userId);
 
     const body = await request.json();
-    const { name, companyName, keywords, searchQuery, platforms, platformUrls } = body;
+    const { name, companyName, keywords, searchQuery, platforms, platformUrls,
+      scheduleEnabled, scheduleStartHour, scheduleEndHour, scheduleDays, scheduleTimezone } = body;
 
     // Validate input
     if (!name || typeof name !== "string") {
@@ -200,6 +202,12 @@ export async function POST(request: Request) {
         platformUrls: Object.keys(sanitizedPlatformUrls).length > 0 ? sanitizedPlatformUrls : null,
         platforms: allowedPlatforms,
         isActive: true,
+        // Schedule settings
+        scheduleEnabled: scheduleEnabled === true,
+        scheduleStartHour: typeof scheduleStartHour === "number" ? scheduleStartHour : 9,
+        scheduleEndHour: typeof scheduleEndHour === "number" ? scheduleEndHour : 17,
+        scheduleDays: Array.isArray(scheduleDays) ? scheduleDays : null,
+        scheduleTimezone: typeof scheduleTimezone === "string" ? scheduleTimezone : "America/New_York",
       })
       .returning();
 
@@ -221,6 +229,9 @@ export async function POST(request: Request) {
         hasHashnode: allowedPlatforms.includes("hashnode"),
       },
     });
+
+    // Revalidate cache
+    revalidateTag("monitors");
 
     return NextResponse.json({
       monitor: newMonitor,

@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { incrementResultsCount, canAccessPlatform, shouldProcessMonitor } from "@/lib/limits";
 import { fetchYelpReviews, isApifyConfigured, type YelpReviewItem } from "@/lib/apify";
 import { AI_BATCH_CONFIG } from "@/lib/ai/sampling";
+import { isMonitorScheduleActive } from "@/lib/monitor-schedule";
 
 /**
  * Monitor Yelp business reviews
@@ -58,6 +59,11 @@ export const monitorYelp = inngest.createFunction(
       // Check refresh delay based on tier
       const scheduleCheck = await shouldProcessMonitor(monitor.userId, monitor.lastCheckedAt);
       if (!scheduleCheck.shouldProcess) {
+        continue;
+      }
+
+      // Check if monitor is within its active schedule
+      if (!isMonitorScheduleActive(monitor)) {
         continue;
       }
 
