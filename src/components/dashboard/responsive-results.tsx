@@ -12,9 +12,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { HiddenResultsBanner, RefreshDelayBanner } from "./upgrade-prompt";
 import { EmptyState, ScanningState } from "./empty-states";
-import { Download, Lock, SlidersHorizontal, X } from "lucide-react";
+import { Download, Lock, SlidersHorizontal, X, Loader2, ChevronDown } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import Link from "next/link";
 import type { PlanKey } from "@/lib/plans";
 import { parseSearchQuery, matchesQuery } from "@/lib/search-parser";
 
@@ -134,9 +133,57 @@ function MobileResultsView({
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
   const [selectedSentiment, setSelectedSentiment] = useState<string | null>(null);
 
+  // Infinite scroll state
+  const [loadedResults, setLoadedResults] = useState<Result[]>([]);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(totalPages > 1);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  // Combine initial results with loaded results
+  const allResults = useMemo(() => {
+    return [...visibleResults, ...loadedResults];
+  }, [visibleResults, loadedResults]);
+
+  // Load more results
+  const handleLoadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+
+    setLoadingMore(true);
+    try {
+      const lastResult = loadedResults.length > 0
+        ? loadedResults[loadedResults.length - 1]
+        : visibleResults[visibleResults.length - 1];
+
+      const cursorParam = cursor || (lastResult?.postedAt
+        ? new Date(lastResult.postedAt).toISOString()
+        : null);
+
+      const url = cursorParam
+        ? `/api/results?cursor=${encodeURIComponent(cursorParam)}&limit=20`
+        : "/api/results?limit=20";
+
+      const res = await fetch(url);
+      const data = await res.json();
+
+      if (res.ok) {
+        const newResults: Result[] = data.items.map((item: Record<string, unknown>) => ({
+          ...item,
+          postedAt: item.postedAt ? new Date(item.postedAt as string) : null,
+        }));
+        setLoadedResults((prev) => [...prev, ...newResults]);
+        setCursor(data.nextCursor);
+        setHasMore(data.hasMore);
+      }
+    } catch (error) {
+      console.error("Failed to load more results:", error);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, hasMore, cursor, loadedResults, visibleResults]);
+
   // Apply filters
   const filteredResults = useMemo(() => {
-    return visibleResults.filter((result) => {
+    return allResults.filter((result) => {
       // Platform filter
       if (selectedPlatform && result.platform !== selectedPlatform) return false;
 
@@ -252,19 +299,41 @@ function MobileResultsView({
         totalPages={totalPages}
         planInfo={planInfo}
       />
+
+      {/* Load More Button */}
+      {hasMore && (
+        <div className="flex justify-center pt-4 pb-8">
+          <Button
+            variant="outline"
+            onClick={handleLoadMore}
+            disabled={loadingMore}
+            className="gap-2"
+          >
+            {loadingMore ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading...
+              </>
+            ) : (
+              <>
+                <ChevronDown className="h-4 w-4" />
+                Load more
+              </>
+            )}
+          </Button>
+        </div>
+      )}
+      {!hasMore && allResults.length > 0 && (
+        <p className="text-center text-sm text-muted-foreground py-4">
+          You&apos;ve reached the end
+        </p>
+      )}
     </div>
   );
 }
 
-function DesktopResultsView({
-  results,
-  visibleResults,
-  totalCount,
-  page,
-  totalPages,
-  hasMonitors,
-  planInfo,
-}: ViewProps) {
+function DesktopResultsView(props: ViewProps) {
+  const { results, visibleResults, totalCount, totalPages, hasMonitors, planInfo } = props;
   const [isExporting, setIsExporting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [dateRange, setDateRange] = useState<DateRange | null>(null);
@@ -277,12 +346,62 @@ function DesktopResultsView({
   const [selectedEngagement, setSelectedEngagement] = useState<{ min: number; max: number } | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<ConversationCategory | null>(null);
 
+  // Infinite scroll state
+  const [loadedResults, setLoadedResults] = useState<Result[]>([]);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(totalPages > 1);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  // Combine initial results with loaded results
+  const allResults = useMemo(() => {
+    return [...visibleResults, ...loadedResults];
+  }, [visibleResults, loadedResults]);
+
+  // Load more results
+  const handleLoadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+
+    setLoadingMore(true);
+    try {
+      // Get cursor from last result
+      const lastResult = loadedResults.length > 0
+        ? loadedResults[loadedResults.length - 1]
+        : visibleResults[visibleResults.length - 1];
+
+      const cursorParam = cursor || (lastResult?.postedAt
+        ? new Date(lastResult.postedAt).toISOString()
+        : null);
+
+      const url = cursorParam
+        ? `/api/results?cursor=${encodeURIComponent(cursorParam)}&limit=20`
+        : "/api/results?limit=20";
+
+      const res = await fetch(url);
+      const data = await res.json();
+
+      if (res.ok) {
+        // Convert API response to Result type
+        const newResults: Result[] = data.items.map((item: Record<string, unknown>) => ({
+          ...item,
+          postedAt: item.postedAt ? new Date(item.postedAt as string) : null,
+        }));
+        setLoadedResults((prev) => [...prev, ...newResults]);
+        setCursor(data.nextCursor);
+        setHasMore(data.hasMore);
+      }
+    } catch (error) {
+      console.error("Failed to load more results:", error);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, hasMore, cursor, loadedResults, visibleResults]);
+
   const canExport = planInfo?.plan === "pro" || planInfo?.plan === "enterprise";
 
   // Extract keywords from all monitors for highlighting
   const allKeywords = useMemo(() => {
     const keywords = new Set<string>();
-    visibleResults.forEach((r) => {
+    allResults.forEach((r) => {
       r.monitor?.keywords?.forEach((k) => keywords.add(k));
     });
     // Also add search query terms
@@ -292,7 +411,7 @@ function DesktopResultsView({
       parsed.optional.forEach((t) => keywords.add(t.term));
     }
     return Array.from(keywords);
-  }, [visibleResults, searchQuery]);
+  }, [allResults, searchQuery]);
 
   // Calculate category counts for themes panel
   const categoryCounts = useMemo(() => {
@@ -303,17 +422,17 @@ function DesktopResultsView({
       money_talk: 0,
       hot_discussion: 0,
     };
-    visibleResults.forEach((r) => {
+    allResults.forEach((r) => {
       if (r.conversationCategory && !r.isHidden) {
         counts[r.conversationCategory] = (counts[r.conversationCategory] || 0) + 1;
       }
     });
     return counts;
-  }, [visibleResults]);
+  }, [allResults]);
 
   // Apply all filters
   const filteredResults = useMemo(() => {
-    return visibleResults.filter((result) => {
+    return allResults.filter((result) => {
       // Platform filter
       if (selectedPlatform && result.platform !== selectedPlatform) return false;
 
@@ -416,8 +535,8 @@ function DesktopResultsView({
 
   // Get sample results for themes panel preview
   const sampleResults = useMemo(() => {
-    return visibleResults.filter((r) => r.conversationCategory).slice(0, 10);
-  }, [visibleResults]);
+    return allResults.filter((r) => r.conversationCategory).slice(0, 10);
+  }, [allResults]);
 
   return (
     <div className="space-y-6">
@@ -579,23 +698,33 @@ function DesktopResultsView({
                   />
                 )}
 
-                {/* Pagination */}
-                {totalPages > 1 && (
-                  <div className="flex justify-center gap-2">
-                    {page > 1 && (
-                      <Link href={`/dashboard/results?page=${page - 1}`}>
-                        <Button variant="outline">Previous</Button>
-                      </Link>
-                    )}
-                    <span className="flex items-center px-4 text-sm text-muted-foreground">
-                      Page {page} of {totalPages}
-                    </span>
-                    {page < totalPages && (
-                      <Link href={`/dashboard/results?page=${page + 1}`}>
-                        <Button variant="outline">Next</Button>
-                      </Link>
-                    )}
+                {/* Load More Button */}
+                {hasMore && (
+                  <div className="flex justify-center pt-4">
+                    <Button
+                      variant="outline"
+                      onClick={handleLoadMore}
+                      disabled={loadingMore}
+                      className="gap-2"
+                    >
+                      {loadingMore ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Loading...
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="h-4 w-4" />
+                          Load more results
+                        </>
+                      )}
+                    </Button>
                   </div>
+                )}
+                {!hasMore && allResults.length > 0 && (
+                  <p className="text-center text-sm text-muted-foreground pt-4">
+                    You&apos;ve reached the end of your results
+                  </p>
                 )}
               </>
             )}

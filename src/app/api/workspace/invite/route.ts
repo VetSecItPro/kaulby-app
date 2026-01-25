@@ -6,6 +6,7 @@ import { eq, and } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { sendWorkspaceInviteEmail } from "@/lib/email";
 import { findUserWithFallback } from "@/lib/auth-utils";
+import { logActivity } from "@/lib/activity-log";
 
 export const dynamic = "force-dynamic";
 
@@ -158,6 +159,16 @@ export async function POST(request: Request) {
       console.error("Failed to send invite email:", emailError);
       // Don't fail the request if email fails - invite is still valid
     }
+
+    // Log activity
+    await logActivity({
+      workspaceId: workspace.id,
+      userId: user.id,
+      action: "member_invited",
+      targetType: "invite",
+      targetId: invite.id,
+      targetName: email.toLowerCase(),
+    });
 
     return NextResponse.json({
       invite: {

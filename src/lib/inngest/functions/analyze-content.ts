@@ -181,6 +181,33 @@ export const analyzeContent = inngest.createFunction(
         await flushAI();
       });
 
+      // Trigger webhooks for enterprise users
+      await step.run("trigger-webhooks-team", async () => {
+        const analysis = comprehensiveResult.result;
+        await inngest.send({
+          name: "webhook/send",
+          data: {
+            userId,
+            eventType: "new_result",
+            data: {
+              monitorName: monitor?.name || "Monitor",
+              result: {
+                id: resultId,
+                title: result.title,
+                content: result.content,
+                sourceUrl: result.sourceUrl,
+                platform: result.platform,
+                author: result.author,
+                postedAt: result.postedAt,
+                sentiment: analysis.sentiment.label,
+                conversationCategory: category.category,
+                aiSummary: analysis.executiveSummary,
+              },
+            },
+          },
+        });
+      });
+
       return {
         tier: "team",
         analysis: comprehensiveResult.result,
@@ -283,6 +310,38 @@ export const analyzeContent = inngest.createFunction(
     // Flush Langfuse events
     await step.run("flush-langfuse", async () => {
       await flushAI();
+    });
+
+    // Trigger webhooks for enterprise users (Pro users can also have webhooks if upgraded)
+    await step.run("trigger-webhooks-pro", async () => {
+      // Get monitor info for webhook
+      const monitor = await db.query.monitors.findFirst({
+        where: eq(monitors.id, result.monitorId),
+        columns: { name: true },
+      });
+
+      await inngest.send({
+        name: "webhook/send",
+        data: {
+          userId,
+          eventType: "new_result",
+          data: {
+            monitorName: monitor?.name || "Monitor",
+            result: {
+              id: resultId,
+              title: result.title,
+              content: result.content,
+              sourceUrl: result.sourceUrl,
+              platform: result.platform,
+              author: result.author,
+              postedAt: result.postedAt,
+              sentiment: sentimentResult.result.sentiment,
+              conversationCategory: categoryResult.result.category,
+              aiSummary: summaryResult.result.summary,
+            },
+          },
+        },
+      });
     });
 
     return {

@@ -109,6 +109,32 @@ export const inviteStatusEnum = pgEnum("invite_status", [
   "expired",
 ]);
 
+// Activity log action types for workspace audit trail
+export const activityActionEnum = pgEnum("activity_action", [
+  // Monitor actions
+  "monitor_created",
+  "monitor_updated",
+  "monitor_deleted",
+  "monitor_paused",
+  "monitor_resumed",
+  "monitor_duplicated",
+  // Member actions
+  "member_invited",
+  "member_joined",
+  "member_removed",
+  "member_role_changed",
+  // Workspace actions
+  "workspace_created",
+  "workspace_updated",
+  "workspace_settings_changed",
+  // API & Webhook actions
+  "api_key_created",
+  "api_key_revoked",
+  "webhook_created",
+  "webhook_updated",
+  "webhook_deleted",
+]);
+
 // Workspaces - team containers for Enterprise users
 export const workspaces = pgTable("workspaces", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -119,6 +145,32 @@ export const workspaces = pgTable("workspaces", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+// Activity logs - audit trail for workspace actions
+export const activityLogs = pgTable("activity_logs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  action: activityActionEnum("action").notNull(),
+  // Target entity info (what was affected)
+  targetType: text("target_type"), // "monitor", "member", "webhook", etc.
+  targetId: text("target_id"), // ID of the affected entity
+  targetName: text("target_name"), // Human-readable name (e.g., monitor name, member email)
+  // Additional context stored as JSON
+  metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+  // IP and user agent for security auditing
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("activity_logs_workspace_id_idx").on(table.workspaceId),
+  index("activity_logs_user_id_idx").on(table.userId),
+  index("activity_logs_created_at_idx").on(table.createdAt),
+]);
 
 // Users table - synced with Clerk
 export const users = pgTable("users", {
@@ -238,6 +290,12 @@ export const monitors = pgTable("monitors", {
   // Batch AI analysis - for cost-efficient analysis of large volumes (>50 results)
   batchAnalysis: jsonb("batch_analysis"), // Stores BatchSummaryResult from batch-summary.ts
   lastBatchAnalyzedAt: timestamp("last_batch_analyzed_at"), // When batch analysis was last run
+  // Monitor scheduling - set active hours for monitoring
+  scheduleEnabled: boolean("schedule_enabled").default(false).notNull(),
+  scheduleStartHour: integer("schedule_start_hour").default(9), // 0-23, default 9 AM
+  scheduleEndHour: integer("schedule_end_hour").default(17), // 0-23, default 5 PM
+  scheduleDays: integer("schedule_days").array(), // 0=Sun, 1=Mon, ..., 6=Sat. null = all days
+  scheduleTimezone: text("schedule_timezone").default("America/New_York"), // IANA timezone
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
@@ -326,6 +384,68 @@ export const aiLogs = pgTable("ai_logs", {
 }, (table) => [
   index("ai_logs_user_id_idx").on(table.userId),
   index("ai_logs_created_at_idx").on(table.createdAt),
+]);
+
+// Budget Alerts - admin cost monitoring and alerting
+export const budgetAlerts = pgTable("budget_alerts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(), // e.g., "Daily AI Cost Limit"
+  period: text("period").notNull(), // "daily" | "weekly" | "monthly"
+  thresholdUsd: real("threshold_usd").notNull(), // e.g., 50.00
+  warningPercent: integer("warning_percent").default(80).notNull(), // Alert at 80% of threshold
+  isActive: boolean("is_active").default(true).notNull(),
+  notifyEmail: text("notify_email"), // Email to notify (null = no email)
+  notifySlack: text("notify_slack"), // Slack webhook URL (null = no slack)
+  lastTriggeredAt: timestamp("last_triggered_at"),
+  lastNotifiedAt: timestamp("last_notified_at"),
+  currentPeriodSpend: real("current_period_spend").default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Budget Alert History - log of triggered alerts
+export const budgetAlertHistory = pgTable("budget_alert_history", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  alertId: uuid("alert_id")
+    .notNull()
+    .references(() => budgetAlerts.id, { onDelete: "cascade" }),
+  periodStart: timestamp("period_start").notNull(),
+  periodEnd: timestamp("period_end").notNull(),
+  spendUsd: real("spend_usd").notNull(),
+  thresholdUsd: real("threshold_usd").notNull(),
+  percentOfThreshold: real("percent_of_threshold").notNull(),
+  alertType: text("alert_type").notNull(), // "warning" | "exceeded"
+  notificationSent: boolean("notification_sent").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("budget_alert_history_alert_id_idx").on(table.alertId),
+  index("budget_alert_history_created_at_idx").on(table.createdAt),
+]);
+
+// Error Logs - application error tracking for admin dashboard
+export const errorLogs = pgTable("error_logs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  level: text("level").notNull(), // "error" | "warning" | "fatal"
+  source: text("source").notNull(), // "api" | "inngest" | "ai" | "webhook" | "auth"
+  message: text("message").notNull(),
+  stack: text("stack"),
+  context: jsonb("context").$type<Record<string, unknown>>(), // Additional context (userId, monitorId, etc.)
+  requestId: text("request_id"), // For correlating related errors
+  userId: text("user_id"), // Optional - which user triggered it
+  endpoint: text("endpoint"), // API endpoint or function name
+  statusCode: integer("status_code"), // HTTP status code if applicable
+  duration: integer("duration"), // Duration in ms if applicable
+  resolved: boolean("resolved").default(false).notNull(),
+  resolvedAt: timestamp("resolved_at"),
+  resolvedBy: text("resolved_by"), // Admin who resolved it
+  notes: text("notes"), // Admin notes about resolution
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("error_logs_level_idx").on(table.level),
+  index("error_logs_source_idx").on(table.source),
+  index("error_logs_created_at_idx").on(table.createdAt),
+  index("error_logs_resolved_idx").on(table.resolved),
+  index("error_logs_user_id_idx").on(table.userId),
 ]);
 
 // Usage - monthly usage tracking per billing period
@@ -540,6 +660,18 @@ export const workspacesRelations = relations(workspaces, ({ many }) => ({
   invites: many(workspaceInvites),
   monitors: many(monitors),
   audiences: many(audiences),
+  activityLogs: many(activityLogs),
+}));
+
+export const activityLogsRelations = relations(activityLogs, ({ one }) => ({
+  workspace: one(workspaces, {
+    fields: [activityLogs.workspaceId],
+    references: [workspaces.id],
+  }),
+  user: one(users, {
+    fields: [activityLogs.userId],
+    references: [users.id],
+  }),
 }));
 
 export const workspaceInvitesRelations = relations(workspaceInvites, ({ one }) => ({
@@ -662,6 +794,17 @@ export const aiLogsRelations = relations(aiLogs, ({ one }) => ({
   }),
 }));
 
+export const budgetAlertsRelations = relations(budgetAlerts, ({ many }) => ({
+  history: many(budgetAlertHistory),
+}));
+
+export const budgetAlertHistoryRelations = relations(budgetAlertHistory, ({ one }) => ({
+  alert: one(budgetAlerts, {
+    fields: [budgetAlertHistory.alertId],
+    references: [budgetAlerts.id],
+  }),
+}));
+
 export const usageRelations = relations(usage, ({ one }) => ({
   user: one(users, {
     fields: [usage.userId],
@@ -708,6 +851,12 @@ export type Result = typeof results.$inferSelect;
 export type NewResult = typeof results.$inferInsert;
 export type AiLog = typeof aiLogs.$inferSelect;
 export type NewAiLog = typeof aiLogs.$inferInsert;
+export type BudgetAlert = typeof budgetAlerts.$inferSelect;
+export type NewBudgetAlert = typeof budgetAlerts.$inferInsert;
+export type BudgetAlertHistory = typeof budgetAlertHistory.$inferSelect;
+export type NewBudgetAlertHistory = typeof budgetAlertHistory.$inferInsert;
+export type ErrorLog = typeof errorLogs.$inferSelect;
+export type NewErrorLog = typeof errorLogs.$inferInsert;
 export type Usage = typeof usage.$inferSelect;
 export type NewUsage = typeof usage.$inferInsert;
 export type SlackIntegration = typeof slackIntegrations.$inferSelect;

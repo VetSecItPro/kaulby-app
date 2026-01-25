@@ -3,6 +3,12 @@ import { db } from "@/lib/db";
 import { webhooks, webhookDeliveries, users } from "@/lib/db/schema";
 import { eq, and, lt, lte, or } from "drizzle-orm";
 import crypto from "crypto";
+import {
+  formatSlackPayload,
+  formatDiscordPayload,
+  detectWebhookType,
+  type NotificationResult,
+} from "@/lib/notifications/webhooks";
 
 // Exponential backoff delays in minutes: 1, 5, 15, 60, 240 (4 hours)
 const RETRY_DELAYS_MINUTES = [1, 5, 15, 60, 240];
@@ -11,6 +17,44 @@ interface WebhookPayload {
   eventType: string;
   data: Record<string, unknown>;
   timestamp: string;
+}
+
+// Format payload based on webhook URL type (Slack, Discord, or generic)
+function formatPayloadForWebhook(
+  webhookUrl: string,
+  eventType: string,
+  data: Record<string, unknown>
+): unknown {
+  const type = detectWebhookType(webhookUrl);
+
+  // For new_result events, format nicely for Slack/Discord
+  if (eventType === "new_result" && data.result) {
+    const result = data.result as NotificationResult;
+    const monitorName = (data.monitorName as string) || "Monitor";
+
+    if (type === "slack") {
+      return formatSlackPayload({
+        monitorName,
+        results: [result],
+        dashboardUrl: `https://kaulbyapp.com/dashboard/results`,
+      });
+    }
+
+    if (type === "discord") {
+      return formatDiscordPayload({
+        monitorName,
+        results: [result],
+        dashboardUrl: `https://kaulbyapp.com/dashboard/results`,
+      });
+    }
+  }
+
+  // Generic/Zapier format - clean JSON structure
+  return {
+    event: eventType,
+    timestamp: new Date().toISOString(),
+    ...data,
+  };
 }
 
 // Generate HMAC signature for webhook payload
@@ -163,18 +207,29 @@ export const processWebhookDelivery = inngest.createFunction(
     }
 
     const webhook = delivery.webhook;
-    const payload = JSON.stringify(delivery.payload);
 
-    // Prepare headers
+    // Format payload based on webhook type (Slack/Discord/generic)
+    const storedPayload = delivery.payload as WebhookPayload;
+    const formattedPayload = formatPayloadForWebhook(
+      webhook.url,
+      delivery.eventType,
+      storedPayload.data || storedPayload
+    );
+    const payload = JSON.stringify(formattedPayload);
+
+    // Prepare headers (skip custom headers for Slack/Discord as they have specific requirements)
+    const webhookType = detectWebhookType(webhook.url);
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
-      "X-Webhook-Event": delivery.eventType,
-      "X-Webhook-Delivery-Id": deliveryId,
-      ...(webhook.headers as Record<string, string> || {}),
+      ...(webhookType === "unknown" ? {
+        "X-Webhook-Event": delivery.eventType,
+        "X-Webhook-Delivery-Id": deliveryId,
+        ...(webhook.headers as Record<string, string> || {}),
+      } : {}),
     };
 
-    // Add signature if secret is configured
-    if (webhook.secret) {
+    // Add signature for generic webhooks if secret is configured
+    if (webhook.secret && webhookType === "unknown") {
       headers["X-Webhook-Signature"] = `sha256=${generateSignature(payload, webhook.secret)}`;
     }
 

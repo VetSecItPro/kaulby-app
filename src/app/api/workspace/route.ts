@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { workspaces, users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { findUserWithFallback } from "@/lib/auth-utils";
+import { logActivity } from "@/lib/activity-log";
 
 export const dynamic = "force-dynamic";
 
@@ -121,6 +122,16 @@ export async function POST(request: Request) {
         updatedAt: new Date(),
       })
       .where(eq(users.id, user.id));
+
+    // Log activity
+    await logActivity({
+      workspaceId: newWorkspace.id,
+      userId: user.id,
+      action: "workspace_created",
+      targetType: "workspace",
+      targetId: newWorkspace.id,
+      targetName: newWorkspace.name,
+    });
 
     return NextResponse.json({ workspace: newWorkspace }, { status: 201 });
   } catch (error) {

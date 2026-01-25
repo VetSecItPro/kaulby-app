@@ -1,7 +1,4 @@
 import { redirect } from "next/navigation";
-import { db } from "@/lib/db";
-import { monitors, results, users } from "@/lib/db/schema";
-import { eq, count, and, gte, inArray } from "drizzle-orm";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Eye } from "lucide-react";
@@ -12,6 +9,10 @@ import { UpgradeBanner } from "@/components/dashboard/upgrade-banner";
 import { DashboardInsights } from "@/components/dashboard/dashboard-insights";
 import { getUserPlan } from "@/lib/limits";
 import { getEffectiveUserId, isLocalDev } from "@/lib/dev-auth";
+import {
+  getCachedMonitorIds,
+  getCachedResultsCount,
+} from "@/lib/server-cache";
 
 export default async function DashboardPage() {
   const userId = await getEffectiveUserId();
@@ -21,43 +22,24 @@ export default async function DashboardPage() {
     redirect("/sign-in");
   }
 
-  // Run initial queries in parallel for better performance
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
+  // Run cached queries in parallel for better performance
   // In dev mode, default to enterprise (Team) for full feature testing
-  const [user, userPlan] = userId
+  const [userPlan, userMonitors] = userId
     ? await Promise.all([
-        db.query.users.findFirst({ where: eq(users.id, userId) }),
         getUserPlan(userId),
+        getCachedMonitorIds(userId),
       ])
-    : [null, isDev ? "enterprise" as const : "free" as const];
-
-  // Get monitor count and check for results
-  const userMonitors = user && userId
-    ? await db.query.monitors.findMany({
-        where: eq(monitors.userId, userId),
-        columns: { id: true },
-      })
-    : [];
+    : [isDev ? "enterprise" as const : "free" as const, []];
 
   const hasMonitors = userMonitors.length > 0;
 
-  // Check if user has any results
-  let hasResults = false;
-  if (hasMonitors) {
-    const monitorIdList = userMonitors.map(m => m.id);
-    const resultsData = await db
-      .select({ count: count() })
-      .from(results)
-      .where(
-        and(
-          gte(results.createdAt, thirtyDaysAgo),
-          inArray(results.monitorId, monitorIdList)
-        )
-      );
-    hasResults = (resultsData[0]?.count || 0) > 0;
-  }
+  // Check if user has any results (cached)
+  const monitorIdList = userMonitors.map(m => m.id);
+  const resultsCount = hasMonitors && userId
+    ? await getCachedResultsCount(userId, monitorIdList, 30)
+    : 0;
+  const hasResults = resultsCount > 0;
+
   const showGettingStarted = !hasMonitors || !hasResults;
 
   return (

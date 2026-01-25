@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { monitors, results } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { incrementResultsCount, canAccessPlatform, shouldProcessMonitor } from "@/lib/limits";
+import { isMonitorScheduleActive } from "@/lib/monitor-schedule";
 
 const PH_API_BASE = "https://api.producthunt.com/v2/api/graphql";
 const PH_TOKEN_URL = "https://api.producthunt.com/v2/oauth/token";
@@ -179,6 +180,11 @@ export const monitorProductHunt = inngest.createFunction(
       const scheduleCheck = await shouldProcessMonitor(monitor.userId, monitor.lastCheckedAt);
       if (!scheduleCheck.shouldProcess) {
         continue; // Skip monitors that are within refresh delay period
+      }
+
+      // Check if monitor is within its active schedule
+      if (!isMonitorScheduleActive(monitor)) {
+        continue;
       }
 
       let monitorMatchCount = 0;

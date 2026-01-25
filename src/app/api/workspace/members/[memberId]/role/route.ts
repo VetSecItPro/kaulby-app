@@ -5,6 +5,7 @@ import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { findUserWithFallback } from "@/lib/auth-utils";
 import { permissions, getAssignableRoles, type WorkspaceRole } from "@/lib/permissions";
+import { logActivity } from "@/lib/activity-log";
 
 export const dynamic = "force-dynamic";
 
@@ -96,6 +97,20 @@ export async function PATCH(
         updatedAt: new Date(),
       })
       .where(eq(users.id, memberId));
+
+    // Log activity
+    await logActivity({
+      workspaceId: currentUser.workspaceId,
+      userId: currentUser.id,
+      action: "member_role_changed",
+      targetType: "member",
+      targetId: memberId,
+      targetName: memberToUpdate.name || memberToUpdate.email,
+      metadata: {
+        oldRole: memberToUpdate.workspaceRole,
+        newRole,
+      },
+    });
 
     return NextResponse.json({ success: true, role: newRole });
   } catch (error) {
