@@ -199,3 +199,149 @@ Before implementing any feature, ask:
 - Use Drizzle inferred types: `typeof monitors.$inferSelect`
 - API errors: return JSON with appropriate HTTP status
 - Never commit secrets; all env vars in `.env.local`
+
+---
+
+## Recent Updates (January 2026)
+
+### Security Library (`src/lib/security/`)
+Centralized security utilities for the entire application:
+- **`escapeHtml()`** - XSS prevention for HTML content
+- **`escapeRegExp()`** - ReDoS prevention for regex patterns
+- **`sanitizeUrl()`** - URL validation (blocks javascript:, data:, vbscript:)
+- **`sanitizeForLog()`** - Log injection prevention
+- **`isValidEmail()`, `isValidUuid()`, `truncate()`** - Input validation helpers
+
+Import from: `import { escapeHtml, sanitizeUrl } from '@/lib/security'`
+
+### Churn Prevention System
+Automated detection and re-engagement for inactive users:
+- **Activity tracking** - `lastActiveAt` column updated on dashboard visits
+- **Inngest cron job** - `detect-inactive-users` runs daily at 10 AM UTC
+- **Re-engagement emails** - Sent to inactive paying users (7+ days) with 30-day cooldown
+- **Personalized stats** - Email includes monitor count, results tracked, top-performing monitor
+
+### Performance Optimizations
+- **Server-side caching** - `unstable_cache()` wrappers in `src/lib/server-cache.ts`
+- **Navigation prefetching** - `NavLink` component with hover-based prefetch
+- **Route preloader** - Critical dashboard routes preloaded on mount
+- **Database indexes** - Optimized queries for monitors, results, and user lookups
+
+### CI/CD Improvements
+- **GitHub Actions** - Fixed workflow versions (v4), added Semgrep security scanning
+- **`.semgrepignore`** - Excludes test files, build outputs, and known safe patterns
+- **Weekly security audit** - Automated scanning with OWASP rules
+
+---
+
+## What's Implemented ✅
+
+### Core Features
+- [x] Multi-platform monitoring (16 platforms via Apify)
+- [x] AI-powered sentiment analysis and categorization
+- [x] Real-time and scheduled alerts (email, webhooks, Slack)
+- [x] Daily/weekly email digests with AI insights
+- [x] Team workspaces with role-based permissions
+- [x] API key management with public API docs
+
+### User Experience
+- [x] Onboarding wizard with templates
+- [x] Spotlight tour for new users
+- [x] Empty state illustrations
+- [x] Page transitions and micro-interactions
+- [x] Infinite scroll on results
+- [x] Dark mode (always-on)
+
+### Admin Dashboard (`/manage`)
+- [x] User management with search/filter
+- [x] Analytics and metrics (MRR, churn, conversions)
+- [x] AI cost tracking with budget alerts
+- [x] Error logs viewer with resolution tracking
+- [x] System health monitoring
+
+### SEO & Marketing
+- [x] Programmatic subreddit SEO pages
+- [x] JSON-LD structured data
+- [x] Community stats collection (weekly cron)
+
+### Billing & Subscriptions
+- [x] Polar.sh integration (Pro/Team tiers)
+- [x] Annual pricing (2 months free)
+- [x] Day pass for one-time access
+- [x] Founding members program
+
+---
+
+## Remaining Tasks 📋
+
+### High Priority
+- [ ] **X/Twitter monitoring** - Enterprise tier (pending API access decisions)
+- [ ] **Mobile app** - React Native or PWA for on-the-go monitoring
+- [ ] **AI response suggestions** - Generate reply drafts for mentions
+
+### Medium Priority
+- [ ] **Competitor benchmarking** - Compare mention volume/sentiment vs competitors
+- [ ] **Custom AI prompts** - Let users customize analysis prompts
+- [ ] **Scheduled reports** - PDF exports on schedule
+
+### Low Priority / Nice-to-Have
+- [ ] **Browser extension** - Quick-add mentions from any page
+- [ ] **Slack bot** - Interactive commands for monitoring
+- [ ] **White-label option** - For agencies
+
+### Technical Debt
+- [ ] Migrate from `unstable_cache` when Next.js stabilizes caching API
+- [ ] Add E2E tests with Playwright
+- [ ] Performance audit with Lighthouse CI
+
+---
+
+## Architecture Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         KAULBY ARCHITECTURE                      │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌──────────┐    ┌──────────┐    ┌──────────┐                  │
+│  │  Clerk   │    │  Polar   │    │ PostHog  │                  │
+│  │  (Auth)  │    │(Billing) │    │(Analytics)│                  │
+│  └────┬─────┘    └────┬─────┘    └────┬─────┘                  │
+│       │               │               │                          │
+│  ┌────▼───────────────▼───────────────▼─────┐                  │
+│  │              NEXT.JS APP                  │                  │
+│  │         (App Router + RSC)                │                  │
+│  │                                           │                  │
+│  │  ┌─────────────┐  ┌─────────────┐        │                  │
+│  │  │  Dashboard  │  │  Marketing  │        │                  │
+│  │  │   /dash/*   │  │     /*      │        │                  │
+│  │  └─────────────┘  └─────────────┘        │                  │
+│  └──────────────────┬───────────────────────┘                  │
+│                     │                                            │
+│  ┌──────────────────▼───────────────────────┐                  │
+│  │              INNGEST                      │                  │
+│  │         (Background Jobs)                 │                  │
+│  │                                           │                  │
+│  │  • Platform scans (16 platforms)         │                  │
+│  │  • AI analysis batches                   │                  │
+│  │  • Email digests (daily/weekly)          │                  │
+│  │  • Data retention cleanup                │                  │
+│  │  • Churn detection & re-engagement       │                  │
+│  └──────────────────┬───────────────────────┘                  │
+│                     │                                            │
+│  ┌──────────────────▼───────────────────────┐                  │
+│  │           EXTERNAL SERVICES               │                  │
+│  │                                           │                  │
+│  │  ┌────────┐ ┌────────┐ ┌────────┐       │                  │
+│  │  │ Apify  │ │OpenRouter│ │ Resend │       │                  │
+│  │  │(Scrape)│ │  (AI)   │ │(Email) │       │                  │
+│  │  └────────┘ └────────┘ └────────┘       │                  │
+│  │                                           │                  │
+│  │  ┌────────┐ ┌────────┐ ┌────────┐       │                  │
+│  │  │Langfuse│ │Upstash │ │  Neon  │       │                  │
+│  │  │(Traces)│ │(Redis) │ │(Postgres)│      │                  │
+│  │  └────────┘ └────────┘ └────────┘       │                  │
+│  └──────────────────────────────────────────┘                  │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
