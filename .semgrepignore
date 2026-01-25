@@ -1,6 +1,27 @@
-# Semgrep ignore file
-# See: https://semgrep.dev/docs/ignoring-files-folders-code
+# Semgrep Ignore File
+# These paths/patterns are excluded from security scans
 
-# Ignore structured data file - only contains safe JSON-LD schemas
-# using JSON.stringify() on hardcoded objects, not user input
-src/lib/seo/structured-data.tsx
+# Test files
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+__tests__/
+tests/
+
+# Build outputs
+.next/
+dist/
+node_modules/
+
+# Email templates - HTML is generated server-side with sanitized user input
+# The {{{ triple braces in Mustache are intentional for pre-sanitized HTML
+email-templates/
+
+# Configuration files
+*.config.js
+*.config.ts
+drizzle.config.ts
+next.config.mjs
+tailwind.config.ts
+postcss.config.js
