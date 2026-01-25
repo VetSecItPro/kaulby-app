@@ -208,6 +208,9 @@ export const users = pgTable("users", {
   deletionRequestedAt: timestamp("deletion_requested_at"), // When user requested deletion (null = not requested)
   // Third-party integrations (HubSpot, Salesforce, etc.)
   integrations: jsonb("integrations").$type<Record<string, unknown>>(),
+  // Activity tracking for ***
+  lastActiveAt: timestamp("last_active_at"), // Last meaningful activity (dashboard visit, monitor action)
+  reengagementEmailSentAt: timestamp("reengagement_email_sent_at"), // Prevent duplicate re-engagement emails
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

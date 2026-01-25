@@ -7,6 +7,7 @@
  * - body:keyword - Search only in content/body
  * - author:username - Filter by author
  * - subreddit:name - Filter by subreddit/community
+ * - platform:reddit - Filter by platform
  * - NOT term - Exclude results with term
  * - OR - Match either term (default is AND)
  * - (grouping) - Group expressions
@@ -25,6 +26,7 @@ export interface ParsedQuery {
     body?: string[];
     author?: string[];
     subreddit?: string[];
+    platform?: string[];
   };
   // Original query for display
   original: string;
@@ -88,7 +90,7 @@ export function parseSearchQuery(query: string): ParsedQuery {
     }
 
     // Handle field prefixes
-    const fieldMatch = token.match(/^(title|body|author|subreddit):(.+)$/i);
+    const fieldMatch = token.match(/^(title|body|author|subreddit|platform):(.+)$/i);
     if (fieldMatch) {
       const field = fieldMatch[1].toLowerCase() as keyof ParsedQuery["filters"];
       const value = fieldMatch[2].replace(/^["']|["']$/g, ""); // Remove quotes
@@ -222,6 +224,10 @@ function generateExplanation(query: ParsedQuery): string {
     parts.push(`Subreddit: ${query.filters.subreddit.join(" or ")}`);
   }
 
+  if (query.filters.platform?.length) {
+    parts.push(`Platform: ${query.filters.platform.join(" or ")}`);
+  }
+
   return parts.join(" | ") || "Matches all results";
 }
 
@@ -234,6 +240,7 @@ export function matchesQuery(
     body?: string;
     author?: string;
     subreddit?: string;
+    platform?: string;
   },
   query: ParsedQuery
 ): MatchResult {
@@ -347,6 +354,19 @@ export function matchesQuery(
     }
   }
 
+  if (query.filters.platform?.length && content.platform) {
+    const platformMatch = query.filters.platform.some(
+      (p) => content.platform!.toLowerCase() === p.toLowerCase()
+    );
+    if (!platformMatch) {
+      return {
+        matches: false,
+        matchedTerms,
+        explanation: `Platform doesn't match filter`,
+      };
+    }
+  }
+
   return {
     matches: true,
     matchedTerms,
@@ -375,6 +395,7 @@ Search Operators:
 • body:keyword - Search only in body/content
 • author:username - Filter by author
 • subreddit:name - Filter by subreddit
+• platform:reddit - Filter by platform (reddit, hackernews, producthunt, etc.)
 • NOT term - Exclude results containing term
 • term1 OR term2 - Match either term
 • term1 term2 - Match both terms (AND is default)
@@ -384,6 +405,7 @@ Examples:
 • title:bug NOT fixed - Titles with "bug" but not "fixed"
 • author:competitor subreddit:saas - Posts by specific author in specific sub
 • alternative OR competitor - Find posts mentioning either word
+• platform:reddit "need help" - Reddit posts with exact phrase
 `.trim();
 }
 
@@ -405,7 +427,7 @@ export function validateSearchQuery(query: string): {
     }
 
     // Check for empty field values
-    if (query.match(/\b(title|body|author|subreddit):(\s|$)/)) {
+    if (query.match(/\b(title|body|author|subreddit|platform):(\s|$)/)) {
       return { valid: false, error: "Empty field value" };
     }
 

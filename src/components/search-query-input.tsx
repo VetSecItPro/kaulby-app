@@ -95,6 +95,7 @@ export function SearchQueryInput({ value, onChange, isPro = false }: SearchQuery
                   <p><code className="bg-muted px-1 rounded">body:keyword</code> - Search in content only</p>
                   <p><code className="bg-muted px-1 rounded">author:name</code> - Filter by author</p>
                   <p><code className="bg-muted px-1 rounded">subreddit:name</code> - Filter by subreddit</p>
+                  <p><code className="bg-muted px-1 rounded">platform:reddit</code> - Filter by platform</p>
                   <p><code className="bg-muted px-1 rounded">NOT term</code> - Exclude results with term</p>
                   <p><code className="bg-muted px-1 rounded">term1 OR term2</code> - Match either</p>
                   <p><code className="bg-muted px-1 rounded">term1 term2</code> - Match both (AND)</p>
@@ -139,6 +140,16 @@ export function SearchQueryInput({ value, onChange, isPro = false }: SearchQuery
               {parsed.excluded.length > 0 && (
                 <Badge variant="destructive" className="text-[10px]">
                   Excluded: {parsed.excluded.map(t => t.term).join(", ")}
+                </Badge>
+              )}
+              {parsed.filters.platform && parsed.filters.platform.length > 0 && (
+                <Badge variant="outline" className="text-[10px]">
+                  Platform: {parsed.filters.platform.join(", ")}
+                </Badge>
+              )}
+              {parsed.filters.author && parsed.filters.author.length > 0 && (
+                <Badge variant="outline" className="text-[10px]">
+                  Author: {parsed.filters.author.join(", ")}
                 </Badge>
               )}
             </div>

@@ -81,7 +81,8 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const { name, companyName, keywords, searchQuery, platforms, platformUrls,
-      scheduleEnabled, scheduleStartHour, scheduleEndHour, scheduleDays, scheduleTimezone } = body;
+      scheduleEnabled, scheduleStartHour, scheduleEndHour, scheduleDays, scheduleTimezone,
+      monitorType, discoveryPrompt } = body;
 
     // Validate input
     if (!name || typeof name !== "string") {
@@ -91,6 +92,25 @@ export async function POST(request: Request) {
     if (!companyName || typeof companyName !== "string") {
       return NextResponse.json({ error: "Company/brand name is required" }, { status: 400 });
     }
+
+    // Validate monitor type (defaults to "keyword" for backwards compatibility)
+    const validMonitorTypes = ["keyword", "ai_discovery"];
+    const sanitizedMonitorType = validMonitorTypes.includes(monitorType) ? monitorType : "keyword";
+
+    // Validate AI Discovery mode requirements
+    if (sanitizedMonitorType === "ai_discovery") {
+      if (!discoveryPrompt || typeof discoveryPrompt !== "string" || !discoveryPrompt.trim()) {
+        return NextResponse.json(
+          { error: "Discovery prompt is required for AI Discovery mode" },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Sanitize discovery prompt if provided (max 1000 chars for detailed prompts)
+    const sanitizedDiscoveryPrompt = discoveryPrompt && typeof discoveryPrompt === "string"
+      ? discoveryPrompt.trim().slice(0, 1000)
+      : null;
 
     // Keywords are now optional - sanitize if provided
     const sanitizedKeywords = Array.isArray(keywords)
@@ -197,8 +217,10 @@ export async function POST(request: Request) {
         userId,
         name: sanitizeInput(name),
         companyName: sanitizeInput(companyName),
-        keywords: sanitizedKeywords,
-        searchQuery: sanitizedSearchQuery,
+        monitorType: sanitizedMonitorType,
+        keywords: sanitizedMonitorType === "keyword" ? sanitizedKeywords : [],
+        searchQuery: sanitizedMonitorType === "keyword" ? sanitizedSearchQuery : null,
+        discoveryPrompt: sanitizedMonitorType === "ai_discovery" ? sanitizedDiscoveryPrompt : null,
         platformUrls: Object.keys(sanitizedPlatformUrls).length > 0 ? sanitizedPlatformUrls : null,
         platforms: allowedPlatforms,
         isActive: true,
@@ -218,10 +240,13 @@ export async function POST(request: Request) {
       properties: {
         monitorId: newMonitor.id,
         plan,
+        monitorType: sanitizedMonitorType,
         platformCount: allowedPlatforms.length,
         platforms: allowedPlatforms,
         keywordCount: sanitizedKeywords.length,
         hasSearchQuery: !!sanitizedSearchQuery,
+        hasDiscoveryPrompt: !!sanitizedDiscoveryPrompt,
+        isAiDiscovery: sanitizedMonitorType === "ai_discovery",
         // Track new platforms specifically
         hasIndieHackers: allowedPlatforms.includes("indiehackers"),
         hasGitHub: allowedPlatforms.includes("github"),

@@ -18,6 +18,7 @@ interface MatchableContent {
   body?: string;
   author?: string;
   subreddit?: string; // For Reddit-specific filtering
+  platform?: string; // For cross-platform filtering (reddit, hackernews, etc.)
 }
 
 interface MatchConfig {
