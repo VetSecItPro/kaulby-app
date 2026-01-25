@@ -72,6 +72,11 @@ export default async function SettingsPage() {
   const name = clerkUser?.fullName || user?.name || (isDev ? "Dev Mode User" : "");
   const timezone = user?.timezone || "America/New_York";
 
+  // Email & Report preferences
+  const digestPaused = user?.digestPaused || false;
+  const reportSchedule = user?.reportSchedule || "off";
+  const reportDay = user?.reportDay || 1;
+
   // Get data stats
   const dataStats = userId ? await getDataStats(userId) : {
     monitors: 0,
@@ -144,6 +149,9 @@ export default async function SettingsPage() {
       plans={plans}
       dataStats={dataStats}
       userId={userId || ""}
+      digestPaused={digestPaused}
+      reportSchedule={reportSchedule}
+      reportDay={reportDay}
     />
   );
 }

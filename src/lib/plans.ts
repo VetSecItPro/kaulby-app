@@ -20,7 +20,7 @@ export const ALL_PLATFORMS: Platform[] = [
 ];
 
 // Digest frequency types
-export type DigestFrequency = "weekly" | "daily" | "realtime";
+export type DigestFrequency = "weekly" | "daily" | "monthly" | "realtime";
 
 // Plan limits interface
 export interface PlanLimits {
@@ -188,7 +188,7 @@ export const PLANS: Record<"free" | "pro" | "enterprise", PlanDefinition> = {
       resultsVisible: -1, // unlimited
       refreshDelayHours: 2, // 2-hour refresh
       platforms: ["reddit", "hackernews", "indiehackers", "producthunt", "googlereviews", "youtube", "github", "trustpilot", "devto", "hashnode", "appstore", "playstore", "quora", "g2", "yelp", "amazonreviews"],
-      digestFrequencies: ["daily", "weekly", "realtime"],
+      digestFrequencies: ["daily", "weekly", "monthly", "realtime"],
       aiFeatures: {
         sentiment: true,
         painPointCategories: true,

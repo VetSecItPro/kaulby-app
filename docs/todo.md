@@ -2,7 +2,7 @@
 
 Active gaps, migrations, and known issues. See also: `docs/platforms-research.md` for platform API research.
 
-**Last updated:** January 25, 2026
+**Last updated:** January 26, 2026
 
 ---
 
@@ -124,31 +124,40 @@ Track pre-existing bugs/errors discovered during development here. Fix after cur
 
 ## Remaining Features To Implement
 
-Prioritized list of features not yet built. Update as items are completed.
+Numbered priority list. Update as items are completed.
 
-### Priority 1 - High Value / User Requested
-1. [ ] **AI Response Suggestions** - Generate reply drafts for mentions users want to respond to
-2. [ ] **Competitor Benchmarking** - Compare mention volume/sentiment vs competitor brands
-3. [ ] **Custom AI Prompts** - Let Pro+ users customize analysis prompts for their use case
-4. [ ] **Scheduled PDF Reports** - Weekly/monthly PDF exports sent via email
+| # | Feature | Description | Status |
+|---|---------|-------------|--------|
+| 1 | **Scheduled PDF Reports** | Weekly/monthly PDF exports sent via email | Pending |
+| 2 | **Monthly Email Digest** | Add monthly frequency (currently instant/daily/weekly) | Pending |
+| 3 | **Saved Searches UI** | Schema exists (`saved_searches` table), needs API + UI | Pending |
+| 4 | **Search Builder UI** | Visual query builder for non-technical users | Pending |
+| 5 | **Email Tracking** | Open rates, click rates for digests | Pending |
+| 6 | **Pause Digests Toggle** | Keep tracking, stop emails temporarily | Pending |
+| 7 | **Payload CMS Integration** | Self-hosted CMS for /articles (see `docs/cms-planning.md`) | Pending |
 
-### Priority 2 - Extensions & Integrations (Later)
-5. [ ] **Browser Extension** - Quick-add mentions from any webpage (uses existing auth + tier limits)
-6. [ ] **Slack Bot** - Interactive slash commands for monitoring from Slack
+---
 
-### Priority 3 - Technical Improvements
-7. [x] **E2E Tests (Playwright)** ✅ - `e2e/` directory with marketing, auth, accessibility tests
-8. [x] **Lighthouse CI** ✅ - Performance audits in CI pipeline via `lighthouserc.json`
-9. [ ] **Migrate from `unstable_cache`** - When Next.js stabilizes caching API
+### Completed ✅
+- [x] **AI Response Suggestions** - `/api/ai/suggest-reply` + `reply-suggestion.tsx`
+- [x] **Competitor Benchmarking** - Share of Voice at `/api/analytics/share-of-voice`
+- [x] **Custom AI Prompts** - AI Discovery mode with `discoveryPrompt` in monitors
+- [x] **Lead Scoring** - `leadScore` + `leadScoreFactors` in results schema
+- [x] **Platform Expansion to 16** - All files updated
+- [x] **E2E Tests (Playwright)** - `e2e/` directory
+- [x] **Lighthouse CI** - Performance audits in CI pipeline
+- [x] **Mobile App (PWA)** - `public/manifest.json`
 
-### Completed / Not Needed
-- [x] **Mobile App (PWA)** ✅ - Already implemented (`public/manifest.json`)
-- ~~X/Twitter Monitoring~~ - Deferred (platform risk)
-- ~~LinkedIn Monitoring~~ - Deferred (API limitations)
-- ~~Facebook Groups~~ - Deferred (platform risk)
-- ~~White-label Option~~ - Deferred (post-scale)
-- ~~SSO/SAML~~ - Deferred (need 2,000-4,000+ users first)
-- ~~Custom Domains~~ - Deferred (low priority vanity feature)
+### Deferred / Not Doing
+- ~~Browser Extension~~ - Low value, dashboard is sufficient
+- ~~Slack Bot~~ - Webhook notifications already work, interactive commands low ROI
+- ~~X/Twitter Monitoring~~ - Platform risk
+- ~~LinkedIn Monitoring~~ - API limitations
+- ~~Facebook Groups~~ - Platform risk
+- ~~White-label Option~~ - Post-scale
+- ~~SSO/SAML~~ - Need 2,000-4,000+ users first
+- ~~Custom Domains~~ - Low priority vanity feature
+- ~~Migrate unstable_cache~~ - Wait for Next.js to stabilize, not actionable now
 
 ---
 
@@ -178,5 +187,19 @@ Prioritized list of features not yet built. Update as items are completed.
   - `RoutePreloader` for critical dashboard routes
 - [x] **Server-side Caching** - `unstable_cache()` wrappers in `src/lib/server-cache.ts` (Jan 25, 2026)
 - [x] **CI/CD Improvements** - GitHub Actions fixes, Semgrep security scanning (Jan 25, 2026)
-- [x] **E2E Tests (Playwright)** - `e2e/` with marketing, auth, accessibility tests (Jan 25, 2026)
+- [x] **E2E Tests (Playwright)** - `e2e/` with marketing, auth, accessibility, dashboard, SEO tests (Jan 25, 2026)
 - [x] **Lighthouse CI** - Performance audits in CI pipeline (Jan 25, 2026)
+- [x] **AI Response Suggestions** - Full implementation with API + UI component (Jan 2026)
+  - `/api/ai/suggest-reply/route.ts` - Generates 3 reply suggestions with tone/confidence
+  - `src/components/dashboard/reply-suggestion.tsx` - Dialog with copy/customize flow
+- [x] **Competitor Benchmarking (Share of Voice)** - Team tier feature (Jan 2026)
+  - `/api/analytics/share-of-voice/route.ts` - Compare mentions/sentiment across brands
+  - `src/components/dashboard/share-of-voice.tsx` - Visual comparison component
+- [x] **Lead Scoring** - Composite scoring in results (Jan 2026)
+  - `leadScore` (0-100) and `leadScoreFactors` (intent, engagement, recency, authority, fit) in schema
+  - Used in email digests, HubSpot/Slack/Discord integrations
+- [x] **AI Discovery Mode** - Custom semantic matching for monitors (Jan 2026)
+  - `discoveryPrompt` field in monitors table
+  - `src/lib/ai/analyzers/ai-discovery.ts` - Semantic pain point detection
+- [x] **Platform Expansion to 16** - YouTube, G2, Yelp, Amazon Reviews added (Jan 2026)
+  - All marketing/UI files updated to "16 platforms"

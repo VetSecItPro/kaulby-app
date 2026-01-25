@@ -274,25 +274,25 @@ Automated detection and re-engagement for inactive users:
 
 ## Remaining Tasks 📋
 
-### High Priority
-- [ ] **X/Twitter monitoring** - Enterprise tier (pending API access decisions)
-- [ ] **Mobile app** - React Native or PWA for on-the-go monitoring
-- [ ] **AI response suggestions** - Generate reply drafts for mentions
+| # | Feature | Description |
+|---|---------|-------------|
+| 1 | **Scheduled PDF reports** | Weekly/monthly PDF exports via email |
+| 2 | **Monthly email digest** | Add monthly frequency (currently instant/daily/weekly) |
+| 3 | **Saved searches UI** | Schema exists, needs API + UI |
+| 4 | **Search builder UI** | Visual query builder for non-technical users |
+| 5 | **Email tracking** | Open/click rates for digests |
+| 6 | **Pause digests toggle** | Keep tracking, stop emails temporarily |
+| 7 | **Payload CMS integration** | Self-hosted CMS for /articles (see `docs/cms-planning.md`) |
 
-### Medium Priority
-- [ ] **Competitor benchmarking** - Compare mention volume/sentiment vs competitors
-- [ ] **Custom AI prompts** - Let users customize analysis prompts
-- [ ] **Scheduled reports** - PDF exports on schedule
-
-### Low Priority / Nice-to-Have
-- [ ] **Browser extension** - Quick-add mentions from any page
-- [ ] **Slack bot** - Interactive commands for monitoring
-- [ ] **White-label option** - For agencies
-
-### Technical Debt
-- [ ] Migrate from `unstable_cache` when Next.js stabilizes caching API
-- [ ] Add E2E tests with Playwright
-- [ ] Performance audit with Lighthouse CI
+### Recently Completed ✅
+- [x] AI response suggestions - `/api/ai/suggest-reply` + `reply-suggestion.tsx`
+- [x] Competitor benchmarking - Share of Voice at `/api/analytics/share-of-voice`
+- [x] Custom AI prompts - AI Discovery mode with `discoveryPrompt` in monitors
+- [x] Lead scoring - `leadScore` + `leadScoreFactors` in results schema
+- [x] E2E tests (Playwright) - `e2e/` with marketing, auth, dashboard, SEO tests
+- [x] Lighthouse CI - Performance audits in CI pipeline
+- [x] Platform expansion to 16 - YouTube, G2, Yelp, Amazon Reviews
+- [x] Mobile app (PWA) - `public/manifest.json`
 
 ---
 
