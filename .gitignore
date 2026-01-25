@@ -37,3 +37,7 @@ next-env.d.ts
 
 # clerk configuration (can include secrets)
 /.clerk/
+
+# Playwright
+playwright-report/
+test-results/
