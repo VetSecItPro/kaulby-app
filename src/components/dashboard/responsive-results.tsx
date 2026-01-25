@@ -206,7 +206,7 @@ function MobileResultsView({
 
       return true;
     });
-  }, [visibleResults, selectedPlatform, selectedSentiment, searchQuery]);
+  }, [allResults, selectedPlatform, selectedSentiment, searchQuery]);
 
   if (results.length === 0 && !hasMonitors) {
     return (
@@ -480,7 +480,7 @@ function DesktopResultsView(props: ViewProps) {
       return true;
     });
   }, [
-    visibleResults,
+    allResults,
     selectedPlatform,
     selectedCommunity,
     selectedSentiment,
