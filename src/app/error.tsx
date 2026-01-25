@@ -18,35 +18,44 @@ export default function Error({
   }, [error]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
-      <div className="text-center max-w-md">
-        <div className="mx-auto w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mb-6">
-          <AlertTriangle className="w-8 h-8 text-destructive" aria-hidden="true" />
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="max-w-md w-full text-center space-y-6">
+        <div className="mx-auto w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center">
+          <AlertTriangle className="w-8 h-8 text-destructive" />
         </div>
 
-        <h1 className="text-2xl font-bold mb-2">Something went wrong</h1>
-        <p className="text-muted-foreground mb-6">
-          We encountered an unexpected error. Please try again or return to the homepage.
-        </p>
+        <div className="space-y-2">
+          <h1 className="text-2xl font-bold tracking-tight">Something went wrong</h1>
+          <p className="text-muted-foreground">
+            An unexpected error occurred. Our team has been notified.
+          </p>
+        </div>
 
         {error.digest && (
-          <p className="text-xs text-muted-foreground mb-4 font-mono">
+          <p className="text-xs text-muted-foreground font-mono">
             Error ID: {error.digest}
           </p>
         )}
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Button onClick={reset} variant="default">
-            <RefreshCw className="w-4 h-4 mr-2" aria-hidden="true" />
-            Try again
+          <Button onClick={reset} variant="default" className="gap-2">
+            <RefreshCw className="w-4 h-4" />
+            Try Again
           </Button>
-          <Button asChild variant="outline">
-            <Link href="/">
-              <Home className="w-4 h-4 mr-2" aria-hidden="true" />
-              Go home
-            </Link>
-          </Button>
+          <Link href="/">
+            <Button variant="outline" className="gap-2 w-full sm:w-auto">
+              <Home className="w-4 h-4" />
+              Go Home
+            </Button>
+          </Link>
         </div>
+
+        <p className="text-sm text-muted-foreground">
+          If this problem persists, please contact{" "}
+          <a href="mailto:support@kaulbyapp.com" className="text-primary hover:underline">
+            support@kaulbyapp.com
+          </a>
+        </p>
       </div>
     </div>
   );

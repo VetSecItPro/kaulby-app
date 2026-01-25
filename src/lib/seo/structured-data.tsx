@@ -384,3 +384,53 @@ export function SpeakableSchema({ url, cssSelectors }: SpeakableSchemaProps) {
     />
   );
 }
+
+// Subreddit Page Schema - for programmatic SEO pages
+interface SubredditSchemaProps {
+  subreddit: string;
+  description: string;
+  memberCount?: number;
+}
+
+export function SubredditSchema({ subreddit, description, memberCount }: SubredditSchemaProps) {
+  const schema: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    name: `Monitor r/${subreddit} | Kaulby`,
+    description: description,
+    url: `https://kaulbyapp.com/subreddits/${subreddit}`,
+    mainEntity: {
+      "@type": "SoftwareApplication",
+      name: "Kaulby",
+      applicationCategory: "BusinessApplication",
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "USD",
+        description: "Free tier available",
+      },
+    },
+    about: {
+      "@type": "Thing",
+      name: `r/${subreddit}`,
+      description: description,
+    },
+  };
+
+  // Add member count if available
+  if (memberCount && memberCount > 0) {
+    (schema.about as Record<string, unknown>).additionalProperty = {
+      "@type": "PropertyValue",
+      name: "members",
+      value: memberCount,
+    };
+  }
+
+  return (
+    <Script
+      id={`subreddit-schema-${subreddit}`}
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+    />
+  );
+}

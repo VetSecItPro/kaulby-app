@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { incrementResultsCount, canAccessPlatform, shouldProcessMonitor } from "@/lib/limits";
 import { fetchPlayStoreReviews, isApifyConfigured, type PlayStoreReviewItem } from "@/lib/apify";
 import { isMonitorScheduleActive } from "@/lib/monitor-schedule";
+import { AI_BATCH_CONFIG } from "@/lib/ai/sampling";
 
 /**
  * Monitor Google Play Store reviews for Android apps
@@ -64,6 +65,7 @@ export const monitorPlayStore = inngest.createFunction(
       }
 
       let monitorMatchCount = 0;
+      const newResultIds: string[] = [];
 
       // For Play Store, check platformUrls first, then fall back to keywords
       let appUrl: string | null = null;
@@ -126,22 +128,44 @@ export const monitorPlayStore = inngest.createFunction(
 
                 totalResults++;
                 monitorMatchCount++;
+                newResultIds.push(newResult.id);
 
                 // Increment usage count for the user
                 await incrementResultsCount(monitor.userId, 1);
-
-                // Trigger content analysis
-                await inngest.send({
-                  name: "content/analyze",
-                  data: {
-                    resultId: newResult.id,
-                    userId: monitor.userId,
-                  },
-                });
               }
             }
           });
         }
+
+      // Trigger AI analysis - batch mode for large volumes, individual for small
+      if (newResultIds.length > 0) {
+        await step.run(`trigger-analysis-${monitor.id}`, async () => {
+          if (newResultIds.length > AI_BATCH_CONFIG.BATCH_THRESHOLD) {
+            // Batch mode for cost efficiency (>50 results)
+            await inngest.send({
+              name: "content/analyze-batch",
+              data: {
+                monitorId: monitor.id,
+                userId: monitor.userId,
+                platform: "playstore",
+                resultIds: newResultIds,
+                totalCount: newResultIds.length,
+              },
+            });
+          } else {
+            // Individual analysis for small volumes
+            for (const resultId of newResultIds) {
+              await inngest.send({
+                name: "content/analyze",
+                data: {
+                  resultId,
+                  userId: monitor.userId,
+                },
+              });
+            }
+          }
+        });
+      }
 
       // Update monitor stats
       monitorResults[monitor.id] = monitorMatchCount;

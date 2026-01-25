@@ -7,6 +7,7 @@ import { contentMatchesMonitor } from "@/lib/content-matcher";
 import { searchMultipleKeywords, getStoryUrl, type HNAlgoliaStory } from "@/lib/hackernews";
 import { calculateStaggerDelay, formatStaggerDuration, addJitter, getStaggerWindow } from "../utils/stagger";
 import { isMonitorScheduleActive } from "@/lib/monitor-schedule";
+import { AI_BATCH_CONFIG } from "@/lib/ai/sampling";
 
 // Scan Hacker News for new posts matching monitor keywords
 // Uses Algolia HN Search API for efficient keyword-based searching
@@ -68,6 +69,7 @@ export const monitorHackerNews = inngest.createFunction(
       }
 
       let monitorMatchCount = 0;
+      const newResultIds: string[] = [];
 
       // Build search keywords from monitor config
       const searchKeywords: string[] = [];
@@ -151,15 +153,37 @@ export const monitorHackerNews = inngest.createFunction(
 
               totalResults++;
               monitorMatchCount++;
+              newResultIds.push(newResult.id);
 
               // Increment usage count for the user
               await incrementResultsCount(monitor.userId, 1);
+            }
+          }
+        });
+      }
 
-              // Trigger content analysis
+      // Trigger AI analysis - batch mode for large volumes, individual for small
+      if (newResultIds.length > 0) {
+        await step.run(`trigger-analysis-${monitor.id}`, async () => {
+          if (newResultIds.length > AI_BATCH_CONFIG.BATCH_THRESHOLD) {
+            // Batch mode for cost efficiency (>50 results)
+            await inngest.send({
+              name: "content/analyze-batch",
+              data: {
+                monitorId: monitor.id,
+                userId: monitor.userId,
+                platform: "hackernews",
+                resultIds: newResultIds,
+                totalCount: newResultIds.length,
+              },
+            });
+          } else {
+            // Individual analysis for small volumes
+            for (const resultId of newResultIds) {
               await inngest.send({
                 name: "content/analyze",
                 data: {
-                  resultId: newResult.id,
+                  resultId,
                   userId: monitor.userId,
                 },
               });
