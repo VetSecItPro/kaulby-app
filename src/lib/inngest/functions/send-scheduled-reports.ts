@@ -10,7 +10,14 @@ import { db, users, monitors, results } from "@/lib/db";
 import { eq, and, gte, inArray, sql, desc } from "drizzle-orm";
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy init to avoid build-time errors when RESEND_API_KEY is not set
+let resend: Resend | null = null;
+function getResend(): Resend {
+  if (!resend) {
+    resend = new Resend(process.env.RESEND_API_KEY);
+  }
+  return resend;
+}
 
 interface ReportData {
   totals: {
@@ -112,7 +119,7 @@ export const sendScheduledReports = inngest.createFunction(
             user.reportSchedule || "weekly"
           );
 
-          await resend.emails.send({
+          await getResend().emails.send({
             from: "Kaulby Reports <reports@kaulbyapp.com>",
             to: user.email,
             subject: `Your ${user.reportSchedule === "weekly" ? "Weekly" : "Monthly"} Community Monitoring Report`,

@@ -3,7 +3,14 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy init to avoid build-time errors when RESEND_API_KEY is not set
+let resend: Resend | null = null;
+function getResend(): Resend {
+  if (!resend) {
+    resend = new Resend(process.env.RESEND_API_KEY);
+  }
+  return resend;
+}
 
 interface SupportTicketData {
   category: string;
@@ -39,7 +46,7 @@ export async function submitSupportTicket(data: SupportTicketData) {
 
   try {
     // Send email to support
-    await resend.emails.send({
+    await getResend().emails.send({
       from: "Kaulby Support <support@kaulbyapp.com>",
       to: "support@kaulbyapp.com",
       replyTo: userEmail,
@@ -97,7 +104,7 @@ Reply directly to this email to respond to the user.
     });
 
     // Send confirmation to user
-    await resend.emails.send({
+    await getResend().emails.send({
       from: "Kaulby Support <support@kaulbyapp.com>",
       to: userEmail,
       subject: `We received your support request: ${data.subject}`,
