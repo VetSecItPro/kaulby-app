@@ -109,3 +109,4 @@ export async function getDayPassHistory(userId: string): Promise<{
     lastPurchasedAt: user?.lastDayPassPurchasedAt || null,
   };
 }
+

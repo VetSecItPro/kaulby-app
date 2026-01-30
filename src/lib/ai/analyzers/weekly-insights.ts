@@ -26,7 +26,7 @@ export interface WeeklyInsightsResult {
   alertItems?: string[];
 }
 
-export interface ResultForAnalysis {
+interface ResultForAnalysis {
   title: string;
   content?: string | null;
   platform: string;

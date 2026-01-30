@@ -11,7 +11,7 @@ const DAILY_RATE_LIMIT = 10000; // 10,000 requests per day for Team tier
  * Generate a new API key
  * Format: kaulby_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxx (32 random chars)
  */
-export function generateApiKey(): { key: string; prefix: string; hash: string } {
+function generateApiKey(): { key: string; prefix: string; hash: string } {
   const randomPart = randomBytes(24).toString("base64url"); // 32 chars
   const key = `kaulby_live_${randomPart}`;
   const prefix = key.substring(0, 16); // "kaulby_live_xxxx"
@@ -22,14 +22,14 @@ export function generateApiKey(): { key: string; prefix: string; hash: string } 
 /**
  * Hash an API key using SHA-256
  */
-export function hashApiKey(key: string): string {
+function hashApiKey(key: string): string {
   return createHash("sha256").update(key).digest("hex");
 }
 
 /**
  * Validate an API key and return the user if valid
  */
-export async function validateApiKey(key: string): Promise<{
+async function validateApiKey(key: string): Promise<{
   valid: boolean;
   userId?: string;
   keyId?: string;
@@ -130,7 +130,7 @@ export async function validateApiKey(key: string): Promise<{
  * Extract API key from request headers
  * Supports: Authorization: Bearer <key> or X-API-Key: <key>
  */
-export function extractApiKey(request: NextRequest): string | null {
+function extractApiKey(request: NextRequest): string | null {
   // Check Authorization header
   const authHeader = request.headers.get("authorization");
   if (authHeader?.startsWith("Bearer ")) {

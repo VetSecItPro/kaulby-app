@@ -8,19 +8,14 @@ import { currentUser } from "@clerk/nextjs/server";
 // TYPES
 // ============================================================================
 
-export interface LimitCheckResult {
+interface LimitCheckResult {
   allowed: boolean;
   current: number;
   limit: number;
   message: string;
 }
 
-export interface UsageStats {
-  monitors: { current: number; limit: number; percentage: number };
-  resultsThisPeriod: { current: number; limit: number; percentage: number };
-}
-
-export interface FeatureAccess {
+interface FeatureAccess {
   feature: string;
   hasAccess: boolean;
   requiredPlan: PlanKey;
@@ -334,7 +329,7 @@ export async function getRefreshDelay(userId: string): Promise<{
  * Filter and annotate results for display based on user's plan
  * Returns results with visibility metadata for UI rendering
  */
-export interface ResultWithVisibility<T> {
+interface ResultWithVisibility<T> {
   result: T;
   isVisible: boolean;
   isAiBlurred: boolean;
@@ -490,7 +485,7 @@ export async function canAccessFeature(
 /**
  * Get or create usage record for current billing period
  */
-export async function getOrCreateUsageRecord(userId: string) {
+async function getOrCreateUsageRecord(userId: string) {
   const user = await getUserWithSubscription(userId);
   if (!user) throw new Error("User not found");
 
@@ -570,48 +565,6 @@ export async function incrementAiCallsCount(
 }
 
 // ============================================================================
-// USAGE STATS
-// ============================================================================
-
-/**
- * Get comprehensive usage stats for a user
- */
-export async function getUserUsageStats(userId: string): Promise<UsageStats> {
-  const plan = await getUserPlan(userId);
-  const limits = getPlanLimits(plan);
-
-  // Get monitor count
-  const [monitorResult] = await db
-    .select({ count: count() })
-    .from(monitors)
-    .where(eq(monitors.userId, userId));
-
-  const monitorCount = monitorResult?.count || 0;
-  const monitorLimit = limits.monitors;
-
-  // Get results count for current period
-  const usageRecord = await getOrCreateUsageRecord(userId);
-  const resultsCount = usageRecord.resultsCount;
-
-  // Calculate results limit based on history days (rough estimate)
-  // This is a simplified approach - in production you might want a dedicated results limit
-  const resultsLimit = limits.resultsHistoryDays === 365 ? -1 : limits.resultsHistoryDays * 100;
-
-  return {
-    monitors: {
-      current: monitorCount,
-      limit: monitorLimit,
-      percentage: monitorLimit === -1 ? 0 : Math.round((monitorCount / monitorLimit) * 100),
-    },
-    resultsThisPeriod: {
-      current: resultsCount,
-      limit: resultsLimit,
-      percentage: resultsLimit === -1 ? 0 : Math.round((resultsCount / resultsLimit) * 100),
-    },
-  };
-}
-
-// ============================================================================
 // UPGRADE PROMPTS (Conversion-focused)
 // ============================================================================
 
@@ -627,7 +580,7 @@ export interface UpgradePrompt {
   ctaText: string;
 }
 
-export type UpgradeTrigger =
+type UpgradeTrigger =
   | "monitors"
   | "keywords"
   | "sources"
@@ -740,38 +693,6 @@ export function getUpgradePrompt(
   };
 }
 
-/**
- * Check if user should see an upgrade prompt based on their activity
- * Returns the most relevant trigger if multiple apply
- */
-export async function getActiveUpgradeTrigger(
-  userId: string
-): Promise<UpgradeTrigger | null> {
-  const plan = await getUserPlan(userId);
-
-  // Only show upgrade prompts to free users
-  if (plan !== "free") return null;
-
-  const limits = getPlanLimits(plan);
-
-  // Check monitor limit
-  const monitorCheck = await canCreateMonitor(userId);
-  if (!monitorCheck.allowed) return "monitors";
-
-  // Check if they have hidden results (most compelling trigger)
-  const usageRecord = await getOrCreateUsageRecord(userId);
-  if (usageRecord.resultsCount > limits.resultsVisible) {
-    return "results_hidden";
-  }
-
-  // Check refresh delay (if they've been waiting)
-  if (limits.refreshDelayHours > 0) {
-    return "refresh_delay";
-  }
-
-  return null;
-}
-
 // ============================================================================
 // MONITOR SCHEDULING
 // ============================================================================
@@ -838,7 +759,7 @@ const MANUAL_SCAN_LIMITS: Record<PlanKey, { cooldownHours: number; dailyLimit: n
   enterprise: { cooldownHours: 1, dailyLimit: 12 },
 };
 
-export interface ManualScanCheckResult {
+interface ManualScanCheckResult {
   canScan: boolean;
   cooldownRemaining: number | null; // milliseconds until next scan allowed
   reason: string;

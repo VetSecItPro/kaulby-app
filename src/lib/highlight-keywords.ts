@@ -5,32 +5,6 @@
  * Supports both simple keywords and parsed search queries.
  */
 
-import { type ParsedQuery } from "./search-parser";
-
-/**
- * Extract all searchable terms from a parsed query
- */
-export function extractSearchTerms(query: ParsedQuery): string[] {
-  const terms: string[] = [];
-
-  // Add required terms
-  query.required.forEach((t) => terms.push(t.term));
-
-  // Add optional terms
-  query.optional.forEach((t) => terms.push(t.term));
-
-  // Add field-specific filters (title and body are relevant for content highlighting)
-  if (query.filters.title) {
-    terms.push(...query.filters.title);
-  }
-  if (query.filters.body) {
-    terms.push(...query.filters.body);
-  }
-
-  // Remove duplicates and empty strings
-  return Array.from(new Set(terms.filter((t) => t.trim().length > 0)));
-}
-
 /**
  * Extract keywords from a simple keyword array (for backward compatibility)
  */
@@ -38,7 +12,7 @@ export function extractKeywords(keywords: string[]): string[] {
   return keywords.filter((k) => k.trim().length > 0);
 }
 
-export interface HighlightMatch {
+interface HighlightMatch {
   /** The start index of the match in the original text */
   start: number;
   /** The end index of the match in the original text */
@@ -52,7 +26,7 @@ export interface HighlightMatch {
 /**
  * Find all keyword matches in text with their positions
  */
-export function findKeywordMatches(
+function findKeywordMatches(
   text: string,
   keywords: string[]
 ): HighlightMatch[] {
@@ -115,7 +89,7 @@ function mergeOverlappingMatches(matches: HighlightMatch[]): HighlightMatch[] {
   return merged;
 }
 
-export interface HighlightPart {
+interface HighlightPart {
   text: string;
   isHighlighted: boolean;
   keyword?: string;
@@ -166,48 +140,4 @@ export function splitTextForHighlighting(
   }
 
   return parts;
-}
-
-/**
- * Count how many unique keywords are matched in text
- */
-export function countMatchedKeywords(text: string, keywords: string[]): number {
-  if (!text || keywords.length === 0) return 0;
-
-  const textLower = text.toLowerCase();
-  let matchedCount = 0;
-
-  for (const keyword of keywords) {
-    if (keyword.trim() && textLower.includes(keyword.toLowerCase())) {
-      matchedCount++;
-    }
-  }
-
-  return matchedCount;
-}
-
-/**
- * Check if text contains any of the keywords
- */
-export function containsAnyKeyword(text: string, keywords: string[]): boolean {
-  if (!text || keywords.length === 0) return false;
-
-  const textLower = text.toLowerCase();
-  return keywords.some(
-    (keyword) => keyword.trim() && textLower.includes(keyword.toLowerCase())
-  );
-}
-
-/**
- * Get a summary of matches for display
- * Returns: "2 of 5 keywords matched" or "28 / 99 results matching"
- */
-export function getMatchSummary(
-  matchedCount: number,
-  totalKeywords: number
-): string {
-  if (totalKeywords === 0) return "All results";
-  if (matchedCount === 0) return "No keywords matched";
-  if (matchedCount === totalKeywords) return "All keywords matched";
-  return `${matchedCount} of ${totalKeywords} keywords matched`;
 }

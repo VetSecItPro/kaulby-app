@@ -8,7 +8,7 @@ export type Platform =
   | "indiehackers" | "github" | "hashnode";
 
 // Platform groupings for tier access
-export const PRO_PLATFORMS: Platform[] = [
+const PRO_PLATFORMS: Platform[] = [
   "reddit", "hackernews", "indiehackers", "producthunt",
   "googlereviews", "youtube", "github", "trustpilot"
 ];
@@ -54,7 +54,7 @@ export interface PlanLimits {
 export type BillingInterval = "monthly" | "annual";
 
 // Plan definition interface
-export interface PlanDefinition {
+interface PlanDefinition {
   name: string;
   description: string;
   price: number; // Monthly price
@@ -211,40 +211,7 @@ export const PLANS: Record<"free" | "pro" | "enterprise", PlanDefinition> = {
 
 export type PlanKey = keyof typeof PLANS;
 
-// Map Polar product ID to plan key (handles both monthly and annual)
-export function getPlanFromPriceId(priceId: string): PlanKey {
-  if (priceId === PLANS.pro.priceId || priceId === PLANS.pro.annualPriceId) return "pro";
-  if (priceId === PLANS.enterprise.priceId || priceId === PLANS.enterprise.annualPriceId) return "enterprise";
-  return "free";
-}
-
 // Get plan limits for a subscription status
 export function getPlanLimits(plan: PlanKey): PlanLimits {
   return PLANS[plan].limits;
-}
-
-// Get the appropriate price ID based on plan and billing interval
-export function getPriceId(plan: PlanKey, interval: BillingInterval): string | null {
-  const planDef = PLANS[plan];
-  if (!planDef) return null;
-  return interval === "annual" ? planDef.annualPriceId : planDef.priceId;
-}
-
-// Get trial days for a plan
-export function getTrialDays(plan: PlanKey): number {
-  return PLANS[plan]?.trialDays || 0;
-}
-
-// Calculate savings for annual billing
-export function getAnnualSavings(plan: PlanKey): { amount: number; percentage: number; monthsFree: number } {
-  const planDef = PLANS[plan];
-  if (!planDef || planDef.price === 0) {
-    return { amount: 0, percentage: 0, monthsFree: 0 };
-  }
-  const monthlyTotal = planDef.price * 12;
-  const annualTotal = planDef.annualPrice;
-  const savings = monthlyTotal - annualTotal;
-  const percentage = Math.round((savings / monthlyTotal) * 100);
-  const monthsFree = Math.round(savings / planDef.price);
-  return { amount: savings, percentage, monthsFree };
 }

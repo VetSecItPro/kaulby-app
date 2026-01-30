@@ -6,8 +6,6 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { EngagementHistogram } from "./engagement-histogram";
-
 /**
  * Results Sidebar - GummySearch-style filtering sidebar
  *
@@ -377,7 +375,7 @@ export const ResultsSidebar = memo(function ResultsSidebar({
           </Collapsible>
         )}
 
-        {/* Engagement Histogram Section */}
+        {/* Engagement Section */}
         {data.engagement.length > 0 && (
           <Collapsible open={engagementOpen} onOpenChange={setEngagementOpen}>
             <CollapsibleTrigger asChild>
@@ -393,12 +391,31 @@ export const ResultsSidebar = memo(function ResultsSidebar({
                 )}
               </Button>
             </CollapsibleTrigger>
-            <CollapsibleContent className="mt-2">
-              <EngagementHistogram
-                buckets={data.engagement}
-                selectedRange={selectedEngagement}
-                onRangeChange={onEngagementChange}
-              />
+            <CollapsibleContent className="space-y-1 mt-2">
+              {data.engagement.map(({ label, min, max, count }) => {
+                const isSelected =
+                  selectedEngagement?.min === min && selectedEngagement?.max === max;
+
+                return (
+                  <button
+                    key={label}
+                    onClick={() =>
+                      onEngagementChange?.(isSelected ? null : { min, max })
+                    }
+                    className={cn(
+                      "w-full flex items-center justify-between px-2 py-1.5 rounded-md text-sm transition-colors",
+                      isSelected
+                        ? "bg-primary/10 text-primary"
+                        : "hover:bg-muted"
+                    )}
+                  >
+                    <span>{label}</span>
+                    <Badge variant="secondary" className="h-5 px-1.5 text-xs">
+                      {count}
+                    </Badge>
+                  </button>
+                );
+              })}
             </CollapsibleContent>
           </Collapsible>
         )}

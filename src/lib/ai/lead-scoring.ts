@@ -279,35 +279,3 @@ export function calculateLeadScore(input: LeadScoreInput): LeadScoreFactors {
   };
 }
 
-/**
- * Get lead score label based on total score
- */
-export function getLeadScoreLabel(score: number): {
-  label: string;
-  color: string;
-  emoji: string;
-} {
-  if (score >= 70) {
-    return { label: "Hot Lead", color: "text-orange-600 dark:text-orange-400", emoji: "🔥" };
-  } else if (score >= 50) {
-    return { label: "Warm Lead", color: "text-yellow-600 dark:text-yellow-400", emoji: "⭐" };
-  } else if (score >= 30) {
-    return { label: "Cool Lead", color: "text-blue-600 dark:text-blue-400", emoji: "❄️" };
-  } else {
-    return { label: "Cold", color: "text-gray-600 dark:text-gray-400", emoji: "💤" };
-  }
-}
-
-/**
- * Check if a lead score indicates high intent
- */
-export function isHighIntentLead(score: number): boolean {
-  return score >= 50;
-}
-
-/**
- * Check if a lead score indicates very high intent (hot lead)
- */
-export function isHotLead(score: number): boolean {
-  return score >= 70;
-}

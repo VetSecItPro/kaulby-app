@@ -18,7 +18,6 @@ import {
   POLAR_PLANS,
   getPlanFromProductId,
   getProductId,
-  getPolarAnnualSavings,
   type PolarPlanKey,
   type BillingInterval
 } from "../src/lib/polar";
@@ -192,27 +191,7 @@ test("Empty product ID maps to 'free'", () => {
 });
 
 // ============================================================
-// SECTION 5: Annual Savings Calculation
-// ============================================================
-section("Annual Savings Calculation");
-
-test("Pro annual savings is $58 (2 months)", () => {
-  const savings = getPolarAnnualSavings("pro");
-  return savings.amount === 58 && savings.monthsFree === 2;
-});
-
-test("Team annual savings is $198 (2 months)", () => {
-  const savings = getPolarAnnualSavings("team");
-  return savings.amount === 198 && savings.monthsFree === 2;
-});
-
-test("Free plan has no savings", () => {
-  const savings = getPolarAnnualSavings("free");
-  return savings.amount === 0 && savings.monthsFree === 0;
-});
-
-// ============================================================
-// SECTION 6: Checkout API Request Validation
+// SECTION 5: Checkout API Request Validation
 // ============================================================
 section("Checkout API Request Validation Logic");
 

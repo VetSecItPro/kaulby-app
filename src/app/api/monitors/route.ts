@@ -270,22 +270,3 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET() {
-  try {
-    const { userId } = await auth();
-
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userMonitors = await db.query.monitors.findMany({
-      where: eq(monitors.userId, userId),
-      orderBy: (monitors, { desc }) => [desc(monitors.createdAt)],
-    });
-
-    return NextResponse.json({ monitors: userMonitors });
-  } catch (error) {
-    console.error("Error fetching monitors:", error);
-    return NextResponse.json({ error: "Failed to fetch monitors" }, { status: 500 });
-  }
-}

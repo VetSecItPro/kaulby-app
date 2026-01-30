@@ -280,7 +280,7 @@ export interface CommunitySuggestion {
 /**
  * Get community suggestions based on user's keywords
  */
-export function getCommunitySuggestions(
+function getCommunitySuggestions(
   keywords: string[],
   existingCommunities: string[] = [],
   limit: number = 10

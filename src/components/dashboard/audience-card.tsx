@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useMemo } from "react";
+import { memo } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,8 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreVertical, Pencil, Trash2, MessageSquare, TrendingUp } from "lucide-react";
-import { Sparkline, TrendIndicator } from "./sparkline";
+import { MoreVertical, Pencil, Trash2, MessageSquare, TrendingUp, TrendingDown } from "lucide-react";
 import { getPlatformDisplayName, getPlatformBadgeColor } from "@/lib/platform-utils";
 import { cn } from "@/lib/utils";
 
@@ -177,13 +176,6 @@ export const AudienceCard = memo(function AudienceCard({
   onDeleteRequest,
   className,
 }: AudienceCardProps) {
-  // Determine sparkline color based on trend
-  const sparklineColor = useMemo(() => {
-    if (stats.mentionChange > 5) return "rgb(22 163 74)"; // green
-    if (stats.mentionChange < -5) return "rgb(220 38 38)"; // red
-    return "rgb(59 130 246)"; // blue (neutral/slight)
-  }, [stats.mentionChange]);
-
   return (
     <Card
       className={cn(
@@ -258,26 +250,24 @@ export const AudienceCard = memo(function AudienceCard({
                 <span className="text-3xl font-bold tabular-nums">
                   {stats.totalMentions.toLocaleString()}
                 </span>
-                <TrendIndicator change={stats.mentionChange} size="sm" />
+                {stats.mentionChange !== 0 && (
+                  <span className={cn(
+                    "flex items-center gap-0.5 text-xs font-medium",
+                    stats.mentionChange > 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
+                  )}>
+                    {stats.mentionChange > 0 ? (
+                      <TrendingUp className="h-3 w-3" />
+                    ) : (
+                      <TrendingDown className="h-3 w-3" />
+                    )}
+                    {Math.abs(stats.mentionChange)}%
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
                 <MessageSquare className="h-3 w-3" />
                 <span>mentions this week</span>
               </div>
-            </div>
-
-            {/* Sparkline */}
-            <div className="flex flex-col items-end">
-              <Sparkline
-                data={stats.dailyMentions}
-                width={80}
-                height={28}
-                color={sparklineColor}
-                label={`Activity trend for ${name}`}
-              />
-              <span className="text-[10px] text-muted-foreground mt-0.5">
-                Last 7 days
-              </span>
             </div>
           </div>
 

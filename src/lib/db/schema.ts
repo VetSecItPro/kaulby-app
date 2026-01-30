@@ -84,16 +84,6 @@ export const monitorTypeEnum = pgEnum("monitor_type", [
   "ai_discovery", // AI-powered semantic discovery (Pro/Enterprise)
 ]);
 
-// IANA timezone strings for proper DST handling
-// NOTE: timezoneEnum kept for backwards compatibility but we now use text field
-// to support all worldwide timezones
-export const timezoneEnum = pgEnum("timezone", [
-  "America/New_York",      // Eastern
-  "America/Chicago",       // Central
-  "America/Denver",        // Mountain
-  "America/Los_Angeles",   // Pacific
-]);
-
 // Workspace role enum with granular permissions
 export const workspaceRoleEnum = pgEnum("workspace_role", [
   "owner",   // Full control: billing, delete workspace, manage all members
@@ -187,8 +177,6 @@ export const users = pgTable("users", {
   // Workspace membership (Enterprise feature)
   workspaceId: uuid("workspace_id").references(() => workspaces.id, { onDelete: "set null" }),
   workspaceRole: workspaceRoleEnum("workspace_role"),
-  // Legacy Stripe field - kept for data migration only
-  stripeCustomerId: text("stripe_customer_id").unique(), // DEPRECATED: Use polarCustomerId
   subscriptionStatus: subscriptionStatusEnum("subscription_status").default("free").notNull(),
   subscriptionId: text("subscription_id"),
   // Polar.sh fields (new payment provider)
@@ -470,21 +458,6 @@ export const usage = pgTable("usage", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// Slack Integrations - workspace connections for alerts
-export const slackIntegrations = pgTable("slack_integrations", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  userId: text("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  workspaceId: text("workspace_id").notNull(),
-  workspaceName: text("workspace_name"),
-  accessToken: text("access_token").notNull(),
-  webhookUrl: text("webhook_url"),
-  channelId: text("channel_id"),
-  channelName: text("channel_name"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
 // Webhook status enum
 export const webhookStatusEnum = pgEnum("webhook_status", [
   "pending",
@@ -527,49 +500,6 @@ export const webhookDeliveries = pgTable("webhook_deliveries", {
   completedAt: timestamp("completed_at"), // When delivery was successful or gave up
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
-
-// Cross-Platform Topics - detected themes appearing across multiple platforms
-// Used for the Insights page to show correlated discussions
-export const crossPlatformTopics = pgTable("cross_platform_topics", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  userId: text("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  topic: text("topic").notNull(), // The detected topic/theme (e.g., "AI coding assistants")
-  keywords: text("keywords").array().notNull(), // Keywords that define this topic
-  platformsFound: platformEnum("platforms_found").array().notNull(), // Which platforms this topic appears on
-  resultCount: integer("result_count").default(0).notNull(), // Total results matching this topic
-  sentimentSummary: jsonb("sentiment_summary").$type<{
-    positive: number;
-    negative: number;
-    neutral: number;
-  }>(), // Aggregated sentiment across all linked results
-  trendDirection: text("trend_direction").$type<"rising" | "falling" | "stable">(), // Is this topic gaining traction?
-  peakDate: timestamp("peak_date"), // When this topic had the most mentions
-  firstSeenAt: timestamp("first_seen_at").defaultNow().notNull(), // When we first detected this topic
-  lastSeenAt: timestamp("last_seen_at").defaultNow().notNull(), // Most recent mention
-  isActive: boolean("is_active").default(true).notNull(), // Whether topic is still trending
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-}, (table) => [
-  index("cross_platform_topics_user_id_idx").on(table.userId),
-  index("cross_platform_topics_is_active_idx").on(table.isActive),
-]);
-
-// Topic Results - links results to cross-platform topics
-export const topicResults = pgTable("topic_results", {
-  topicId: uuid("topic_id")
-    .notNull()
-    .references(() => crossPlatformTopics.id, { onDelete: "cascade" }),
-  resultId: uuid("result_id")
-    .notNull()
-    .references(() => results.id, { onDelete: "cascade" }),
-  relevanceScore: real("relevance_score"), // How strongly this result matches the topic (0-1)
-  addedAt: timestamp("added_at").defaultNow().notNull(),
-}, (table) => [
-  index("topic_results_topic_idx").on(table.topicId),
-  index("topic_results_result_idx").on(table.resultId),
-]);
 
 // API Keys - for Team tier API access
 export const apiKeys = pgTable("api_keys", {
@@ -722,9 +652,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   monitors: many(monitors),
   aiLogs: many(aiLogs),
   usage: many(usage),
-  slackIntegrations: many(slackIntegrations),
   webhooks: many(webhooks),
-  crossPlatformTopics: many(crossPlatformTopics),
   apiKeys: many(apiKeys),
 }));
 
@@ -792,30 +720,10 @@ export const alertsRelations = relations(alerts, ({ one }) => ({
   }),
 }));
 
-export const resultsRelations = relations(results, ({ one, many }) => ({
+export const resultsRelations = relations(results, ({ one }) => ({
   monitor: one(monitors, {
     fields: [results.monitorId],
     references: [monitors.id],
-  }),
-  topicResults: many(topicResults),
-}));
-
-export const crossPlatformTopicsRelations = relations(crossPlatformTopics, ({ one, many }) => ({
-  user: one(users, {
-    fields: [crossPlatformTopics.userId],
-    references: [users.id],
-  }),
-  topicResults: many(topicResults),
-}));
-
-export const topicResultsRelations = relations(topicResults, ({ one }) => ({
-  topic: one(crossPlatformTopics, {
-    fields: [topicResults.topicId],
-    references: [crossPlatformTopics.id],
-  }),
-  result: one(results, {
-    fields: [topicResults.resultId],
-    references: [results.id],
   }),
 }));
 
@@ -844,13 +752,6 @@ export const usageRelations = relations(usage, ({ one }) => ({
   }),
 }));
 
-export const slackIntegrationsRelations = relations(slackIntegrations, ({ one }) => ({
-  user: one(users, {
-    fields: [slackIntegrations.userId],
-    references: [users.id],
-  }),
-}));
-
 export const webhooksRelations = relations(webhooks, ({ one, many }) => ({
   user: one(users, {
     fields: [webhooks.userId],
@@ -870,48 +771,6 @@ export const webhookDeliveriesRelations = relations(webhookDeliveries, ({ one })
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Audience = typeof audiences.$inferSelect;
-export type NewAudience = typeof audiences.$inferInsert;
-export type AudienceMonitor = typeof audienceMonitors.$inferSelect;
-export type NewAudienceMonitor = typeof audienceMonitors.$inferInsert;
-export type Community = typeof communities.$inferSelect;
-export type NewCommunity = typeof communities.$inferInsert;
 export type Monitor = typeof monitors.$inferSelect;
-export type NewMonitor = typeof monitors.$inferInsert;
-export type Alert = typeof alerts.$inferSelect;
-export type NewAlert = typeof alerts.$inferInsert;
 export type Result = typeof results.$inferSelect;
-export type NewResult = typeof results.$inferInsert;
-export type AiLog = typeof aiLogs.$inferSelect;
-export type NewAiLog = typeof aiLogs.$inferInsert;
-export type BudgetAlert = typeof budgetAlerts.$inferSelect;
-export type NewBudgetAlert = typeof budgetAlerts.$inferInsert;
-export type BudgetAlertHistory = typeof budgetAlertHistory.$inferSelect;
-export type NewBudgetAlertHistory = typeof budgetAlertHistory.$inferInsert;
-export type ErrorLog = typeof errorLogs.$inferSelect;
-export type NewErrorLog = typeof errorLogs.$inferInsert;
-export type Usage = typeof usage.$inferSelect;
-export type NewUsage = typeof usage.$inferInsert;
-export type SlackIntegration = typeof slackIntegrations.$inferSelect;
-export type NewSlackIntegration = typeof slackIntegrations.$inferInsert;
-export type Webhook = typeof webhooks.$inferSelect;
-export type NewWebhook = typeof webhooks.$inferInsert;
-export type WebhookDelivery = typeof webhookDeliveries.$inferSelect;
-export type NewWebhookDelivery = typeof webhookDeliveries.$inferInsert;
-export type Workspace = typeof workspaces.$inferSelect;
-export type NewWorkspace = typeof workspaces.$inferInsert;
-export type WorkspaceInvite = typeof workspaceInvites.$inferSelect;
-export type NewWorkspaceInvite = typeof workspaceInvites.$inferInsert;
-export type CrossPlatformTopic = typeof crossPlatformTopics.$inferSelect;
-export type NewCrossPlatformTopic = typeof crossPlatformTopics.$inferInsert;
-export type TopicResult = typeof topicResults.$inferSelect;
-export type NewTopicResult = typeof topicResults.$inferInsert;
-export type ApiKey = typeof apiKeys.$inferSelect;
-export type NewApiKey = typeof apiKeys.$inferInsert;
-export type AuthorProfile = typeof authorProfiles.$inferSelect;
-export type NewAuthorProfile = typeof authorProfiles.$inferInsert;
-export type CommunityGrowth = typeof communityGrowth.$inferSelect;
-export type NewCommunityGrowth = typeof communityGrowth.$inferInsert;
 export type SavedSearch = typeof savedSearches.$inferSelect;
-export type NewSavedSearch = typeof savedSearches.$inferInsert;
-export type EmailEvent = typeof emailEvents.$inferSelect;
-export type NewEmailEvent = typeof emailEvents.$inferInsert;

@@ -7,43 +7,6 @@ import crypto from "crypto";
 
 export const dynamic = "force-dynamic";
 
-// GET - List all webhooks for user
-export async function GET() {
-  try {
-    const { userId } = await auth();
-
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Check if user is enterprise
-    const user = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: { subscriptionStatus: true },
-    });
-
-    if (user?.subscriptionStatus !== "enterprise") {
-      return NextResponse.json(
-        { error: "Webhooks are only available for Enterprise users" },
-        { status: 403 }
-      );
-    }
-
-    const userWebhooks = await db.query.webhooks.findMany({
-      where: eq(webhooks.userId, userId),
-      orderBy: (webhooks, { desc }) => [desc(webhooks.createdAt)],
-    });
-
-    return NextResponse.json({ webhooks: userWebhooks });
-  } catch (error) {
-    console.error("Get webhooks error:", error);
-    return NextResponse.json(
-      { error: "Failed to get webhooks" },
-      { status: 500 }
-    );
-  }
-}
-
 // POST - Create new webhook
 export async function POST(request: NextRequest) {
   try {

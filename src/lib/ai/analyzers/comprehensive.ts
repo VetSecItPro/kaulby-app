@@ -128,19 +128,3 @@ ${content}
   };
 }
 
-/**
- * Extract key metrics from comprehensive analysis for quick display
- */
-export function extractQuickMetrics(analysis: ComprehensiveAnalysisResult) {
-  return {
-    sentiment: analysis.sentiment.label,
-    sentimentScore: analysis.sentiment.score,
-    category: analysis.classification.category,
-    priority: analysis.actions.primary.priority,
-    intentScore: analysis.opportunity.intentScore,
-    shouldRespond: analysis.suggestedResponse.shouldRespond,
-    department: analysis.classification.department,
-    hasCompetitor: !!analysis.competitive.competitorMentioned,
-    isCrisis: analysis.opportunity.type === "crisis",
-  };
-}

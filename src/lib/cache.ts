@@ -433,30 +433,6 @@ export async function cachedQuery<T>(
 }
 
 /**
- * Invalidate cache entries matching a prefix
- */
-export async function invalidateCache(prefix: string): Promise<number> {
-  const count = await globalCache.invalidateByPrefix(prefix);
-  console.log(`[Cache] Invalidated ${count} entries matching "${prefix}"`);
-  return count;
-}
-
-/**
- * Get cache statistics
- */
-export function getCacheStats(): CacheStats {
-  return globalCache.getStats();
-}
-
-/**
- * Clear all cache entries (memory only)
- */
-export function clearCache(): void {
-  globalCache.clear();
-  console.log("[Cache] Cleared all entries");
-}
-
-/**
  * Direct cache access for manual operations
  */
 export const cache = {
@@ -492,23 +468,3 @@ export function getRedditCacheTTL(subreddit: string): number {
   return CACHE_TTL.REDDIT_SEARCH; // 2 hours for normal subreddits
 }
 
-/**
- * Get optimal cache TTL for a platform
- */
-export function getPlatformCacheTTL(platform: string): number {
-  switch (platform) {
-    case "reddit":
-      return CACHE_TTL.REDDIT_SEARCH;
-    case "hackernews":
-      return CACHE_TTL.HACKERNEWS;
-    case "producthunt":
-      return CACHE_TTL.PRODUCTHUNT;
-    case "googlereviews":
-    case "trustpilot":
-    case "appstore":
-    case "playstore":
-      return CACHE_TTL.REVIEWS;
-    default:
-      return CACHE_TTL.DEFAULT;
-  }
-}
