@@ -75,68 +75,9 @@ export function isMonitorScheduleActive(monitor: MonitorSchedule): boolean {
 }
 
 /**
- * Get a human-readable description of a monitor's schedule
- */
-export function getScheduleDescription(monitor: MonitorSchedule): string {
-  if (!monitor.scheduleEnabled) {
-    return "Always active";
-  }
-
-  const startHour = monitor.scheduleStartHour ?? 9;
-  const endHour = monitor.scheduleEndHour ?? 17;
-  const activeDays = monitor.scheduleDays;
-  const timezone = monitor.scheduleTimezone || "America/New_York";
-
-  // Format hours
-  const formatHour = (hour: number) => {
-    if (hour === 0) return "12 AM";
-    if (hour === 12) return "12 PM";
-    if (hour < 12) return `${hour} AM`;
-    return `${hour - 12} PM`;
-  };
-
-  const timeRange = `${formatHour(startHour)} - ${formatHour(endHour)}`;
-
-  // Format days
-  let daysStr = "every day";
-  if (activeDays !== null && activeDays.length > 0 && activeDays.length < 7) {
-    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const selectedDays = activeDays.map((d) => dayNames[d]).join(", ");
-
-    // Check for common patterns
-    const weekdays = [1, 2, 3, 4, 5];
-    const weekends = [0, 6];
-
-    if (
-      activeDays.length === 5 &&
-      weekdays.every((d) => activeDays.includes(d))
-    ) {
-      daysStr = "weekdays";
-    } else if (
-      activeDays.length === 2 &&
-      weekends.every((d) => activeDays.includes(d))
-    ) {
-      daysStr = "weekends";
-    } else {
-      daysStr = selectedDays;
-    }
-  }
-
-  // Format timezone (show short name)
-  const tzShort = timezone.split("/").pop()?.replace(/_/g, " ") || timezone;
-
-  return `${timeRange} ${daysStr} (${tzShort})`;
-}
-
-/**
  * Default weekdays (Monday-Friday)
  */
 export const WEEKDAYS = [1, 2, 3, 4, 5];
-
-/**
- * All days of the week
- */
-export const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
 
 /**
  * Common timezone options for UI

@@ -1,7 +1,5 @@
 import { Resend } from "resend";
 import {
-  generateDailyDigestHtml,
-  generateWeeklyReportHtml,
   type DigestMention,
   type DailyDigestData,
   type WeeklyReportData,
@@ -290,68 +288,6 @@ export async function sendDigestEmail(params: {
     to: params.to,
     subject: `Your ${params.frequency} digest · ${totalResults} new mentions`,
     html: getDigestEmailHtml(params.userName, params.frequency, totalResults, aiInsightsHtml, breakdownHtml, monitorsHtml),
-  });
-}
-
-// ============================================================================
-// ENHANCED DIGEST EMAILS (Newsletter-quality templates)
-// ============================================================================
-
-/**
- * Send Pro tier Daily Digest - Morning scan format
- * Uses the new newsletter-quality template
- */
-export async function sendProDailyDigest(data: DailyDigestData): Promise<void> {
-  const html = generateDailyDigestHtml(data);
-
-  await getResend().emails.send({
-    from: FROM_EMAIL,
-    to: data.dashboardUrl.includes("@") ? data.dashboardUrl : "", // This is a bug safeguard - actual email should come from caller
-    subject: `☀️ Daily Digest: ${data.stats.total} mentions • ${data.stats.salesOpportunities} opportunities`,
-    html,
-  });
-}
-
-/**
- * Send Pro tier Daily Digest to a specific email
- */
-export async function sendDailyDigestPro(params: {
-  to: string;
-  data: DailyDigestData;
-}): Promise<void> {
-  const html = generateDailyDigestHtml(params.data);
-
-  await getResend().emails.send({
-    from: FROM_EMAIL,
-    to: params.to,
-    subject: `☀️ Daily Digest: ${params.data.stats.total} mentions • ${params.data.stats.salesOpportunities} opportunities`,
-    html,
-  });
-}
-
-/**
- * Send Team tier Weekly Intelligence Report - Full executive briefing
- * Uses the new newsletter-quality template with AI insights
- */
-export async function sendWeeklyIntelligenceReport(params: {
-  to: string;
-  data: WeeklyReportData;
-}): Promise<void> {
-  const html = generateWeeklyReportHtml(params.data);
-
-  const weekChange = params.data.stats.previousWeekTotal
-    ? Math.round(((params.data.stats.total - params.data.stats.previousWeekTotal) / params.data.stats.previousWeekTotal) * 100)
-    : null;
-
-  const changeLabel = weekChange !== null
-    ? (weekChange >= 0 ? `↑${weekChange}%` : `↓${Math.abs(weekChange)}%`)
-    : "";
-
-  await getResend().emails.send({
-    from: FROM_EMAIL,
-    to: params.to,
-    subject: `📊 Weekly Intel: ${params.data.stats.total} mentions ${changeLabel} • ${params.data.stats.salesOpportunities} leads`,
-    html,
   });
 }
 

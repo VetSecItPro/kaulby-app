@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { db, audiences, audienceMonitors, results } from "@/lib/db";
-import { eq, and, inArray, desc } from "drizzle-orm";
+import { db, audiences } from "@/lib/db";
+import { eq, and } from "drizzle-orm";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -15,80 +15,6 @@ const updateAudienceSchema = z.object({
 
 interface RouteParams {
   params: Promise<{ id: string }>;
-}
-
-/**
- * GET /api/audiences/[id]
- * Get a single audience with its monitors and aggregated results
- */
-export async function GET(request: Request, { params }: RouteParams) {
-  try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { id } = await params;
-
-    const audience = await db.query.audiences.findFirst({
-      where: and(eq(audiences.id, id), eq(audiences.userId, userId)),
-    });
-
-    if (!audience) {
-      return NextResponse.json({ error: "Audience not found" }, { status: 404 });
-    }
-
-    // Get monitors through junction table
-    const audienceMonitorLinks = await db.query.audienceMonitors.findMany({
-      where: eq(audienceMonitors.audienceId, id),
-      with: {
-        monitor: {
-          columns: {
-            id: true,
-            name: true,
-            platforms: true,
-            keywords: true,
-            isActive: true,
-            lastCheckedAt: true,
-          },
-        },
-      },
-    });
-
-    // Get aggregated results from all monitors in this audience
-    const monitorIds = audienceMonitorLinks.map((am) => am.monitor.id);
-
-    let recentResults: typeof results.$inferSelect[] = [];
-    if (monitorIds.length > 0) {
-      recentResults = await db.query.results.findMany({
-        where: inArray(results.monitorId, monitorIds),
-        orderBy: [desc(results.createdAt)],
-        limit: 50,
-      });
-    }
-
-    return NextResponse.json({
-      id: audience.id,
-      name: audience.name,
-      description: audience.description,
-      color: audience.color,
-      icon: audience.icon,
-      createdAt: audience.createdAt,
-      updatedAt: audience.updatedAt,
-      monitors: audienceMonitorLinks.map((am) => am.monitor),
-      recentResults,
-      stats: {
-        monitorCount: monitorIds.length,
-        resultCount: recentResults.length,
-      },
-    });
-  } catch (error) {
-    console.error("Failed to fetch audience:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch audience" },
-      { status: 500 }
-    );
-  }
 }
 
 /**

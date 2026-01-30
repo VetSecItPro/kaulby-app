@@ -63,7 +63,7 @@ export function addJitter(delayMs: number, jitterPercent: number = 10): number {
  * Configuration for different platforms
  * Higher-volume platforms get longer stagger windows
  */
-export const STAGGER_CONFIG = {
+const STAGGER_CONFIG = {
   // Low-volume platforms: 5 minute window
   reddit: 5 * 60 * 1000,
   hackernews: 5 * 60 * 1000,
@@ -89,7 +89,7 @@ export const STAGGER_CONFIG = {
   hashnode: 5 * 60 * 1000,
 } as const;
 
-export type PlatformName = keyof typeof STAGGER_CONFIG;
+type PlatformName = keyof typeof STAGGER_CONFIG;
 
 /**
  * Get stagger window for a platform

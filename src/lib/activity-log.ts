@@ -22,7 +22,7 @@ export type ActivityAction =
   | "webhook_updated"
   | "webhook_deleted";
 
-export interface LogActivityParams {
+interface LogActivityParams {
   workspaceId: string;
   userId: string;
   action: ActivityAction;
@@ -77,66 +77,3 @@ export async function logActivity({
   }
 }
 
-/**
- * Helper to get a human-readable description of an activity
- */
-export function getActivityDescription(
-  action: ActivityAction,
-  actorName: string,
-  targetName?: string
-): string {
-  const target = targetName ? `"${targetName}"` : "an item";
-
-  switch (action) {
-    case "monitor_created":
-      return `${actorName} created monitor ${target}`;
-    case "monitor_updated":
-      return `${actorName} updated monitor ${target}`;
-    case "monitor_deleted":
-      return `${actorName} deleted monitor ${target}`;
-    case "monitor_paused":
-      return `${actorName} paused monitor ${target}`;
-    case "monitor_resumed":
-      return `${actorName} resumed monitor ${target}`;
-    case "monitor_duplicated":
-      return `${actorName} duplicated monitor ${target}`;
-    case "member_invited":
-      return `${actorName} invited ${target} to the workspace`;
-    case "member_joined":
-      return `${actorName} joined the workspace`;
-    case "member_removed":
-      return `${actorName} removed ${target} from the workspace`;
-    case "member_role_changed":
-      return `${actorName} changed the role of ${target}`;
-    case "workspace_created":
-      return `${actorName} created the workspace`;
-    case "workspace_updated":
-      return `${actorName} updated workspace settings`;
-    case "workspace_settings_changed":
-      return `${actorName} changed workspace settings`;
-    case "api_key_created":
-      return `${actorName} created an API key`;
-    case "api_key_revoked":
-      return `${actorName} revoked API key ${target}`;
-    case "webhook_created":
-      return `${actorName} created webhook ${target}`;
-    case "webhook_updated":
-      return `${actorName} updated webhook ${target}`;
-    case "webhook_deleted":
-      return `${actorName} deleted webhook ${target}`;
-    default:
-      return `${actorName} performed an action`;
-  }
-}
-
-/**
- * Get the icon name for an activity action (for UI display)
- */
-export function getActivityIcon(action: ActivityAction): string {
-  if (action.startsWith("monitor_")) return "activity";
-  if (action.startsWith("member_")) return "users";
-  if (action.startsWith("workspace_")) return "building";
-  if (action.startsWith("api_key_")) return "key";
-  if (action.startsWith("webhook_")) return "webhook";
-  return "circle";
-}

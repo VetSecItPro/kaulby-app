@@ -32,35 +32,3 @@ export async function findUserWithFallback(clerkUserId: string) {
 
   return user;
 }
-
-/**
- * Find user by Clerk ID with email fallback, selecting specific columns.
- *
- * @param clerkUserId - The Clerk user ID from auth()
- * @param columns - Object specifying which columns to select
- * @returns The user record with selected columns or null if not found
- */
-export async function findUserWithFallbackColumns<T extends Record<string, boolean>>(
-  clerkUserId: string,
-  columns: T
-) {
-  // First try by Clerk ID
-  let user = await db.query.users.findFirst({
-    where: eq(users.id, clerkUserId),
-    columns,
-  });
-
-  // Fallback: if not found by Clerk ID, try by email
-  if (!user) {
-    const clerkUser = await currentUser();
-    const clerkEmail = clerkUser?.emailAddresses[0]?.emailAddress;
-    if (clerkEmail) {
-      user = await db.query.users.findFirst({
-        where: eq(users.email, clerkEmail),
-        columns,
-      });
-    }
-  }
-
-  return user;
-}

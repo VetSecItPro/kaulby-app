@@ -449,30 +449,6 @@ EXECUTIVE SUMMARY RULES:
 - End with the ONE action to take`,
 };
 
-// Lightweight prompts for batch processing (reduced token usage ~70%)
-// Optimized for Gemini 2.5 Flash - minimal tokens, maximum accuracy
-// Used when processing 10+ results to reduce costs while maintaining quality
-export const LIGHTWEIGHT_PROMPTS = {
-  // ~40 tokens input, handles sarcasm and mixed sentiment
-  sentiment: `Classify sentiment (detect sarcasm). JSON only:
-{"sentiment":"positive"|"negative"|"neutral"|"mixed","score":<-1 to 1>,"confidence":<0-1>,"sarcasm":<true/false>}`,
-
-  // ~45 tokens input, prioritizes sales-relevant categories
-  category: `Classify business category (buying_signal=looking to buy, competitor_mention=comparing/switching). JSON only:
-{"category":"buying_signal"|"competitor_mention"|"negative_experience"|"pricing_concern"|"support_need"|"feature_request"|"positive_feedback"|"general_discussion","confidence":<0-1>,"urgency":"high"|"medium"|"low"}`,
-
-  // ~35 tokens input, focused on sales value
-  conversation: `Classify for sales outreach (solution_request=actively seeking tool). JSON only:
-{"category":"solution_request"|"money_talk"|"pain_point"|"advice_request"|"hot_discussion","confidence":<0-1>,"value":<1-100>}`,
-
-  // ~30 tokens input, action-focused
-  summary: `Summarize for business owner. JSON only:
-{"summary":"<25 words max, start with who+what>","actionable":<true/false>,"urgency":"high"|"medium"|"low"}`,
-
-  // ~25 tokens - ultra-minimal for very high volume
-  sentimentQuick: `Sentiment? JSON: {"s":"pos"|"neg"|"neu"|"mix","c":<-1 to 1>}`,
-};
-
 // Function to build prompts with context
 export function buildAnalysisPrompt(
   type: keyof typeof SYSTEM_PROMPTS,
@@ -490,18 +466,3 @@ export function buildAnalysisPrompt(
   return { system, user };
 }
 
-// Build lightweight prompt for batch processing
-export function buildLightweightPrompt(
-  type: keyof typeof LIGHTWEIGHT_PROMPTS,
-  content: string
-): { system: string; user: string } {
-  return {
-    system: LIGHTWEIGHT_PROMPTS[type],
-    user: content.slice(0, 500), // Truncate to 500 chars for batch
-  };
-}
-
-// Check if batch processing should use lightweight prompts
-export function shouldUseLightweight(resultCount: number): boolean {
-  return resultCount >= 10; // Use lightweight for 10+ results
-}

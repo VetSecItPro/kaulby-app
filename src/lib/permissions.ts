@@ -21,7 +21,7 @@ const ROLE_HIERARCHY: Record<WorkspaceRole, number> = {
 /**
  * Check if a role has at least the required permission level
  */
-export function hasPermission(
+function hasPermission(
   userRole: WorkspaceRole | null | undefined,
   requiredRole: WorkspaceRole
 ): boolean {
@@ -81,19 +81,6 @@ export const permissions = {
   canManageAlerts: (role: WorkspaceRole | null | undefined) =>
     hasPermission(role, "editor"),
 };
-
-/**
- * Get display name for a role
- */
-export function getRoleDisplayName(role: WorkspaceRole): string {
-  const names: Record<WorkspaceRole, string> = {
-    owner: "Owner",
-    admin: "Admin",
-    editor: "Editor",
-    viewer: "Viewer",
-  };
-  return names[role];
-}
 
 /**
  * Get role description for tooltips/help text

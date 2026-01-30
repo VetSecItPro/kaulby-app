@@ -4,7 +4,6 @@ import { ReactNode } from "react";
 import { MobileNav } from "@/components/mobile/mobile-nav";
 import { MobileHeader } from "@/components/mobile/mobile-header";
 import { Sidebar } from "./sidebar";
-import { DashboardPrefetch } from "./dashboard-prefetch";
 import type { WorkspaceRole } from "@/lib/permissions";
 
 interface ResponsiveDashboardLayoutProps {
@@ -28,9 +27,6 @@ export function ResponsiveDashboardLayout({
 }: ResponsiveDashboardLayoutProps) {
   return (
     <>
-      {/* Prefetch common routes after mount */}
-      <DashboardPrefetch />
-
       {/* Mobile/Tablet Layout - visible below lg breakpoint */}
       <div className="flex flex-col min-h-screen bg-background lg:hidden">
         <MobileHeader

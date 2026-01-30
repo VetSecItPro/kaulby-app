@@ -1,8 +1,8 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { budgetAlerts, budgetAlertHistory, users } from "@/lib/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { budgetAlerts, users } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
@@ -13,36 +13,6 @@ async function isAdmin(userId: string): Promise<boolean> {
     columns: { isAdmin: true },
   });
   return user?.isAdmin === true;
-}
-
-// GET - List all budget alerts
-export async function GET() {
-  try {
-    const { userId } = await auth();
-
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    if (!(await isAdmin(userId))) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    const alerts = await db.query.budgetAlerts.findMany({
-      orderBy: [desc(budgetAlerts.createdAt)],
-      with: {
-        history: {
-          orderBy: [desc(budgetAlertHistory.createdAt)],
-          limit: 5,
-        },
-      },
-    });
-
-    return NextResponse.json({ alerts });
-  } catch (error) {
-    console.error("Error fetching budget alerts:", error);
-    return NextResponse.json({ error: "Failed to fetch budget alerts" }, { status: 500 });
-  }
 }
 
 // POST - Create a new budget alert

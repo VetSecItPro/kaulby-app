@@ -12,7 +12,7 @@ import { db, aiLogs } from "@/lib/db";
 import { eq, gte, and, sql } from "drizzle-orm";
 
 // Rate limits per tier (requests per time window)
-export const AI_RATE_LIMITS = {
+const AI_RATE_LIMITS = {
   free: {
     requestsPerMinute: 0, // No AI access
     requestsPerHour: 0,
@@ -41,7 +41,7 @@ const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
  * Simple in-memory rate limiter
  * For production, replace with Redis-based solution
  */
-export function checkRateLimit(
+function checkRateLimit(
   userId: string,
   windowMs: number,
   maxRequests: number
@@ -114,7 +114,7 @@ export function checkAllRateLimits(
 /**
  * Get user's token usage for today
  */
-export async function getDailyTokenUsage(userId: string): Promise<number> {
+async function getDailyTokenUsage(userId: string): Promise<number> {
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
 
@@ -249,7 +249,7 @@ export function cacheAnswer(userId: string, question: string, answer: string, ci
 /**
  * Clean up old cache entries periodically
  */
-export function cleanupCache(): void {
+function cleanupCache(): void {
   const now = Date.now();
   const keysToDelete: string[] = [];
 

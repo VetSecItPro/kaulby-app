@@ -49,7 +49,7 @@ function getOpenRouter(): OpenAI {
 // Model pricing (per 1M tokens) - for cost tracking
 // Using ONLY Gemini 2.5 Flash for maximum cost savings
 // Flash costs: $0.075 input, $0.30 output = 40-50x cheaper than Claude
-export const MODEL_PRICING = {
+const MODEL_PRICING = {
   // Primary model - used for ALL tiers
   "google/gemini-2.5-flash": {
     input: 0.075,

@@ -79,7 +79,6 @@ const nextConfig = {
       '@clerk/nextjs',
       'framer-motion',
       'recharts',
-      'date-fns',
     ],
   },
 

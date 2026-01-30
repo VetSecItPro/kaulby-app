@@ -8,16 +8,6 @@ export const inngest = new Inngest({
 
 // Event types for type safety
 export type Events = {
-  "monitor/reddit.scan": {
-    data: {
-      monitorId: string;
-    };
-  };
-  "monitor/hackernews.scan": {
-    data: {
-      monitorId: string;
-    };
-  };
   "content/analyze": {
     data: {
       resultId: string;
@@ -31,25 +21,6 @@ export type Events = {
       platform: string;
       resultIds: string[];
       totalCount: number;
-    };
-  };
-  "alert/send": {
-    data: {
-      alertId: string;
-      resultIds: string[];
-    };
-  };
-  "alert/digest.send": {
-    data: {
-      userId: string;
-      frequency: "daily" | "weekly";
-    };
-  };
-  "user/welcome.email": {
-    data: {
-      userId: string;
-      email: string;
-      name?: string;
     };
   };
   "webhook/send": {
@@ -75,19 +46,6 @@ export type Events = {
       userId: string;
       email: string;
       scheduledAt: string; // ISO timestamp when deletion was requested
-    };
-  };
-  "user/deletion.execute": {
-    data: {
-      userId: string;
-      email: string;
-    };
-  };
-  "user/deletion.reminder": {
-    data: {
-      userId: string;
-      email: string;
-      hoursRemaining: number;
     };
   };
   "user/reengagement.send": {

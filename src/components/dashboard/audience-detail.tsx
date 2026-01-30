@@ -32,11 +32,11 @@ import {
   X,
   MessageSquare,
   TrendingUp,
+  TrendingDown,
   Activity,
   BarChart3,
 } from "lucide-react";
 import { getPlatformDisplayName, getPlatformBadgeColor, getPlatformBarColor } from "@/lib/platform-utils";
-import { Sparkline, TrendIndicator } from "./sparkline";
 import type { Audience, Monitor, Result } from "@/lib/db/schema";
 
 /**
@@ -296,16 +296,18 @@ export function AudienceDetail({
             <CardContent>
               <div className="flex items-baseline gap-2">
                 <span className="text-3xl font-bold">{stats.totalMentions}</span>
-                <TrendIndicator change={stats.mentionChange} size="sm" />
-              </div>
-              <div className="mt-2">
-                <Sparkline
-                  data={stats.dailyMentions}
-                  width={120}
-                  height={32}
-                  color={stats.mentionChange >= 0 ? "rgb(34 197 94)" : "rgb(239 68 68)"}
-                  label="Weekly activity trend"
-                />
+                {stats.mentionChange !== 0 && (
+                  <span className={`flex items-center gap-0.5 text-xs font-medium ${
+                    stats.mentionChange > 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
+                  }`}>
+                    {stats.mentionChange > 0 ? (
+                      <TrendingUp className="h-3 w-3" />
+                    ) : (
+                      <TrendingDown className="h-3 w-3" />
+                    )}
+                    {Math.abs(stats.mentionChange)}%
+                  </span>
+                )}
               </div>
             </CardContent>
           </Card>

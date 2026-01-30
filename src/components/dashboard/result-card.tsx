@@ -35,7 +35,6 @@ import {
   Moon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { HighlightedText } from "./highlighted-text";
 import {
   markResultViewed,
   markResultClicked,
@@ -104,18 +103,12 @@ export const ResultCard = memo(function ResultCard({
   result,
   showHidden = false,
   isAiBlurred = false,
-  highlightKeywords = [],
   showLeadScore = true,
 }: ResultCardProps) {
   const [isPending, startTransition] = useTransition();
   const [isSaved, setIsSaved] = useState(result.isSaved);
   const [isHidden, setIsHidden] = useState(result.isHidden);
   const [isViewed, setIsViewed] = useState(result.isViewed);
-
-  // Get keywords for highlighting - use prop or fall back to monitor keywords
-  const keywords = highlightKeywords.length > 0
-    ? highlightKeywords
-    : (result.monitor?.keywords || []);
 
   // Calculate lead score if not provided but we have enough data
   const { leadScore, leadScoreFactors } = (() => {
@@ -242,10 +235,7 @@ export const ResultCard = memo(function ResultCard({
               )}
             </div>
             <CardTitle className="text-base line-clamp-2">
-              <HighlightedText
-                text={result.title}
-                keywords={keywords}
-              />
+              {result.title}
             </CardTitle>
             <CardDescription className="text-xs">
               From monitor: {result.monitor?.name || "Unknown"}
@@ -347,19 +337,11 @@ export const ResultCard = memo(function ResultCard({
           ) : result.aiSummary ? (
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground font-medium">AI Summary:</p>
-              <p className="text-sm">
-                <HighlightedText
-                  text={result.aiSummary}
-                  keywords={keywords}
-                />
-              </p>
+              <p className="text-sm">{result.aiSummary}</p>
             </div>
           ) : result.content ? (
             <p className="text-sm text-muted-foreground line-clamp-3">
-              <HighlightedText
-                text={result.content}
-                keywords={keywords}
-              />
+              {result.content}
             </p>
           ) : null}
         </CardContent>
