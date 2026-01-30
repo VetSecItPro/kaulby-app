@@ -226,7 +226,7 @@ export function formatSlackPayload(payload: WebhookPayload): SlackPayload {
 /**
  * Send a Slack webhook notification
  */
-export async function sendSlackWebhook(
+async function sendSlackWebhook(
   webhookUrl: string,
   payload: WebhookPayload
 ): Promise<{ success: boolean; error?: string }> {
@@ -390,7 +390,7 @@ export function formatDiscordPayload(payload: WebhookPayload): DiscordPayload {
 /**
  * Send a Discord webhook notification
  */
-export async function sendDiscordWebhook(
+async function sendDiscordWebhook(
   webhookUrl: string,
   payload: WebhookPayload
 ): Promise<{ success: boolean; error?: string }> {

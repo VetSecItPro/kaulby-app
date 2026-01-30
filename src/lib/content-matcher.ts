@@ -9,8 +9,6 @@
 import {
   parseSearchQuery,
   matchesQuery,
-  keywordsToQuery,
-  ParsedQuery,
 } from "./search-parser";
 
 interface MatchableContent {
@@ -116,44 +114,4 @@ export function contentMatchesMonitor(
     matchType: "keyword",
     explanation: "No matches found",
   };
-}
-
-/**
- * Parse a monitor's search configuration.
- * For backwards compatibility, converts simple keywords to a parsed query.
- */
-export function parseMonitorSearch(
-  keywords: string[],
-  searchQuery?: string | null
-): ParsedQuery {
-  if (searchQuery && searchQuery.trim()) {
-    return parseSearchQuery(searchQuery);
-  }
-
-  // Convert keywords to OR query for backwards compatibility
-  return keywordsToQuery(keywords);
-}
-
-/**
- * Get human-readable explanation of a monitor's search criteria
- */
-export function getSearchExplanation(
-  companyName: string | null,
-  keywords: string[],
-  searchQuery?: string | null
-): string {
-  const parts: string[] = [];
-
-  if (companyName) {
-    parts.push(`Company: "${companyName}"`);
-  }
-
-  if (searchQuery && searchQuery.trim()) {
-    const parsed = parseSearchQuery(searchQuery);
-    parts.push(`Search: ${parsed.explanation}`);
-  } else if (keywords.length > 0) {
-    parts.push(`Keywords: ${keywords.join(" OR ")}`);
-  }
-
-  return parts.join(" | ") || "No search criteria";
 }

@@ -1,7 +1,6 @@
 /**
  * Slack Integration API Routes
  *
- * GET - Get integration status
  * POST - Initiate OAuth flow
  * DELETE - Disconnect integration
  */
@@ -12,56 +11,6 @@ import { db, users } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import { getAuthorizationUrl, isSlackConfigured } from "@/lib/integrations/slack";
 import { nanoid } from "nanoid";
-
-// Get integration status
-export async function GET() {
-  try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Check if Slack is configured
-    if (!isSlackConfigured()) {
-      return NextResponse.json({
-        configured: false,
-        connected: false,
-        message: "Slack integration is not configured on this server",
-      });
-    }
-
-    // Get user's integration status
-    const user = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: {
-        integrations: true,
-      },
-    });
-
-    const slackIntegration = (user?.integrations as Record<string, unknown>)?.slack as {
-      connected: boolean;
-      teamId?: string;
-      teamName?: string;
-      webhookChannel?: string;
-      connectedAt?: string;
-    } | undefined;
-
-    return NextResponse.json({
-      configured: true,
-      connected: slackIntegration?.connected || false,
-      teamId: slackIntegration?.teamId,
-      teamName: slackIntegration?.teamName,
-      webhookChannel: slackIntegration?.webhookChannel,
-      connectedAt: slackIntegration?.connectedAt,
-    });
-  } catch (error) {
-    console.error("Error getting Slack status:", error);
-    return NextResponse.json(
-      { error: "Failed to get integration status" },
-      { status: 500 }
-    );
-  }
-}
 
 // Initiate OAuth flow
 export async function POST() {

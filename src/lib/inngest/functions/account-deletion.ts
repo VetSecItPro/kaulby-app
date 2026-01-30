@@ -7,12 +7,9 @@ import {
   audiences,
   aiLogs,
   usage,
-  slackIntegrations,
   webhooks,
   webhookDeliveries,
   apiKeys,
-  crossPlatformTopics,
-  topicResults,
   audienceMonitors,
   alerts,
   communities,
@@ -203,14 +200,6 @@ async function deleteAllUserData(userId: string): Promise<void> {
   const audienceIds = userAudiences.map(a => a.id);
   console.log(`[Account Deletion] Found ${audienceIds.length} audiences to delete`);
 
-  // Get all cross-platform topic IDs
-  const userTopics = await db
-    .select({ id: crossPlatformTopics.id })
-    .from(crossPlatformTopics)
-    .where(eq(crossPlatformTopics.userId, userId));
-  const topicIds = userTopics.map(t => t.id);
-  console.log(`[Account Deletion] Found ${topicIds.length} cross-platform topics to delete`);
-
   // Get all webhook IDs
   const userWebhooks = await db
     .select({ id: webhooks.id })
@@ -234,19 +223,8 @@ async function deleteAllUserData(userId: string): Promise<void> {
   await db.delete(webhooks).where(eq(webhooks.userId, userId));
   console.log(`[Account Deletion] Deleted webhooks`);
 
-  // --- Cross-platform topic data ---
-  // 3. Delete topic results (foreign key to topics)
-  if (topicIds.length > 0) {
-    await db.delete(topicResults).where(inArray(topicResults.topicId, topicIds));
-    console.log(`[Account Deletion] Deleted topic results`);
-  }
-
-  // 4. Delete cross-platform topics
-  await db.delete(crossPlatformTopics).where(eq(crossPlatformTopics.userId, userId));
-  console.log(`[Account Deletion] Deleted cross-platform topics`);
-
   // --- Monitor-related data ---
-  // 5. Delete alerts (foreign key to monitors)
+  // 3. Delete alerts (foreign key to monitors)
   if (monitorIds.length > 0) {
     await db.delete(alerts).where(inArray(alerts.monitorId, monitorIds));
     console.log(`[Account Deletion] Deleted alerts`);
@@ -280,11 +258,7 @@ async function deleteAllUserData(userId: string): Promise<void> {
   console.log(`[Account Deletion] Deleted audiences`);
 
   // --- Integration data ---
-  // 11. Delete Slack integrations (OAuth tokens, channel configs)
-  await db.delete(slackIntegrations).where(eq(slackIntegrations.userId, userId));
-  console.log(`[Account Deletion] Deleted Slack integrations`);
-
-  // 12. Delete API keys (hashed keys and metadata)
+  // 11. Delete API keys (hashed keys and metadata)
   await db.delete(apiKeys).where(eq(apiKeys.userId, userId));
   console.log(`[Account Deletion] Deleted API keys`);
 

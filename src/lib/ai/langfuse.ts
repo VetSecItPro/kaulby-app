@@ -3,7 +3,7 @@ import { Langfuse } from "langfuse";
 // Lazy-initialized Langfuse client to avoid build-time errors
 let _langfuse: Langfuse | null = null;
 
-export function getLangfuse(): Langfuse {
+function getLangfuse(): Langfuse {
   if (!_langfuse) {
     _langfuse = new Langfuse({
       publicKey: process.env.LANGFUSE_PUBLIC_KEY,

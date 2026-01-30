@@ -32,8 +32,7 @@ export const platforms = [...proPlatforms, ...teamOnlyPlatforms] as const;
 export type Platform = (typeof platforms)[number];
 
 // Legacy platforms kept for historical data display only
-export const legacyPlatforms = ["twitter"] as const;
-export type LegacyPlatform = (typeof legacyPlatforms)[number];
+type LegacyPlatform = "twitter";
 
 /**
  * Human-readable display names for platforms

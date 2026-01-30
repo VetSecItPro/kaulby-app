@@ -8,14 +8,14 @@ export type ConversationCategory =
   | "money_talk"
   | "hot_discussion";
 
-export interface ConversationCategoryResult {
+interface ConversationCategoryResult {
   category: ConversationCategory;
   confidence: number;
   signals: string[];
   reasoning: string;
 }
 
-export interface ConversationCategoryMeta {
+interface ConversationCategoryMeta {
   model: string;
   cost: number;
   latencyMs: number;

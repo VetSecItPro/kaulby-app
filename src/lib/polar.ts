@@ -99,7 +99,7 @@ export interface PlanLimits {
 export type BillingInterval = "monthly" | "annual";
 
 // Plan definition interface for Polar
-export interface PolarPlanDefinition {
+interface PolarPlanDefinition {
   name: string;
   description: string;
   price: number; // Monthly price
@@ -275,11 +275,6 @@ export function getPlanFromProductId(productId: string): PolarPlanKey {
   return "free";
 }
 
-// Get plan limits for a subscription
-export function getPolarPlanLimits(plan: PolarPlanKey): PlanLimits {
-  return POLAR_PLANS[plan].limits;
-}
-
 // Get the appropriate product ID based on plan and billing interval
 // IMPORTANT: Read env vars at runtime to avoid module load order issues
 export function getProductId(plan: PolarPlanKey, interval: BillingInterval): string | null {
@@ -299,71 +294,6 @@ export function getProductId(plan: PolarPlanKey, interval: BillingInterval): str
   }
 
   return null;
-}
-
-// Get trial days for a plan
-export function getPolarTrialDays(plan: PolarPlanKey): number {
-  return POLAR_PLANS[plan]?.trialDays || 0;
-}
-
-// Calculate savings for annual billing
-export function getPolarAnnualSavings(plan: PolarPlanKey): { amount: number; percentage: number; monthsFree: number } {
-  const planDef = POLAR_PLANS[plan];
-  if (!planDef || planDef.price === 0) {
-    return { amount: 0, percentage: 0, monthsFree: 0 };
-  }
-  const monthlyTotal = planDef.price * 12;
-  const annualTotal = planDef.annualPrice;
-  const savings = monthlyTotal - annualTotal;
-  const percentage = Math.round((savings / monthlyTotal) * 100);
-  const monthsFree = Math.round(savings / planDef.price);
-  return { amount: savings, percentage, monthsFree };
-}
-
-// Create a checkout session URL
-export async function createCheckoutUrl(
-  productId: string,
-  customerEmail: string,
-  successUrl: string,
-  metadata?: Record<string, string>
-): Promise<string | null> {
-  if (!polar) {
-    console.error("Polar client not initialized");
-    return null;
-  }
-
-  try {
-    const checkout = await polar.checkouts.custom.create({
-      productId,
-      customerEmail,
-      successUrl,
-      metadata,
-    });
-
-    return checkout.url;
-  } catch (error) {
-    console.error("Failed to create Polar checkout:", error);
-    return null;
-  }
-}
-
-// Create a customer portal URL for managing subscriptions
-export async function createCustomerPortalUrl(customerId: string): Promise<string | null> {
-  if (!polar) {
-    console.error("Polar client not initialized");
-    return null;
-  }
-
-  try {
-    const session = await polar.customerSessions.create({
-      customerId,
-    });
-
-    return session.customerPortalUrl;
-  } catch (error) {
-    console.error("Failed to create Polar customer portal session:", error);
-    return null;
-  }
 }
 
 // Cancel/revoke a subscription (for account deletion)

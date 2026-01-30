@@ -16,7 +16,7 @@ const HUBSPOT_SCOPES = [
   "crm.objects.deals.write",
 ].join(" ");
 
-export interface HubSpotTokens {
+interface HubSpotTokens {
   accessToken: string;
   refreshToken: string;
   expiresAt: Date;
@@ -36,17 +36,6 @@ export interface HubSpotContact {
   kaulby_lead_score?: number;
   kaulby_first_seen?: string;
   kaulby_notes?: string;
-}
-
-export interface HubSpotDeal {
-  dealname: string;
-  pipeline?: string;
-  dealstage?: string;
-  amount?: number;
-  closedate?: string;
-  // Custom properties
-  kaulby_source_platform?: string;
-  kaulby_source_url?: string;
 }
 
 /**
@@ -232,42 +221,6 @@ async function updateContact(
     const error = await response.text();
     throw new Error(`Failed to update contact: ${error}`);
   }
-}
-
-/**
- * Create a deal in HubSpot
- */
-export async function createDeal(
-  accessToken: string,
-  deal: HubSpotDeal,
-  associatedContactId?: string
-): Promise<string> {
-  const response = await fetch("https://api.hubapi.com/crm/v3/objects/deals", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      properties: deal,
-      associations: associatedContactId
-        ? [
-            {
-              to: { id: associatedContactId },
-              types: [{ associationCategory: "HUBSPOT_DEFINED", associationTypeId: 3 }],
-            },
-          ]
-        : [],
-    }),
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Failed to create deal: ${error}`);
-  }
-
-  const data = await response.json();
-  return data.id;
 }
 
 /**

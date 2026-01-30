@@ -4,7 +4,7 @@ import type { AnalysisMeta } from "./sentiment";
 /**
  * Input for batch sentiment analysis
  */
-export interface BatchSummaryInput {
+interface BatchSummaryInput {
   platformName: string;
   totalCount: number;
   sampleItems: Array<{

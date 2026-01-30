@@ -1,7 +1,6 @@
 /**
  * Discord Integration API Routes
  *
- * GET - Get integration status
  * POST - Initiate OAuth flow
  * DELETE - Disconnect integration
  */
@@ -12,58 +11,6 @@ import { db, users } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import { getAuthorizationUrl, isDiscordConfigured } from "@/lib/integrations/discord";
 import { nanoid } from "nanoid";
-
-// Get integration status
-export async function GET() {
-  try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Check if Discord is configured
-    if (!isDiscordConfigured()) {
-      return NextResponse.json({
-        configured: false,
-        connected: false,
-        message: "Discord integration is not configured on this server",
-      });
-    }
-
-    // Get user's integration status
-    const user = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: {
-        integrations: true,
-      },
-    });
-
-    const discordIntegration = (user?.integrations as Record<string, unknown>)?.discord as {
-      connected: boolean;
-      guildId?: string;
-      guildName?: string;
-      channelId?: string;
-      channelName?: string;
-      connectedAt?: string;
-    } | undefined;
-
-    return NextResponse.json({
-      configured: true,
-      connected: discordIntegration?.connected || false,
-      guildId: discordIntegration?.guildId,
-      guildName: discordIntegration?.guildName,
-      channelId: discordIntegration?.channelId,
-      channelName: discordIntegration?.channelName,
-      connectedAt: discordIntegration?.connectedAt,
-    });
-  } catch (error) {
-    console.error("Error getting Discord status:", error);
-    return NextResponse.json(
-      { error: "Failed to get integration status" },
-      { status: 500 }
-    );
-  }
-}
 
 // Initiate OAuth flow
 export async function POST() {

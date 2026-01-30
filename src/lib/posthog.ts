@@ -38,8 +38,8 @@ function getPostHog(): PostHog | null {
   return posthogClient;
 }
 
-// Export for backwards compatibility (operations are no-ops if not configured)
-export const posthog = {
+// PostHog wrapper (operations are no-ops if not configured)
+const posthog = {
   capture: (params: Parameters<PostHog["capture"]>[0]) => {
     try {
       getPostHog()?.capture(params);
