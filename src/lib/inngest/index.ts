@@ -20,7 +20,7 @@ export { monitorDevTo } from "./functions/monitor-devto";
 export { monitorHashnode } from "./functions/monitor-hashnode";
 export { scanOnDemand } from "./functions/scan-on-demand";
 export { analyzeContent } from "./functions/analyze-content";
-export { analyzeContentBatch, shouldUseBatchMode } from "./functions/analyze-content-batch";
+export { analyzeContentBatch } from "./functions/analyze-content-batch";
 export { sendAlert, sendDailyDigest, sendWeeklyDigest, sendMonthlyDigest } from "./functions/send-alerts";
 export { dataRetention, resetUsageCounters, cleanupAiLogs } from "./functions/data-retention";
 export { sendWebhookEvent, processWebhookDelivery, retryWebhookDeliveries, cleanupWebhookDeliveries } from "./functions/webhook-delivery";
@@ -28,7 +28,7 @@ export { scheduledAccountDeletion } from "./functions/account-deletion";
 export { detectCrisis } from "./functions/crisis-detection";
 export { resetStuckScans } from "./functions/reset-stuck-scans";
 export { checkBudgetAlerts } from "./functions/budget-alerts";
-export { collectCommunityStats, fetchSubredditStats, getLatestStats, ALL_TRACKED_SUBREDDITS } from "./functions/community-stats";
+export { collectCommunityStats, fetchSubredditStats, ALL_TRACKED_SUBREDDITS } from "./functions/community-stats";
 export { detectInactiveUsers, sendReengagement } from "./functions/reengagement";
 export { sendScheduledReports } from "./functions/send-scheduled-reports";
 

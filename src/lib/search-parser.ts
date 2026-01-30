@@ -385,31 +385,6 @@ export function keywordsToQuery(keywords: string[]): ParsedQuery {
 }
 
 /**
- * Get search syntax help text
- */
-export function getSearchSyntaxHelp(): string {
-  return `
-Search Operators:
-• "exact phrase" - Match exact phrase
-• title:keyword - Search only in titles
-• body:keyword - Search only in body/content
-• author:username - Filter by author
-• subreddit:name - Filter by subreddit
-• platform:reddit - Filter by platform (reddit, hackernews, producthunt, etc.)
-• NOT term - Exclude results containing term
-• term1 OR term2 - Match either term
-• term1 term2 - Match both terms (AND is default)
-
-Examples:
-• "pricing feedback" - Find exact phrase
-• title:bug NOT fixed - Titles with "bug" but not "fixed"
-• author:competitor subreddit:saas - Posts by specific author in specific sub
-• alternative OR competitor - Find posts mentioning either word
-• platform:reddit "need help" - Reddit posts with exact phrase
-`.trim();
-}
-
-/**
  * Validate search query syntax
  */
 export function validateSearchQuery(query: string): {

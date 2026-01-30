@@ -5,7 +5,7 @@
 import posthog from "posthog-js";
 
 // Type-safe event definitions
-export type TrackingEvent =
+type TrackingEvent =
   // Conversion events
   | { event: "upgrade_clicked"; properties: { from: string; plan: "pro" | "enterprise"; trigger?: string } }
   | { event: "upgrade_completed"; properties: { plan: "pro" | "enterprise"; isFoundingMember?: boolean } }
@@ -32,7 +32,7 @@ export type TrackingEvent =
  * Track a conversion or feature event
  * Safe to call even if PostHog is not initialized
  */
-export function track<T extends TrackingEvent>(event: T["event"], properties?: T["properties"]) {
+function track<T extends TrackingEvent>(event: T["event"], properties?: T["properties"]) {
   try {
     if (typeof window === "undefined") return;
     if (!posthog.__loaded) return;

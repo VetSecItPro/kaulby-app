@@ -1,7 +1,6 @@
 /**
  * HubSpot Integration API Routes
  *
- * GET - Get integration status
  * POST - Initiate OAuth flow
  * DELETE - Disconnect integration
  */
@@ -12,52 +11,6 @@ import { db, users } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import { getAuthorizationUrl, isHubSpotConfigured } from "@/lib/integrations/hubspot";
 import { nanoid } from "nanoid";
-
-// Get integration status
-export async function GET() {
-  try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Check if HubSpot is configured
-    if (!isHubSpotConfigured()) {
-      return NextResponse.json({
-        configured: false,
-        connected: false,
-        message: "HubSpot integration is not configured on this server",
-      });
-    }
-
-    // Get user's integration status
-    const user = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: {
-        integrations: true,
-      },
-    });
-
-    const hubspotIntegration = (user?.integrations as Record<string, unknown>)?.hubspot as {
-      connected: boolean;
-      portalId?: number;
-      connectedAt?: string;
-    } | undefined;
-
-    return NextResponse.json({
-      configured: true,
-      connected: hubspotIntegration?.connected || false,
-      portalId: hubspotIntegration?.portalId,
-      connectedAt: hubspotIntegration?.connectedAt,
-    });
-  } catch (error) {
-    console.error("Error getting HubSpot status:", error);
-    return NextResponse.json(
-      { error: "Failed to get integration status" },
-      { status: 500 }
-    );
-  }
-}
 
 // Initiate OAuth flow
 export async function POST() {

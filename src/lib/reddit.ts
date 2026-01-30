@@ -348,22 +348,3 @@ export async function searchRedditResilient(
   }
 }
 
-/**
- * Check which Reddit providers are configured
- */
-export function getRedditProviderStatus() {
-  return {
-    serper: !!process.env.SERPER_API_KEY,
-    apify: !!process.env.APIFY_API_KEY,
-    // Public JSON is always available but risky
-    publicJson: true,
-  };
-}
-
-/**
- * Check if Reddit integration is properly configured (not relying on public API)
- */
-export function isRedditProperlyConfigured(): boolean {
-  const status = getRedditProviderStatus();
-  return status.serper || status.apify;
-}

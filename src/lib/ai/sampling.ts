@@ -12,7 +12,7 @@ export interface SampleableItem {
   createdAt?: Date;
 }
 
-export interface SamplingConfig {
+interface SamplingConfig {
   /** Total number of items to sample */
   sampleSize: number;
   /** How many high-engagement items to prioritize */
@@ -195,8 +195,3 @@ export function getAdaptiveSamplingConfig(totalCount: number): SamplingConfig {
   };
 }
 
-/**
- * Legacy constant for backwards compatibility
- * @deprecated Use getAdaptiveSampleSize() instead
- */
-export const BATCH_SAMPLE_SIZE = AI_BATCH_CONFIG.MIN_SAMPLE_SIZE;

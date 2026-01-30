@@ -246,48 +246,6 @@ export function ComparisonSchema({ productName, competitorName, url }: Compariso
   );
 }
 
-// Pricing/Offer Schema
-interface PricingTier {
-  name: string;
-  price: number;
-  description: string;
-}
-
-interface PricingSchemaProps {
-  tiers: PricingTier[];
-}
-
-export function PricingSchema({ tiers }: PricingSchemaProps) {
-  const schema = {
-    "@context": "https://schema.org",
-    "@type": "Product",
-    name: "Kaulby Social Listening Platform",
-    description:
-      "AI-powered social listening tool for startups. Monitor brand mentions across 16 platforms.",
-    brand: {
-      "@type": "Brand",
-      name: "Kaulby",
-    },
-    offers: tiers.map((tier) => ({
-      "@type": "Offer",
-      name: tier.name,
-      price: tier.price,
-      priceCurrency: "USD",
-      priceValidUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-      availability: "https://schema.org/InStock",
-      description: tier.description,
-    })),
-  };
-
-  return (
-    <Script
-      id="pricing-schema"
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
-    />
-  );
-}
-
 // Tool/Feature Page Schema
 interface ToolPageSchemaProps {
   name: string;
@@ -322,63 +280,6 @@ export function ToolPageSchema({ name, description, url, features }: ToolPageSch
   return (
     <Script
       id="tool-schema"
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
-    />
-  );
-}
-
-// Review/Rating Schema for social proof
-interface ReviewSchemaProps {
-  itemName: string;
-  ratingValue: number;
-  reviewCount: number;
-  bestRating?: number;
-}
-
-export function ReviewSchema({ itemName, ratingValue, reviewCount, bestRating = 5 }: ReviewSchemaProps) {
-  const schema = {
-    "@context": "https://schema.org",
-    "@type": "Product",
-    name: itemName,
-    aggregateRating: {
-      "@type": "AggregateRating",
-      ratingValue: ratingValue,
-      reviewCount: reviewCount,
-      bestRating: bestRating,
-      worstRating: 1,
-    },
-  };
-
-  return (
-    <Script
-      id="review-schema"
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
-    />
-  );
-}
-
-// Speakable Schema for AEO - marks content that's good for voice assistants
-interface SpeakableSchemaProps {
-  url: string;
-  cssSelectors: string[];
-}
-
-export function SpeakableSchema({ url, cssSelectors }: SpeakableSchemaProps) {
-  const schema = {
-    "@context": "https://schema.org",
-    "@type": "WebPage",
-    url: url,
-    speakable: {
-      "@type": "SpeakableSpecification",
-      cssSelector: cssSelectors,
-    },
-  };
-
-  return (
-    <Script
-      id="speakable-schema"
       type="application/ld+json"
       dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
     />
