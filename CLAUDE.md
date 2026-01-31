@@ -282,9 +282,9 @@ Automated detection and re-engagement for inactive users:
 | 4 | **Search builder UI** | Visual query builder for non-technical users |
 | 5 | **Email tracking** | Open/click rates for digests |
 | 6 | **Pause digests toggle** | Keep tracking, stop emails temporarily |
-| 7 | **Payload CMS integration** | Self-hosted CMS for /articles (see `docs/cms-planning.md`) |
 
 ### Recently Completed ✅
+- [x] Articles/blog system - 20 SEO/AEO-optimized articles at `/articles` with static data, search, category filters
 - [x] AI response suggestions - `/api/ai/suggest-reply` + `reply-suggestion.tsx`
 - [x] Competitor benchmarking - Share of Voice at `/api/analytics/share-of-voice`
 - [x] Custom AI prompts - AI Discovery mode with `discoveryPrompt` in monitors
