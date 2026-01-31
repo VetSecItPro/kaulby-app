@@ -1,5 +1,6 @@
 import { MetadataRoute } from "next";
 import { ALL_TRACKED_SUBREDDITS } from "@/lib/inngest";
+import { blogArticles } from "@/lib/data/blog-articles";
 
 // All tool slugs
 const toolSlugs = [
@@ -116,6 +117,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
     })),
   ];
 
+  // Blog article pages
+  const articlePages: MetadataRoute.Sitemap = blogArticles.map((article) => ({
+    url: `${baseUrl}/articles/${article.slug}`,
+    lastModified: new Date(article.publishedDate),
+    changeFrequency: "monthly" as const,
+    priority: 0.7,
+  }));
+
   // Legal pages - lower priority
   const legalPages: MetadataRoute.Sitemap = [
     {
@@ -138,6 +147,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ...toolPages,
     ...alternativePages,
     ...subredditPages,
+    ...articlePages,
     ...legalPages,
   ];
 }
