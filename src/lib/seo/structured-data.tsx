@@ -286,6 +286,65 @@ export function ToolPageSchema({ name, description, url, features }: ToolPageSch
   );
 }
 
+// Blog Posting Schema - for individual article pages
+interface BlogPostingSchemaProps {
+  title: string;
+  description: string;
+  url: string;
+  datePublished: string;
+  dateModified?: string;
+  keywords?: string[];
+}
+
+export function BlogPostingSchema({
+  title,
+  description,
+  url,
+  datePublished,
+  dateModified,
+  keywords,
+}: BlogPostingSchemaProps) {
+  const schema: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline: title,
+    description: description,
+    url: url,
+    datePublished: datePublished,
+    dateModified: dateModified || datePublished,
+    author: {
+      "@type": "Organization",
+      name: "Kaulby",
+      url: BASE_URL,
+    },
+    publisher: {
+      "@type": "Organization",
+      name: "Kaulby",
+      url: BASE_URL,
+      logo: {
+        "@type": "ImageObject",
+        url: `${BASE_URL}/logo.jpg`,
+      },
+    },
+    mainEntityOfPage: {
+      "@type": "WebPage",
+      "@id": url,
+    },
+  };
+
+  if (keywords && keywords.length > 0) {
+    schema.keywords = keywords.join(", ");
+  }
+
+  return (
+    <Script
+      id="blogposting-schema"
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+    />
+  );
+}
+
 // Subreddit Page Schema - for programmatic SEO pages
 interface SubredditSchemaProps {
   subreddit: string;
