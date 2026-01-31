@@ -29,3 +29,6 @@ postcss.config.js
 # JSON-LD structured data - uses JSON.stringify() which is safe (no XSS risk)
 # dangerouslySetInnerHTML with JSON.stringify is the standard Next.js pattern
 src/lib/seo/structured-data.tsx
+
+# Blog article renderer - htmlContent is static hardcoded data from blog-articles.ts, not user input
+src/app/articles/[slug]/ArticlePageClient.tsx
