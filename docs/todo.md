@@ -134,11 +134,11 @@ Numbered priority list. Update as items are completed.
 | 4 | **Search Builder UI** | Visual query builder for non-technical users | Pending |
 | 5 | **Email Tracking** | Open rates, click rates for digests | Pending |
 | 6 | **Pause Digests Toggle** | Keep tracking, stop emails temporarily | Pending |
-| 7 | **Payload CMS Integration** | Self-hosted CMS for /articles (see `docs/cms-planning.md`) | Pending |
 
 ---
 
 ### Completed ✅
+- [x] **Articles/Blog System** - 20 SEO/AEO-optimized articles at `/articles` with static data, search, category filters
 - [x] **AI Response Suggestions** - `/api/ai/suggest-reply` + `reply-suggestion.tsx`
 - [x] **Competitor Benchmarking** - Share of Voice at `/api/analytics/share-of-voice`
 - [x] **Custom AI Prompts** - AI Discovery mode with `discoveryPrompt` in monitors
