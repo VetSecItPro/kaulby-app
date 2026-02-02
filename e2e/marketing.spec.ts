@@ -16,7 +16,7 @@ test.describe("Marketing Pages", () => {
     await expect(page.locator("h1")).toBeVisible();
 
     // Check CTA buttons exist
-    const ctaButton = page.getByRole("link", { name: /get started|sign up|try free/i });
+    const ctaButton = page.getByRole("link", { name: /get started|sign up|try free|start free/i });
     await expect(ctaButton.first()).toBeVisible();
   });
 

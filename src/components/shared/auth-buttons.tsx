@@ -3,9 +3,19 @@ import { auth } from "@clerk/nextjs/server";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 
+// Safe auth check — returns null if Clerk secret key is missing (e.g. CI)
+async function getAuthUserId(): Promise<string | null> {
+  try {
+    const { userId } = await auth();
+    return userId;
+  } catch {
+    return null;
+  }
+}
+
 // Navigation auth buttons (server component — no ClerkProvider needed)
 export async function AuthButtons() {
-  const { userId } = await auth();
+  const userId = await getAuthUserId();
 
   if (userId) {
     return (
@@ -34,7 +44,7 @@ export async function AuthButtons() {
 
 // Hero section CTA buttons
 export async function HeroCTA() {
-  const { userId } = await auth();
+  const userId = await getAuthUserId();
 
   if (userId) {
     return (
@@ -71,7 +81,7 @@ export async function HeroCTA() {
 
 // Bottom CTA section
 export async function AuthCTA() {
-  const { userId } = await auth();
+  const userId = await getAuthUserId();
 
   if (userId) {
     return (
