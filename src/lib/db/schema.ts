@@ -207,7 +207,14 @@ export const users = pgTable("users", {
   digestPaused: boolean("digest_paused").default(false).notNull(), // Pause emails while keeping monitors active
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("users_timezone_idx").on(table.timezone),
+  index("users_email_idx").on(table.email),
+  index("users_subscription_status_idx").on(table.subscriptionStatus),
+  index("users_last_active_at_idx").on(table.lastActiveAt),
+  index("users_deletion_requested_at_idx").on(table.deletionRequestedAt),
+  index("users_workspace_id_idx").on(table.workspaceId),
+]);
 
 // Audiences - collections of monitors grouped by topic/project (***-style)
 export const audiences = pgTable("audiences", {
@@ -299,6 +306,8 @@ export const monitors = pgTable("monitors", {
   index("monitors_user_id_idx").on(table.userId),
   index("monitors_workspace_id_idx").on(table.workspaceId),
   index("monitors_is_active_idx").on(table.isActive),
+  index("monitors_is_active_platforms_idx").on(table.isActive, table.platforms),
+  index("monitors_last_checked_at_idx").on(table.lastCheckedAt),
 ]);
 
 // Alerts - notification settings
@@ -365,6 +374,13 @@ export const results = pgTable("results", {
   index("results_sentiment_idx").on(table.sentiment),
   index("results_conversation_category_idx").on(table.conversationCategory),
   index("results_lead_score_idx").on(table.leadScore),
+  index("results_source_url_idx").on(table.sourceUrl),
+  index("results_monitor_created_idx").on(table.monitorId, table.createdAt),
+  index("results_monitor_hidden_created_idx").on(table.monitorId, table.isHidden, table.createdAt),
+  index("results_engagement_score_idx").on(table.engagementScore),
+  index("results_last_sent_in_digest_idx").on(table.lastSentInDigestAt),
+  index("results_is_saved_idx").on(table.isSaved),
+  index("results_posted_at_idx").on(table.postedAt),
 ]);
 
 // AI Logs - for cost tracking
@@ -456,7 +472,9 @@ export const usage = pgTable("usage", {
   resultsCount: integer("results_count").default(0).notNull(),
   aiCallsCount: integer("ai_calls_count").default(0).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("usage_user_id_period_idx").on(table.userId, table.periodStart),
+]);
 
 // Webhook status enum
 export const webhookStatusEnum = pgEnum("webhook_status", [

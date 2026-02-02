@@ -1,13 +1,16 @@
 import { inngest } from "../client";
-import { db } from "@/lib/db";
-import { monitors, results } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
-import { incrementResultsCount, canAccessPlatform, shouldProcessMonitor } from "@/lib/limits";
 import { contentMatchesMonitor } from "@/lib/content-matcher";
 import { searchMultipleKeywords, getStoryUrl, type HNAlgoliaStory } from "@/lib/hackernews";
-import { calculateStaggerDelay, formatStaggerDuration, addJitter, getStaggerWindow } from "../utils/stagger";
-import { isMonitorScheduleActive } from "@/lib/monitor-schedule";
-import { AI_BATCH_CONFIG } from "@/lib/ai/sampling";
+import {
+  getActiveMonitors,
+  prefetchPlans,
+  shouldSkipMonitor,
+  applyStagger,
+  saveNewResults,
+  triggerAiAnalysis,
+  updateMonitorStats,
+  type MonitorStep,
+} from "../utils/monitor-helpers";
 
 // Scan Hacker News for new posts matching monitor keywords
 // Uses Algolia HN Search API for efficient keyword-based searching
@@ -16,60 +19,28 @@ export const monitorHackerNews = inngest.createFunction(
     id: "monitor-hackernews",
     name: "Monitor Hacker News",
     retries: 3,
+    timeouts: { finish: "14m" },
+    concurrency: { limit: 5 },
   },
   { cron: "*/15 * * * *" }, // Every 15 minutes
-  async ({ step }) => {
-    // Get all active monitors that include Hacker News
-    const activeMonitors = await step.run("get-monitors", async () => {
-      return db.query.monitors.findMany({
-        where: eq(monitors.isActive, true),
-      });
-    });
+  async ({ step: _step }) => {
+    const step = _step as unknown as MonitorStep;
 
-    const hnMonitors = activeMonitors.filter((m) =>
-      m.platforms.includes("hackernews")
-    );
-
+    const hnMonitors = await getActiveMonitors("hackernews", step);
     if (hnMonitors.length === 0) {
       return { message: "No active Hacker News monitors" };
     }
 
+    const planMap = await prefetchPlans(hnMonitors, step);
+
     let totalResults = 0;
     const monitorResults: Record<string, number> = {};
-
-    // Calculate stagger window based on number of monitors
-    const staggerWindow = getStaggerWindow("hackernews");
 
     for (let i = 0; i < hnMonitors.length; i++) {
       const monitor = hnMonitors[i];
 
-      // Stagger execution to prevent thundering herd
-      if (i > 0 && hnMonitors.length > 3) {
-        const baseDelay = calculateStaggerDelay(i, hnMonitors.length, staggerWindow);
-        const delayWithJitter = addJitter(baseDelay, 10);
-        const delayStr = formatStaggerDuration(delayWithJitter);
-        await step.sleep(`stagger-${monitor.id}`, delayStr);
-      }
-
-      // Check if user has access to Hacker News platform
-      const access = await canAccessPlatform(monitor.userId, "hackernews");
-      if (!access.hasAccess) {
-        continue;
-      }
-
-      // Check refresh delay for free tier users
-      const scheduleCheck = await shouldProcessMonitor(monitor.userId, monitor.lastCheckedAt);
-      if (!scheduleCheck.shouldProcess) {
-        continue;
-      }
-
-      // Check if monitor is within its active schedule
-      if (!isMonitorScheduleActive(monitor)) {
-        continue;
-      }
-
-      let monitorMatchCount = 0;
-      const newResultIds: string[] = [];
+      await applyStagger(i, hnMonitors.length, "hackernews", monitor.id, step);
+      if (shouldSkipMonitor(monitor, planMap, "hackernews")) continue;
 
       // Build search keywords from monitor config
       const searchKeywords: string[] = [];
@@ -117,94 +88,41 @@ export const monitorHackerNews = inngest.createFunction(
         return true;
       });
 
-      // Save matching stories as results
-      if (matchingStories.length > 0) {
-        await step.run(`save-results-${monitor.id}`, async () => {
-          for (const story of matchingStories) {
-            if (!story) continue;
+      // Filter out null/undefined stories before saving
+      const validStories = matchingStories.filter((s): s is HNAlgoliaStory => !!s);
 
-            // HN discussion URL (always use this as the primary source URL)
-            const hnDiscussionUrl = getStoryUrl(story.objectID);
-
-            // Check if we already have this result
-            const existing = await db.query.results.findFirst({
-              where: eq(results.sourceUrl, hnDiscussionUrl),
-            });
-
-            if (!existing) {
-              const [newResult] = await db.insert(results).values({
-                monitorId: monitor.id,
-                platform: "hackernews",
-                sourceUrl: hnDiscussionUrl,
-                title: story.title || "",
-                content: story.story_text || null,
-                author: story.author,
-                postedAt: new Date(story.created_at_i * 1000),
-                metadata: {
-                  hnId: story.objectID,
-                  score: story.points,
-                  numComments: story.num_comments,
-                  externalUrl: story.url,
-                  tags: story._tags,
-                  isAskHN: story._tags?.includes("ask_hn"),
-                  isShowHN: story._tags?.includes("show_hn"),
-                },
-              }).returning();
-
-              totalResults++;
-              monitorMatchCount++;
-              newResultIds.push(newResult.id);
-
-              // Increment usage count for the user
-              await incrementResultsCount(monitor.userId, 1);
-            }
-          }
-        });
-      }
-
-      // Trigger AI analysis - batch mode for large volumes, individual for small
-      if (newResultIds.length > 0) {
-        await step.run(`trigger-analysis-${monitor.id}`, async () => {
-          if (newResultIds.length > AI_BATCH_CONFIG.BATCH_THRESHOLD) {
-            // Batch mode for cost efficiency (>50 results)
-            await inngest.send({
-              name: "content/analyze-batch",
-              data: {
-                monitorId: monitor.id,
-                userId: monitor.userId,
-                platform: "hackernews",
-                resultIds: newResultIds,
-                totalCount: newResultIds.length,
-              },
-            });
-          } else {
-            // Individual analysis for small volumes
-            for (const resultId of newResultIds) {
-              await inngest.send({
-                name: "content/analyze",
-                data: {
-                  resultId,
-                  userId: monitor.userId,
-                },
-              });
-            }
-          }
-        });
-      }
-
-      // Update monitor stats
-      monitorResults[monitor.id] = monitorMatchCount;
-
-      await step.run(`update-monitor-stats-${monitor.id}`, async () => {
-        await db
-          .update(monitors)
-          .set({
-            lastCheckedAt: new Date(),
-            newMatchCount: monitorMatchCount,
-            updatedAt: new Date(),
-          })
-          .where(eq(monitors.id, monitor.id));
+      // Save new results
+      const { count, ids: newResultIds } = await saveNewResults<HNAlgoliaStory>({
+        items: validStories,
+        monitorId: monitor.id,
+        userId: monitor.userId,
+        getSourceUrl: (story) => getStoryUrl(story.objectID),
+        mapToResult: (story) => ({
+          monitorId: monitor.id,
+          platform: "hackernews" as const,
+          sourceUrl: getStoryUrl(story.objectID),
+          title: story.title || "",
+          content: story.story_text || null,
+          author: story.author,
+          postedAt: new Date(story.created_at_i * 1000),
+          metadata: {
+            hnId: story.objectID,
+            score: story.points,
+            numComments: story.num_comments,
+            externalUrl: story.url,
+            tags: story._tags,
+            isAskHN: story._tags?.includes("ask_hn"),
+            isShowHN: story._tags?.includes("show_hn"),
+          },
+        }),
+        step,
       });
+
+      totalResults += count;
+      await triggerAiAnalysis(newResultIds, monitor.id, monitor.userId, "hackernews", step);
+
+      monitorResults[monitor.id] = count;
+      await updateMonitorStats(monitor.id, count, step);
     }
 
     return {

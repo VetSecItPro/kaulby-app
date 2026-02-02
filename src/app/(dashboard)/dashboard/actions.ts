@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@clerk/nextjs/server";
+import { getEffectiveUserId } from "@/lib/dev-auth";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -11,7 +11,7 @@ import { revalidatePath } from "next/cache";
  * Called when user dismisses the onboarding wizard.
  */
 export async function completeOnboarding() {
-  const { userId } = await auth();
+  const userId = await getEffectiveUserId();
   if (!userId) {
     return { success: false, error: "Not authenticated" };
   }
@@ -38,7 +38,7 @@ export async function completeOnboarding() {
  * Mainly used for testing/debugging.
  */
 export async function resetOnboarding() {
-  const { userId } = await auth();
+  const userId = await getEffectiveUserId();
   if (!userId) {
     return { success: false, error: "Not authenticated" };
   }

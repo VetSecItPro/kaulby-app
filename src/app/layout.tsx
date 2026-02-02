@@ -2,10 +2,10 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { Instrument_Serif } from "next/font/google";
 import { Toaster } from "@/components/ui/toaster";
-import { DeviceProvider } from "@/hooks/use-device";
 import { ResilientClerkProvider } from "@/components/shared/clerk-provider";
+import { CookieConsent } from "@/components/shared/cookie-consent";
 import { OrganizationSchema, SoftwareApplicationSchema } from "@/lib/seo/structured-data";
-import { ServiceWorkerRegister } from "@/components/shared/service-worker-register";
+
 import "./globals.css";
 
 // Font configuration
@@ -100,12 +100,10 @@ export default function RootLayout({
         <SoftwareApplicationSchema />
 
         <ResilientClerkProvider>
-          <DeviceProvider>
-            {children}
-            <Toaster />
-          </DeviceProvider>
+          {children}
+          <Toaster />
+          <CookieConsent />
         </ResilientClerkProvider>
-        <ServiceWorkerRegister />
       </body>
     </html>
   );

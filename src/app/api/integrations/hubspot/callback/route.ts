@@ -79,6 +79,17 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Check state expiration (10-minute window)
+    const stateCreatedAt = hubspotData.stateCreatedAt ? new Date(hubspotData.stateCreatedAt as string) : null;
+    if (!stateCreatedAt || Date.now() - stateCreatedAt.getTime() > 10 * 60 * 1000) {
+      return NextResponse.redirect(
+        new URL(
+          "/dashboard/settings?tab=integrations&error=Authorization+expired.+Please+try+again.",
+          request.url
+        )
+      );
+    }
+
     // Exchange code for tokens
     const tokens = await exchangeCodeForTokens(code);
 

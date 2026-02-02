@@ -1,5 +1,5 @@
 import { inngest } from "../client";
-import { db } from "@/lib/db";
+import { pooledDb } from "@/lib/db";
 import { results, monitors, aiLogs } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { analyzeBatchSentiment } from "@/lib/ai/analyzers/batch-summary";
@@ -30,6 +30,7 @@ export const analyzeContentBatch = inngest.createFunction(
     id: "analyze-content-batch",
     name: "Analyze Content (Batch)",
     retries: 2,
+    timeouts: { finish: "15m" },
     concurrency: {
       limit: 3, // Limit concurrent batch analyses
     },
@@ -40,7 +41,7 @@ export const analyzeContentBatch = inngest.createFunction(
 
     // Get the results to sample from
     const allResults = await step.run("get-results", async () => {
-      return db.query.results.findMany({
+      return pooledDb.query.results.findMany({
         where: inArray(results.id, resultIds),
       });
     });
@@ -77,7 +78,7 @@ export const analyzeContentBatch = inngest.createFunction(
     // Get full result data for the sample
     const sampleResults = await step.run("get-sample-results", async () => {
       const sampleIds = sample.map((s) => s.id);
-      return db.query.results.findMany({
+      return pooledDb.query.results.findMany({
         where: inArray(results.id, sampleIds),
       });
     });
@@ -126,7 +127,7 @@ export const analyzeContentBatch = inngest.createFunction(
 
     // Store batch analysis on the monitor
     await step.run("store-batch-analysis", async () => {
-      await db
+      await pooledDb
         .update(monitors)
         .set({
           batchAnalysis: JSON.stringify(batchAnalysis),
@@ -143,7 +144,7 @@ export const analyzeContentBatch = inngest.createFunction(
         ? "neutral"
         : batchAnalysis.overallSentiment;
 
-      await db
+      await pooledDb
         .update(results)
         .set({
           batchAnalyzed: true,
@@ -164,7 +165,7 @@ export const analyzeContentBatch = inngest.createFunction(
 
     // Log AI usage
     await step.run("log-ai-usage", async () => {
-      await db.insert(aiLogs).values({
+      await pooledDb.insert(aiLogs).values({
         userId,
         model: analysisResult.meta.model,
         promptTokens: analysisResult.meta.promptTokens,

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { budgetAlerts, users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { isValidEmail, sanitizeUrl } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
@@ -81,8 +82,7 @@ export async function PATCH(
       if (notifyEmail === null || notifyEmail === "") {
         updateData.notifyEmail = null;
       } else if (typeof notifyEmail === "string") {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(notifyEmail)) {
+        if (!isValidEmail(notifyEmail)) {
           return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
         }
         updateData.notifyEmail = notifyEmail.trim();
@@ -93,7 +93,7 @@ export async function PATCH(
       if (notifySlack === null || notifySlack === "") {
         updateData.notifySlack = null;
       } else if (typeof notifySlack === "string") {
-        if (!notifySlack.startsWith("https://hooks.slack.com/")) {
+        if (!sanitizeUrl(notifySlack) || !notifySlack.startsWith("https://hooks.slack.com/")) {
           return NextResponse.json({ error: "Invalid Slack webhook URL" }, { status: 400 });
         }
         updateData.notifySlack = notifySlack.trim();

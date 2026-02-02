@@ -1,8 +1,8 @@
 import { inngest } from "../client";
-import { db } from "@/lib/db";
+import { pooledDb } from "@/lib/db";
 import { monitors, results } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
-import { incrementResultsCount, canAccessPlatform } from "@/lib/limits";
+import { eq, inArray } from "drizzle-orm";
+import { incrementResultsCount, getUserPlan, canAccessPlatformWithPlan } from "@/lib/limits";
 import {
   fetchGoogleReviews,
   fetchTrustpilotReviews,
@@ -32,6 +32,7 @@ export const scanOnDemand = inngest.createFunction(
     id: "scan-on-demand",
     name: "Scan Monitor On-Demand",
     retries: 2,
+    timeouts: { finish: "10m" },
     concurrency: {
       limit: 5, // Limit concurrent scans to prevent overload
     },
@@ -42,7 +43,7 @@ export const scanOnDemand = inngest.createFunction(
 
     // Get the monitor
     const monitor = await step.run("get-monitor", async () => {
-      return db.query.monitors.findFirst({
+      return pooledDb.query.monitors.findFirst({
         where: eq(monitors.id, monitorId),
       });
     });
@@ -57,7 +58,7 @@ export const scanOnDemand = inngest.createFunction(
 
     // Mark as scanning
     await step.run("mark-scanning", async () => {
-      await db
+      await pooledDb
         .update(monitors)
         .set({ isScanning: true })
         .where(eq(monitors.id, monitorId));
@@ -66,12 +67,16 @@ export const scanOnDemand = inngest.createFunction(
     let totalResults = 0;
     const platformResults: Record<string, number> = {};
 
+    // Pre-fetch user plan once instead of per-platform DB lookup
+    const userPlan = await step.run("get-user-plan", async () => {
+      return getUserPlan(userId);
+    });
+
     try {
       // Scan each platform configured for this monitor
       for (const platform of monitor.platforms) {
-        // Check platform access
-        const access = await canAccessPlatform(userId, platform);
-        if (!access.hasAccess) continue;
+        // Check platform access using pre-fetched plan (no DB hit)
+        if (!canAccessPlatformWithPlan(userPlan, platform)) continue;
 
         let platformCount = 0;
 
@@ -197,7 +202,7 @@ export const scanOnDemand = inngest.createFunction(
 
       // Update monitor stats and mark scan complete
       await step.run("complete-scan", async () => {
-        await db
+        await pooledDb
           .update(monitors)
           .set({
             isScanning: false,
@@ -218,7 +223,7 @@ export const scanOnDemand = inngest.createFunction(
     } catch (error) {
       // Make sure to reset scanning state on error
       await step.run("reset-scanning-on-error", async () => {
-        await db
+        await pooledDb
           .update(monitors)
           .set({ isScanning: false })
           .where(eq(monitors.id, monitorId));
@@ -312,7 +317,7 @@ async function scanRedditForMonitor(monitor: MonitorData): Promise<number> {
 
   // First, check for user-defined audience
   if (monitor.audienceId) {
-    const audience = await db.query.audiences.findFirst({
+    const audience = await pooledDb.query.audiences.findFirst({
       where: eq(monitors.id, monitor.audienceId),
       with: { communities: true },
     });
@@ -354,6 +359,17 @@ async function scanRedditForMonitor(monitor: MonitorData): Promise<number> {
 
       console.log(`[Reddit] Using ${searchResult.source} for r/${subreddit}, found ${searchResult.posts.length} posts`);
 
+      // 1. Run content matching to determine which items to save
+      interface MatchedRedditPost {
+        sourceUrl: string;
+        title: string;
+        content: string;
+        author: string;
+        postedAt: Date;
+        metadata: Record<string, unknown>;
+      }
+      const matchedItems: MatchedRedditPost[] = [];
+
       for (const post of searchResult.posts) {
         // Check for matches using unified matching function
         const matchResult = await contentMatchesMonitor(
@@ -362,37 +378,63 @@ async function scanRedditForMonitor(monitor: MonitorData): Promise<number> {
         );
 
         if (matchResult.isMatch) {
-          const sourceUrl = post.url || `https://reddit.com${post.permalink}`;
-          const existing = await db.query.results.findFirst({
-            where: eq(results.sourceUrl, sourceUrl),
+          matchedItems.push({
+            sourceUrl: post.url || `https://reddit.com${post.permalink}`,
+            title: post.title,
+            content: post.selftext,
+            author: post.author,
+            postedAt: new Date(post.created_utc * 1000),
+            metadata: {
+              subreddit: post.subreddit,
+              score: post.score,
+              numComments: post.num_comments,
+              source: searchResult.source, // Track which provider was used
+            },
           });
+        }
+      }
 
-          if (!existing) {
-            const [newResult] = await db.insert(results).values({
-              monitorId: monitor.id,
-              platform: "reddit",
-              sourceUrl,
-              title: post.title,
-              content: post.selftext,
-              author: post.author,
-              postedAt: new Date(post.created_utc * 1000),
-              metadata: {
-                subreddit: post.subreddit,
-                score: post.score,
-                numComments: post.num_comments,
-                source: searchResult.source, // Track which provider was used
-              },
-            }).returning();
+      if (matchedItems.length === 0) continue;
 
-            count++;
-            await incrementResultsCount(monitor.userId, 1);
+      // 2. Batch check existence
+      const matchedUrls = matchedItems.map(m => m.sourceUrl);
+      const existing = await pooledDb.query.results.findMany({
+        where: inArray(results.sourceUrl, matchedUrls),
+        columns: { sourceUrl: true },
+      });
+      const existingUrls = new Set(existing.map(r => r.sourceUrl));
 
-            // Trigger content analysis
-            await inngest.send({
-              name: "content/analyze",
-              data: { resultId: newResult.id, userId: monitor.userId },
-            });
-          }
+      // 3. Filter to new items
+      const newItems = matchedItems.filter(m => !existingUrls.has(m.sourceUrl));
+
+      if (newItems.length > 0) {
+        // 4. Batch insert
+        const inserted = await pooledDb.insert(results).values(
+          newItems.map(item => ({
+            monitorId: monitor.id,
+            platform: "reddit" as const,
+            sourceUrl: item.sourceUrl,
+            title: item.title,
+            content: item.content,
+            author: item.author,
+            postedAt: item.postedAt,
+            metadata: item.metadata,
+          }))
+        ).returning();
+
+        count += inserted.length;
+
+        // 5. Single batch usage increment
+        await incrementResultsCount(monitor.userId, inserted.length);
+
+        // 6. Batch send analysis events
+        if (inserted.length > 0) {
+          await inngest.send(
+            inserted.map(result => ({
+              name: "content/analyze" as const,
+              data: { resultId: result.id, userId: monitor.userId },
+            }))
+          );
         }
       }
     } catch (error) {
@@ -414,6 +456,17 @@ async function scanHackerNewsForMonitor(monitor: MonitorData): Promise<number> {
     const storyIds: number[] = await response.json();
     const recentIds = storyIds.slice(0, 50);
 
+    // 1. Fetch stories and run content matching to determine which items to save
+    interface MatchedHNStory {
+      sourceUrl: string;
+      title: string;
+      content: string;
+      author: string;
+      postedAt: Date;
+      metadata: Record<string, unknown>;
+    }
+    const matchedItems: MatchedHNStory[] = [];
+
     for (const id of recentIds) {
       try {
         const storyRes = await fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`);
@@ -429,38 +482,65 @@ async function scanHackerNewsForMonitor(monitor: MonitorData): Promise<number> {
         );
 
         if (matchResult.isMatch) {
-          const sourceUrl = `https://news.ycombinator.com/item?id=${id}`;
-          const existing = await db.query.results.findFirst({
-            where: eq(results.sourceUrl, sourceUrl),
+          matchedItems.push({
+            sourceUrl: `https://news.ycombinator.com/item?id=${id}`,
+            title: story.title || "HN Discussion",
+            content: story.text || "",
+            author: story.by,
+            postedAt: story.time ? new Date(story.time * 1000) : new Date(),
+            metadata: {
+              hnId: id,
+              score: story.score,
+              descendants: story.descendants,
+            },
           });
-
-          if (!existing) {
-            const [newResult] = await db.insert(results).values({
-              monitorId: monitor.id,
-              platform: "hackernews",
-              sourceUrl,
-              title: story.title || "HN Discussion",
-              content: story.text || "",
-              author: story.by,
-              postedAt: story.time ? new Date(story.time * 1000) : new Date(),
-              metadata: {
-                hnId: id,
-                score: story.score,
-                descendants: story.descendants,
-              },
-            }).returning();
-
-            count++;
-            await incrementResultsCount(monitor.userId, 1);
-
-            await inngest.send({
-              name: "content/analyze",
-              data: { resultId: newResult.id, userId: monitor.userId },
-            });
-          }
         }
       } catch {
         continue;
+      }
+    }
+
+    if (matchedItems.length > 0) {
+      // 2. Batch check existence
+      const matchedUrls = matchedItems.map(m => m.sourceUrl);
+      const existing = await pooledDb.query.results.findMany({
+        where: inArray(results.sourceUrl, matchedUrls),
+        columns: { sourceUrl: true },
+      });
+      const existingUrls = new Set(existing.map(r => r.sourceUrl));
+
+      // 3. Filter to new items
+      const newItems = matchedItems.filter(m => !existingUrls.has(m.sourceUrl));
+
+      if (newItems.length > 0) {
+        // 4. Batch insert
+        const inserted = await pooledDb.insert(results).values(
+          newItems.map(item => ({
+            monitorId: monitor.id,
+            platform: "hackernews" as const,
+            sourceUrl: item.sourceUrl,
+            title: item.title,
+            content: item.content,
+            author: item.author,
+            postedAt: item.postedAt,
+            metadata: item.metadata,
+          }))
+        ).returning();
+
+        count += inserted.length;
+
+        // 5. Single batch usage increment
+        await incrementResultsCount(monitor.userId, inserted.length);
+
+        // 6. Batch send analysis events
+        if (inserted.length > 0) {
+          await inngest.send(
+            inserted.map(result => ({
+              name: "content/analyze" as const,
+              data: { resultId: result.id, userId: monitor.userId },
+            }))
+          );
+        }
       }
     }
   } catch (error) {
@@ -484,17 +564,27 @@ async function scanGoogleReviewsForMonitor(monitor: MonitorData): Promise<number
     try {
       const reviews = await fetchGoogleReviews(term, 20);
 
-      for (const review of reviews) {
-        const sourceUrl = review.reviewUrl || `google-${review.reviewId}`;
-        const existing = await db.query.results.findFirst({
-          where: eq(results.sourceUrl, sourceUrl),
-        });
+      // Batch check for existing results
+      const urls = reviews.map(review => review.reviewUrl || `google-${review.reviewId}`);
+      const existing = await pooledDb.query.results.findMany({
+        where: inArray(results.sourceUrl, urls),
+        columns: { sourceUrl: true },
+      });
+      const existingUrls = new Set(existing.map(r => r.sourceUrl));
 
-        if (!existing) {
-          const [newResult] = await db.insert(results).values({
+      // Filter to only new reviews
+      const newReviews = reviews.filter(review => {
+        const sourceUrl = review.reviewUrl || `google-${review.reviewId}`;
+        return !existingUrls.has(sourceUrl);
+      });
+
+      if (newReviews.length > 0) {
+        // Batch insert all new results
+        const inserted = await pooledDb.insert(results).values(
+          newReviews.map(review => ({
             monitorId: monitor.id,
-            platform: "googlereviews",
-            sourceUrl,
+            platform: "googlereviews" as const,
+            sourceUrl: review.reviewUrl || `google-${review.reviewId}`,
             title: `${review.stars}-star review`,
             content: review.text,
             author: review.name,
@@ -504,15 +594,22 @@ async function scanGoogleReviewsForMonitor(monitor: MonitorData): Promise<number
               rating: review.stars,
               placeId: review.placeId,
             },
-          }).returning();
+          }))
+        ).returning();
 
-          count++;
-          await incrementResultsCount(monitor.userId, 1);
+        count += inserted.length;
 
-          await inngest.send({
-            name: "content/analyze",
-            data: { resultId: newResult.id, userId: monitor.userId },
-          });
+        // Single batch usage increment
+        await incrementResultsCount(monitor.userId, inserted.length);
+
+        // Batch send analysis events
+        if (inserted.length > 0) {
+          await inngest.send(
+            inserted.map(result => ({
+              name: "content/analyze" as const,
+              data: { resultId: result.id, userId: monitor.userId },
+            }))
+          );
         }
       }
     } catch (error) {
@@ -536,17 +633,27 @@ async function scanTrustpilotForMonitor(monitor: MonitorData): Promise<number> {
     try {
       const reviews = await fetchTrustpilotReviews(term, 20);
 
-      for (const review of reviews) {
-        const sourceUrl = review.url || `trustpilot-${review.id}`;
-        const existing = await db.query.results.findFirst({
-          where: eq(results.sourceUrl, sourceUrl),
-        });
+      // Batch check for existing results
+      const urls = reviews.map(review => review.url || `trustpilot-${review.id}`);
+      const existing = await pooledDb.query.results.findMany({
+        where: inArray(results.sourceUrl, urls),
+        columns: { sourceUrl: true },
+      });
+      const existingUrls = new Set(existing.map(r => r.sourceUrl));
 
-        if (!existing) {
-          const [newResult] = await db.insert(results).values({
+      // Filter to only new reviews
+      const newReviews = reviews.filter(review => {
+        const sourceUrl = review.url || `trustpilot-${review.id}`;
+        return !existingUrls.has(sourceUrl);
+      });
+
+      if (newReviews.length > 0) {
+        // Batch insert all new results
+        const inserted = await pooledDb.insert(results).values(
+          newReviews.map(review => ({
             monitorId: monitor.id,
-            platform: "trustpilot",
-            sourceUrl,
+            platform: "trustpilot" as const,
+            sourceUrl: review.url || `trustpilot-${review.id}`,
             title: review.title || `${review.rating}-star review`,
             content: review.text,
             author: review.author,
@@ -556,15 +663,22 @@ async function scanTrustpilotForMonitor(monitor: MonitorData): Promise<number> {
               rating: review.rating,
               authorLocation: review.authorLocation,
             },
-          }).returning();
+          }))
+        ).returning();
 
-          count++;
-          await incrementResultsCount(monitor.userId, 1);
+        count += inserted.length;
 
-          await inngest.send({
-            name: "content/analyze",
-            data: { resultId: newResult.id, userId: monitor.userId },
-          });
+        // Single batch usage increment
+        await incrementResultsCount(monitor.userId, inserted.length);
+
+        // Batch send analysis events
+        if (inserted.length > 0) {
+          await inngest.send(
+            inserted.map(result => ({
+              name: "content/analyze" as const,
+              data: { resultId: result.id, userId: monitor.userId },
+            }))
+          );
         }
       }
     } catch (error) {
@@ -584,17 +698,27 @@ async function scanAppStoreForMonitor(monitor: MonitorData): Promise<number> {
     try {
       const reviews = await fetchAppStoreReviews(appId, 20);
 
-      for (const review of reviews) {
-        const sourceUrl = review.url || `appstore-${review.id}`;
-        const existing = await db.query.results.findFirst({
-          where: eq(results.sourceUrl, sourceUrl),
-        });
+      // Batch check for existing results
+      const urls = reviews.map(review => review.url || `appstore-${review.id}`);
+      const existing = await pooledDb.query.results.findMany({
+        where: inArray(results.sourceUrl, urls),
+        columns: { sourceUrl: true },
+      });
+      const existingUrls = new Set(existing.map(r => r.sourceUrl));
 
-        if (!existing) {
-          const [newResult] = await db.insert(results).values({
+      // Filter to only new reviews
+      const newReviews = reviews.filter(review => {
+        const sourceUrl = review.url || `appstore-${review.id}`;
+        return !existingUrls.has(sourceUrl);
+      });
+
+      if (newReviews.length > 0) {
+        // Batch insert all new results
+        const inserted = await pooledDb.insert(results).values(
+          newReviews.map(review => ({
             monitorId: monitor.id,
-            platform: "appstore",
-            sourceUrl,
+            platform: "appstore" as const,
+            sourceUrl: review.url || `appstore-${review.id}`,
             title: review.title || `${review.rating}-star review`,
             content: review.text,
             author: review.userName,
@@ -604,15 +728,22 @@ async function scanAppStoreForMonitor(monitor: MonitorData): Promise<number> {
               rating: review.rating,
               appVersion: review.version,
             },
-          }).returning();
+          }))
+        ).returning();
 
-          count++;
-          await incrementResultsCount(monitor.userId, 1);
+        count += inserted.length;
 
-          await inngest.send({
-            name: "content/analyze",
-            data: { resultId: newResult.id, userId: monitor.userId },
-          });
+        // Single batch usage increment
+        await incrementResultsCount(monitor.userId, inserted.length);
+
+        // Batch send analysis events
+        if (inserted.length > 0) {
+          await inngest.send(
+            inserted.map(result => ({
+              name: "content/analyze" as const,
+              data: { resultId: result.id, userId: monitor.userId },
+            }))
+          );
         }
       }
     } catch (error) {
@@ -632,17 +763,27 @@ async function scanPlayStoreForMonitor(monitor: MonitorData): Promise<number> {
     try {
       const reviews = await fetchPlayStoreReviews(appId, 20);
 
-      for (const review of reviews) {
-        const sourceUrl = review.url || `playstore-${review.reviewId}`;
-        const existing = await db.query.results.findFirst({
-          where: eq(results.sourceUrl, sourceUrl),
-        });
+      // Batch check for existing results
+      const urls = reviews.map(review => review.url || `playstore-${review.reviewId}`);
+      const existing = await pooledDb.query.results.findMany({
+        where: inArray(results.sourceUrl, urls),
+        columns: { sourceUrl: true },
+      });
+      const existingUrls = new Set(existing.map(r => r.sourceUrl));
 
-        if (!existing) {
-          const [newResult] = await db.insert(results).values({
+      // Filter to only new reviews
+      const newReviews = reviews.filter(review => {
+        const sourceUrl = review.url || `playstore-${review.reviewId}`;
+        return !existingUrls.has(sourceUrl);
+      });
+
+      if (newReviews.length > 0) {
+        // Batch insert all new results
+        const inserted = await pooledDb.insert(results).values(
+          newReviews.map(review => ({
             monitorId: monitor.id,
-            platform: "playstore",
-            sourceUrl,
+            platform: "playstore" as const,
+            sourceUrl: review.url || `playstore-${review.reviewId}`,
             title: `${review.score}-star review`,
             content: review.text,
             author: review.userName,
@@ -653,15 +794,22 @@ async function scanPlayStoreForMonitor(monitor: MonitorData): Promise<number> {
               appVersion: review.appVersion,
               thumbsUp: review.thumbsUpCount,
             },
-          }).returning();
+          }))
+        ).returning();
 
-          count++;
-          await incrementResultsCount(monitor.userId, 1);
+        count += inserted.length;
 
-          await inngest.send({
-            name: "content/analyze",
-            data: { resultId: newResult.id, userId: monitor.userId },
-          });
+        // Single batch usage increment
+        await incrementResultsCount(monitor.userId, inserted.length);
+
+        // Batch send analysis events
+        if (inserted.length > 0) {
+          await inngest.send(
+            inserted.map(result => ({
+              name: "content/analyze" as const,
+              data: { resultId: result.id, userId: monitor.userId },
+            }))
+          );
         }
       }
     } catch (error) {
@@ -685,17 +833,27 @@ async function scanQuoraForMonitor(monitor: MonitorData): Promise<number> {
     try {
       const answers = await fetchQuoraAnswers(term, 15);
 
-      for (const answer of answers) {
-        const sourceUrl = answer.answerUrl || answer.questionUrl || `quora-${answer.questionId}-${answer.answerId || "q"}`;
-        const existing = await db.query.results.findFirst({
-          where: eq(results.sourceUrl, sourceUrl),
-        });
+      // Batch check for existing results
+      const urls = answers.map(answer => answer.answerUrl || answer.questionUrl || `quora-${answer.questionId}-${answer.answerId || "q"}`);
+      const existing = await pooledDb.query.results.findMany({
+        where: inArray(results.sourceUrl, urls),
+        columns: { sourceUrl: true },
+      });
+      const existingUrls = new Set(existing.map(r => r.sourceUrl));
 
-        if (!existing) {
-          const [newResult] = await db.insert(results).values({
+      // Filter to only new answers
+      const newAnswers = answers.filter(answer => {
+        const sourceUrl = answer.answerUrl || answer.questionUrl || `quora-${answer.questionId}-${answer.answerId || "q"}`;
+        return !existingUrls.has(sourceUrl);
+      });
+
+      if (newAnswers.length > 0) {
+        // Batch insert all new results
+        const inserted = await pooledDb.insert(results).values(
+          newAnswers.map(answer => ({
             monitorId: monitor.id,
-            platform: "quora",
-            sourceUrl,
+            platform: "quora" as const,
+            sourceUrl: answer.answerUrl || answer.questionUrl || `quora-${answer.questionId}-${answer.answerId || "q"}`,
             title: answer.questionTitle,
             content: answer.answerText,
             author: answer.answerAuthor,
@@ -706,15 +864,22 @@ async function scanQuoraForMonitor(monitor: MonitorData): Promise<number> {
               upvotes: answer.upvotes,
               views: answer.views,
             },
-          }).returning();
+          }))
+        ).returning();
 
-          count++;
-          await incrementResultsCount(monitor.userId, 1);
+        count += inserted.length;
 
-          await inngest.send({
-            name: "content/analyze",
-            data: { resultId: newResult.id, userId: monitor.userId },
-          });
+        // Single batch usage increment
+        await incrementResultsCount(monitor.userId, inserted.length);
+
+        // Batch send analysis events
+        if (inserted.length > 0) {
+          await inngest.send(
+            inserted.map(result => ({
+              name: "content/analyze" as const,
+              data: { resultId: result.id, userId: monitor.userId },
+            }))
+          );
         }
       }
     } catch (error) {
@@ -824,6 +989,17 @@ async function scanProductHuntForMonitor(monitor: MonitorData): Promise<number> 
     const data = await response.json();
     const posts = data.data?.posts?.edges?.map((e: { node: unknown }) => e.node) || [];
 
+    // 1. Run content matching to determine which items to save
+    interface MatchedPHPost {
+      sourceUrl: string;
+      title: string;
+      content: string | null;
+      author: string | null;
+      postedAt: Date;
+      metadata: Record<string, unknown>;
+    }
+    const matchedItems: MatchedPHPost[] = [];
+
     for (const post of posts) {
       // Check for matches using unified matching function
       const matchResult = await contentMatchesMonitor(
@@ -831,17 +1007,8 @@ async function scanProductHuntForMonitor(monitor: MonitorData): Promise<number> 
         monitor
       );
 
-      if (!matchResult.isMatch) continue;
-
-      // Check for existing result
-      const existing = await db.query.results.findFirst({
-        where: eq(results.sourceUrl, post.url),
-      });
-
-      if (!existing) {
-        const [newResult] = await db.insert(results).values({
-          monitorId: monitor.id,
-          platform: "producthunt",
+      if (matchResult.isMatch) {
+        matchedItems.push({
           sourceUrl: post.url,
           title: `${post.name} - ${post.tagline}`,
           content: post.description || null,
@@ -851,15 +1018,51 @@ async function scanProductHuntForMonitor(monitor: MonitorData): Promise<number> 
             phId: post.id,
             votesCount: post.votesCount,
           },
-        }).returning();
-
-        count++;
-        await incrementResultsCount(monitor.userId, 1);
-
-        await inngest.send({
-          name: "content/analyze",
-          data: { resultId: newResult.id, userId: monitor.userId },
         });
+      }
+    }
+
+    if (matchedItems.length > 0) {
+      // 2. Batch check existence
+      const matchedUrls = matchedItems.map(m => m.sourceUrl);
+      const existing = await pooledDb.query.results.findMany({
+        where: inArray(results.sourceUrl, matchedUrls),
+        columns: { sourceUrl: true },
+      });
+      const existingUrls = new Set(existing.map(r => r.sourceUrl));
+
+      // 3. Filter to new items
+      const newItems = matchedItems.filter(m => !existingUrls.has(m.sourceUrl));
+
+      if (newItems.length > 0) {
+        // 4. Batch insert
+        const inserted = await pooledDb.insert(results).values(
+          newItems.map(item => ({
+            monitorId: monitor.id,
+            platform: "producthunt" as const,
+            sourceUrl: item.sourceUrl,
+            title: item.title,
+            content: item.content,
+            author: item.author,
+            postedAt: item.postedAt,
+            metadata: item.metadata,
+          }))
+        ).returning();
+
+        count += inserted.length;
+
+        // 5. Single batch usage increment
+        await incrementResultsCount(monitor.userId, inserted.length);
+
+        // 6. Batch send analysis events
+        if (inserted.length > 0) {
+          await inngest.send(
+            inserted.map(result => ({
+              name: "content/analyze" as const,
+              data: { resultId: result.id, userId: monitor.userId },
+            }))
+          );
+        }
       }
     }
   } catch (error) {
@@ -895,17 +1098,27 @@ async function scanYouTubeForMonitor(monitor: MonitorData): Promise<number> {
     try {
       const comments = await fetchYouTubeComments(videoUrl, 50);
 
-      for (const comment of comments) {
-        const sourceUrl = `https://www.youtube.com/watch?v=${comment.videoId}&lc=${comment.commentId}`;
-        const existing = await db.query.results.findFirst({
-          where: eq(results.sourceUrl, sourceUrl),
-        });
+      // Batch check for existing results
+      const urls = comments.map(comment => `https://www.youtube.com/watch?v=${comment.videoId}&lc=${comment.commentId}`);
+      const existing = await pooledDb.query.results.findMany({
+        where: inArray(results.sourceUrl, urls),
+        columns: { sourceUrl: true },
+      });
+      const existingUrls = new Set(existing.map(r => r.sourceUrl));
 
-        if (!existing) {
-          const [newResult] = await db.insert(results).values({
+      // Filter to only new comments
+      const newComments = comments.filter(comment => {
+        const sourceUrl = `https://www.youtube.com/watch?v=${comment.videoId}&lc=${comment.commentId}`;
+        return !existingUrls.has(sourceUrl);
+      });
+
+      if (newComments.length > 0) {
+        // Batch insert all new results
+        const inserted = await pooledDb.insert(results).values(
+          newComments.map(comment => ({
             monitorId: monitor.id,
-            platform: "youtube",
-            sourceUrl,
+            platform: "youtube" as const,
+            sourceUrl: `https://www.youtube.com/watch?v=${comment.videoId}&lc=${comment.commentId}`,
             title: comment.videoTitle || `YouTube Comment`,
             content: comment.text,
             author: comment.author,
@@ -916,15 +1129,22 @@ async function scanYouTubeForMonitor(monitor: MonitorData): Promise<number> {
               likeCount: comment.likeCount,
               replyCount: comment.replyCount,
             },
-          }).returning();
+          }))
+        ).returning();
 
-          count++;
-          await incrementResultsCount(monitor.userId, 1);
+        count += inserted.length;
 
-          await inngest.send({
-            name: "content/analyze",
-            data: { resultId: newResult.id, userId: monitor.userId },
-          });
+        // Single batch usage increment
+        await incrementResultsCount(monitor.userId, inserted.length);
+
+        // Batch send analysis events
+        if (inserted.length > 0) {
+          await inngest.send(
+            inserted.map(result => ({
+              name: "content/analyze" as const,
+              data: { resultId: result.id, userId: monitor.userId },
+            }))
+          );
         }
       }
     } catch (error) {
@@ -955,43 +1175,62 @@ async function scanG2ForMonitor(monitor: MonitorData): Promise<number> {
     try {
       const reviews = await fetchG2Reviews(productUrl, 30);
 
-      for (const review of reviews) {
+      // Batch check for existing results
+      const urls = reviews.map(review => review.url || `g2-${review.reviewId}`);
+      const existing = await pooledDb.query.results.findMany({
+        where: inArray(results.sourceUrl, urls),
+        columns: { sourceUrl: true },
+      });
+      const existingUrls = new Set(existing.map(r => r.sourceUrl));
+
+      // Filter to only new reviews
+      const newReviews = reviews.filter(review => {
         const sourceUrl = review.url || `g2-${review.reviewId}`;
-        const existing = await db.query.results.findFirst({
-          where: eq(results.sourceUrl, sourceUrl),
-        });
+        return !existingUrls.has(sourceUrl);
+      });
 
-        if (!existing) {
-          // Combine pros/cons with main text for content
-          let content = review.text;
-          if (review.pros) content += `\n\nPros: ${review.pros}`;
-          if (review.cons) content += `\n\nCons: ${review.cons}`;
+      if (newReviews.length > 0) {
+        // Batch insert all new results
+        const inserted = await pooledDb.insert(results).values(
+          newReviews.map(review => {
+            // Combine pros/cons with main text for content
+            let content = review.text;
+            if (review.pros) content += `\n\nPros: ${review.pros}`;
+            if (review.cons) content += `\n\nCons: ${review.cons}`;
 
-          const [newResult] = await db.insert(results).values({
-            monitorId: monitor.id,
-            platform: "g2",
-            sourceUrl,
-            title: review.title || `${review.rating}-star review`,
-            content,
-            author: review.author,
-            postedAt: review.date ? new Date(review.date) : new Date(),
-            metadata: {
-              g2ReviewId: review.reviewId,
-              rating: review.rating,
-              authorRole: review.authorRole,
-              companySize: review.companySize,
-              industry: review.industry,
-              productName: review.productName,
-            },
-          }).returning();
+            return {
+              monitorId: monitor.id,
+              platform: "g2" as const,
+              sourceUrl: review.url || `g2-${review.reviewId}`,
+              title: review.title || `${review.rating}-star review`,
+              content,
+              author: review.author,
+              postedAt: review.date ? new Date(review.date) : new Date(),
+              metadata: {
+                g2ReviewId: review.reviewId,
+                rating: review.rating,
+                authorRole: review.authorRole,
+                companySize: review.companySize,
+                industry: review.industry,
+                productName: review.productName,
+              },
+            };
+          })
+        ).returning();
 
-          count++;
-          await incrementResultsCount(monitor.userId, 1);
+        count += inserted.length;
 
-          await inngest.send({
-            name: "content/analyze",
-            data: { resultId: newResult.id, userId: monitor.userId },
-          });
+        // Single batch usage increment
+        await incrementResultsCount(monitor.userId, inserted.length);
+
+        // Batch send analysis events
+        if (inserted.length > 0) {
+          await inngest.send(
+            inserted.map(result => ({
+              name: "content/analyze" as const,
+              data: { resultId: result.id, userId: monitor.userId },
+            }))
+          );
         }
       }
     } catch (error) {
@@ -1022,17 +1261,27 @@ async function scanYelpForMonitor(monitor: MonitorData): Promise<number> {
     try {
       const reviews = await fetchYelpReviews(businessUrl, 30);
 
-      for (const review of reviews) {
-        const sourceUrl = review.url || `yelp-${review.reviewId}`;
-        const existing = await db.query.results.findFirst({
-          where: eq(results.sourceUrl, sourceUrl),
-        });
+      // Batch check for existing results
+      const urls = reviews.map(review => review.url || `yelp-${review.reviewId}`);
+      const existing = await pooledDb.query.results.findMany({
+        where: inArray(results.sourceUrl, urls),
+        columns: { sourceUrl: true },
+      });
+      const existingUrls = new Set(existing.map(r => r.sourceUrl));
 
-        if (!existing) {
-          const [newResult] = await db.insert(results).values({
+      // Filter to only new reviews
+      const newReviews = reviews.filter(review => {
+        const sourceUrl = review.url || `yelp-${review.reviewId}`;
+        return !existingUrls.has(sourceUrl);
+      });
+
+      if (newReviews.length > 0) {
+        // Batch insert all new results
+        const inserted = await pooledDb.insert(results).values(
+          newReviews.map(review => ({
             monitorId: monitor.id,
-            platform: "yelp",
-            sourceUrl,
+            platform: "yelp" as const,
+            sourceUrl: review.url || `yelp-${review.reviewId}`,
             title: `${review.rating}-star review${review.businessName ? ` for ${review.businessName}` : ""}`,
             content: review.text,
             author: review.author,
@@ -1044,15 +1293,22 @@ async function scanYelpForMonitor(monitor: MonitorData): Promise<number> {
               businessName: review.businessName,
               hasPhotos: review.photos && review.photos.length > 0,
             },
-          }).returning();
+          }))
+        ).returning();
 
-          count++;
-          await incrementResultsCount(monitor.userId, 1);
+        count += inserted.length;
 
-          await inngest.send({
-            name: "content/analyze",
-            data: { resultId: newResult.id, userId: monitor.userId },
-          });
+        // Single batch usage increment
+        await incrementResultsCount(monitor.userId, inserted.length);
+
+        // Batch send analysis events
+        if (inserted.length > 0) {
+          await inngest.send(
+            inserted.map(result => ({
+              name: "content/analyze" as const,
+              data: { resultId: result.id, userId: monitor.userId },
+            }))
+          );
         }
       }
     } catch (error) {
@@ -1085,17 +1341,27 @@ async function scanAmazonReviewsForMonitor(monitor: MonitorData): Promise<number
     try {
       const reviews = await fetchAmazonReviews(productUrl, 30);
 
-      for (const review of reviews) {
-        const sourceUrl = review.url || `amazon-${review.reviewId}`;
-        const existing = await db.query.results.findFirst({
-          where: eq(results.sourceUrl, sourceUrl),
-        });
+      // Batch check for existing results
+      const urls = reviews.map(review => review.url || `amazon-${review.reviewId}`);
+      const existing = await pooledDb.query.results.findMany({
+        where: inArray(results.sourceUrl, urls),
+        columns: { sourceUrl: true },
+      });
+      const existingUrls = new Set(existing.map(r => r.sourceUrl));
 
-        if (!existing) {
-          const [newResult] = await db.insert(results).values({
+      // Filter to only new reviews
+      const newReviews = reviews.filter(review => {
+        const sourceUrl = review.url || `amazon-${review.reviewId}`;
+        return !existingUrls.has(sourceUrl);
+      });
+
+      if (newReviews.length > 0) {
+        // Batch insert all new results
+        const inserted = await pooledDb.insert(results).values(
+          newReviews.map(review => ({
             monitorId: monitor.id,
-            platform: "amazonreviews",
-            sourceUrl,
+            platform: "amazonreviews" as const,
+            sourceUrl: review.url || `amazon-${review.reviewId}`,
             title: review.title || `${review.rating}-star review`,
             content: review.text,
             author: review.author,
@@ -1108,15 +1374,22 @@ async function scanAmazonReviewsForMonitor(monitor: MonitorData): Promise<number
               productName: review.productName,
               productAsin: review.productAsin,
             },
-          }).returning();
+          }))
+        ).returning();
 
-          count++;
-          await incrementResultsCount(monitor.userId, 1);
+        count += inserted.length;
 
-          await inngest.send({
-            name: "content/analyze",
-            data: { resultId: newResult.id, userId: monitor.userId },
-          });
+        // Single batch usage increment
+        await incrementResultsCount(monitor.userId, inserted.length);
+
+        // Batch send analysis events
+        if (inserted.length > 0) {
+          await inngest.send(
+            inserted.map(result => ({
+              name: "content/analyze" as const,
+              data: { resultId: result.id, userId: monitor.userId },
+            }))
+          );
         }
       }
     } catch (error) {
@@ -1155,6 +1428,17 @@ async function scanGitHubForMonitor(monitor: MonitorData): Promise<number> {
       if (!response.ok) continue;
       const data = await response.json();
 
+      // 1. Run content matching to determine which items to save
+      interface MatchedGHIssue {
+        sourceUrl: string;
+        title: string;
+        content: string;
+        author: string;
+        postedAt: Date;
+        metadata: Record<string, unknown>;
+      }
+      const matchedItems: MatchedGHIssue[] = [];
+
       for (const issue of data.items || []) {
         // Check for matches using unified matching function
         const matchResult = await contentMatchesMonitor(
@@ -1163,33 +1447,62 @@ async function scanGitHubForMonitor(monitor: MonitorData): Promise<number> {
         );
 
         if (matchResult.isMatch) {
-          const existing = await db.query.results.findFirst({
-            where: eq(results.sourceUrl, issue.html_url),
+          matchedItems.push({
+            sourceUrl: issue.html_url,
+            title: `[Issue] ${issue.title}`,
+            content: issue.body || "",
+            author: issue.user?.login || "Unknown",
+            postedAt: new Date(issue.created_at),
+            metadata: {
+              type: "issue",
+              state: issue.state,
+              commentCount: issue.comments,
+              labels: issue.labels?.map((l: { name: string }) => l.name) || [],
+            },
           });
+        }
+      }
 
-          if (!existing) {
-            const [newResult] = await db.insert(results).values({
+      if (matchedItems.length > 0) {
+        // 2. Batch check existence
+        const matchedUrls = matchedItems.map(m => m.sourceUrl);
+        const existing = await pooledDb.query.results.findMany({
+          where: inArray(results.sourceUrl, matchedUrls),
+          columns: { sourceUrl: true },
+        });
+        const existingUrls = new Set(existing.map(r => r.sourceUrl));
+
+        // 3. Filter to new items
+        const newItems = matchedItems.filter(m => !existingUrls.has(m.sourceUrl));
+
+        if (newItems.length > 0) {
+          // 4. Batch insert
+          const inserted = await pooledDb.insert(results).values(
+            newItems.map(item => ({
               monitorId: monitor.id,
-              platform: "github",
-              sourceUrl: issue.html_url,
-              title: `[Issue] ${issue.title}`,
-              content: issue.body || "",
-              author: issue.user?.login || "Unknown",
-              postedAt: new Date(issue.created_at),
-              metadata: {
-                type: "issue",
-                state: issue.state,
-                commentCount: issue.comments,
-                labels: issue.labels?.map((l: { name: string }) => l.name) || [],
-              },
-            }).returning();
+              platform: "github" as const,
+              sourceUrl: item.sourceUrl,
+              title: item.title,
+              content: item.content,
+              author: item.author,
+              postedAt: item.postedAt,
+              metadata: item.metadata,
+            }))
+          ).returning();
 
-            count++;
-            await incrementResultsCount(monitor.userId, 1);
-            await inngest.send({
-              name: "content/analyze",
-              data: { resultId: newResult.id, userId: monitor.userId },
-            });
+          count += inserted.length;
+
+          // 5. Single batch usage increment
+          await incrementResultsCount(monitor.userId, inserted.length);
+
+          // 6. Batch send analysis events
+          if (inserted.length > 0) {
+            await inngest.send(
+              inserted.map(result => ({
+                name: "content/analyze" as const,
+                data: { resultId: result.id, userId: monitor.userId },
+              }))
+            );
           }
         }
       }
@@ -1246,6 +1559,17 @@ async function scanHashnodeForMonitor(monitor: MonitorData): Promise<number> {
       const data = await response.json();
       const edges = data.data?.searchPostsOfFeed?.edges || [];
 
+      // 1. Run content matching to determine which items to save
+      interface MatchedHashnodeArticle {
+        sourceUrl: string;
+        title: string;
+        content: string;
+        author: string;
+        postedAt: Date;
+        metadata: Record<string, unknown>;
+      }
+      const matchedItems: MatchedHashnodeArticle[] = [];
+
       for (const edge of edges) {
         const article = edge.node;
         if (!article) continue;
@@ -1257,33 +1581,62 @@ async function scanHashnodeForMonitor(monitor: MonitorData): Promise<number> {
         );
 
         if (matchResult.isMatch) {
-          const existing = await db.query.results.findFirst({
-            where: eq(results.sourceUrl, article.url),
+          matchedItems.push({
+            sourceUrl: article.url,
+            title: article.title,
+            content: article.brief || "",
+            author: article.author?.username || "Unknown",
+            postedAt: new Date(article.publishedAt),
+            metadata: {
+              reactions: article.reactionCount,
+              commentCount: article.responseCount,
+              readingTime: article.readTimeInMinutes,
+              tags: article.tags?.map((t: { name: string }) => t.name) || [],
+            },
           });
+        }
+      }
 
-          if (!existing) {
-            const [newResult] = await db.insert(results).values({
+      if (matchedItems.length > 0) {
+        // 2. Batch check existence
+        const matchedUrls = matchedItems.map(m => m.sourceUrl);
+        const existing = await pooledDb.query.results.findMany({
+          where: inArray(results.sourceUrl, matchedUrls),
+          columns: { sourceUrl: true },
+        });
+        const existingUrls = new Set(existing.map(r => r.sourceUrl));
+
+        // 3. Filter to new items
+        const newItems = matchedItems.filter(m => !existingUrls.has(m.sourceUrl));
+
+        if (newItems.length > 0) {
+          // 4. Batch insert
+          const inserted = await pooledDb.insert(results).values(
+            newItems.map(item => ({
               monitorId: monitor.id,
-              platform: "hashnode",
-              sourceUrl: article.url,
-              title: article.title,
-              content: article.brief || "",
-              author: article.author?.username || "Unknown",
-              postedAt: new Date(article.publishedAt),
-              metadata: {
-                reactions: article.reactionCount,
-                commentCount: article.responseCount,
-                readingTime: article.readTimeInMinutes,
-                tags: article.tags?.map((t: { name: string }) => t.name) || [],
-              },
-            }).returning();
+              platform: "hashnode" as const,
+              sourceUrl: item.sourceUrl,
+              title: item.title,
+              content: item.content,
+              author: item.author,
+              postedAt: item.postedAt,
+              metadata: item.metadata,
+            }))
+          ).returning();
 
-            count++;
-            await incrementResultsCount(monitor.userId, 1);
-            await inngest.send({
-              name: "content/analyze",
-              data: { resultId: newResult.id, userId: monitor.userId },
-            });
+          count += inserted.length;
+
+          // 5. Single batch usage increment
+          await incrementResultsCount(monitor.userId, inserted.length);
+
+          // 6. Batch send analysis events
+          if (inserted.length > 0) {
+            await inngest.send(
+              inserted.map(result => ({
+                name: "content/analyze" as const,
+                data: { resultId: result.id, userId: monitor.userId },
+              }))
+            );
           }
         }
       }
@@ -1331,6 +1684,17 @@ async function scanIndieHackersForMonitor(monitor: MonitorData): Promise<number>
       posts = data.items || [];
     }
 
+    // 1. Run content matching to determine which items to save
+    interface MatchedIHPost {
+      sourceUrl: string;
+      title: string;
+      content: string;
+      author: string;
+      postedAt: Date;
+      metadata: Record<string, unknown>;
+    }
+    const matchedItems: MatchedIHPost[] = [];
+
     for (const post of posts.slice(0, 50)) {
       if (!post.url) continue;
 
@@ -1341,28 +1705,57 @@ async function scanIndieHackersForMonitor(monitor: MonitorData): Promise<number>
       );
 
       if (matchResult.isMatch) {
-        const existing = await db.query.results.findFirst({
-          where: eq(results.sourceUrl, post.url),
+        matchedItems.push({
+          sourceUrl: post.url,
+          title: post.title || "Indie Hackers Post",
+          content: post.content_text || "",
+          author: post.author?.name || post.authors?.[0]?.name || "Unknown",
+          postedAt: post.date_published ? new Date(post.date_published) : new Date(),
+          metadata: {},
         });
+      }
+    }
 
-        if (!existing) {
-          const [newResult] = await db.insert(results).values({
+    if (matchedItems.length > 0) {
+      // 2. Batch check existence
+      const matchedUrls = matchedItems.map(m => m.sourceUrl);
+      const existing = await pooledDb.query.results.findMany({
+        where: inArray(results.sourceUrl, matchedUrls),
+        columns: { sourceUrl: true },
+      });
+      const existingUrls = new Set(existing.map(r => r.sourceUrl));
+
+      // 3. Filter to new items
+      const newItems = matchedItems.filter(m => !existingUrls.has(m.sourceUrl));
+
+      if (newItems.length > 0) {
+        // 4. Batch insert
+        const inserted = await pooledDb.insert(results).values(
+          newItems.map(item => ({
             monitorId: monitor.id,
-            platform: "indiehackers",
-            sourceUrl: post.url,
-            title: post.title || "Indie Hackers Post",
-            content: post.content_text || "",
-            author: post.author?.name || post.authors?.[0]?.name || "Unknown",
-            postedAt: post.date_published ? new Date(post.date_published) : new Date(),
-            metadata: {},
-          }).returning();
+            platform: "indiehackers" as const,
+            sourceUrl: item.sourceUrl,
+            title: item.title,
+            content: item.content,
+            author: item.author,
+            postedAt: item.postedAt,
+            metadata: item.metadata,
+          }))
+        ).returning();
 
-          count++;
-          await incrementResultsCount(monitor.userId, 1);
-          await inngest.send({
-            name: "content/analyze",
-            data: { resultId: newResult.id, userId: monitor.userId },
-          });
+        count += inserted.length;
+
+        // 5. Single batch usage increment
+        await incrementResultsCount(monitor.userId, inserted.length);
+
+        // 6. Batch send analysis events
+        if (inserted.length > 0) {
+          await inngest.send(
+            inserted.map(result => ({
+              name: "content/analyze" as const,
+              data: { resultId: result.id, userId: monitor.userId },
+            }))
+          );
         }
       }
     }
@@ -1413,6 +1806,17 @@ async function scanDevToForMonitor(monitor: MonitorData): Promise<number> {
 
       const articles: DevToArticle[] = await response.json();
 
+      // 1. Run content matching to determine which items to save
+      interface MatchedDevToArticle {
+        sourceUrl: string;
+        title: string;
+        content: string;
+        author: string;
+        postedAt: Date;
+        metadata: Record<string, unknown>;
+      }
+      const matchedItems: MatchedDevToArticle[] = [];
+
       for (const article of articles) {
         if (seenIds.has(article.id)) continue;
         seenIds.add(article.id);
@@ -1424,33 +1828,62 @@ async function scanDevToForMonitor(monitor: MonitorData): Promise<number> {
         );
 
         if (matchResult.isMatch) {
-          const existing = await db.query.results.findFirst({
-            where: eq(results.sourceUrl, article.url),
+          matchedItems.push({
+            sourceUrl: article.url,
+            title: article.title,
+            content: article.description || "",
+            author: article.user.username,
+            postedAt: new Date(article.published_at || article.created_at),
+            metadata: {
+              reactions: article.positive_reactions_count || 0,
+              commentCount: article.comments_count || 0,
+              readingTime: article.reading_time_minutes || 0,
+              tags: article.tags || [],
+            },
           });
+        }
+      }
 
-          if (!existing) {
-            const [newResult] = await db.insert(results).values({
+      if (matchedItems.length > 0) {
+        // 2. Batch check existence
+        const matchedUrls = matchedItems.map(m => m.sourceUrl);
+        const existing = await pooledDb.query.results.findMany({
+          where: inArray(results.sourceUrl, matchedUrls),
+          columns: { sourceUrl: true },
+        });
+        const existingUrls = new Set(existing.map(r => r.sourceUrl));
+
+        // 3. Filter to new items
+        const newItems = matchedItems.filter(m => !existingUrls.has(m.sourceUrl));
+
+        if (newItems.length > 0) {
+          // 4. Batch insert
+          const inserted = await pooledDb.insert(results).values(
+            newItems.map(item => ({
               monitorId: monitor.id,
-              platform: "devto",
-              sourceUrl: article.url,
-              title: article.title,
-              content: article.description || "",
-              author: article.user.username,
-              postedAt: new Date(article.published_at || article.created_at),
-              metadata: {
-                reactions: article.positive_reactions_count || 0,
-                commentCount: article.comments_count || 0,
-                readingTime: article.reading_time_minutes || 0,
-                tags: article.tags || [],
-              },
-            }).returning();
+              platform: "devto" as const,
+              sourceUrl: item.sourceUrl,
+              title: item.title,
+              content: item.content,
+              author: item.author,
+              postedAt: item.postedAt,
+              metadata: item.metadata,
+            }))
+          ).returning();
 
-            count++;
-            await incrementResultsCount(monitor.userId, 1);
-            await inngest.send({
-              name: "content/analyze",
-              data: { resultId: newResult.id, userId: monitor.userId },
-            });
+          count += inserted.length;
+
+          // 5. Single batch usage increment
+          await incrementResultsCount(monitor.userId, inserted.length);
+
+          // 6. Batch send analysis events
+          if (inserted.length > 0) {
+            await inngest.send(
+              inserted.map(result => ({
+                name: "content/analyze" as const,
+                data: { resultId: result.id, userId: monitor.userId },
+              }))
+            );
           }
         }
       }

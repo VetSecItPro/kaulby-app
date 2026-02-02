@@ -221,7 +221,7 @@ export async function POST(req: Request) {
     }
 
     // Rate limiting
-    const rateLimitCheck = checkAllRateLimits(userId, plan);
+    const rateLimitCheck = await checkAllRateLimits(userId, plan);
     if (!rateLimitCheck.allowed) {
       return NextResponse.json(
         { error: rateLimitCheck.reason },

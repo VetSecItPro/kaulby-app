@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { db } from "@/lib/db";
 import { monitors } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
@@ -51,6 +52,8 @@ export async function POST(
         discoveryPrompt: originalMonitor.discoveryPrompt,
       })
       .returning();
+
+    revalidateTag("monitors");
 
     return NextResponse.json({
       id: newMonitor.id,

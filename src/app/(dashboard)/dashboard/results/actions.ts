@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@clerk/nextjs/server";
+import { getEffectiveUserId } from "@/lib/dev-auth";
 import { db } from "@/lib/db";
 import { results, monitors } from "@/lib/db/schema";
 import { eq, and, inArray } from "drizzle-orm";
@@ -18,7 +18,7 @@ async function verifyResultOwnership(resultId: string, userId: string): Promise<
 }
 
 export async function markResultViewed(resultId: string) {
-  const { userId } = await auth();
+  const userId = await getEffectiveUserId();
   if (!userId) throw new Error("Unauthorized");
 
   const isOwner = await verifyResultOwnership(resultId, userId);
@@ -37,7 +37,7 @@ export async function markResultViewed(resultId: string) {
 }
 
 export async function markResultClicked(resultId: string) {
-  const { userId } = await auth();
+  const userId = await getEffectiveUserId();
   if (!userId) throw new Error("Unauthorized");
 
   const isOwner = await verifyResultOwnership(resultId, userId);
@@ -59,7 +59,7 @@ export async function markResultClicked(resultId: string) {
 }
 
 export async function toggleResultSaved(resultId: string) {
-  const { userId } = await auth();
+  const userId = await getEffectiveUserId();
   if (!userId) throw new Error("Unauthorized");
 
   const isOwner = await verifyResultOwnership(resultId, userId);
@@ -84,7 +84,7 @@ export async function toggleResultSaved(resultId: string) {
 }
 
 export async function toggleResultHidden(resultId: string) {
-  const { userId } = await auth();
+  const userId = await getEffectiveUserId();
   if (!userId) throw new Error("Unauthorized");
 
   const isOwner = await verifyResultOwnership(resultId, userId);
@@ -109,7 +109,7 @@ export async function toggleResultHidden(resultId: string) {
 }
 
 export async function markAllResultsViewed() {
-  const { userId } = await auth();
+  const userId = await getEffectiveUserId();
   if (!userId) throw new Error("Unauthorized");
 
   // Get user's monitors

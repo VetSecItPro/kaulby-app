@@ -1,5 +1,5 @@
 import { inngest } from "../client";
-import { db } from "@/lib/db";
+import { pooledDb } from "@/lib/db";
 import { webhooks, webhookDeliveries, users } from "@/lib/db/schema";
 import { eq, and, lt, lte, or } from "drizzle-orm";
 import crypto from "crypto";
@@ -68,6 +68,7 @@ export const sendWebhookEvent = inngest.createFunction(
     id: "send-webhook-event",
     name: "Send Webhook Event",
     retries: 0, // We handle retries ourselves with the delivery system
+    timeouts: { finish: "2m" },
   },
   { event: "webhook/send" },
   async ({ event, step, logger }) => {
@@ -81,7 +82,7 @@ export const sendWebhookEvent = inngest.createFunction(
 
     // Check if user is enterprise (only enterprise users can use webhooks)
     const user = await step.run("check-user-plan", async () => {
-      return await db.query.users.findFirst({
+      return await pooledDb.query.users.findFirst({
         where: eq(users.id, userId),
         columns: { subscriptionStatus: true },
       });
@@ -94,7 +95,7 @@ export const sendWebhookEvent = inngest.createFunction(
 
     // Get all active webhooks for this user that subscribe to this event
     const userWebhooks = await step.run("get-user-webhooks", async () => {
-      const allWebhooks = await db.query.webhooks.findMany({
+      const allWebhooks = await pooledDb.query.webhooks.findMany({
         where: and(
           eq(webhooks.userId, userId),
           eq(webhooks.isActive, true)
@@ -124,7 +125,7 @@ export const sendWebhookEvent = inngest.createFunction(
           timestamp: new Date().toISOString(),
         };
 
-        const [delivery] = await db
+        const [delivery] = await pooledDb
           .insert(webhookDeliveries)
           .values({
             webhookId: webhook.id,
@@ -162,6 +163,7 @@ export const processWebhookDelivery = inngest.createFunction(
     id: "process-webhook-delivery",
     name: "Process Webhook Delivery",
     retries: 0,
+    timeouts: { finish: "1m" },
     concurrency: {
       limit: 5, // Limit concurrent webhook deliveries (matches Inngest free plan)
     },
@@ -174,7 +176,7 @@ export const processWebhookDelivery = inngest.createFunction(
 
     // Get the delivery and webhook details
     const delivery = await step.run("get-delivery", async () => {
-      return await db.query.webhookDeliveries.findFirst({
+      return await pooledDb.query.webhookDeliveries.findFirst({
         where: eq(webhookDeliveries.id, deliveryId),
         with: {
           webhook: true,
@@ -195,7 +197,7 @@ export const processWebhookDelivery = inngest.createFunction(
     if (delivery.attemptCount >= delivery.maxAttempts) {
       logger.info("Max attempts reached, marking as failed");
       await step.run("mark-failed", async () => {
-        await db
+        await pooledDb
           .update(webhookDeliveries)
           .set({
             status: "failed",
@@ -249,7 +251,7 @@ export const processWebhookDelivery = inngest.createFunction(
 
         if (response.ok) {
           // Success
-          await db
+          await pooledDb
             .update(webhookDeliveries)
             .set({
               status: "success",
@@ -267,7 +269,7 @@ export const processWebhookDelivery = inngest.createFunction(
           const nextRetry = new Date();
           nextRetry.setMinutes(nextRetry.getMinutes() + retryDelayMinutes);
 
-          await db
+          await pooledDb
             .update(webhookDeliveries)
             .set({
               status: newAttemptCount >= delivery.maxAttempts ? "failed" : "retrying",
@@ -293,7 +295,7 @@ export const processWebhookDelivery = inngest.createFunction(
         const nextRetry = new Date();
         nextRetry.setMinutes(nextRetry.getMinutes() + retryDelayMinutes);
 
-        await db
+        await pooledDb
           .update(webhookDeliveries)
           .set({
             status: newAttemptCount >= delivery.maxAttempts ? "failed" : "retrying",
@@ -324,6 +326,7 @@ export const retryWebhookDeliveries = inngest.createFunction(
     id: "retry-webhook-deliveries",
     name: "Retry Webhook Deliveries",
     retries: 3,
+    timeouts: { finish: "5m" },
   },
   { cron: "* * * * *" }, // Run every minute
   async ({ step, logger }) => {
@@ -331,7 +334,7 @@ export const retryWebhookDeliveries = inngest.createFunction(
 
     // Find deliveries that need to be retried
     const pendingRetries = await step.run("get-pending-retries", async () => {
-      return await db.query.webhookDeliveries.findMany({
+      return await pooledDb.query.webhookDeliveries.findMany({
         where: and(
           eq(webhookDeliveries.status, "retrying"),
           lte(webhookDeliveries.nextRetryAt, now)
@@ -365,6 +368,7 @@ export const cleanupWebhookDeliveries = inngest.createFunction(
     id: "cleanup-webhook-deliveries",
     name: "Cleanup Webhook Deliveries",
     retries: 3,
+    timeouts: { finish: "10m" },
   },
   { cron: "0 2 * * 0" }, // Run weekly on Sunday at 2 AM UTC
   async ({ step, logger }) => {
@@ -372,7 +376,7 @@ export const cleanupWebhookDeliveries = inngest.createFunction(
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     const deleted = await step.run("delete-old-deliveries", async () => {
-      const result = await db
+      const result = await pooledDb
         .delete(webhookDeliveries)
         .where(
           and(

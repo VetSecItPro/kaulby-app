@@ -1,10 +1,13 @@
 import { inngest } from "../client";
-import { db } from "@/lib/db";
-import { monitors, results } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
-import { incrementResultsCount, canAccessPlatform, shouldProcessMonitor } from "@/lib/limits";
-import { isMonitorScheduleActive } from "@/lib/monitor-schedule";
-import { AI_BATCH_CONFIG } from "@/lib/ai/sampling";
+import {
+  getActiveMonitors,
+  prefetchPlans,
+  shouldSkipMonitor,
+  saveNewResults,
+  triggerAiAnalysis,
+  updateMonitorStats,
+  type MonitorStep,
+} from "../utils/monitor-helpers";
 
 const PH_API_BASE = "https://api.producthunt.com/v2/api/graphql";
 const PH_TOKEN_URL = "https://api.producthunt.com/v2/oauth/token";
@@ -90,9 +93,13 @@ export const monitorProductHunt = inngest.createFunction(
     id: "monitor-producthunt",
     name: "Monitor Product Hunt",
     retries: 3,
+    timeouts: { finish: "14m" },
+    concurrency: { limit: 5 },
   },
   { cron: "0 */2 * * *" }, // Every 2 hours (PH has less frequent posts)
-  async ({ step }) => {
+  async ({ step: _step }) => {
+    const step = _step as unknown as MonitorStep;
+
     // Get OAuth access token
     const accessToken = await step.run("get-access-token", async () => {
       return getProductHuntAccessToken();
@@ -102,22 +109,14 @@ export const monitorProductHunt = inngest.createFunction(
       return { message: "Product Hunt API credentials not configured or invalid", skipped: true };
     }
 
-    // Get all active monitors that include Product Hunt
-    const activeMonitors = await step.run("get-monitors", async () => {
-      return db.query.monitors.findMany({
-        where: eq(monitors.isActive, true),
-      });
-    });
-
-    const phMonitors = activeMonitors.filter((m) =>
-      m.platforms.includes("producthunt")
-    );
-
+    const phMonitors = await getActiveMonitors("producthunt", step);
     if (phMonitors.length === 0) {
       return { message: "No active Product Hunt monitors" };
     }
 
-    // Fetch recent posts from Product Hunt
+    const planMap = await prefetchPlans(phMonitors, step);
+
+    // Fetch recent posts from Product Hunt (ONCE before the monitor loop)
     const posts = await step.run("fetch-posts", async () => {
       try {
         const query = `
@@ -170,26 +169,9 @@ export const monitorProductHunt = inngest.createFunction(
     let totalResults = 0;
     const monitorResults: Record<string, number> = {};
 
+    // No stagger for ProductHunt - simple for...of loop
     for (const monitor of phMonitors) {
-      // Check if user has access to Product Hunt platform
-      const access = await canAccessPlatform(monitor.userId, "producthunt");
-      if (!access.hasAccess) {
-        continue; // Skip monitors for users without platform access
-      }
-
-      // Check refresh delay for free tier users
-      const scheduleCheck = await shouldProcessMonitor(monitor.userId, monitor.lastCheckedAt);
-      if (!scheduleCheck.shouldProcess) {
-        continue; // Skip monitors that are within refresh delay period
-      }
-
-      // Check if monitor is within its active schedule
-      if (!isMonitorScheduleActive(monitor)) {
-        continue;
-      }
-
-      let monitorMatchCount = 0;
-      const newResultIds: string[] = [];
+      if (shouldSkipMonitor(monitor, planMap, "producthunt")) continue;
 
       // Check each post for keyword matches
       const matchingPosts = posts.filter((post) => {
@@ -199,84 +181,33 @@ export const monitorProductHunt = inngest.createFunction(
         );
       });
 
-      // Save matching posts as results
-      if (matchingPosts.length > 0) {
-        await step.run(`save-results-${monitor.id}`, async () => {
-          for (const post of matchingPosts) {
-            // Check if we already have this result
-            const existing = await db.query.results.findFirst({
-              where: eq(results.sourceUrl, post.url),
-            });
-
-            if (!existing) {
-              const [newResult] = await db.insert(results).values({
-                monitorId: monitor.id,
-                platform: "producthunt",
-                sourceUrl: post.url,
-                title: `${post.name} - ${post.tagline}`,
-                content: post.description || null,
-                author: post.user?.name || null,
-                postedAt: new Date(post.createdAt),
-                metadata: {
-                  phId: post.id,
-                  votesCount: post.votesCount,
-                },
-              }).returning();
-
-              totalResults++;
-              monitorMatchCount++;
-              newResultIds.push(newResult.id);
-
-              // Increment usage count for the user
-              await incrementResultsCount(monitor.userId, 1);
-            }
-          }
-        });
-      }
-
-      // Trigger AI analysis - batch mode for large volumes, individual for small
-      if (newResultIds.length > 0) {
-        await step.run(`trigger-analysis-${monitor.id}`, async () => {
-          if (newResultIds.length > AI_BATCH_CONFIG.BATCH_THRESHOLD) {
-            // Batch mode for cost efficiency (>50 results)
-            await inngest.send({
-              name: "content/analyze-batch",
-              data: {
-                monitorId: monitor.id,
-                userId: monitor.userId,
-                platform: "producthunt",
-                resultIds: newResultIds,
-                totalCount: newResultIds.length,
-              },
-            });
-          } else {
-            // Individual analysis for small volumes
-            for (const resultId of newResultIds) {
-              await inngest.send({
-                name: "content/analyze",
-                data: {
-                  resultId,
-                  userId: monitor.userId,
-                },
-              });
-            }
-          }
-        });
-      }
-
-      // Update monitor stats
-      monitorResults[monitor.id] = monitorMatchCount;
-
-      await step.run(`update-monitor-stats-${monitor.id}`, async () => {
-        await db
-          .update(monitors)
-          .set({
-            lastCheckedAt: new Date(),
-            newMatchCount: monitorMatchCount,
-            updatedAt: new Date(),
-          })
-          .where(eq(monitors.id, monitor.id));
+      // Save matching posts as results (batch operation)
+      const { count, ids: newResultIds } = await saveNewResults<PHPost>({
+        items: matchingPosts,
+        monitorId: monitor.id,
+        userId: monitor.userId,
+        getSourceUrl: (post) => post.url,
+        mapToResult: (post) => ({
+          monitorId: monitor.id,
+          platform: "producthunt" as const,
+          sourceUrl: post.url,
+          title: `${post.name} - ${post.tagline}`,
+          content: post.description || null,
+          author: post.user?.name || null,
+          postedAt: new Date(post.createdAt),
+          metadata: {
+            phId: post.id,
+            votesCount: post.votesCount,
+          },
+        }),
+        step,
       });
+
+      totalResults += count;
+      await triggerAiAnalysis(newResultIds, monitor.id, monitor.userId, "producthunt", step);
+
+      monitorResults[monitor.id] = count;
+      await updateMonitorStats(monitor.id, count, step);
     }
 
     return {

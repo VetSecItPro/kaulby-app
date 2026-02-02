@@ -6,7 +6,7 @@
  */
 
 import { inngest } from "../client";
-import { db } from "@/lib/db";
+import { pooledDb } from "@/lib/db";
 import { users, monitors, results } from "@/lib/db/schema";
 import { eq, lt, and, isNull, gte, desc, count } from "drizzle-orm";
 import { sendReengagementEmail } from "@/lib/email";
@@ -24,6 +24,7 @@ export const detectInactiveUsers = inngest.createFunction(
     id: "detect-inactive-users",
     name: "Detect Inactive Users",
     concurrency: 1,
+    timeouts: { finish: "15m" },
   },
   { cron: "0 10 * * *" }, // 10 AM UTC daily
   async ({ step }) => {
@@ -42,7 +43,7 @@ export const detectInactiveUsers = inngest.createFunction(
     // 4. Are not banned
     // 5. Haven't requested account deletion
     const inactiveUsers = await step.run("find-inactive-users", async () => {
-      return db.query.users.findMany({
+      return pooledDb.query.users.findMany({
         where: and(
           // Active subscription
           gte(users.subscriptionStatus, "pro"),
@@ -80,7 +81,7 @@ export const detectInactiveUsers = inngest.createFunction(
       // Get user's stats for personalized email
       const stats = await step.run(`get-stats-${user.id}`, async () => {
         // Count active monitors
-        const [monitorCount] = await db
+        const [monitorCount] = await pooledDb
           .select({ count: count() })
           .from(monitors)
           .where(
@@ -92,7 +93,7 @@ export const detectInactiveUsers = inngest.createFunction(
           ? new Date(user.lastActiveAt)
           : new Date(0);
 
-        const [mentionCount] = await db
+        const [mentionCount] = await pooledDb
           .select({ count: count() })
           .from(results)
           .innerJoin(monitors, eq(results.monitorId, monitors.id))
@@ -104,7 +105,7 @@ export const detectInactiveUsers = inngest.createFunction(
           );
 
         // Get user's monitor IDs first
-        const userMonitors = await db.query.monitors.findMany({
+        const userMonitors = await pooledDb.query.monitors.findMany({
           where: eq(monitors.userId, user.id),
           columns: { id: true },
         });
@@ -113,7 +114,7 @@ export const detectInactiveUsers = inngest.createFunction(
         // Get top mention for highlight (only if user has monitors)
         let topMention = null;
         if (monitorIds.length > 0) {
-          const recentResults = await db.query.results.findMany({
+          const recentResults = await pooledDb.query.results.findMany({
             where: gte(results.createdAt, lastActive),
             orderBy: [desc(results.engagementScore)],
             limit: 10,
@@ -191,6 +192,7 @@ export const sendReengagement = inngest.createFunction(
     id: "send-reengagement-email",
     name: "Send Re-engagement Email",
     retries: 3,
+    timeouts: { finish: "2m" },
   },
   { event: "user/reengagement.send" },
   async ({ event, step }) => {
@@ -208,7 +210,7 @@ export const sendReengagement = inngest.createFunction(
 
     // Update user's reengagementEmailSentAt
     await step.run("update-user", async () => {
-      await db
+      await pooledDb
         .update(users)
         .set({ reengagementEmailSentAt: new Date() })
         .where(eq(users.id, userId));
