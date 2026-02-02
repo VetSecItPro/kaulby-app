@@ -9,7 +9,7 @@
  */
 
 import { inngest } from "../client";
-import { db } from "@/lib/db";
+import { pooledDb } from "@/lib/db";
 import { monitors } from "@/lib/db/schema";
 import { eq, and, lt } from "drizzle-orm";
 
@@ -20,6 +20,7 @@ export const resetStuckScans = inngest.createFunction(
   {
     id: "reset-stuck-scans",
     name: "Reset Stuck Scans",
+    timeouts: { finish: "5m" },
   },
   { cron: "*/15 * * * *" }, // Run every 15 minutes
   async ({ step }) => {
@@ -27,7 +28,7 @@ export const resetStuckScans = inngest.createFunction(
 
     const result = await step.run("find-and-reset-stuck-scans", async () => {
       // Find monitors that are scanning and haven't been updated in 10+ minutes
-      const stuckMonitors = await db
+      const stuckMonitors = await pooledDb
         .update(monitors)
         .set({
           isScanning: false,

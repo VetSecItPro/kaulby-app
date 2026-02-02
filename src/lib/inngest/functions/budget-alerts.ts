@@ -1,5 +1,5 @@
 import { inngest } from "../client";
-import { db } from "@/lib/db";
+import { pooledDb } from "@/lib/db";
 import { budgetAlerts, budgetAlertHistory, aiLogs } from "@/lib/db/schema";
 import { eq, gte, and, sum, sql } from "drizzle-orm";
 
@@ -12,12 +12,13 @@ export const checkBudgetAlerts = inngest.createFunction(
     id: "check-budget-alerts",
     name: "Check Budget Alerts",
     retries: 2,
+    timeouts: { finish: "5m" },
   },
   { cron: "0 * * * *" }, // Every hour
   async ({ step }) => {
     // Get all active budget alerts
     const activeAlerts = await step.run("get-active-alerts", async () => {
-      return db.query.budgetAlerts.findMany({
+      return pooledDb.query.budgetAlerts.findMany({
         where: eq(budgetAlerts.isActive, true),
       });
     });
@@ -54,7 +55,7 @@ export const checkBudgetAlerts = inngest.createFunction(
         }
 
         // Get total AI spend for the period
-        const [spendResult] = await db
+        const [spendResult] = await pooledDb
           .select({
             totalSpend: sum(aiLogs.costUsd),
           })
@@ -70,7 +71,7 @@ export const checkBudgetAlerts = inngest.createFunction(
         const percentOfThreshold = (currentSpend / alert.thresholdUsd) * 100;
 
         // Update current period spend
-        await db
+        await pooledDb
           .update(budgetAlerts)
           .set({
             currentPeriodSpend: currentSpend,
@@ -92,7 +93,7 @@ export const checkBudgetAlerts = inngest.createFunction(
           const alertType = isExceeded ? "exceeded" : "warning";
 
           // Log to history
-          await db.insert(budgetAlertHistory).values({
+          await pooledDb.insert(budgetAlertHistory).values({
             alertId: alert.id,
             periodStart,
             periodEnd,
@@ -104,7 +105,7 @@ export const checkBudgetAlerts = inngest.createFunction(
           });
 
           // Update last triggered
-          await db
+          await pooledDb
             .update(budgetAlerts)
             .set({
               lastTriggeredAt: now,

@@ -41,3 +41,7 @@ next-env.d.ts
 # Playwright
 playwright-report/
 test-results/
+
+# Planning/audit documents (local only)
+kaulby-optimize-*.md
+kaulby-audit-*.md

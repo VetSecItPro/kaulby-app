@@ -6,7 +6,7 @@
  */
 
 import { inngest } from "../client";
-import { db, users, monitors, results } from "@/lib/db";
+import { pooledDb, users, monitors, results } from "@/lib/db";
 import { eq, and, gte, inArray, sql, desc } from "drizzle-orm";
 import { Resend } from "resend";
 
@@ -46,6 +46,7 @@ export const sendScheduledReports = inngest.createFunction(
   {
     id: "send-scheduled-reports",
     name: "Send Scheduled PDF Reports",
+    timeouts: { finish: "30m" },
   },
   { cron: "0 6 * * *" }, // Daily at 6 AM UTC
   async ({ step, logger }) => {
@@ -55,7 +56,7 @@ export const sendScheduledReports = inngest.createFunction(
 
     // Find users who should receive reports today
     const eligibleUsers = await step.run("fetch-eligible-users", async () => {
-      return db.query.users.findMany({
+      return pooledDb.query.users.findMany({
         where: and(
           eq(users.subscriptionStatus, "enterprise"),
           sql`${users.reportSchedule} != 'off'`
@@ -127,7 +128,7 @@ export const sendScheduledReports = inngest.createFunction(
           });
 
           // Update last sent timestamp
-          await db
+          await pooledDb
             .update(users)
             .set({ reportLastSentAt: now })
             .where(eq(users.id, user.id));
@@ -153,7 +154,7 @@ async function generateReportData(userId: string, days: number): Promise<ReportD
   const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
   // Get user's monitors
-  const userMonitors = await db.query.monitors.findMany({
+  const userMonitors = await pooledDb.query.monitors.findMany({
     where: eq(monitors.userId, userId),
     columns: { id: true },
   });
@@ -172,7 +173,7 @@ async function generateReportData(userId: string, days: number): Promise<ReportD
   // Fetch data in parallel
   const [mentionData, platformData, categoryData, topPostsData] = await Promise.all([
     // Totals
-    db
+    pooledDb
       .select({
         total: sql<number>`count(*)`,
         positive: sql<number>`count(*) filter (where ${results.sentiment} = 'positive')`,
@@ -183,7 +184,7 @@ async function generateReportData(userId: string, days: number): Promise<ReportD
       .where(and(inArray(results.monitorId, monitorIds), gte(results.createdAt, startDate))),
 
     // Platform breakdown
-    db
+    pooledDb
       .select({
         platform: results.platform,
         mentions: sql<number>`count(*)`,
@@ -195,7 +196,7 @@ async function generateReportData(userId: string, days: number): Promise<ReportD
       .limit(10),
 
     // Category breakdown
-    db
+    pooledDb
       .select({
         category: results.conversationCategory,
         count: sql<number>`count(*)`,
@@ -213,7 +214,7 @@ async function generateReportData(userId: string, days: number): Promise<ReportD
       .limit(6),
 
     // Top posts
-    db.query.results.findMany({
+    pooledDb.query.results.findMany({
       where: and(inArray(results.monitorId, monitorIds), gte(results.createdAt, startDate)),
       orderBy: [desc(results.engagementScore)],
       limit: 5,

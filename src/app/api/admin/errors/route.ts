@@ -49,11 +49,13 @@ export async function GET(request: NextRequest) {
   }
 
   if (search) {
+    // Escape SQL wildcards to prevent injection via LIKE patterns
+    const escapedSearch = search.replace(/[%_\\]/g, "\\$&");
     filters.push(
       or(
-        ilike(errorLogs.message, `%${search}%`),
-        ilike(errorLogs.endpoint, `%${search}%`),
-        ilike(errorLogs.stack, `%${search}%`)
+        ilike(errorLogs.message, `%${escapedSearch}%`),
+        ilike(errorLogs.endpoint, `%${escapedSearch}%`),
+        ilike(errorLogs.stack, `%${escapedSearch}%`)
       )
     );
   }

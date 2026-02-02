@@ -7,7 +7,7 @@
 
 import { unstable_cache } from "next/cache";
 import { db } from "@/lib/db";
-import { monitors, results } from "@/lib/db/schema";
+import { monitors, results, users } from "@/lib/db/schema";
 import { eq, desc, count, and, gte, inArray } from "drizzle-orm";
 
 /**
@@ -41,6 +41,34 @@ export const getCachedMonitorIds = unstable_cache(
   {
     revalidate: 60,
     tags: ["monitors"],
+  }
+);
+
+/**
+ * Get user plan by ID with caching (1 minute TTL)
+ * Returns the plan string or null if user not found by ID.
+ * This avoids hitting the DB on every page load for getUserPlan().
+ */
+export const getCachedUserPlan = unstable_cache(
+  async (userId: string): Promise<string | null> => {
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, userId),
+      columns: {
+        isAdmin: true,
+        subscriptionStatus: true,
+        dayPassExpiresAt: true,
+      },
+    });
+
+    if (!user) return null;
+    if (user.isAdmin) return "enterprise";
+    if (user.dayPassExpiresAt && new Date(user.dayPassExpiresAt) > new Date()) return "pro";
+    return user.subscriptionStatus || "free";
+  },
+  ["user-plan"],
+  {
+    revalidate: 60, // 1 minute
+    tags: ["user-plan"],
   }
 );
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -133,6 +134,7 @@ export function WebhookManagement({
       }
     } catch (error) {
       console.error("Failed to create webhook:", error);
+      toast.error("Failed to create webhook");
     } finally {
       setIsCreating(false);
     }
@@ -153,6 +155,7 @@ export function WebhookManagement({
       }
     } catch (error) {
       console.error("Failed to toggle webhook:", error);
+      toast.error("Failed to update webhook");
     }
   };
 
@@ -167,6 +170,7 @@ export function WebhookManagement({
       }
     } catch (error) {
       console.error("Failed to delete webhook:", error);
+      toast.error("Failed to delete webhook");
     }
   };
 

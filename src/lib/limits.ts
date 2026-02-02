@@ -3,6 +3,7 @@ import { users, monitors, communities, usage } from "@/lib/db/schema";
 import { eq, and, count, gte } from "drizzle-orm";
 import { PLANS, PlanKey, Platform, getPlanLimits } from "@/lib/plans";
 import { currentUser } from "@clerk/nextjs/server";
+import { getCachedUserPlan } from "@/lib/server-cache";
 
 // ============================================================================
 // TYPES
@@ -61,6 +62,11 @@ async function findUserByIdOrEmail(userId: string) {
  * 3. Otherwise, use subscriptionStatus from database
  */
 export async function getUserPlan(userId: string): Promise<PlanKey> {
+  // Fast path: cached DB lookup by user ID (covers 99% of cases)
+  const cachedPlan = await getCachedUserPlan(userId);
+  if (cachedPlan !== null) return cachedPlan as PlanKey;
+
+  // Slow path: user not found by ID, try email fallback (Clerk ID mismatch)
   const user = await findUserByIdOrEmail(userId);
 
   if (!user) return "free";
@@ -691,6 +697,79 @@ export function getUpgradePrompt(
     feature: context?.featureName,
     ctaText: prompt.ctaText,
   };
+}
+
+// ============================================================================
+// BATCH PLAN PREFETCH (for Inngest cron functions)
+// ============================================================================
+
+/**
+ * Pre-fetch user plans for multiple user IDs in a single query.
+ * Use this at the start of monitor cron functions to avoid N+1 plan lookups.
+ *
+ * @example
+ * const planMap = await prefetchUserPlans(monitors.map(m => m.userId));
+ * const plan = planMap.get(userId) ?? "free";
+ */
+export async function prefetchUserPlans(
+  userIds: string[]
+): Promise<Map<string, PlanKey>> {
+  const uniqueIds = Array.from(new Set(userIds));
+  if (uniqueIds.length === 0) return new Map();
+
+  const rows = await db.query.users.findMany({
+    where: (table, { inArray: inArr }) => inArr(table.id, uniqueIds),
+    columns: {
+      id: true,
+      isAdmin: true,
+      subscriptionStatus: true,
+      dayPassExpiresAt: true,
+    },
+  });
+
+  const map = new Map<string, PlanKey>();
+  const now = new Date();
+
+  for (const row of rows) {
+    if (row.isAdmin) {
+      map.set(row.id, "enterprise");
+    } else if (row.dayPassExpiresAt && new Date(row.dayPassExpiresAt) > now) {
+      map.set(row.id, "pro");
+    } else {
+      map.set(row.id, (row.subscriptionStatus as PlanKey) || "free");
+    }
+  }
+
+  return map;
+}
+
+/**
+ * Check platform access using a pre-fetched plan (no DB hit).
+ */
+export function canAccessPlatformWithPlan(
+  plan: PlanKey,
+  platform: Platform
+): boolean {
+  const limits = getPlanLimits(plan);
+  return limits.platforms.includes(platform);
+}
+
+/**
+ * Check if a monitor should be processed using a pre-fetched plan (no DB hit).
+ */
+export function shouldProcessMonitorWithPlan(
+  plan: PlanKey,
+  lastCheckedAt: Date | string | null
+): boolean {
+  const limits = getPlanLimits(plan);
+  if (limits.refreshDelayHours === 0) return true;
+  if (!lastCheckedAt) return true;
+
+  const lastCheckDate = typeof lastCheckedAt === "string" ? new Date(lastCheckedAt) : lastCheckedAt;
+  const timeSinceLastCheck = Date.now() - lastCheckDate.getTime();
+  const delayMs = limits.refreshDelayHours * 60 * 60 * 1000;
+
+  return timeSinceLastCheck >= delayMs;
 }
 
 // ============================================================================

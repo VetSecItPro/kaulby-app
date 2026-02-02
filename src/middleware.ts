@@ -61,12 +61,14 @@ export default async function middleware(request: NextRequest) {
   }
 
   // SECURITY: Verified local development bypass
-  // Allow dashboard routes without auth in local dev for easier testing
+  // Requires explicit opt-in via ALLOW_DEV_AUTH_BYPASS=true
+  // Only bypasses /dashboard routes -- /manage (admin) always requires real auth
   const isLocalDev = process.env.NODE_ENV === "development" &&
+                     process.env.ALLOW_DEV_AUTH_BYPASS === "true" &&
                      !process.env.VERCEL &&
                      !process.env.VERCEL_ENV;
 
-  if (isLocalDev && (pathname.startsWith("/dashboard") || pathname.startsWith("/manage"))) {
+  if (isLocalDev && pathname.startsWith("/dashboard")) {
     return NextResponse.next();
   }
 

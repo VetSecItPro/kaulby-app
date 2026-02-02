@@ -1,12 +1,15 @@
 import { inngest } from "../client";
-import { db } from "@/lib/db";
-import { monitors, results } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
-import { incrementResultsCount, canAccessPlatform, shouldProcessMonitor } from "@/lib/limits";
 import { fetchYouTubeComments, isApifyConfigured, type YouTubeCommentItem } from "@/lib/apify";
-import { AI_BATCH_CONFIG } from "@/lib/ai/sampling";
-import { calculateStaggerDelay, formatStaggerDuration, addJitter, getStaggerWindow } from "../utils/stagger";
-import { isMonitorScheduleActive } from "@/lib/monitor-schedule";
+import {
+  getActiveMonitors,
+  prefetchPlans,
+  shouldSkipMonitor,
+  applyStagger,
+  saveNewResults,
+  triggerAiAnalysis,
+  updateMonitorStats,
+  type MonitorStep,
+} from "../utils/monitor-helpers";
 
 /**
  * Monitor YouTube video comments
@@ -24,181 +27,87 @@ export const monitorYouTube = inngest.createFunction(
     id: "monitor-youtube",
     name: "Monitor YouTube Comments",
     retries: 2,
+    timeouts: { finish: "14m" },
+    concurrency: { limit: 5 },
   },
-  { cron: "0 * * * *" }, // Every hour
-  async ({ step }) => {
-    // Check if Apify is configured
+  { cron: "0 * * * *" },
+  async ({ step: _step }) => {
+    const step = _step as unknown as MonitorStep;
+
     if (!isApifyConfigured()) {
       return { message: "Apify API key not configured, skipping YouTube monitoring" };
     }
 
-    // Get all active monitors that include YouTube
-    const activeMonitors = await step.run("get-monitors", async () => {
-      return db.query.monitors.findMany({
-        where: eq(monitors.isActive, true),
-      });
-    });
-
-    const youtubeMonitors = activeMonitors.filter((m) =>
-      m.platforms.includes("youtube")
-    );
-
+    const youtubeMonitors = await getActiveMonitors("youtube", step);
     if (youtubeMonitors.length === 0) {
       return { message: "No active YouTube monitors" };
     }
 
+    const planMap = await prefetchPlans(youtubeMonitors, step);
+
     let totalResults = 0;
     const monitorResults: Record<string, number> = {};
-
-    // Calculate stagger window for high-volume YouTube processing
-    const staggerWindow = getStaggerWindow("youtube");
 
     for (let i = 0; i < youtubeMonitors.length; i++) {
       const monitor = youtubeMonitors[i];
 
-      // Stagger execution to prevent thundering herd
-      if (i > 0 && youtubeMonitors.length > 3) {
-        const baseDelay = calculateStaggerDelay(i, youtubeMonitors.length, staggerWindow);
-        const delayWithJitter = addJitter(baseDelay, 10);
-        const delayStr = formatStaggerDuration(delayWithJitter);
-        await step.sleep(`stagger-${monitor.id}`, delayStr);
-      }
-
-      // Check if user has access to YouTube platform
-      const access = await canAccessPlatform(monitor.userId, "youtube");
-      if (!access.hasAccess) {
-        continue;
-      }
-
-      // Check refresh delay based on tier
-      const scheduleCheck = await shouldProcessMonitor(monitor.userId, monitor.lastCheckedAt);
-      if (!scheduleCheck.shouldProcess) {
-        continue;
-      }
-
-      // Check if monitor is within its active schedule
-      if (!isMonitorScheduleActive(monitor)) {
-        continue;
-      }
-
-      let monitorMatchCount = 0;
+      await applyStagger(i, youtubeMonitors.length, "youtube", monitor.id, step);
+      if (shouldSkipMonitor(monitor, planMap, "youtube")) continue;
 
       // Get video URL from platformUrls or keywords
       let videoUrl: string | null = null;
-
-      // Check platformUrls first
       const platformUrls = monitor.platformUrls as Record<string, string> | null;
       if (platformUrls?.youtube) {
         videoUrl = platformUrls.youtube;
-      }
-      // Fallback: Check keywords for YouTube URLs
-      else if (monitor.keywords && monitor.keywords.length > 0) {
+      } else if (monitor.keywords && monitor.keywords.length > 0) {
         const ytUrl = monitor.keywords.find(
           (k) => k.includes("youtube.com") || k.includes("youtu.be")
         );
         if (ytUrl) videoUrl = ytUrl;
       }
+      if (!videoUrl) continue;
 
-      if (!videoUrl) {
-        continue; // No valid YouTube URL
-      }
-
-      // Fetch comments
+      // Fetch comments (platform-specific)
       const comments = await step.run(`fetch-comments-${monitor.id}`, async () => {
         try {
-          const fetchedComments = await fetchYouTubeComments(videoUrl!, 50);
-          return fetchedComments;
+          return await fetchYouTubeComments(videoUrl!, 50);
         } catch (error) {
           console.error(`Error fetching YouTube comments for ${videoUrl}:`, error);
           return [] as YouTubeCommentItem[];
         }
       });
 
-      // Save comments as results and collect IDs for AI analysis
-      const newResultIds: string[] = [];
-
-      if (comments.length > 0) {
-        await step.run(`save-results-${monitor.id}`, async () => {
-          for (const comment of comments) {
-            const sourceUrl = `https://www.youtube.com/watch?v=${comment.videoId}&lc=${comment.commentId}`;
-
-            // Check if we already have this result
-            const existing = await db.query.results.findFirst({
-              where: eq(results.sourceUrl, sourceUrl),
-            });
-
-            if (!existing) {
-              const [newResult] = await db.insert(results).values({
-                monitorId: monitor.id,
-                platform: "youtube",
-                sourceUrl,
-                title: comment.videoTitle || "YouTube Comment",
-                content: comment.text,
-                author: comment.author,
-                postedAt: comment.publishedAt ? new Date(comment.publishedAt) : new Date(),
-                metadata: {
-                  commentId: comment.commentId,
-                  videoId: comment.videoId,
-                  likeCount: comment.likeCount,
-                  replyCount: comment.replyCount,
-                  authorChannelUrl: comment.authorChannelUrl,
-                },
-              }).returning();
-
-              totalResults++;
-              monitorMatchCount++;
-              newResultIds.push(newResult.id);
-
-              // Increment usage count for the user
-              await incrementResultsCount(monitor.userId, 1);
-            }
-          }
-        });
-
-        // Trigger AI analysis - batch mode for large volumes, individual for small
-        if (newResultIds.length > 0) {
-          await step.run(`trigger-analysis-${monitor.id}`, async () => {
-            if (newResultIds.length > AI_BATCH_CONFIG.BATCH_THRESHOLD) {
-              // Batch mode for cost efficiency
-              await inngest.send({
-                name: "content/analyze-batch",
-                data: {
-                  monitorId: monitor.id,
-                  userId: monitor.userId,
-                  platform: "youtube",
-                  resultIds: newResultIds,
-                  totalCount: newResultIds.length,
-                },
-              });
-            } else {
-              // Individual analysis for small volumes
-              for (const resultId of newResultIds) {
-                await inngest.send({
-                  name: "content/analyze",
-                  data: {
-                    resultId,
-                    userId: monitor.userId,
-                  },
-                });
-              }
-            }
-          });
-        }
-      }
-
-      // Update monitor stats
-      monitorResults[monitor.id] = monitorMatchCount;
-
-      await step.run(`update-monitor-stats-${monitor.id}`, async () => {
-        await db
-          .update(monitors)
-          .set({
-            lastCheckedAt: new Date(),
-            newMatchCount: monitorMatchCount,
-            updatedAt: new Date(),
-          })
-          .where(eq(monitors.id, monitor.id));
+      // Save new results
+      const { count, ids: newResultIds } = await saveNewResults<YouTubeCommentItem>({
+        items: comments,
+        monitorId: monitor.id,
+        userId: monitor.userId,
+        getSourceUrl: (c) =>
+          `https://www.youtube.com/watch?v=${c.videoId}&lc=${c.commentId}`,
+        mapToResult: (c) => ({
+          monitorId: monitor.id,
+          platform: "youtube" as const,
+          sourceUrl: `https://www.youtube.com/watch?v=${c.videoId}&lc=${c.commentId}`,
+          title: c.videoTitle || "YouTube Comment",
+          content: c.text,
+          author: c.author,
+          postedAt: c.publishedAt ? new Date(c.publishedAt) : new Date(),
+          metadata: {
+            commentId: c.commentId,
+            videoId: c.videoId,
+            likeCount: c.likeCount,
+            replyCount: c.replyCount,
+            authorChannelUrl: c.authorChannelUrl,
+          },
+        }),
+        step,
       });
+
+      totalResults += count;
+      await triggerAiAnalysis(newResultIds, monitor.id, monitor.userId, "youtube", step);
+
+      monitorResults[monitor.id] = count;
+      await updateMonitorStats(monitor.id, count, step);
     }
 
     return {

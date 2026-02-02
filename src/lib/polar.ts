@@ -54,9 +54,6 @@ export async function getPolarClient(): Promise<PolarClient | null> {
   }
 }
 
-// Legacy export for backwards compatibility (will be null until SDK is installed)
-export const polar: PolarClient | null = null;
-
 // Platform types (shared with plans.ts) - 16 total platforms
 export type Platform =
   | "reddit" | "hackernews" | "producthunt" | "devto"

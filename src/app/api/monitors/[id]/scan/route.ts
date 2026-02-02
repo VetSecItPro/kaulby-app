@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { db } from "@/lib/db";
 import { monitors } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
@@ -84,6 +85,8 @@ export async function POST(
       .update(monitors)
       .set({ isScanning: true })
       .where(eq(monitors.id, id));
+
+    revalidateTag("monitors");
 
     return NextResponse.json({
       success: true,

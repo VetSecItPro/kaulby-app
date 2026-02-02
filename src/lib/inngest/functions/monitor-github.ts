@@ -1,12 +1,18 @@
 import { inngest } from "../client";
-import { db } from "@/lib/db";
-import { monitors, results } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
-import { incrementResultsCount, canAccessPlatform, shouldProcessMonitor } from "@/lib/limits";
+import { pooledDb } from "@/lib/db";
+import { results } from "@/lib/db/schema";
+import { inArray } from "drizzle-orm";
+import { incrementResultsCount } from "@/lib/limits";
 import { contentMatchesMonitor } from "@/lib/content-matcher";
-import { calculateStaggerDelay, formatStaggerDuration, addJitter, getStaggerWindow } from "../utils/stagger";
-import { isMonitorScheduleActive } from "@/lib/monitor-schedule";
-import { AI_BATCH_CONFIG } from "@/lib/ai/sampling";
+import {
+  getActiveMonitors,
+  prefetchPlans,
+  shouldSkipMonitor,
+  applyStagger,
+  triggerAiAnalysis,
+  updateMonitorStats,
+  type MonitorStep,
+} from "../utils/monitor-helpers";
 
 // GitHub search result interfaces
 interface GitHubIssue {
@@ -151,56 +157,28 @@ export const monitorGitHub = inngest.createFunction(
     id: "monitor-github",
     name: "Monitor GitHub",
     retries: 3,
+    timeouts: { finish: "14m" },
+    concurrency: { limit: 5 },
   },
   { cron: "*/20 * * * *" }, // Every 20 minutes
-  async ({ step }) => {
-    // Get all active monitors that include GitHub
-    const activeMonitors = await step.run("get-monitors", async () => {
-      return db.query.monitors.findMany({
-        where: eq(monitors.isActive, true),
-      });
-    });
+  async ({ step: _step }) => {
+    const step = _step as unknown as MonitorStep;
 
-    const githubMonitors = activeMonitors.filter((m) =>
-      m.platforms.includes("github")
-    );
-
+    const githubMonitors = await getActiveMonitors("github", step);
     if (githubMonitors.length === 0) {
       return { message: "No active GitHub monitors" };
     }
 
+    const planMap = await prefetchPlans(githubMonitors, step);
+
     let totalResults = 0;
     const monitorResults: Record<string, number> = {};
-
-    const staggerWindow = getStaggerWindow("github");
 
     for (let i = 0; i < githubMonitors.length; i++) {
       const monitor = githubMonitors[i];
 
-      // Stagger execution
-      if (i > 0 && githubMonitors.length > 3) {
-        const baseDelay = calculateStaggerDelay(i, githubMonitors.length, staggerWindow);
-        const delayWithJitter = addJitter(baseDelay, 10);
-        const delayStr = formatStaggerDuration(delayWithJitter);
-        await step.sleep(`stagger-${monitor.id}`, delayStr);
-      }
-
-      // Check platform access
-      const access = await canAccessPlatform(monitor.userId, "github");
-      if (!access.hasAccess) {
-        continue;
-      }
-
-      // Check refresh delay
-      const scheduleCheck = await shouldProcessMonitor(monitor.userId, monitor.lastCheckedAt);
-      if (!scheduleCheck.shouldProcess) {
-        continue;
-      }
-
-      // Check if monitor is within its active schedule
-      if (!isMonitorScheduleActive(monitor)) {
-        continue;
-      }
+      await applyStagger(i, githubMonitors.length, "github", monitor.id, step);
+      if (shouldSkipMonitor(monitor, planMap, "github")) continue;
 
       let monitorMatchCount = 0;
       const newResultIds: string[] = [];
@@ -212,8 +190,8 @@ export const monitorGitHub = inngest.createFunction(
 
       console.log(`[GitHub] Found ${searchResult.issues.length} issues and ${searchResult.discussions.length} discussions`);
 
-      // Process issues
-      for (const issue of searchResult.issues) {
+      // Filter matching issues
+      const matchingIssues = searchResult.issues.filter(issue => {
         const matchResult = contentMatchesMonitor(
           {
             title: issue.title,
@@ -226,41 +204,11 @@ export const monitorGitHub = inngest.createFunction(
             searchQuery: monitor.searchQuery,
           }
         );
+        return matchResult.matches;
+      });
 
-        if (matchResult.matches) {
-          // Check if already exists
-          const existing = await db.query.results.findFirst({
-            where: eq(results.sourceUrl, issue.html_url),
-          });
-
-          if (!existing) {
-            const [newResult] = await db.insert(results).values({
-              monitorId: monitor.id,
-              platform: "github",
-              sourceUrl: issue.html_url,
-              title: `[Issue] ${issue.title}`,
-              content: issue.body || "",
-              author: issue.user?.login || "Unknown",
-              postedAt: new Date(issue.created_at),
-              metadata: {
-                type: "issue",
-                state: issue.state,
-                commentCount: issue.comments,
-                labels: issue.labels.map(l => l.name),
-                repositoryUrl: issue.repository_url,
-              },
-            }).returning();
-
-            totalResults++;
-            monitorMatchCount++;
-            newResultIds.push(newResult.id);
-            await incrementResultsCount(monitor.userId, 1);
-          }
-        }
-      }
-
-      // Process discussions
-      for (const discussion of searchResult.discussions) {
+      // Filter matching discussions
+      const matchingDiscussions = searchResult.discussions.filter(discussion => {
         const matchResult = contentMatchesMonitor(
           {
             title: discussion.title,
@@ -273,16 +221,51 @@ export const monitorGitHub = inngest.createFunction(
             searchQuery: monitor.searchQuery,
           }
         );
+        return matchResult.matches;
+      });
 
-        if (matchResult.matches) {
-          const existing = await db.query.results.findFirst({
-            where: eq(results.sourceUrl, discussion.url),
+      // Save matching issues and discussions as results (manual combined batch)
+      if (matchingIssues.length > 0 || matchingDiscussions.length > 0) {
+        await step.run(`save-results-${monitor.id}`, async () => {
+          // Collect all URLs for batch duplicate check
+          const allUrls = [
+            ...matchingIssues.map(issue => issue.html_url),
+            ...matchingDiscussions.map(discussion => discussion.url),
+          ];
+
+          if (allUrls.length === 0) return;
+
+          const existing = await pooledDb.query.results.findMany({
+            where: inArray(results.sourceUrl, allUrls),
+            columns: { sourceUrl: true },
           });
+          const existingUrls = new Set(existing.map(r => r.sourceUrl));
 
-          if (!existing) {
-            const [newResult] = await db.insert(results).values({
+          // Build batch of new results from issues and discussions
+          const newIssueValues = matchingIssues
+            .filter(issue => !existingUrls.has(issue.html_url))
+            .map(issue => ({
               monitorId: monitor.id,
-              platform: "github",
+              platform: "github" as const,
+              sourceUrl: issue.html_url,
+              title: `[Issue] ${issue.title}`,
+              content: issue.body || "",
+              author: issue.user?.login || "Unknown",
+              postedAt: new Date(issue.created_at),
+              metadata: {
+                type: "issue",
+                state: issue.state,
+                commentCount: issue.comments,
+                labels: issue.labels.map(l => l.name),
+                repositoryUrl: issue.repository_url,
+              },
+            }));
+
+          const newDiscussionValues = matchingDiscussions
+            .filter(discussion => !existingUrls.has(discussion.url))
+            .map(discussion => ({
+              monitorId: monitor.id,
+              platform: "github" as const,
               sourceUrl: discussion.url,
               title: `[Discussion] ${discussion.title}`,
               content: discussion.body,
@@ -294,58 +277,31 @@ export const monitorGitHub = inngest.createFunction(
                 commentCount: discussion.comments.totalCount,
                 category: discussion.category.name,
               },
-            }).returning();
+            }));
 
+          const allNewValues = [...newIssueValues, ...newDiscussionValues];
+
+          if (allNewValues.length === 0) return;
+
+          // Batch insert all new results
+          const inserted = await pooledDb.insert(results).values(allNewValues).returning();
+
+          // Track new result IDs
+          for (const result of inserted) {
             totalResults++;
             monitorMatchCount++;
-            newResultIds.push(newResult.id);
-            await incrementResultsCount(monitor.userId, 1);
+            newResultIds.push(result.id);
           }
-        }
-      }
 
-      // Trigger AI analysis - batch mode for large volumes, individual for small
-      if (newResultIds.length > 0) {
-        await step.run(`trigger-analysis-${monitor.id}`, async () => {
-          if (newResultIds.length > AI_BATCH_CONFIG.BATCH_THRESHOLD) {
-            // Batch mode for cost efficiency (>50 results)
-            await inngest.send({
-              name: "content/analyze-batch",
-              data: {
-                monitorId: monitor.id,
-                userId: monitor.userId,
-                platform: "github",
-                resultIds: newResultIds,
-                totalCount: newResultIds.length,
-              },
-            });
-          } else {
-            // Individual analysis for small volumes
-            for (const resultId of newResultIds) {
-              await inngest.send({
-                name: "content/analyze",
-                data: {
-                  resultId,
-                  userId: monitor.userId,
-                },
-              });
-            }
-          }
+          // Single batch usage increment
+          await incrementResultsCount(monitor.userId, inserted.length);
         });
       }
 
-      monitorResults[monitor.id] = monitorMatchCount;
+      await triggerAiAnalysis(newResultIds, monitor.id, monitor.userId, "github", step);
 
-      await step.run(`update-monitor-stats-${monitor.id}`, async () => {
-        await db
-          .update(monitors)
-          .set({
-            lastCheckedAt: new Date(),
-            newMatchCount: monitorMatchCount,
-            updatedAt: new Date(),
-          })
-          .where(eq(monitors.id, monitor.id));
-      });
+      monitorResults[monitor.id] = monitorMatchCount;
+      await updateMonitorStats(monitor.id, monitorMatchCount, step);
     }
 
     return {

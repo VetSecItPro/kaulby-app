@@ -26,4 +26,7 @@ export {
   isValidEmail,
   isValidUuid,
   truncate,
+  // Monitor input sanitization
+  sanitizeMonitorInput,
+  isValidKeyword,
 } from "./sanitize";

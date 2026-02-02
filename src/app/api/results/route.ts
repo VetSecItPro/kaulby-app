@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
       ? items[items.length - 1].createdAt.toISOString()
       : null;
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       items: items.map((r) => ({
         id: r.id,
         platform: r.platform,
@@ -103,6 +103,8 @@ export async function GET(request: NextRequest) {
       nextCursor,
       hasMore,
     });
+    response.headers.set("Cache-Control", "private, max-age=30, stale-while-revalidate=60");
+    return response;
   } catch (error) {
     console.error("Failed to fetch results:", error);
     return NextResponse.json(

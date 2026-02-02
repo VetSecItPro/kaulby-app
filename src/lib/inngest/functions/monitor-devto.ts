@@ -1,12 +1,15 @@
 import { inngest } from "../client";
-import { db } from "@/lib/db";
-import { monitors, results } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
-import { incrementResultsCount, canAccessPlatform, shouldProcessMonitor } from "@/lib/limits";
 import { contentMatchesMonitor } from "@/lib/content-matcher";
-import { calculateStaggerDelay, formatStaggerDuration, addJitter, getStaggerWindow } from "../utils/stagger";
-import { isMonitorScheduleActive } from "@/lib/monitor-schedule";
-import { AI_BATCH_CONFIG } from "@/lib/ai/sampling";
+import {
+  getActiveMonitors,
+  prefetchPlans,
+  shouldSkipMonitor,
+  applyStagger,
+  saveNewResults,
+  triggerAiAnalysis,
+  updateMonitorStats,
+  type MonitorStep,
+} from "../utils/monitor-helpers";
 
 // Dev.to article interface (from their API)
 interface DevToArticle {
@@ -106,59 +109,28 @@ export const monitorDevTo = inngest.createFunction(
     id: "monitor-devto",
     name: "Monitor Dev.to",
     retries: 3,
+    timeouts: { finish: "14m" },
+    concurrency: { limit: 5 },
   },
   { cron: "*/30 * * * *" }, // Every 30 minutes
-  async ({ step }) => {
-    // Get all active monitors that include Dev.to
-    const activeMonitors = await step.run("get-monitors", async () => {
-      return db.query.monitors.findMany({
-        where: eq(monitors.isActive, true),
-      });
-    });
+  async ({ step: _step }) => {
+    const step = _step as unknown as MonitorStep;
 
-    const devtoMonitors = activeMonitors.filter((m) =>
-      m.platforms.includes("devto")
-    );
-
+    const devtoMonitors = await getActiveMonitors("devto", step);
     if (devtoMonitors.length === 0) {
       return { message: "No active Dev.to monitors" };
     }
 
+    const planMap = await prefetchPlans(devtoMonitors, step);
+
     let totalResults = 0;
     const monitorResults: Record<string, number> = {};
-
-    const staggerWindow = getStaggerWindow("devto");
 
     for (let i = 0; i < devtoMonitors.length; i++) {
       const monitor = devtoMonitors[i];
 
-      // Stagger execution
-      if (i > 0 && devtoMonitors.length > 3) {
-        const baseDelay = calculateStaggerDelay(i, devtoMonitors.length, staggerWindow);
-        const delayWithJitter = addJitter(baseDelay, 10);
-        const delayStr = formatStaggerDuration(delayWithJitter);
-        await step.sleep(`stagger-${monitor.id}`, delayStr);
-      }
-
-      // Check platform access
-      const access = await canAccessPlatform(monitor.userId, "devto");
-      if (!access.hasAccess) {
-        continue;
-      }
-
-      // Check refresh delay
-      const scheduleCheck = await shouldProcessMonitor(monitor.userId, monitor.lastCheckedAt);
-      if (!scheduleCheck.shouldProcess) {
-        continue;
-      }
-
-      // Check if monitor is within its active schedule
-      if (!isMonitorScheduleActive(monitor)) {
-        continue;
-      }
-
-      let monitorMatchCount = 0;
-      const newResultIds: string[] = [];
+      await applyStagger(i, devtoMonitors.length, "devto", monitor.id, step);
+      if (shouldSkipMonitor(monitor, planMap, "devto")) continue;
 
       // Search Dev.to
       const articles = await step.run(`search-devto-${monitor.id}`, async () => {
@@ -168,7 +140,7 @@ export const monitorDevTo = inngest.createFunction(
       console.log(`[Dev.to] Found ${articles.length} articles for monitor ${monitor.id}`);
 
       // Check each article for matches
-      for (const article of articles) {
+      const matchingArticles = articles.filter((article) => {
         const matchResult = contentMatchesMonitor(
           {
             title: article.title,
@@ -181,81 +153,39 @@ export const monitorDevTo = inngest.createFunction(
             searchQuery: monitor.searchQuery,
           }
         );
-
-        if (matchResult.matches) {
-          // Check if already exists
-          const existing = await db.query.results.findFirst({
-            where: eq(results.sourceUrl, article.url),
-          });
-
-          if (!existing) {
-            const [newResult] = await db.insert(results).values({
-              monitorId: monitor.id,
-              platform: "devto",
-              sourceUrl: article.url,
-              title: article.title,
-              content: article.description,
-              author: article.user.username,
-              postedAt: new Date(article.published_at || article.created_at),
-              metadata: {
-                reactions: article.positive_reactions_count,
-                commentCount: article.comments_count,
-                readingTime: article.reading_time_minutes,
-                tags: article.tags,
-                authorName: article.user.name,
-              },
-            }).returning();
-
-            totalResults++;
-            monitorMatchCount++;
-            newResultIds.push(newResult.id);
-            await incrementResultsCount(monitor.userId, 1);
-          }
-        }
-      }
-
-      // Trigger AI analysis - batch mode for large volumes, individual for small
-      if (newResultIds.length > 0) {
-        await step.run(`trigger-analysis-${monitor.id}`, async () => {
-          if (newResultIds.length > AI_BATCH_CONFIG.BATCH_THRESHOLD) {
-            // Batch mode for cost efficiency (>50 results)
-            await inngest.send({
-              name: "content/analyze-batch",
-              data: {
-                monitorId: monitor.id,
-                userId: monitor.userId,
-                platform: "devto",
-                resultIds: newResultIds,
-                totalCount: newResultIds.length,
-              },
-            });
-          } else {
-            // Individual analysis for small volumes
-            for (const resultId of newResultIds) {
-              await inngest.send({
-                name: "content/analyze",
-                data: {
-                  resultId,
-                  userId: monitor.userId,
-                },
-              });
-            }
-          }
-        });
-      }
-
-      monitorResults[monitor.id] = monitorMatchCount;
-
-      await step.run(`update-monitor-stats-${monitor.id}`, async () => {
-        await db
-          .update(monitors)
-          .set({
-            lastCheckedAt: new Date(),
-            newMatchCount: monitorMatchCount,
-            updatedAt: new Date(),
-          })
-          .where(eq(monitors.id, monitor.id));
+        return matchResult.matches;
       });
+
+      // Save new results
+      const { count, ids: newResultIds } = await saveNewResults<DevToArticle>({
+        items: matchingArticles,
+        monitorId: monitor.id,
+        userId: monitor.userId,
+        getSourceUrl: (article) => article.url,
+        mapToResult: (article) => ({
+          monitorId: monitor.id,
+          platform: "devto" as const,
+          sourceUrl: article.url,
+          title: article.title,
+          content: article.description,
+          author: article.user.username,
+          postedAt: new Date(article.published_at || article.created_at),
+          metadata: {
+            reactions: article.positive_reactions_count,
+            commentCount: article.comments_count,
+            readingTime: article.reading_time_minutes,
+            tags: article.tags,
+            authorName: article.user.name,
+          },
+        }),
+        step,
+      });
+
+      totalResults += count;
+      await triggerAiAnalysis(newResultIds, monitor.id, monitor.userId, "devto", step);
+
+      monitorResults[monitor.id] = count;
+      await updateMonitorStats(monitor.id, count, step);
     }
 
     return {

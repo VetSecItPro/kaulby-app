@@ -11,7 +11,7 @@
  */
 
 import { inngest } from "../client";
-import { db } from "@/lib/db";
+import { pooledDb } from "@/lib/db";
 import { communityGrowth } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 
@@ -222,7 +222,7 @@ async function storeStats(
   engagementRate: number
 ): Promise<void> {
   try {
-    await db.insert(communityGrowth).values({
+    await pooledDb.insert(communityGrowth).values({
       platform: "reddit",
       identifier: `r/${subreddit}`,
       memberCount,
@@ -238,7 +238,7 @@ async function storeStats(
  * Get the most recent stats for a subreddit
  */
 export async function getLatestStats(subreddit: string) {
-  const results = await db.query.communityGrowth.findFirst({
+  const results = await pooledDb.query.communityGrowth.findFirst({
     where: and(
       eq(communityGrowth.platform, "reddit"),
       eq(communityGrowth.identifier, `r/${subreddit}`)
@@ -257,6 +257,7 @@ export const collectCommunityStats = inngest.createFunction(
     id: "collect-community-stats",
     name: "Collect Community Stats",
     retries: 3,
+    timeouts: { finish: "30m" },
   },
   { cron: "0 3 * * 0" }, // Every Sunday at 3 AM UTC
   async ({ step }) => {
@@ -352,6 +353,7 @@ export const fetchSubredditStats = inngest.createFunction(
     id: "fetch-subreddit-stats",
     name: "Fetch Subreddit Stats",
     retries: 2,
+    timeouts: { finish: "5m" },
   },
   { event: "community/fetch-stats" },
   async ({ event, step }) => {

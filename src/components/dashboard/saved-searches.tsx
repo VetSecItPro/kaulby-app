@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -72,6 +73,7 @@ export function SavedSearches({
         }
       } catch (err) {
         console.error("Failed to fetch saved searches:", err);
+        toast.error("Failed to load saved searches");
       } finally {
         setLoading(false);
       }
@@ -145,6 +147,7 @@ export function SavedSearches({
       }
     } catch (err) {
       console.error("Failed to delete saved search:", err);
+      toast.error("Failed to delete saved search");
     }
   };
 

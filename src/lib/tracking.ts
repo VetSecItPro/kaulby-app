@@ -2,7 +2,24 @@
  * Client-side event tracking for PostHog
  * Tracks key conversion events for funnel analysis
  */
-import posthog from "posthog-js";
+
+// Lazy-loaded PostHog instance to avoid 30KB static bundle cost
+let _posthog: typeof import("posthog-js").default | null = null;
+
+async function getPostHog() {
+  if (_posthog) return _posthog;
+  try {
+    // Gate on cookie consent — if the user declined, never load PostHog
+    const { hasAnalyticsConsent } = await import("@/components/shared/cookie-consent");
+    if (!hasAnalyticsConsent()) return null;
+
+    const mod = await import("posthog-js");
+    _posthog = mod.default;
+    return _posthog;
+  } catch {
+    return null;
+  }
+}
 
 // Type-safe event definitions
 type TrackingEvent =
@@ -32,10 +49,11 @@ type TrackingEvent =
  * Track a conversion or feature event
  * Safe to call even if PostHog is not initialized
  */
-function track<T extends TrackingEvent>(event: T["event"], properties?: T["properties"]) {
+async function track<T extends TrackingEvent>(event: T["event"], properties?: T["properties"]) {
   try {
     if (typeof window === "undefined") return;
-    if (!posthog.__loaded) return;
+    const posthog = await getPostHog();
+    if (!posthog || !posthog.__loaded) return;
 
     posthog.capture(event, properties);
   } catch {

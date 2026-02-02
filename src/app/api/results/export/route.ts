@@ -2,11 +2,39 @@ import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { users, monitors, results } from "@/lib/db/schema";
-import { eq, inArray, desc } from "drizzle-orm";
+import { eq, and, inArray, desc, lt } from "drizzle-orm";
 import { getPlanLimits } from "@/lib/plans";
 
 // Force dynamic rendering
 export const dynamic = "force-dynamic";
+
+const BATCH_SIZE = 500;
+const MAX_ROWS = 10000;
+
+const CSV_HEADERS = [
+  "ID",
+  "Monitor",
+  "Platform",
+  "Title",
+  "URL",
+  "Author",
+  "Content",
+  "Sentiment",
+  "Sentiment Score",
+  "Pain Point Category",
+  "AI Summary",
+  "Posted At",
+  "Found At",
+];
+
+function escapeCSV(value: string | null | undefined): string {
+  if (value === null || value === undefined) return "";
+  const str = String(value);
+  if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -63,79 +91,107 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get results
-    const userResults = await db.query.results.findMany({
-      where: inArray(results.monitorId, monitorIds),
-      orderBy: desc(results.createdAt),
-      limit: 10000, // Limit to prevent huge exports
-    });
-
-    if (userResults.length === 0) {
-      return NextResponse.json(
-        { error: "No results to export" },
-        { status: 404 }
-      );
-    }
-
     // Create monitor name lookup
     const monitorNames = Object.fromEntries(
       userMonitors.map(m => [m.id, m.name])
     );
 
-    // Generate CSV
-    const headers = [
-      "ID",
-      "Monitor",
-      "Platform",
-      "Title",
-      "URL",
-      "Author",
-      "Content",
-      "Sentiment",
-      "Sentiment Score",
-      "Pain Point Category",
-      "AI Summary",
-      "Posted At",
-      "Found At",
-    ];
+    // Stream CSV in batches using cursor-based pagination
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          // Write CSV header
+          controller.enqueue(encoder.encode(CSV_HEADERS.join(",") + "\n"));
 
-    const escapeCSV = (value: string | null | undefined): string => {
-      if (value === null || value === undefined) return "";
-      const str = String(value);
-      // Escape quotes and wrap in quotes if contains comma, quote, or newline
-      if (str.includes(",") || str.includes('"') || str.includes("\n")) {
-        return `"${str.replace(/"/g, '""')}"`;
-      }
-      return str;
-    };
+          let cursor: Date | null = null;
+          let totalRows = 0;
 
-    const rows = userResults.map(r => [
-      r.id,
-      monitorNames[r.monitorId] || "Unknown",
-      r.platform,
-      escapeCSV(r.title),
-      r.sourceUrl,
-      escapeCSV(r.author),
-      escapeCSV(r.content?.substring(0, 1000)), // Limit content length
-      r.sentiment || "",
-      r.sentimentScore?.toString() || "",
-      r.painPointCategory || "",
-      escapeCSV(r.aiSummary),
-      r.postedAt?.toISOString() || "",
-      r.createdAt.toISOString(),
-    ]);
+          while (totalRows < MAX_ROWS) {
+            const batch: Array<{
+              id: string;
+              monitorId: string;
+              platform: string;
+              title: string | null;
+              sourceUrl: string;
+              author: string | null;
+              content: string | null;
+              sentiment: string | null;
+              sentimentScore: number | null;
+              painPointCategory: string | null;
+              aiSummary: string | null;
+              postedAt: Date | null;
+              createdAt: Date;
+            }> = await db.query.results.findMany({
+              where: cursor
+                ? and(
+                    inArray(results.monitorId, monitorIds),
+                    lt(results.createdAt, cursor)
+                  )
+                : inArray(results.monitorId, monitorIds),
+              orderBy: desc(results.createdAt),
+              limit: BATCH_SIZE,
+              columns: {
+                id: true,
+                monitorId: true,
+                platform: true,
+                title: true,
+                sourceUrl: true,
+                author: true,
+                content: true,
+                sentiment: true,
+                sentimentScore: true,
+                painPointCategory: true,
+                aiSummary: true,
+                postedAt: true,
+                createdAt: true,
+              },
+            });
 
-    const csv = [
-      headers.join(","),
-      ...rows.map(row => row.join(",")),
-    ].join("\n");
+            if (batch.length === 0) break;
 
-    // Return as downloadable CSV
-    return new NextResponse(csv, {
+            // Write batch rows
+            const csvChunk = batch.map(r =>
+              [
+                r.id,
+                monitorNames[r.monitorId] || "Unknown",
+                r.platform,
+                escapeCSV(r.title),
+                r.sourceUrl,
+                escapeCSV(r.author),
+                escapeCSV(r.content?.substring(0, 1000)),
+                r.sentiment || "",
+                r.sentimentScore?.toString() || "",
+                r.painPointCategory || "",
+                escapeCSV(r.aiSummary),
+                r.postedAt?.toISOString() || "",
+                r.createdAt.toISOString(),
+              ].join(",")
+            ).join("\n") + "\n";
+
+            controller.enqueue(encoder.encode(csvChunk));
+            totalRows += batch.length;
+
+            // Move cursor to last item's createdAt
+            cursor = batch[batch.length - 1].createdAt;
+
+            if (batch.length < BATCH_SIZE) break;
+          }
+
+          controller.close();
+        } catch (error) {
+          console.error("CSV stream error:", error);
+          controller.error(error);
+        }
+      },
+    });
+
+    return new Response(stream, {
       status: 200,
       headers: {
         "Content-Type": "text/csv",
         "Content-Disposition": `attachment; filename="kaulby-results-${new Date().toISOString().split("T")[0]}.csv"`,
+        "Transfer-Encoding": "chunked",
       },
     });
   } catch (error) {

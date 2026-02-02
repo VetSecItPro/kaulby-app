@@ -579,7 +579,7 @@ export async function GET(request: Request) {
       })
       .sort((a, b) => b.sharedTopics - a.sharedTopics);
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       topics,
       singlePlatformTopics,
       aiTopics, // AI-generated topics for Pro/Team when keyword clustering is sparse
@@ -589,6 +589,8 @@ export async function GET(request: Request) {
       canHaveMultiplePlatforms,
       platformsInData,
     });
+    response.headers.set("Cache-Control", "private, max-age=30, stale-while-revalidate=60");
+    return response;
   } catch (error) {
     console.error("Insights error:", error);
     return NextResponse.json(

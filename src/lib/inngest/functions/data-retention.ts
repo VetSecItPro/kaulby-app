@@ -1,7 +1,7 @@
 import { inngest } from "../client";
-import { db } from "@/lib/db";
+import { pooledDb } from "@/lib/db";
 import { users, monitors, results } from "@/lib/db/schema";
-import { eq, and, lt, inArray, sql } from "drizzle-orm";
+import { eq, and, lt, sql, count } from "drizzle-orm";
 
 // Data retention limits by plan (in days) - must match PLANS in plans.ts
 const RETENTION_DAYS = {
@@ -16,89 +16,83 @@ export const dataRetention = inngest.createFunction(
     id: "data-retention",
     name: "Data Retention Cleanup",
     retries: 3,
+    timeouts: { finish: "30m" },
   },
   { cron: "0 3 * * *" }, // Run daily at 3 AM UTC
   async ({ step, logger }) => {
     logger.info("Starting data retention cleanup");
 
-    // Get all users with their subscription status
-    const allUsers = await step.run("get-all-users", async () => {
-      return await db.query.users.findMany({
-        columns: {
-          id: true,
-          subscriptionStatus: true,
-        },
-      });
+    const now = new Date();
+    const cutoffs = {
+      free: new Date(now.getTime() - RETENTION_DAYS.free * 24 * 60 * 60 * 1000),
+      pro: new Date(now.getTime() - RETENTION_DAYS.pro * 24 * 60 * 60 * 1000),
+      enterprise: new Date(now.getTime() - RETENTION_DAYS.enterprise * 24 * 60 * 60 * 1000),
+    };
+
+    // Bulk delete for free-tier users (all old results, even saved)
+    const freeDeleted = await step.run("cleanup-free-tier", async () => {
+      const whereClause = and(
+        sql`${results.monitorId} IN (
+          SELECT ${monitors.id} FROM ${monitors}
+          INNER JOIN ${users} ON ${users.id} = ${monitors.userId}
+          WHERE COALESCE(${users.subscriptionStatus}, 'free') = 'free'
+        )`,
+        lt(results.createdAt, cutoffs.free)
+      );
+      const [{ value }] = await pooledDb.select({ value: count() }).from(results).where(whereClause);
+      if (value > 0) await pooledDb.delete(results).where(whereClause);
+      return value;
     });
 
-    logger.info(`Processing ${allUsers.length} users for data retention`);
+    // Bulk delete for pro-tier users (preserve saved results)
+    const proDeleted = await step.run("cleanup-pro-tier", async () => {
+      const whereClause = and(
+        sql`${results.monitorId} IN (
+          SELECT ${monitors.id} FROM ${monitors}
+          INNER JOIN ${users} ON ${users.id} = ${monitors.userId}
+          WHERE ${users.subscriptionStatus} = 'pro'
+        )`,
+        lt(results.createdAt, cutoffs.pro),
+        eq(results.isSaved, false)
+      );
+      const [{ value }] = await pooledDb.select({ value: count() }).from(results).where(whereClause);
+      if (value > 0) await pooledDb.delete(results).where(whereClause);
+      return value;
+    });
 
-    let totalDeleted = 0;
+    // Bulk delete for enterprise-tier users (preserve saved results)
+    const enterpriseDeleted = await step.run("cleanup-enterprise-tier", async () => {
+      const whereClause = and(
+        sql`${results.monitorId} IN (
+          SELECT ${monitors.id} FROM ${monitors}
+          INNER JOIN ${users} ON ${users.id} = ${monitors.userId}
+          WHERE ${users.subscriptionStatus} = 'enterprise'
+        )`,
+        lt(results.createdAt, cutoffs.enterprise),
+        eq(results.isSaved, false)
+      );
+      const [{ value }] = await pooledDb.select({ value: count() }).from(results).where(whereClause);
+      if (value > 0) await pooledDb.delete(results).where(whereClause);
+      return value;
+    });
 
-    // Process each user
-    for (const user of allUsers) {
-      const deleted = await step.run(`cleanup-user-${user.id}`, async () => {
-        const plan = user.subscriptionStatus || "free";
-        const retentionDays = RETENTION_DAYS[plan];
-        const cutoffDate = new Date();
-        cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
+    const totalDeleted = freeDeleted + proDeleted + enterpriseDeleted;
 
-        // Get user's monitors
-        const userMonitors = await db.query.monitors.findMany({
-          where: eq(monitors.userId, user.id),
-          columns: { id: true },
-        });
-
-        if (userMonitors.length === 0) {
-          return 0;
-        }
-
-        const monitorIds = userMonitors.map((m) => m.id);
-
-        // Delete old results (but keep saved ones for pro/enterprise)
-        const deleteConditions = plan === "free"
-          ? // Free users: delete all old results regardless of saved status
-            and(
-              inArray(results.monitorId, monitorIds),
-              lt(results.createdAt, cutoffDate)
-            )
-          : // Pro/Enterprise: delete old results but keep saved ones
-            and(
-              inArray(results.monitorId, monitorIds),
-              lt(results.createdAt, cutoffDate),
-              eq(results.isSaved, false)
-            );
-
-        const deleteResult = await db
-          .delete(results)
-          .where(deleteConditions)
-          .returning({ id: results.id });
-
-        return deleteResult.length;
-      });
-
-      totalDeleted += deleted;
-    }
-
-    // Also clean up orphaned results (results with no valid monitor)
-    // Uses SQL subquery instead of loading all data into memory
+    // Clean up orphaned results (results with no valid monitor)
     const orphanedDeleted = await step.run("cleanup-orphaned-results", async () => {
-      const deleteResult = await db
-        .delete(results)
-        .where(
-          sql`${results.monitorId} NOT IN (SELECT id FROM monitors)`
-        )
-        .returning({ id: results.id });
-
-      return deleteResult.length;
+      const whereClause = sql`${results.monitorId} NOT IN (SELECT id FROM monitors)`;
+      const [{ value }] = await pooledDb.select({ value: count() }).from(results).where(whereClause);
+      if (value > 0) await pooledDb.delete(results).where(whereClause);
+      return value;
     });
 
-    logger.info(`Data retention cleanup complete. Deleted ${totalDeleted} old results and ${orphanedDeleted} orphaned results.`);
+    logger.info(`Data retention cleanup complete. Deleted ${totalDeleted} old results (free: ${freeDeleted}, pro: ${proDeleted}, enterprise: ${enterpriseDeleted}) and ${orphanedDeleted} orphaned results.`);
 
     return {
       success: true,
       deletedResults: totalDeleted,
       deletedOrphaned: orphanedDeleted,
+      breakdown: { free: freeDeleted, pro: proDeleted, enterprise: enterpriseDeleted },
     };
   }
 );
@@ -109,6 +103,7 @@ export const resetUsageCounters = inngest.createFunction(
     id: "reset-usage-counters",
     name: "Reset Usage Counters",
     retries: 3,
+    timeouts: { finish: "10m" },
   },
   { cron: "0 0 * * *" }, // Run daily at midnight UTC
   async ({ step, logger }) => {
@@ -118,7 +113,7 @@ export const resetUsageCounters = inngest.createFunction(
 
     // Get users whose billing period has ended
     const usersToReset = await step.run("get-users-to-reset", async () => {
-      return await db.query.users.findMany({
+      return await pooledDb.query.users.findMany({
         where: lt(users.currentPeriodEnd, now),
         columns: {
           id: true,
@@ -146,7 +141,7 @@ export const resetUsageCounters = inngest.createFunction(
         newPeriodEnd.setMonth(newPeriodEnd.getMonth() + 1);
 
         // Update user's period dates
-        await db
+        await pooledDb
           .update(users)
           .set({
             currentPeriodStart: newPeriodStart,
@@ -174,6 +169,7 @@ export const cleanupAiLogs = inngest.createFunction(
     id: "cleanup-ai-logs",
     name: "Cleanup AI Logs",
     retries: 3,
+    timeouts: { finish: "15m" },
   },
   { cron: "0 4 * * 0" }, // Run weekly on Sunday at 4 AM UTC
   async ({ step, logger }) => {
@@ -185,12 +181,9 @@ export const cleanupAiLogs = inngest.createFunction(
 
       const { aiLogs } = await import("@/lib/db/schema");
 
-      const deleteResult = await db
-        .delete(aiLogs)
-        .where(lt(aiLogs.createdAt, cutoffDate))
-        .returning({ id: aiLogs.id });
-
-      return deleteResult.length;
+      const [{ value }] = await pooledDb.select({ value: count() }).from(aiLogs).where(lt(aiLogs.createdAt, cutoffDate));
+      if (value > 0) await pooledDb.delete(aiLogs).where(lt(aiLogs.createdAt, cutoffDate));
+      return value;
     });
 
     logger.info(`Deleted ${deleted} old AI log entries`);
