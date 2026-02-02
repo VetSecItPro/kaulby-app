@@ -1,12 +1,15 @@
 import { inngest } from "../client";
-import { db } from "@/lib/db";
-import { monitors, results } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
-import { incrementResultsCount, canAccessPlatform, shouldProcessMonitor } from "@/lib/limits";
 import { fetchG2Reviews, isApifyConfigured, type G2ReviewItem } from "@/lib/apify";
-import { AI_BATCH_CONFIG } from "@/lib/ai/sampling";
-import { calculateStaggerDelay, formatStaggerDuration, addJitter, getStaggerWindow } from "../utils/stagger";
-import { isMonitorScheduleActive } from "@/lib/monitor-schedule";
+import {
+  getActiveMonitors,
+  prefetchPlans,
+  shouldSkipMonitor,
+  applyStagger,
+  saveNewResults,
+  triggerAiAnalysis,
+  updateMonitorStats,
+  type MonitorStep,
+} from "../utils/monitor-helpers";
 
 /**
  * Monitor G2 software reviews
@@ -24,185 +27,91 @@ export const monitorG2 = inngest.createFunction(
     id: "monitor-g2",
     name: "Monitor G2 Reviews",
     retries: 2,
+    timeouts: { finish: "14m" },
+    concurrency: { limit: 5 },
   },
   { cron: "0 * * * *" }, // Every hour
-  async ({ step }) => {
-    // Check if Apify is configured
+  async ({ step: _step }) => {
+    const step = _step as unknown as MonitorStep;
+
     if (!isApifyConfigured()) {
       return { message: "Apify API key not configured, skipping G2 monitoring" };
     }
 
-    // Get all active monitors that include G2
-    const activeMonitors = await step.run("get-monitors", async () => {
-      return db.query.monitors.findMany({
-        where: eq(monitors.isActive, true),
-      });
-    });
-
-    const g2Monitors = activeMonitors.filter((m) =>
-      m.platforms.includes("g2")
-    );
-
+    const g2Monitors = await getActiveMonitors("g2", step);
     if (g2Monitors.length === 0) {
       return { message: "No active G2 monitors" };
     }
 
+    const planMap = await prefetchPlans(g2Monitors, step);
+
     let totalResults = 0;
     const monitorResults: Record<string, number> = {};
-
-    // Calculate stagger window for G2 processing
-    const staggerWindow = getStaggerWindow("g2");
 
     for (let i = 0; i < g2Monitors.length; i++) {
       const monitor = g2Monitors[i];
 
-      // Stagger execution to prevent thundering herd
-      if (i > 0 && g2Monitors.length > 3) {
-        const baseDelay = calculateStaggerDelay(i, g2Monitors.length, staggerWindow);
-        const delayWithJitter = addJitter(baseDelay, 10);
-        const delayStr = formatStaggerDuration(delayWithJitter);
-        await step.sleep(`stagger-${monitor.id}`, delayStr);
-      }
-
-      // Check if user has access to G2 platform
-      const access = await canAccessPlatform(monitor.userId, "g2");
-      if (!access.hasAccess) {
-        continue;
-      }
-
-      // Check refresh delay based on tier
-      const scheduleCheck = await shouldProcessMonitor(monitor.userId, monitor.lastCheckedAt);
-      if (!scheduleCheck.shouldProcess) {
-        continue;
-      }
-
-      // Check if monitor is within its active schedule
-      if (!isMonitorScheduleActive(monitor)) {
-        continue;
-      }
-
-      let monitorMatchCount = 0;
+      await applyStagger(i, g2Monitors.length, "g2", monitor.id, step);
+      if (shouldSkipMonitor(monitor, planMap, "g2")) continue;
 
       // Get product URL from platformUrls or keywords
       let productUrl: string | null = null;
-
-      // Check platformUrls first
       const platformUrls = monitor.platformUrls as Record<string, string> | null;
       if (platformUrls?.g2) {
         productUrl = platformUrls.g2;
-      }
-      // Fallback: Check keywords for G2 URLs
-      else if (monitor.keywords && monitor.keywords.length > 0) {
+      } else if (monitor.keywords && monitor.keywords.length > 0) {
         const g2Url = monitor.keywords.find((k) => k.includes("g2.com"));
         if (g2Url) productUrl = g2Url;
       }
+      if (!productUrl) continue;
 
-      if (!productUrl) {
-        continue; // No valid G2 URL
-      }
-
-      // Fetch reviews
+      // Fetch reviews (platform-specific)
       const reviews = await step.run(`fetch-reviews-${monitor.id}`, async () => {
         try {
-          const fetchedReviews = await fetchG2Reviews(productUrl!, 30);
-          return fetchedReviews;
+          return await fetchG2Reviews(productUrl!, 30);
         } catch (error) {
           console.error(`Error fetching G2 reviews for ${productUrl}:`, error);
           return [] as G2ReviewItem[];
         }
       });
 
-      // Save reviews as results and collect IDs for AI analysis
-      const newResultIds: string[] = [];
+      // Save new results
+      const { count, ids: newResultIds } = await saveNewResults<G2ReviewItem>({
+        items: reviews,
+        monitorId: monitor.id,
+        userId: monitor.userId,
+        getSourceUrl: (review) => review.url || `g2-review-${review.reviewId}`,
+        mapToResult: (review) => {
+          let content = review.text;
+          if (review.pros) content += `\n\nPros: ${review.pros}`;
+          if (review.cons) content += `\n\nCons: ${review.cons}`;
 
-      if (reviews.length > 0) {
-        await step.run(`save-results-${monitor.id}`, async () => {
-          for (const review of reviews) {
-            const sourceUrl = review.url || `g2-review-${review.reviewId}`;
-
-            // Check if we already have this result
-            const existing = await db.query.results.findFirst({
-              where: eq(results.sourceUrl, sourceUrl),
-            });
-
-            if (!existing) {
-              // Combine pros/cons with main text
-              let content = review.text;
-              if (review.pros) content += `\n\nPros: ${review.pros}`;
-              if (review.cons) content += `\n\nCons: ${review.cons}`;
-
-              const [newResult] = await db.insert(results).values({
-                monitorId: monitor.id,
-                platform: "g2",
-                sourceUrl,
-                title: review.title || `${review.rating}-star review`,
-                content,
-                author: review.author,
-                postedAt: review.date ? new Date(review.date) : new Date(),
-                metadata: {
-                  reviewId: review.reviewId,
-                  rating: review.rating,
-                  authorRole: review.authorRole,
-                  companySize: review.companySize,
-                  industry: review.industry,
-                  productName: review.productName,
-                },
-              }).returning();
-
-              totalResults++;
-              monitorMatchCount++;
-              newResultIds.push(newResult.id);
-
-              // Increment usage count for the user
-              await incrementResultsCount(monitor.userId, 1);
-            }
-          }
-        });
-
-        // Trigger AI analysis - batch mode for large volumes, individual for small
-        if (newResultIds.length > 0) {
-          await step.run(`trigger-analysis-${monitor.id}`, async () => {
-            if (newResultIds.length > AI_BATCH_CONFIG.BATCH_THRESHOLD) {
-              // Batch mode for cost efficiency
-              await inngest.send({
-                name: "content/analyze-batch",
-                data: {
-                  monitorId: monitor.id,
-                  userId: monitor.userId,
-                  platform: "g2",
-                  resultIds: newResultIds,
-                  totalCount: newResultIds.length,
-                },
-              });
-            } else {
-              // Individual analysis for small volumes
-              for (const resultId of newResultIds) {
-                await inngest.send({
-                  name: "content/analyze",
-                  data: {
-                    resultId,
-                    userId: monitor.userId,
-                  },
-                });
-              }
-            }
-          });
-        }
-      }
-
-      // Update monitor stats
-      monitorResults[monitor.id] = monitorMatchCount;
-
-      await step.run(`update-monitor-stats-${monitor.id}`, async () => {
-        await db
-          .update(monitors)
-          .set({
-            lastCheckedAt: new Date(),
-            newMatchCount: monitorMatchCount,
-            updatedAt: new Date(),
-          })
-          .where(eq(monitors.id, monitor.id));
+          return {
+            monitorId: monitor.id,
+            platform: "g2" as const,
+            sourceUrl: review.url || `g2-review-${review.reviewId}`,
+            title: review.title || `${review.rating}-star review`,
+            content,
+            author: review.author,
+            postedAt: review.date ? new Date(review.date) : new Date(),
+            metadata: {
+              reviewId: review.reviewId,
+              rating: review.rating,
+              authorRole: review.authorRole,
+              companySize: review.companySize,
+              industry: review.industry,
+              productName: review.productName,
+            },
+          };
+        },
+        step,
       });
+
+      totalResults += count;
+      await triggerAiAnalysis(newResultIds, monitor.id, monitor.userId, "g2", step);
+
+      monitorResults[monitor.id] = count;
+      await updateMonitorStats(monitor.id, count, step);
     }
 
     return {

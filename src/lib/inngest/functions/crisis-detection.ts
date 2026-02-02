@@ -1,5 +1,5 @@
 import { inngest } from "../client";
-import { db, users, monitors, results } from "@/lib/db";
+import { pooledDb, users, monitors, results } from "@/lib/db";
 import { eq, and, gte, inArray, sql, desc } from "drizzle-orm";
 
 interface CrisisAlert {
@@ -36,12 +36,13 @@ export const detectCrisis = inngest.createFunction(
   {
     id: "detect-crisis",
     name: "Crisis Detection",
+    timeouts: { finish: "15m" },
   },
   { cron: "0 * * * *" }, // Every hour
   async ({ step }) => {
     // Get all Team tier users with active monitors
     const teamUsers = await step.run("get-team-users", async () => {
-      return db.query.users.findMany({
+      return pooledDb.query.users.findMany({
         where: eq(users.subscriptionStatus, "enterprise"),
         columns: {
           id: true,
@@ -60,7 +61,7 @@ export const detectCrisis = inngest.createFunction(
     for (const user of teamUsers) {
       await step.run(`check-user-${user.id}`, async () => {
         // Get user's active monitors
-        const userMonitors = await db.query.monitors.findMany({
+        const userMonitors = await pooledDb.query.monitors.findMany({
           where: and(
             eq(monitors.userId, user.id),
             eq(monitors.isActive, true)
@@ -82,7 +83,7 @@ export const detectCrisis = inngest.createFunction(
         const previous24h = new Date(now.getTime() - 48 * 60 * 60 * 1000);
 
         // Get sentiment counts for last 24h
-        const currentSentiment = await db
+        const currentSentiment = await pooledDb
           .select({
             monitorId: results.monitorId,
             total: sql<number>`count(*)`,
@@ -99,7 +100,7 @@ export const detectCrisis = inngest.createFunction(
           .groupBy(results.monitorId);
 
         // Get sentiment counts for previous 24h
-        const previousSentiment = await db
+        const previousSentiment = await pooledDb
           .select({
             monitorId: results.monitorId,
             negative: sql<number>`count(*) filter (where ${results.sentiment} = 'negative')`,
@@ -115,7 +116,7 @@ export const detectCrisis = inngest.createFunction(
           .groupBy(results.monitorId);
 
         // Check for viral negative posts (high engagement)
-        const viralNegative = await db.query.results.findMany({
+        const viralNegative = await pooledDb.query.results.findMany({
           where: and(
             inArray(results.monitorId, monitorIds),
             gte(results.createdAt, last24h),

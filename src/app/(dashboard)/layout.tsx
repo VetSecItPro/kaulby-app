@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { DashboardClientWrapper } from "@/components/dashboard/dashboard-client-wrapper";
 import { ResponsiveDashboardLayout } from "@/components/dashboard/responsive-dashboard-layout";
 import { RoutePreloader } from "@/components/dashboard/route-preloader";
+import { ServiceWorkerRegister } from "@/components/shared/service-worker-register";
 import { db } from "@/lib/db";
 import { monitors, users } from "@/lib/db/schema";
 import { eq, count } from "drizzle-orm";
@@ -23,6 +24,7 @@ export default async function DashboardLayout({
     return (
       <ResponsiveDashboardLayout isAdmin={true} subscriptionStatus="enterprise">
         <RoutePreloader />
+        <ServiceWorkerRegister />
         <DashboardClientWrapper isNewUser={false} userName="Dev User">
           {children}
         </DashboardClientWrapper>
@@ -31,17 +33,18 @@ export default async function DashboardLayout({
   }
 
   const { userId } = await auth();
-  const user = await currentUser();
 
   if (!userId) {
     redirect("/sign-in");
   }
 
-  // Get user data and monitor count in parallel
-  const [dbUserById, monitorsCountResult] = await Promise.all([
+  // Run Clerk user fetch and DB queries in parallel to reduce blocking time
+  const userColumns = { isAdmin: true, subscriptionStatus: true, isBanned: true, onboardingCompleted: true, dayPassExpiresAt: true, workspaceRole: true } as const;
+  const [user, dbUserById, monitorsCountResult] = await Promise.all([
+    currentUser(),
     db.query.users.findFirst({
       where: (users, { eq }) => eq(users.id, userId),
-      columns: { isAdmin: true, subscriptionStatus: true, isBanned: true, onboardingCompleted: true, dayPassExpiresAt: true, workspaceRole: true },
+      columns: userColumns,
     }),
     db
       .select({ count: count() })
@@ -52,12 +55,14 @@ export default async function DashboardLayout({
   // Fallback: if not found by Clerk ID, try by email (handles Clerk ID mismatch)
   // This prevents paying customers from seeing "FREE" badge due to ID sync issues
   let dbUser = dbUserById;
-  const clerkEmail = user?.emailAddresses[0]?.emailAddress;
-  if (!dbUser && clerkEmail) {
-    dbUser = await db.query.users.findFirst({
-      where: (users, { eq }) => eq(users.email, clerkEmail),
-      columns: { isAdmin: true, subscriptionStatus: true, isBanned: true, onboardingCompleted: true, dayPassExpiresAt: true, workspaceRole: true },
-    });
+  if (!dbUser) {
+    const clerkEmail = user?.emailAddresses[0]?.emailAddress;
+    if (clerkEmail) {
+      dbUser = await db.query.users.findFirst({
+        where: (users, { eq }) => eq(users.email, clerkEmail),
+        columns: userColumns,
+      });
+    }
   }
 
   // Block banned users from accessing the dashboard
@@ -71,7 +76,9 @@ export default async function DashboardLayout({
     .set({ lastActiveAt: new Date() })
     .where(eq(users.id, userId))
     .execute()
-    .catch(() => {}); // Silently ignore errors
+    .catch((err) => {
+      console.warn("[layout] lastActiveAt update failed:", err?.message);
+    });
 
   const hasMonitors = (monitorsCountResult[0]?.count || 0) > 0;
   // Use database onboardingCompleted as source of truth, fall back to hasMonitors for legacy users
@@ -104,6 +111,7 @@ export default async function DashboardLayout({
       workspaceRole={workspaceRole}
     >
       <RoutePreloader />
+      <ServiceWorkerRegister />
       <DashboardClientWrapper isNewUser={isNewUser} userName={userName} userPlan={userPlan}>
         {children}
       </DashboardClientWrapper>

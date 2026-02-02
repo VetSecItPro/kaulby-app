@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight, Clock, Share2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import DOMPurify from "isomorphic-dompurify";
 import type { BlogArticle } from "@/lib/data/blog-articles";
 import { categoryConfig } from "@/lib/utils/article-helpers";
 
@@ -93,7 +94,7 @@ export function ArticlePageClient({
         <div className="container mx-auto max-w-3xl">
           <div
             className="article-content"
-            dangerouslySetInnerHTML={{ __html: article.htmlContent }}
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(article.htmlContent) }}
           />
         </div>
       </section>

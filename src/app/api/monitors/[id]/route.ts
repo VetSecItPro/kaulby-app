@@ -10,33 +10,11 @@ import {
   filterAllowedPlatforms,
   getUpgradePrompt,
 } from "@/lib/limits";
-import { Platform } from "@/lib/plans";
+import { Platform, ALL_PLATFORMS } from "@/lib/plans";
+import { sanitizeMonitorInput, isValidKeyword } from "@/lib/security";
+import { logError } from "@/lib/error-logger";
 
 export const dynamic = "force-dynamic";
-
-// All valid platforms (12 total - must match POST route, devto deprecated)
-const VALID_PLATFORMS = ["reddit", "hackernews", "producthunt", "googlereviews", "trustpilot", "appstore", "playstore", "quora", "youtube", "g2", "yelp", "amazonreviews"];
-
-// Sanitize user input to prevent XSS and injection attacks
-function sanitizeInput(input: string): string {
-  return input
-    .trim()
-    // Remove HTML tags
-    .replace(/<[^>]*>/g, "")
-    // Remove script injection attempts
-    .replace(/javascript:/gi, "")
-    .replace(/on\w+=/gi, "")
-    // Remove null bytes
-    .replace(/\0/g, "")
-    // Limit length to 100 characters
-    .slice(0, 100);
-}
-
-// Validate keyword format
-function isValidKeyword(keyword: string): boolean {
-  const sanitized = sanitizeInput(keyword);
-  return sanitized.length >= 1 && sanitized.length <= 100;
-}
 
 export async function GET(
   request: Request,
@@ -61,6 +39,7 @@ export async function GET(
     return NextResponse.json({ monitor });
   } catch (error) {
     console.error("Error fetching monitor:", error);
+    logError({ source: "api", message: "Failed to fetch monitor", error, endpoint: "GET /api/monitors/[id]" });
     return NextResponse.json({ error: "Failed to fetch monitor" }, { status: 500 });
   }
 }
@@ -110,20 +89,20 @@ export async function PATCH(
 
     // Validate platforms
     if (platforms) {
-      const invalidPlatforms = platforms.filter((p: string) => !VALID_PLATFORMS.includes(p));
+      const invalidPlatforms = platforms.filter((p: string) => !ALL_PLATFORMS.includes(p as Platform));
       if (invalidPlatforms.length > 0) {
         return NextResponse.json({ error: `Invalid platforms: ${invalidPlatforms.join(", ")}` }, { status: 400 });
       }
     }
 
     // Sanitize name if provided
-    const sanitizedName = name !== undefined ? sanitizeInput(name) : undefined;
+    const sanitizedName = name !== undefined ? sanitizeMonitorInput(name) : undefined;
     if (name !== undefined && (!sanitizedName || sanitizedName.length === 0)) {
       return NextResponse.json({ error: "Invalid name after sanitization" }, { status: 400 });
     }
 
     // Sanitize company name if provided
-    const sanitizedCompanyName = companyName !== undefined ? sanitizeInput(companyName) : undefined;
+    const sanitizedCompanyName = companyName !== undefined ? sanitizeMonitorInput(companyName) : undefined;
     if (companyName !== undefined && (!sanitizedCompanyName || sanitizedCompanyName.length === 0)) {
       return NextResponse.json({ error: "Invalid company name after sanitization" }, { status: 400 });
     }
@@ -131,7 +110,7 @@ export async function PATCH(
     // Sanitize keywords if provided (keywords are now optional)
     const sanitizedKeywords: string[] | undefined = keywords
       ? keywords
-          .map((k: string) => (typeof k === "string" ? sanitizeInput(k) : ""))
+          .map((k: string) => (typeof k === "string" ? sanitizeMonitorInput(k) : ""))
           .filter((k: string) => isValidKeyword(k))
       : undefined;
 
@@ -163,7 +142,7 @@ export async function PATCH(
       const allowedPlatforms = await filterAllowedPlatforms(userId, platforms as Platform[]);
 
       if (allowedPlatforms.length === 0) {
-        const prompt = getUpgradePrompt(plan, "platform", platforms[0]);
+        const prompt = getUpgradePrompt(plan, "platform", { platformName: platforms[0] });
         return NextResponse.json(
           {
             error: `Your plan doesn't have access to ${platforms.join(", ")}. ${prompt.description}`,
@@ -210,6 +189,7 @@ export async function PATCH(
     });
   } catch (error) {
     console.error("Error updating monitor:", error);
+    logError({ source: "api", message: "Failed to update monitor", error, endpoint: "PATCH /api/monitors/[id]" });
     return NextResponse.json({ error: "Failed to update monitor" }, { status: 500 });
   }
 }
@@ -245,6 +225,7 @@ export async function DELETE(
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error deleting monitor:", error);
+    logError({ source: "api", message: "Failed to delete monitor", error, endpoint: "DELETE /api/monitors/[id]" });
     return NextResponse.json({ error: "Failed to delete monitor" }, { status: 500 });
   }
 }

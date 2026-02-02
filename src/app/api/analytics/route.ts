@@ -2,7 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { results, monitors } from "@/lib/db/schema";
-import { eq, inArray, gte, and } from "drizzle-orm";
+import { eq, inArray, gte, and, sql, count } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
@@ -63,40 +63,87 @@ export async function GET(request: Request) {
 
     const monitorIds = userMonitors.map((m) => m.id);
 
-    // Fetch results within date range
-    const userResults = await db.query.results.findMany({
-      where: and(
-        inArray(results.monitorId, monitorIds),
-        gte(results.createdAt, startDate)
-      ),
-      columns: {
-        id: true,
-        platform: true,
-        sentiment: true,
-        conversationCategory: true,
-        createdAt: true,
-      },
-    });
+    // Base filter condition
+    const baseWhere = and(
+      inArray(results.monitorId, monitorIds),
+      gte(results.createdAt, startDate)
+    );
 
-    // Calculate volume over time (group by day)
+    // Run all aggregation queries in parallel via SQL GROUP BY
+    const [volumeRows, sentimentRows, categoryRows, platformRows, totalsRow] = await Promise.all([
+      // Volume by day
+      db
+        .select({
+          day: sql<string>`DATE(${results.createdAt})`.as("day"),
+          count: count().as("count"),
+        })
+        .from(results)
+        .where(baseWhere)
+        .groupBy(sql`DATE(${results.createdAt})`)
+        .orderBy(sql`DATE(${results.createdAt})`),
+
+      // Sentiment by day
+      db
+        .select({
+          day: sql<string>`DATE(${results.createdAt})`.as("day"),
+          sentiment: results.sentiment,
+          count: count().as("count"),
+        })
+        .from(results)
+        .where(baseWhere)
+        .groupBy(sql`DATE(${results.createdAt})`, results.sentiment)
+        .orderBy(sql`DATE(${results.createdAt})`),
+
+      // Category breakdown
+      db
+        .select({
+          category: sql<string>`COALESCE(${results.conversationCategory}::text, 'uncategorized')`.as("category"),
+          count: count().as("count"),
+        })
+        .from(results)
+        .where(baseWhere)
+        .groupBy(sql`COALESCE(${results.conversationCategory}::text, 'uncategorized')`)
+        .orderBy(sql`count(*) DESC`),
+
+      // Platform breakdown
+      db
+        .select({
+          platform: results.platform,
+          count: count().as("count"),
+        })
+        .from(results)
+        .where(baseWhere)
+        .groupBy(results.platform)
+        .orderBy(sql`count(*) DESC`),
+
+      // Totals with sentiment counts
+      db
+        .select({
+          total: count().as("total"),
+          positive: sql<number>`SUM(CASE WHEN ${results.sentiment} = 'positive' THEN 1 ELSE 0 END)`.as("positive"),
+          negative: sql<number>`SUM(CASE WHEN ${results.sentiment} = 'negative' THEN 1 ELSE 0 END)`.as("negative"),
+        })
+        .from(results)
+        .where(baseWhere),
+    ]);
+
+    // Build volume lookup from SQL results
     const volumeByDay = new Map<string, number>();
+    for (const row of volumeRows) {
+      volumeByDay.set(row.day, row.count);
+    }
+
+    // Build sentiment lookup from SQL results
     const sentimentByDay = new Map<string, { positive: number; negative: number; neutral: number }>();
-
-    userResults.forEach((result) => {
-      const day = result.createdAt.toISOString().split("T")[0];
-
-      // Volume
-      volumeByDay.set(day, (volumeByDay.get(day) || 0) + 1);
-
-      // Sentiment
-      if (!sentimentByDay.has(day)) {
-        sentimentByDay.set(day, { positive: 0, negative: 0, neutral: 0 });
+    for (const row of sentimentRows) {
+      if (!sentimentByDay.has(row.day)) {
+        sentimentByDay.set(row.day, { positive: 0, negative: 0, neutral: 0 });
       }
-      const daySentiment = sentimentByDay.get(day)!;
-      if (result.sentiment === "positive") daySentiment.positive++;
-      else if (result.sentiment === "negative") daySentiment.negative++;
-      else daySentiment.neutral++;
-    });
+      const daySentiment = sentimentByDay.get(row.day)!;
+      if (row.sentiment === "positive") daySentiment.positive = row.count;
+      else if (row.sentiment === "negative") daySentiment.negative = row.count;
+      else daySentiment.neutral = row.count;
+    }
 
     // Fill in missing days with zeros
     const volumeOverTime: { date: string; count: number }[] = [];
@@ -118,31 +165,21 @@ export async function GET(request: Request) {
       currentDate.setDate(currentDate.getDate() + 1);
     }
 
-    // Category breakdown
-    const categoryCount = new Map<string, number>();
-    userResults.forEach((result) => {
-      const category = result.conversationCategory || "uncategorized";
-      categoryCount.set(category, (categoryCount.get(category) || 0) + 1);
-    });
+    // Format breakdowns
+    const categoryBreakdown = categoryRows.map((row) => ({
+      category: row.category,
+      count: row.count,
+    }));
 
-    const categoryBreakdown = Array.from(categoryCount.entries())
-      .map(([category, count]) => ({ category, count }))
-      .sort((a, b) => b.count - a.count);
-
-    // Platform breakdown
-    const platformCount = new Map<string, number>();
-    userResults.forEach((result) => {
-      platformCount.set(result.platform, (platformCount.get(result.platform) || 0) + 1);
-    });
-
-    const platformBreakdown = Array.from(platformCount.entries())
-      .map(([platform, count]) => ({ platform, count }))
-      .sort((a, b) => b.count - a.count);
+    const platformBreakdown = platformRows.map((row) => ({
+      platform: row.platform,
+      count: row.count,
+    }));
 
     // Calculate totals
-    const total = userResults.length;
-    const positiveCount = userResults.filter((r) => r.sentiment === "positive").length;
-    const negativeCount = userResults.filter((r) => r.sentiment === "negative").length;
+    const total = totalsRow[0]?.total || 0;
+    const positiveCount = totalsRow[0]?.positive || 0;
+    const negativeCount = totalsRow[0]?.negative || 0;
     const neutralCount = total - positiveCount - negativeCount;
 
     const totals = {
@@ -154,13 +191,15 @@ export async function GET(request: Request) {
       topCategory: categoryBreakdown[0]?.category || null,
     };
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       volumeOverTime,
       sentimentOverTime,
       categoryBreakdown,
       platformBreakdown,
       totals,
     });
+    response.headers.set("Cache-Control", "private, max-age=30, stale-while-revalidate=60");
+    return response;
   } catch (error) {
     console.error("Analytics error:", error);
     return NextResponse.json({ error: "Failed to fetch analytics" }, { status: 500 });

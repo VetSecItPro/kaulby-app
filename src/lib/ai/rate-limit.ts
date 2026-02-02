@@ -2,14 +2,19 @@
  * AI Rate Limiting and Cost Control
  *
  * Prevents abuse and controls AI costs with:
- * - Per-user rate limiting (requests per minute/hour)
+ * - Per-user rate limiting (requests per minute/hour/day)
  * - Daily token budgets per tier
  * - Request caching for repeated questions
  * - Input validation and sanitization
+ *
+ * Uses Upstash Redis for distributed rate limiting when configured,
+ * falls back to in-memory for local development.
  */
 
 import { db, aiLogs } from "@/lib/db";
 import { eq, gte, and, sql } from "drizzle-orm";
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
 
 // Rate limits per tier (requests per time window)
 const AI_RATE_LIMITS = {
@@ -33,15 +38,58 @@ const AI_RATE_LIMITS = {
   },
 } as const;
 
-// In-memory rate limit tracking (per instance)
-// In production, use Redis for distributed rate limiting
+// ---------------------------------------------------------------------------
+// Redis-backed rate limiters (distributed, survives restarts)
+// ---------------------------------------------------------------------------
+
+const hasRedis = Boolean(
+  process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
+);
+
+function createRedisRatelimiter(
+  window: `${number} s` | `${number} m` | `${number} h` | `${number} d`,
+  maxRequests: number
+): Ratelimit | null {
+  if (!hasRedis || maxRequests === 0) return null;
+  return new Ratelimit({
+    redis: Redis.fromEnv(),
+    limiter: Ratelimit.slidingWindow(maxRequests, window),
+    prefix: "kaulby:ratelimit",
+    analytics: false,
+  });
+}
+
+// Lazy-initialized per-tier Redis rate limiters
+let redisLimiters: Record<
+  "pro" | "enterprise",
+  { minute: Ratelimit | null; hour: Ratelimit | null; day: Ratelimit | null }
+> | null = null;
+
+function getRedisLimiters() {
+  if (!redisLimiters) {
+    redisLimiters = {
+      pro: {
+        minute: createRedisRatelimiter("1 m", AI_RATE_LIMITS.pro.requestsPerMinute),
+        hour: createRedisRatelimiter("1 h", AI_RATE_LIMITS.pro.requestsPerHour),
+        day: createRedisRatelimiter("1 d", AI_RATE_LIMITS.pro.requestsPerDay),
+      },
+      enterprise: {
+        minute: createRedisRatelimiter("1 m", AI_RATE_LIMITS.enterprise.requestsPerMinute),
+        hour: createRedisRatelimiter("1 h", AI_RATE_LIMITS.enterprise.requestsPerHour),
+        day: createRedisRatelimiter("1 d", AI_RATE_LIMITS.enterprise.requestsPerDay),
+      },
+    };
+  }
+  return redisLimiters;
+}
+
+// ---------------------------------------------------------------------------
+// In-memory fallback (single instance, for local dev)
+// ---------------------------------------------------------------------------
+
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
 
-/**
- * Simple in-memory rate limiter
- * For production, replace with Redis-based solution
- */
-function checkRateLimit(
+function checkRateLimitMemory(
   userId: string,
   windowMs: number,
   maxRequests: number
@@ -52,7 +100,6 @@ function checkRateLimit(
   const existing = rateLimitStore.get(key);
 
   if (!existing || existing.resetAt < now) {
-    // Window expired or doesn't exist, create new
     rateLimitStore.set(key, { count: 1, resetAt: now + windowMs });
     return { allowed: true, remaining: maxRequests - 1, resetAt: new Date(now + windowMs) };
   }
@@ -65,21 +112,63 @@ function checkRateLimit(
   return { allowed: true, remaining: maxRequests - existing.count, resetAt: new Date(existing.resetAt) };
 }
 
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
 /**
- * Check all rate limits for a user
+ * Check all rate limits for a user.
+ * Uses Upstash Redis when configured, in-memory fallback otherwise.
  */
-export function checkAllRateLimits(
+export async function checkAllRateLimits(
   userId: string,
   tier: "free" | "pro" | "enterprise"
-): { allowed: boolean; reason?: string; retryAfter?: number } {
+): Promise<{ allowed: boolean; reason?: string; retryAfter?: number }> {
   const limits = AI_RATE_LIMITS[tier];
 
   if (limits.requestsPerMinute === 0) {
     return { allowed: false, reason: "AI features require a Pro subscription" };
   }
 
-  // Check per-minute limit
-  const minuteCheck = checkRateLimit(userId, 60_000, limits.requestsPerMinute);
+  // --- Redis path (distributed) ---
+  if (hasRedis && (tier === "pro" || tier === "enterprise")) {
+    const limiters = getRedisLimiters()[tier];
+
+    const minuteResult = limiters.minute ? await limiters.minute.limit(`minute:${userId}`) : null;
+    if (minuteResult && !minuteResult.success) {
+      const retryAfter = Math.ceil((minuteResult.reset - Date.now()) / 1000);
+      return {
+        allowed: false,
+        reason: `Rate limit exceeded. Try again in ${retryAfter} seconds`,
+        retryAfter,
+      };
+    }
+
+    const hourResult = limiters.hour ? await limiters.hour.limit(`hour:${userId}`) : null;
+    if (hourResult && !hourResult.success) {
+      const retryAfter = Math.ceil((hourResult.reset - Date.now()) / 1000);
+      return {
+        allowed: false,
+        reason: `Hourly limit reached (${limits.requestsPerHour} requests/hour). Try again later.`,
+        retryAfter,
+      };
+    }
+
+    const dayResult = limiters.day ? await limiters.day.limit(`day:${userId}`) : null;
+    if (dayResult && !dayResult.success) {
+      const retryAfter = Math.ceil((dayResult.reset - Date.now()) / 1000);
+      return {
+        allowed: false,
+        reason: `Daily limit reached (${limits.requestsPerDay} requests/day). Limit resets at midnight.`,
+        retryAfter,
+      };
+    }
+
+    return { allowed: true };
+  }
+
+  // --- In-memory fallback (local dev) ---
+  const minuteCheck = checkRateLimitMemory(userId, 60_000, limits.requestsPerMinute);
   if (!minuteCheck.allowed) {
     return {
       allowed: false,
@@ -88,8 +177,7 @@ export function checkAllRateLimits(
     };
   }
 
-  // Check per-hour limit
-  const hourCheck = checkRateLimit(userId, 3_600_000, limits.requestsPerHour);
+  const hourCheck = checkRateLimitMemory(userId, 3_600_000, limits.requestsPerHour);
   if (!hourCheck.allowed) {
     return {
       allowed: false,
@@ -98,8 +186,7 @@ export function checkAllRateLimits(
     };
   }
 
-  // Check per-day limit
-  const dayCheck = checkRateLimit(userId, 86_400_000, limits.requestsPerDay);
+  const dayCheck = checkRateLimitMemory(userId, 86_400_000, limits.requestsPerDay);
   if (!dayCheck.allowed) {
     return {
       allowed: false,

@@ -7,8 +7,9 @@ import { db } from "@/lib/db";
  * In production, returns the authenticated Clerk user ID.
  */
 export async function getEffectiveUserId(): Promise<string | null> {
-  // SECURITY: Only allow dev bypass on verified local development
+  // SECURITY: Only allow dev bypass with explicit opt-in
   const isLocalDev = process.env.NODE_ENV === "development" &&
+                     process.env.ALLOW_DEV_AUTH_BYPASS === "true" &&
                      !process.env.VERCEL &&
                      !process.env.VERCEL_ENV;
 
@@ -31,6 +32,7 @@ export async function getEffectiveUserId(): Promise<string | null> {
  */
 export function isLocalDev(): boolean {
   return process.env.NODE_ENV === "development" &&
+         process.env.ALLOW_DEV_AUTH_BYPASS === "true" &&
          !process.env.VERCEL &&
          !process.env.VERCEL_ENV;
 }

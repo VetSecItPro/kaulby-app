@@ -1,12 +1,15 @@
 import { inngest } from "../client";
-import { db } from "@/lib/db";
-import { monitors, results } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
-import { incrementResultsCount, canAccessPlatform, shouldProcessMonitor } from "@/lib/limits";
 import { contentMatchesMonitor } from "@/lib/content-matcher";
-import { calculateStaggerDelay, formatStaggerDuration, addJitter, getStaggerWindow } from "../utils/stagger";
-import { isMonitorScheduleActive } from "@/lib/monitor-schedule";
-import { AI_BATCH_CONFIG } from "@/lib/ai/sampling";
+import {
+  getActiveMonitors,
+  prefetchPlans,
+  shouldSkipMonitor,
+  applyStagger,
+  saveNewResults,
+  triggerAiAnalysis,
+  updateMonitorStats,
+  type MonitorStep,
+} from "../utils/monitor-helpers";
 
 // Indie Hackers post interface
 interface IndieHackersPost {
@@ -150,60 +153,28 @@ export const monitorIndieHackers = inngest.createFunction(
     id: "monitor-indiehackers",
     name: "Monitor Indie Hackers",
     retries: 3,
+    timeouts: { finish: "14m" },
+    concurrency: { limit: 5 },
   },
   { cron: "*/30 * * * *" }, // Every 30 minutes (less frequent due to scraping)
-  async ({ step }) => {
-    // Get all active monitors that include Indie Hackers
-    const activeMonitors = await step.run("get-monitors", async () => {
-      return db.query.monitors.findMany({
-        where: eq(monitors.isActive, true),
-      });
-    });
+  async ({ step: _step }) => {
+    const step = _step as unknown as MonitorStep;
 
-    const ihMonitors = activeMonitors.filter((m) =>
-      m.platforms.includes("indiehackers")
-    );
-
+    const ihMonitors = await getActiveMonitors("indiehackers", step);
     if (ihMonitors.length === 0) {
       return { message: "No active Indie Hackers monitors" };
     }
 
+    const planMap = await prefetchPlans(ihMonitors, step);
+
     let totalResults = 0;
     const monitorResults: Record<string, number> = {};
-
-    // Calculate stagger window based on number of monitors
-    const staggerWindow = getStaggerWindow("indiehackers");
 
     for (let i = 0; i < ihMonitors.length; i++) {
       const monitor = ihMonitors[i];
 
-      // Stagger execution to prevent thundering herd
-      if (i > 0 && ihMonitors.length > 3) {
-        const baseDelay = calculateStaggerDelay(i, ihMonitors.length, staggerWindow);
-        const delayWithJitter = addJitter(baseDelay, 10);
-        const delayStr = formatStaggerDuration(delayWithJitter);
-        await step.sleep(`stagger-${monitor.id}`, delayStr);
-      }
-
-      // Check if user has access to Indie Hackers platform
-      const access = await canAccessPlatform(monitor.userId, "indiehackers");
-      if (!access.hasAccess) {
-        continue;
-      }
-
-      // Check refresh delay for free tier users
-      const scheduleCheck = await shouldProcessMonitor(monitor.userId, monitor.lastCheckedAt);
-      if (!scheduleCheck.shouldProcess) {
-        continue;
-      }
-
-      // Check if monitor is within its active schedule
-      if (!isMonitorScheduleActive(monitor)) {
-        continue;
-      }
-
-      let monitorMatchCount = 0;
-      const newResultIds: string[] = [];
+      await applyStagger(i, ihMonitors.length, "indiehackers", monitor.id, step);
+      if (shouldSkipMonitor(monitor, planMap, "indiehackers")) continue;
 
       // Fetch Indie Hackers posts
       const posts = await step.run(`fetch-ih-${monitor.id}`, async () => {
@@ -229,85 +200,34 @@ export const monitorIndieHackers = inngest.createFunction(
         return matchResult.matches;
       });
 
-      // Save matching posts as results
-      if (matchingPosts.length > 0) {
-        await step.run(`save-results-${monitor.id}`, async () => {
-          for (const post of matchingPosts) {
-            // Check if we already have this result
-            const existing = await db.query.results.findFirst({
-              where: eq(results.sourceUrl, post.url),
-            });
-
-            if (!existing) {
-              const [newResult] = await db.insert(results).values({
-                monitorId: monitor.id,
-                platform: "indiehackers",
-                sourceUrl: post.url,
-                title: post.title,
-                content: post.body,
-                author: post.author,
-                postedAt: new Date(post.createdAt),
-                metadata: {
-                  upvotes: post.upvotes,
-                  commentCount: post.commentCount,
-                  category: post.category,
-                },
-              }).returning();
-
-              totalResults++;
-              monitorMatchCount++;
-              newResultIds.push(newResult.id);
-
-              // Increment usage count for the user
-              await incrementResultsCount(monitor.userId, 1);
-            }
-          }
-        });
-      }
-
-      // Trigger AI analysis - batch mode for large volumes, individual for small
-      if (newResultIds.length > 0) {
-        await step.run(`trigger-analysis-${monitor.id}`, async () => {
-          if (newResultIds.length > AI_BATCH_CONFIG.BATCH_THRESHOLD) {
-            // Batch mode for cost efficiency (>50 results)
-            await inngest.send({
-              name: "content/analyze-batch",
-              data: {
-                monitorId: monitor.id,
-                userId: monitor.userId,
-                platform: "indiehackers",
-                resultIds: newResultIds,
-                totalCount: newResultIds.length,
-              },
-            });
-          } else {
-            // Individual analysis for small volumes
-            for (const resultId of newResultIds) {
-              await inngest.send({
-                name: "content/analyze",
-                data: {
-                  resultId,
-                  userId: monitor.userId,
-                },
-              });
-            }
-          }
-        });
-      }
-
-      // Update monitor stats
-      monitorResults[monitor.id] = monitorMatchCount;
-
-      await step.run(`update-monitor-stats-${monitor.id}`, async () => {
-        await db
-          .update(monitors)
-          .set({
-            lastCheckedAt: new Date(),
-            newMatchCount: monitorMatchCount,
-            updatedAt: new Date(),
-          })
-          .where(eq(monitors.id, monitor.id));
+      // Save new results
+      const { count, ids: newResultIds } = await saveNewResults<IndieHackersPost>({
+        items: matchingPosts,
+        monitorId: monitor.id,
+        userId: monitor.userId,
+        getSourceUrl: (post) => post.url,
+        mapToResult: (post) => ({
+          monitorId: monitor.id,
+          platform: "indiehackers" as const,
+          sourceUrl: post.url,
+          title: post.title,
+          content: post.body,
+          author: post.author,
+          postedAt: new Date(post.createdAt),
+          metadata: {
+            upvotes: post.upvotes,
+            commentCount: post.commentCount,
+            category: post.category,
+          },
+        }),
+        step,
       });
+
+      totalResults += count;
+      await triggerAiAnalysis(newResultIds, monitor.id, monitor.userId, "indiehackers", step);
+
+      monitorResults[monitor.id] = count;
+      await updateMonitorStats(monitor.id, count, step);
     }
 
     return {

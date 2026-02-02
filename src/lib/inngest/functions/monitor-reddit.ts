@@ -1,14 +1,20 @@
 import { inngest } from "../client";
-import { db } from "@/lib/db";
-import { monitors, results } from "@/lib/db/schema";
+import { pooledDb } from "@/lib/db";
+import { monitors } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { incrementResultsCount, canAccessPlatform, shouldProcessMonitor } from "@/lib/limits";
 import { findRelevantSubredditsCached } from "@/lib/ai";
 import { contentMatchesMonitor } from "@/lib/content-matcher";
 import { searchRedditResilient } from "@/lib/reddit";
-import { calculateStaggerDelay, formatStaggerDuration, addJitter, getStaggerWindow } from "../utils/stagger";
-import { isMonitorScheduleActive } from "@/lib/monitor-schedule";
-import { AI_BATCH_CONFIG } from "@/lib/ai/sampling";
+import {
+  getActiveMonitors,
+  prefetchPlans,
+  shouldSkipMonitor,
+  applyStagger,
+  saveNewResults,
+  triggerAiAnalysis,
+  updateMonitorStats,
+  type MonitorStep,
+} from "../utils/monitor-helpers";
 
 // Scan Reddit for new posts matching monitor keywords
 export const monitorReddit = inngest.createFunction(
@@ -16,57 +22,28 @@ export const monitorReddit = inngest.createFunction(
     id: "monitor-reddit",
     name: "Monitor Reddit",
     retries: 3,
+    timeouts: { finish: "14m" },
+    concurrency: { limit: 5 },
   },
   { cron: "*/15 * * * *" }, // Every 15 minutes
-  async ({ step }) => {
-    // Get all active monitors that include Reddit
-    const activeMonitors = await step.run("get-monitors", async () => {
-      return db.query.monitors.findMany({
-        where: eq(monitors.isActive, true),
-      });
-    });
+  async ({ step: _step }) => {
+    const step = _step as unknown as MonitorStep;
 
-    const redditMonitors = activeMonitors.filter((m) =>
-      m.platforms.includes("reddit")
-    );
-
+    const redditMonitors = await getActiveMonitors("reddit", step);
     if (redditMonitors.length === 0) {
       return { message: "No active Reddit monitors" };
     }
 
+    const planMap = await prefetchPlans(redditMonitors, step);
+
     let totalResults = 0;
     const monitorResults: Record<string, number> = {};
-
-    // Calculate stagger window based on number of monitors
-    const staggerWindow = getStaggerWindow("reddit");
 
     for (let i = 0; i < redditMonitors.length; i++) {
       const monitor = redditMonitors[i];
 
-      // Stagger execution to prevent thundering herd
-      if (i > 0 && redditMonitors.length > 3) {
-        const baseDelay = calculateStaggerDelay(i, redditMonitors.length, staggerWindow);
-        const delayWithJitter = addJitter(baseDelay, 10);
-        const delayStr = formatStaggerDuration(delayWithJitter);
-        await step.sleep(`stagger-${monitor.id}`, delayStr);
-      }
-
-      // Check if user has access to Reddit platform
-      const access = await canAccessPlatform(monitor.userId, "reddit");
-      if (!access.hasAccess) {
-        continue; // Skip monitors for users without platform access
-      }
-
-      // Check refresh delay for free tier users
-      const scheduleCheck = await shouldProcessMonitor(monitor.userId, monitor.lastCheckedAt);
-      if (!scheduleCheck.shouldProcess) {
-        continue; // Skip monitors that are within refresh delay period
-      }
-
-      // Check if monitor is within its active schedule (if scheduling is enabled)
-      if (!isMonitorScheduleActive(monitor)) {
-        continue; // Skip monitors outside their scheduled active hours
-      }
+      await applyStagger(i, redditMonitors.length, "reddit", monitor.id, step);
+      if (shouldSkipMonitor(monitor, planMap, "reddit")) continue;
 
       let monitorMatchCount = 0;
       const newResultIds: string[] = [];
@@ -75,7 +52,7 @@ export const monitorReddit = inngest.createFunction(
       const subreddits = await step.run(`get-subreddits-${monitor.id}`, async () => {
         // First, check for user-defined audience
         if (monitor.audienceId) {
-          const audience = await db.query.audiences.findFirst({
+          const audience = await pooledDb.query.audiences.findFirst({
             where: eq(monitors.id, monitor.audienceId),
             with: { communities: true },
           });
@@ -110,7 +87,7 @@ export const monitorReddit = inngest.createFunction(
       });
 
       for (const subreddit of subreddits) {
-        // Use resilient Reddit search (Serper → Apify → Public JSON) with caching
+        // Use resilient Reddit search (Serper -> Apify -> Public JSON) with caching
         const searchResult = await step.run(`fetch-${monitor.id}-${subreddit}`, async () => {
           return searchRedditResilient(subreddit, monitor.keywords, 50);
         });
@@ -140,89 +117,42 @@ export const monitorReddit = inngest.createFunction(
           return matchResult.matches;
         });
 
-        // Save matching posts as results
+        // Save matching posts as results (batch operation)
         if (matchingPosts.length > 0) {
-          await step.run(`save-results-${monitor.id}-${subreddit}`, async () => {
-            for (const post of matchingPosts) {
-              // Build source URL
-              const sourceUrl = post.url || `https://reddit.com${post.permalink}`;
-
-              // Check if we already have this result
-              const existing = await db.query.results.findFirst({
-                where: eq(results.sourceUrl, sourceUrl),
-              });
-
-              if (!existing) {
-                const [newResult] = await db.insert(results).values({
-                  monitorId: monitor.id,
-                  platform: "reddit",
-                  sourceUrl,
-                  title: post.title,
-                  content: post.selftext,
-                  author: post.author,
-                  postedAt: new Date(post.created_utc * 1000),
-                  metadata: {
-                    subreddit: post.subreddit,
-                    score: post.score,
-                    numComments: post.num_comments,
-                  },
-                }).returning();
-
-                totalResults++;
-                monitorMatchCount++;
-                newResultIds.push(newResult.id);
-
-                // Increment usage count for the user
-                await incrementResultsCount(monitor.userId, 1);
-              }
-            }
+          const { count, ids } = await saveNewResults({
+            items: matchingPosts,
+            monitorId: monitor.id,
+            userId: monitor.userId,
+            getSourceUrl: (post) => post.url || `https://reddit.com${post.permalink}`,
+            mapToResult: (post) => ({
+              monitorId: monitor.id,
+              platform: "reddit" as const,
+              sourceUrl: post.url || `https://reddit.com${post.permalink}`,
+              title: post.title,
+              content: post.selftext,
+              author: post.author,
+              postedAt: new Date(post.created_utc * 1000),
+              metadata: {
+                subreddit: post.subreddit,
+                score: post.score,
+                numComments: post.num_comments,
+              },
+            }),
+            step,
+            stepSuffix: subreddit,
           });
+
+          totalResults += count;
+          monitorMatchCount += count;
+          newResultIds.push(...ids);
         }
       }
 
-      // Trigger AI analysis - batch mode for large volumes, individual for small
-      if (newResultIds.length > 0) {
-        await step.run(`trigger-analysis-${monitor.id}`, async () => {
-          if (newResultIds.length > AI_BATCH_CONFIG.BATCH_THRESHOLD) {
-            // Batch mode for cost efficiency (>50 results)
-            await inngest.send({
-              name: "content/analyze-batch",
-              data: {
-                monitorId: monitor.id,
-                userId: monitor.userId,
-                platform: "reddit",
-                resultIds: newResultIds,
-                totalCount: newResultIds.length,
-              },
-            });
-          } else {
-            // Individual analysis for small volumes
-            for (const resultId of newResultIds) {
-              await inngest.send({
-                name: "content/analyze",
-                data: {
-                  resultId,
-                  userId: monitor.userId,
-                },
-              });
-            }
-          }
-        });
-      }
+      // Trigger AI analysis ONCE with all accumulated newResultIds across subreddits
+      await triggerAiAnalysis(newResultIds, monitor.id, monitor.userId, "reddit", step);
 
-      // Update monitor stats
       monitorResults[monitor.id] = monitorMatchCount;
-
-      await step.run(`update-monitor-stats-${monitor.id}`, async () => {
-        await db
-          .update(monitors)
-          .set({
-            lastCheckedAt: new Date(),
-            newMatchCount: monitorMatchCount,
-            updatedAt: new Date(),
-          })
-          .where(eq(monitors.id, monitor.id));
-      });
+      await updateMonitorStats(monitor.id, monitorMatchCount, step);
     }
 
     return {

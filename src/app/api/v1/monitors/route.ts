@@ -3,6 +3,7 @@ import { withApiAuth } from "@/lib/api-auth";
 import { db } from "@/lib/db";
 import { monitors } from "@/lib/db/schema";
 import { eq, desc, count } from "drizzle-orm";
+import { Platform, ALL_PLATFORMS } from "@/lib/plans";
 
 export const dynamic = "force-dynamic";
 
@@ -106,15 +107,8 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // 16 total platforms
-      const validPlatforms = [
-        "reddit", "hackernews", "producthunt", "devto",
-        "googlereviews", "trustpilot", "appstore", "playstore",
-        "quora", "youtube", "g2", "yelp", "amazonreviews",
-        "indiehackers", "github", "hashnode"
-      ];
-
-      const invalidPlatforms = platformsList.filter(p => !validPlatforms.includes(p));
+      // Validate platforms against canonical list from plans.ts
+      const invalidPlatforms = platformsList.filter(p => !ALL_PLATFORMS.includes(p as Platform));
       if (invalidPlatforms.length > 0) {
         return NextResponse.json(
           { error: `Invalid platforms: ${invalidPlatforms.join(", ")}` },

@@ -1,20 +1,9 @@
 import Link from "next/link";
 import Image from "next/image";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Bell,
   Zap,
-  Shield,
-  Globe,
-  MessageSquare,
-  TrendingUp,
-  Target,
-  BarChart3,
-  Activity,
-  Star,
-  Smartphone,
-  HelpCircle,
   Download,
 } from "lucide-react";
 
@@ -23,12 +12,13 @@ import { MarketingFooter } from "@/components/shared/marketing-footer";
 import {
   HomeAnimations,
   AnimatedSection,
-  StaggerContainer,
-  StaggerItem,
   AnimatedBadge,
   AnimatedStepCard,
   TextReveal,
 } from "@/components/shared/home-animations-lazy";
+import { HeroDashboard } from "@/components/landing/hero-dashboard";
+import { FeatureTabs } from "@/components/landing/feature-tabs";
+import { PlatformLogo } from "@/components/landing/platform-logos";
 import { PWAInstallButton } from "@/components/shared/pwa-install-button";
 
 // Static generation - revalidate every hour
@@ -105,6 +95,10 @@ export default function HomePage() {
             <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center animate-fade-up px-4 sm:px-0" style={{ animationDelay: "0.3s" }}>
               <HeroCTA />
             </div>
+
+            <div className="mt-12 md:mt-16 lg:mt-20 px-4">
+              <HeroDashboard />
+            </div>
           </div>
         </section>
 
@@ -112,51 +106,63 @@ export default function HomePage() {
         <AnimatedSection className="py-12 md:py-16 px-4 border-y bg-muted/30">
           <div className="container mx-auto text-center">
             <TextReveal>
-              <p className="text-xs md:text-sm text-muted-foreground mb-6 md:mb-8">Monitor conversations across 12 major platforms</p>
+              <p className="text-xs md:text-sm text-muted-foreground mb-6 md:mb-8">Monitor conversations across 16 major platforms</p>
             </TextReveal>
-            {/* Row 1: 5 platforms */}
+            {/* Row 1: 6 platforms */}
             <div className="flex flex-wrap justify-center gap-6 md:gap-10 items-center mb-6">
               <AnimatedBadge delay={0}>
-                <PlatformBadge icon={MessageSquare} name="Reddit" color="text-orange-500" />
+                <PlatformBadgeItem platform="reddit" name="Reddit" color="text-orange-500" />
               </AnimatedBadge>
               <AnimatedBadge delay={0.05}>
-                <PlatformBadge icon={TrendingUp} name="Hacker News" color="text-amber-500" />
+                <PlatformBadgeItem platform="hackernews" name="Hacker News" color="text-amber-500" />
               </AnimatedBadge>
               <AnimatedBadge delay={0.1}>
-                <PlatformBadge icon={Globe} name="Product Hunt" color="text-red-500" />
+                <PlatformBadgeItem platform="producthunt" name="Product Hunt" color="text-red-500" />
               </AnimatedBadge>
               <AnimatedBadge delay={0.15}>
-                <PlatformBadge icon={Star} name="Google Reviews" color="text-blue-500" />
+                <PlatformBadgeItem platform="googlereviews" name="Google Reviews" color="text-blue-500" />
               </AnimatedBadge>
               <AnimatedBadge delay={0.2}>
-                <PlatformBadge icon={Star} name="Trustpilot" color="text-emerald-500" />
+                <PlatformBadgeItem platform="trustpilot" name="Trustpilot" color="text-emerald-500" />
+              </AnimatedBadge>
+              <AnimatedBadge delay={0.25}>
+                <PlatformBadgeItem platform="youtube" name="YouTube" color="text-red-500" />
               </AnimatedBadge>
             </div>
-            {/* Row 2: 4 platforms */}
-            <div className="flex flex-wrap justify-center gap-6 md:gap-10 items-center">
-              <AnimatedBadge delay={0.25}>
-                <PlatformBadge icon={Smartphone} name="App Store" color="text-pink-500" />
-              </AnimatedBadge>
+            {/* Row 2: 5 platforms */}
+            <div className="flex flex-wrap justify-center gap-6 md:gap-10 items-center mb-6">
               <AnimatedBadge delay={0.3}>
-                <PlatformBadge icon={Smartphone} name="Play Store" color="text-green-500" />
+                <PlatformBadgeItem platform="github" name="GitHub" color="text-gray-300" />
               </AnimatedBadge>
               <AnimatedBadge delay={0.35}>
-                <PlatformBadge icon={HelpCircle} name="Quora" color="text-red-600" />
+                <PlatformBadgeItem platform="indiehackers" name="Indie Hackers" color="text-blue-500" />
               </AnimatedBadge>
               <AnimatedBadge delay={0.4}>
-                <PlatformBadge icon={Activity} name="YouTube" color="text-red-500" />
+                <PlatformBadgeItem platform="devto" name="Dev.to" color="text-violet-400" />
               </AnimatedBadge>
-            </div>
-            {/* Row 3: 3 new platforms */}
-            <div className="flex flex-wrap justify-center gap-6 md:gap-10 items-center mt-6">
               <AnimatedBadge delay={0.45}>
-                <PlatformBadge icon={Star} name="G2" color="text-orange-600" />
+                <PlatformBadgeItem platform="hashnode" name="Hashnode" color="text-blue-500" />
               </AnimatedBadge>
               <AnimatedBadge delay={0.5}>
-                <PlatformBadge icon={Star} name="Yelp" color="text-red-600" />
+                <PlatformBadgeItem platform="quora" name="Quora" color="text-red-600" />
               </AnimatedBadge>
+            </div>
+            {/* Row 3: 5 platforms */}
+            <div className="flex flex-wrap justify-center gap-6 md:gap-10 items-center">
               <AnimatedBadge delay={0.55}>
-                <PlatformBadge icon={Download} name="Amazon" color="text-amber-600" />
+                <PlatformBadgeItem platform="appstore" name="App Store" color="text-pink-500" />
+              </AnimatedBadge>
+              <AnimatedBadge delay={0.6}>
+                <PlatformBadgeItem platform="playstore" name="Play Store" color="text-green-500" />
+              </AnimatedBadge>
+              <AnimatedBadge delay={0.65}>
+                <PlatformBadgeItem platform="g2" name="G2" color="text-orange-600" />
+              </AnimatedBadge>
+              <AnimatedBadge delay={0.7}>
+                <PlatformBadgeItem platform="yelp" name="Yelp" color="text-red-600" />
+              </AnimatedBadge>
+              <AnimatedBadge delay={0.75}>
+                <PlatformBadgeItem platform="amazon" name="Amazon" color="text-amber-600" />
               </AnimatedBadge>
             </div>
           </div>
@@ -181,50 +187,7 @@ export default function HomePage() {
               </TextReveal>
             </div>
 
-            <StaggerContainer className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6" staggerDelay={0.08}>
-              <StaggerItem>
-                <FeatureCard
-                  icon={Target}
-                  title="Keyword Tracking"
-                  description="Monitor any keyword, phrase, or brand name across Reddit, Hacker News, and review sites."
-                />
-              </StaggerItem>
-              <StaggerItem>
-                <FeatureCard
-                  icon={Activity}
-                  title="AI-Powered Analysis"
-                  description="Automatic sentiment scoring and pain point detection to surface what matters most."
-                />
-              </StaggerItem>
-              <StaggerItem>
-                <FeatureCard
-                  icon={Bell}
-                  title="Email Alerts"
-                  description="Get daily or weekly digests delivered to your inbox when new mentions are found."
-                />
-              </StaggerItem>
-              <StaggerItem>
-                <FeatureCard
-                  icon={BarChart3}
-                  title="Analytics Dashboard"
-                  description="Visualize trends, sentiment over time, and engagement metrics at a glance."
-                />
-              </StaggerItem>
-              <StaggerItem>
-                <FeatureCard
-                  icon={Globe}
-                  title="Multi-Platform"
-                  description="One dashboard for Reddit, Hacker News, Product Hunt, app stores, and review sites."
-                />
-              </StaggerItem>
-              <StaggerItem>
-                <FeatureCard
-                  icon={Shield}
-                  title="Brand Protection"
-                  description="Stay ahead of negative sentiment and respond to mentions before they escalate."
-                />
-              </StaggerItem>
-            </StaggerContainer>
+            <FeatureTabs />
           </div>
         </AnimatedSection>
 
@@ -324,44 +287,22 @@ export default function HomePage() {
   );
 }
 
-function PlatformBadge({
-  icon: Icon,
+function PlatformBadgeItem({
+  platform,
   name,
   color,
 }: {
-  icon: React.ElementType;
+  platform: string;
   name: string;
   color: string;
 }) {
   return (
     <div className="flex items-center gap-2 hover-scale cursor-default">
-      <Icon className={`h-6 w-6 ${color}`} />
+      <span className={color}>
+        <PlatformLogo platform={platform} className="h-6 w-6" />
+      </span>
       <span className="font-semibold text-foreground">{name}</span>
     </div>
-  );
-}
-
-function FeatureCard({
-  icon: Icon,
-  title,
-  description,
-}: {
-  icon: React.ElementType;
-  title: string;
-  description: string;
-}) {
-  return (
-    <Card className="group relative overflow-hidden border-border/40 bg-card/50 backdrop-blur-sm hover:border-primary/40 transition-all duration-500 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-1">
-      <CardHeader className="space-y-4">
-        <div className="h-11 w-11 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors duration-300">
-          <Icon className="h-5 w-5 text-primary" />
-        </div>
-        <div className="space-y-2">
-          <CardTitle className="font-serif text-lg font-normal tracking-wide">{title}</CardTitle>
-          <CardDescription className="text-sm leading-relaxed text-muted-foreground/80">{description}</CardDescription>
-        </div>
-      </CardHeader>
-    </Card>
   );
 }
 
