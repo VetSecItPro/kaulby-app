@@ -1,11 +1,15 @@
 import { inngest } from "../client";
-import { db } from "@/lib/db";
-import { monitors, results } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
-import { incrementResultsCount, canAccessPlatform, shouldProcessMonitor } from "@/lib/limits";
 import { fetchGoogleReviews, isApifyConfigured, type GoogleReviewItem } from "@/lib/apify";
-import { isMonitorScheduleActive } from "@/lib/monitor-schedule";
-import { AI_BATCH_CONFIG } from "@/lib/ai/sampling";
+import {
+  getActiveMonitors,
+  prefetchPlans,
+  shouldSkipMonitor,
+  applyStagger,
+  saveNewResults,
+  triggerAiAnalysis,
+  updateMonitorStats,
+  type MonitorStep,
+} from "../utils/monitor-helpers";
 
 /**
  * Monitor Google Reviews for businesses
@@ -24,63 +28,39 @@ export const monitorGoogleReviews = inngest.createFunction(
     id: "monitor-googlereviews",
     name: "Monitor Google Reviews",
     retries: 2,
+    timeouts: { finish: "14m" },
+    concurrency: { limit: 5 },
   },
   { cron: "0 * * * *" }, // Every hour
-  async ({ step }) => {
-    // Check if Apify is configured
+  async ({ step: _step }) => {
+    const step = _step as unknown as MonitorStep;
+
     if (!isApifyConfigured()) {
       return { message: "Apify API key not configured, skipping Google Reviews monitoring" };
     }
 
-    // Get all active monitors that include Google Reviews
-    const activeMonitors = await step.run("get-monitors", async () => {
-      return db.query.monitors.findMany({
-        where: eq(monitors.isActive, true),
-      });
-    });
-
-    const googleMonitors = activeMonitors.filter((m) =>
-      m.platforms.includes("googlereviews")
-    );
-
+    const googleMonitors = await getActiveMonitors("googlereviews", step);
     if (googleMonitors.length === 0) {
       return { message: "No active Google Reviews monitors" };
     }
 
+    const planMap = await prefetchPlans(googleMonitors, step);
+
     let totalResults = 0;
     const monitorResults: Record<string, number> = {};
 
-    for (const monitor of googleMonitors) {
-      // Check if user has access to Google Reviews platform
-      const access = await canAccessPlatform(monitor.userId, "googlereviews");
-      if (!access.hasAccess) {
-        continue;
-      }
+    for (let i = 0; i < googleMonitors.length; i++) {
+      const monitor = googleMonitors[i];
 
-      // Check refresh delay for free tier users
-      const scheduleCheck = await shouldProcessMonitor(monitor.userId, monitor.lastCheckedAt);
-      if (!scheduleCheck.shouldProcess) {
-        continue;
-      }
+      await applyStagger(i, googleMonitors.length, "googlereviews", monitor.id, step);
+      if (shouldSkipMonitor(monitor, planMap, "googlereviews")) continue;
 
-      // Check if monitor is within its active schedule
-      if (!isMonitorScheduleActive(monitor)) {
-        continue;
-      }
-
-      let monitorMatchCount = 0;
-      const newResultIds: string[] = [];
-
-      // For Google Reviews, check platformUrls first, then fall back to keywords/companyName
+      // Get business URL from platformUrls, keywords, or companyName
       let businessUrl: string | null = null;
-
-      // Check platformUrls (new field)
       const platformUrls = monitor.platformUrls as Record<string, string> | null;
       if (platformUrls?.googlereviews) {
         businessUrl = platformUrls.googlereviews;
-      }
-      // Fallback: Check keywords for Google URLs
-      else if (monitor.keywords && monitor.keywords.length > 0) {
+      } else if (monitor.keywords && monitor.keywords.length > 0) {
         const googleUrl = monitor.keywords.find(
           (k) => k.includes("google") || k.includes("maps") || k.startsWith("ChI")
         );
@@ -88,105 +68,49 @@ export const monitorGoogleReviews = inngest.createFunction(
       }
       // Fallback: Use companyName as search term
       if (!businessUrl && monitor.companyName) {
-        // For business name searches, use a Google Maps search URL
         businessUrl = `https://www.google.com/maps/search/${encodeURIComponent(monitor.companyName)}`;
       }
+      if (!businessUrl) continue;
 
-      if (!businessUrl) {
-        continue; // No valid business identifier
-      }
-
-      // Process single business URL
+      // Fetch reviews (platform-specific)
       const reviews = await step.run(`fetch-reviews-${monitor.id}-${businessUrl.slice(0, 20)}`, async () => {
         try {
-          const fetchedReviews = await fetchGoogleReviews(businessUrl!, 20);
-          return fetchedReviews;
+          return await fetchGoogleReviews(businessUrl!, 20);
         } catch (error) {
           console.error(`Error fetching Google Reviews for ${businessUrl}:`, error);
           return [] as GoogleReviewItem[];
         }
       });
 
-      // Save reviews as results
-      if (reviews.length > 0) {
-        await step.run(`save-results-${monitor.id}-${businessUrl.slice(0, 20)}`, async () => {
-            for (const review of reviews) {
-              // Check if we already have this result
-              const existing = await db.query.results.findFirst({
-                where: eq(results.sourceUrl, review.reviewUrl || `google-review-${review.reviewId}`),
-              });
-
-              if (!existing) {
-                const [newResult] = await db.insert(results).values({
-                  monitorId: monitor.id,
-                  platform: "googlereviews",
-                  sourceUrl: review.reviewUrl || `google-review-${review.reviewId}`,
-                  title: `${review.stars}-star review from ${review.name}`,
-                  content: review.text,
-                  author: review.name,
-                  postedAt: review.publishedAtDate ? new Date(review.publishedAtDate) : new Date(),
-                  metadata: {
-                    reviewId: review.reviewId,
-                    rating: review.stars,
-                    reviewerUrl: review.reviewerUrl,
-                    placeId: review.placeId,
-                  },
-                }).returning();
-
-                totalResults++;
-                monitorMatchCount++;
-                newResultIds.push(newResult.id);
-
-                // Increment usage count for the user
-                await incrementResultsCount(monitor.userId, 1);
-              }
-            }
-          });
-        }
-
-      // Trigger AI analysis - batch mode for large volumes, individual for small
-      if (newResultIds.length > 0) {
-        await step.run(`trigger-analysis-${monitor.id}`, async () => {
-          if (newResultIds.length > AI_BATCH_CONFIG.BATCH_THRESHOLD) {
-            // Batch mode for cost efficiency (>50 results)
-            await inngest.send({
-              name: "content/analyze-batch",
-              data: {
-                monitorId: monitor.id,
-                userId: monitor.userId,
-                platform: "googlereviews",
-                resultIds: newResultIds,
-                totalCount: newResultIds.length,
-              },
-            });
-          } else {
-            // Individual analysis for small volumes
-            for (const resultId of newResultIds) {
-              await inngest.send({
-                name: "content/analyze",
-                data: {
-                  resultId,
-                  userId: monitor.userId,
-                },
-              });
-            }
-          }
-        });
-      }
-
-      // Update monitor stats
-      monitorResults[monitor.id] = monitorMatchCount;
-
-      await step.run(`update-monitor-stats-${monitor.id}`, async () => {
-        await db
-          .update(monitors)
-          .set({
-            lastCheckedAt: new Date(),
-            newMatchCount: monitorMatchCount,
-            updatedAt: new Date(),
-          })
-          .where(eq(monitors.id, monitor.id));
+      // Save new results
+      const { count, ids: newResultIds } = await saveNewResults<GoogleReviewItem>({
+        items: reviews,
+        monitorId: monitor.id,
+        userId: monitor.userId,
+        getSourceUrl: (r) => r.reviewUrl || `google-review-${r.reviewId}`,
+        mapToResult: (r) => ({
+          monitorId: monitor.id,
+          platform: "googlereviews" as const,
+          sourceUrl: r.reviewUrl || `google-review-${r.reviewId}`,
+          title: `${r.stars}-star review from ${r.name}`,
+          content: r.text,
+          author: r.name,
+          postedAt: r.publishedAtDate ? new Date(r.publishedAtDate) : new Date(),
+          metadata: {
+            reviewId: r.reviewId,
+            rating: r.stars,
+            reviewerUrl: r.reviewerUrl,
+            placeId: r.placeId,
+          },
+        }),
+        step,
       });
+
+      totalResults += count;
+      await triggerAiAnalysis(newResultIds, monitor.id, monitor.userId, "googlereviews", step);
+
+      monitorResults[monitor.id] = count;
+      await updateMonitorStats(monitor.id, count, step);
     }
 
     return {

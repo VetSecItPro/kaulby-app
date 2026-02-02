@@ -11,8 +11,10 @@ import {
   filterAllowedPlatforms,
   getUpgradePrompt,
 } from "@/lib/limits";
-import { Platform } from "@/lib/plans";
+import { Platform, ALL_PLATFORMS } from "@/lib/plans";
+import { sanitizeMonitorInput, isValidKeyword } from "@/lib/security";
 import { captureEvent } from "@/lib/posthog";
+import { logError } from "@/lib/error-logger";
 
 export const dynamic = "force-dynamic";
 
@@ -44,28 +46,6 @@ async function ensureDevUserExists(userId: string): Promise<void> {
     name,
     subscriptionStatus: "enterprise", // Give full access in dev mode
   }).onConflictDoNothing();
-}
-
-// Sanitize user input to prevent XSS and injection attacks
-function sanitizeInput(input: string): string {
-  return input
-    .trim()
-    // Remove HTML tags
-    .replace(/<[^>]*>/g, "")
-    // Remove script injection attempts
-    .replace(/javascript:/gi, "")
-    .replace(/on\w+=/gi, "")
-    // Remove null bytes
-    .replace(/\0/g, "")
-    // Limit length to 100 characters
-    .slice(0, 100);
-}
-
-// Validate keyword format
-function isValidKeyword(keyword: string): boolean {
-  const sanitized = sanitizeInput(keyword);
-  // Must be 1-100 chars, no empty after sanitization
-  return sanitized.length >= 1 && sanitized.length <= 100;
 }
 
 export async function POST(request: Request) {
@@ -115,7 +95,7 @@ export async function POST(request: Request) {
     // Keywords are now optional - sanitize if provided
     const sanitizedKeywords = Array.isArray(keywords)
       ? keywords
-          .map((k: string) => (typeof k === "string" ? sanitizeInput(k) : ""))
+          .map((k: string) => (typeof k === "string" ? sanitizeMonitorInput(k) : ""))
           .filter((k) => isValidKeyword(k))
       : [];
 
@@ -123,14 +103,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "At least one platform is required" }, { status: 400 });
     }
 
-    // Validate platforms (16 total platforms)
-    const validPlatforms = [
-      "reddit", "hackernews", "producthunt", "devto",
-      "googlereviews", "trustpilot", "appstore", "playstore",
-      "quora", "youtube", "g2", "yelp", "amazonreviews",
-      "indiehackers", "github", "hashnode"
-    ];
-    const invalidPlatforms = platforms.filter((p: string) => !validPlatforms.includes(p));
+    // Validate platforms against canonical list from plans.ts
+    const invalidPlatforms = platforms.filter((p: string) => !ALL_PLATFORMS.includes(p as Platform));
     if (invalidPlatforms.length > 0) {
       return NextResponse.json({ error: `Invalid platforms: ${invalidPlatforms.join(", ")}` }, { status: 400 });
     }
@@ -174,7 +148,7 @@ export async function POST(request: Request) {
     const allowedPlatforms = await filterAllowedPlatforms(userId, platforms as Platform[]);
 
     if (allowedPlatforms.length === 0) {
-      const prompt = getUpgradePrompt(plan, "platform", platforms[0]);
+      const prompt = getUpgradePrompt(plan, "platform", { platformName: platforms[0] });
       return NextResponse.json(
         {
           error: `Your plan doesn't have access to ${platforms.join(", ")}. ${prompt.description}`,
@@ -201,7 +175,6 @@ export async function POST(request: Request) {
           const trimmedUrl = url.trim();
           if (
             trimmedUrl.startsWith("https://") ||
-            trimmedUrl.startsWith("http://") ||
             trimmedUrl.startsWith("ChI") // Google Place ID
           ) {
             sanitizedPlatformUrls[platform] = trimmedUrl.slice(0, 500); // Max 500 chars
@@ -215,8 +188,8 @@ export async function POST(request: Request) {
       .insert(monitors)
       .values({
         userId,
-        name: sanitizeInput(name),
-        companyName: sanitizeInput(companyName),
+        name: sanitizeMonitorInput(name),
+        companyName: sanitizeMonitorInput(companyName),
         monitorType: sanitizedMonitorType,
         keywords: sanitizedMonitorType === "keyword" ? sanitizedKeywords : [],
         searchQuery: sanitizedMonitorType === "keyword" ? sanitizedSearchQuery : null,
@@ -266,6 +239,7 @@ export async function POST(request: Request) {
     }, { status: 201 });
   } catch (error) {
     console.error("Error creating monitor:", error);
+    logError({ source: "api", message: "Failed to create monitor", error, endpoint: "POST /api/monitors" });
     return NextResponse.json({ error: "Failed to create monitor" }, { status: 500 });
   }
 }

@@ -1,11 +1,15 @@
 import { inngest } from "../client";
-import { db } from "@/lib/db";
-import { monitors, results } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
-import { incrementResultsCount, canAccessPlatform, shouldProcessMonitor } from "@/lib/limits";
 import { fetchQuoraAnswers, isApifyConfigured, type QuoraAnswerItem } from "@/lib/apify";
-import { isMonitorScheduleActive } from "@/lib/monitor-schedule";
-import { AI_BATCH_CONFIG } from "@/lib/ai/sampling";
+import {
+  getActiveMonitors,
+  prefetchPlans,
+  shouldSkipMonitor,
+  applyStagger,
+  saveNewResults,
+  triggerAiAnalysis,
+  updateMonitorStats,
+  type MonitorStep,
+} from "../utils/monitor-helpers";
 
 /**
  * Monitor Quora for Q&A discussions matching keywords
@@ -13,157 +17,94 @@ import { AI_BATCH_CONFIG } from "@/lib/ai/sampling";
  * Searches Quora for questions and answers containing the monitor's keywords.
  * Great for finding pain points, solution requests, and product discussions.
  *
- * Runs every 4 hours - Quora has frequent discussions worth monitoring
+ * Runs every hour - shouldProcessMonitor() handles tier-based delays:
+ * - Team: every 2 hours
+ * - Pro: every 4 hours
+ * - Free: every 24 hours (but Quora is Team only)
  */
 export const monitorQuora = inngest.createFunction(
   {
     id: "monitor-quora",
     name: "Monitor Quora",
     retries: 2,
+    timeouts: { finish: "14m" },
+    concurrency: { limit: 5 },
   },
   { cron: "0 * * * *" }, // Every hour (tier-based delays apply)
-  async ({ step }) => {
-    // Check if Apify is configured
+  async ({ step: _step }) => {
+    const step = _step as unknown as MonitorStep;
+
     if (!isApifyConfigured()) {
       return { message: "Apify API key not configured, skipping Quora monitoring" };
     }
 
-    // Get all active monitors that include Quora
-    const activeMonitors = await step.run("get-monitors", async () => {
-      return db.query.monitors.findMany({
-        where: eq(monitors.isActive, true),
-      });
-    });
-
-    const quoraMonitors = activeMonitors.filter((m) =>
-      m.platforms.includes("quora")
-    );
-
+    const quoraMonitors = await getActiveMonitors("quora", step);
     if (quoraMonitors.length === 0) {
       return { message: "No active Quora monitors" };
     }
 
+    const planMap = await prefetchPlans(quoraMonitors, step);
+
     let totalResults = 0;
     const monitorResults: Record<string, number> = {};
 
-    for (const monitor of quoraMonitors) {
-      // Check if user has access to Quora platform
-      const access = await canAccessPlatform(monitor.userId, "quora");
-      if (!access.hasAccess) {
-        continue;
-      }
+    for (let i = 0; i < quoraMonitors.length; i++) {
+      const monitor = quoraMonitors[i];
 
-      // Check refresh delay for free tier users
-      const scheduleCheck = await shouldProcessMonitor(monitor.userId, monitor.lastCheckedAt);
-      if (!scheduleCheck.shouldProcess) {
-        continue;
-      }
+      await applyStagger(i, quoraMonitors.length, "quora", monitor.id, step);
+      if (shouldSkipMonitor(monitor, planMap, "quora")) continue;
 
-      // Check if monitor is within its active schedule
-      if (!isMonitorScheduleActive(monitor)) {
-        continue;
-      }
-
-      let monitorMatchCount = 0;
-      const newResultIds: string[] = [];
+      let monitorCount = 0;
+      let allNewResultIds: string[] = [];
 
       // For Quora, keywords are search queries to find relevant discussions
       for (const keyword of monitor.keywords) {
+        // Fetch answers (platform-specific)
         const answers = await step.run(`fetch-quora-${monitor.id}-${keyword.slice(0, 20)}`, async () => {
           try {
-            const fetchedAnswers = await fetchQuoraAnswers(keyword, 15);
-            return fetchedAnswers;
+            return await fetchQuoraAnswers(keyword, 15);
           } catch (error) {
             console.error(`Error fetching Quora answers for "${keyword}":`, error);
             return [] as QuoraAnswerItem[];
           }
         });
 
-        // Save answers as results
-        if (answers.length > 0) {
-          await step.run(`save-results-${monitor.id}-${keyword.slice(0, 20)}`, async () => {
-            for (const answer of answers) {
-              // Generate a unique URL for deduplication
-              const answerUrl = answer.answerUrl || answer.questionUrl || `quora-${answer.questionId}-${answer.answerId || "q"}`;
-
-              // Check if we already have this result
-              const existing = await db.query.results.findFirst({
-                where: eq(results.sourceUrl, answerUrl),
-              });
-
-              if (!existing) {
-                const [newResult] = await db.insert(results).values({
-                  monitorId: monitor.id,
-                  platform: "quora",
-                  sourceUrl: answerUrl,
-                  title: answer.questionTitle,
-                  content: answer.answerText,
-                  author: answer.answerAuthor,
-                  postedAt: answer.answerDate ? new Date(answer.answerDate) : new Date(),
-                  metadata: {
-                    quoraQuestionId: answer.questionId,
-                    quoraAnswerId: answer.answerId,
-                    upvotes: answer.upvotes,
-                    views: answer.views,
-                    questionUrl: answer.questionUrl,
-                  },
-                }).returning();
-
-                totalResults++;
-                monitorMatchCount++;
-                newResultIds.push(newResult.id);
-
-                // Increment usage count for the user
-                await incrementResultsCount(monitor.userId, 1);
-              }
-            }
-          });
-        }
-      }
-
-      // Trigger AI analysis - batch mode for large volumes, individual for small
-      if (newResultIds.length > 0) {
-        await step.run(`trigger-analysis-${monitor.id}`, async () => {
-          if (newResultIds.length > AI_BATCH_CONFIG.BATCH_THRESHOLD) {
-            // Batch mode for cost efficiency (>50 results)
-            await inngest.send({
-              name: "content/analyze-batch",
-              data: {
-                monitorId: monitor.id,
-                userId: monitor.userId,
-                platform: "quora",
-                resultIds: newResultIds,
-                totalCount: newResultIds.length,
-              },
-            });
-          } else {
-            // Individual analysis for small volumes
-            for (const resultId of newResultIds) {
-              await inngest.send({
-                name: "content/analyze",
-                data: {
-                  resultId,
-                  userId: monitor.userId,
-                },
-              });
-            }
-          }
+        // Save new results per keyword
+        const { count, ids: newResultIds } = await saveNewResults<QuoraAnswerItem>({
+          items: answers,
+          monitorId: monitor.id,
+          userId: monitor.userId,
+          getSourceUrl: (a) =>
+            a.answerUrl || a.questionUrl || `quora-${a.questionId}-${a.answerId || "q"}`,
+          mapToResult: (a) => ({
+            monitorId: monitor.id,
+            platform: "quora" as const,
+            sourceUrl: a.answerUrl || a.questionUrl || `quora-${a.questionId}-${a.answerId || "q"}`,
+            title: a.questionTitle,
+            content: a.answerText,
+            author: a.answerAuthor,
+            postedAt: a.answerDate ? new Date(a.answerDate) : new Date(),
+            metadata: {
+              quoraQuestionId: a.questionId,
+              quoraAnswerId: a.answerId,
+              upvotes: a.upvotes,
+              views: a.views,
+              questionUrl: a.questionUrl,
+            },
+          }),
+          step,
+          stepSuffix: keyword.slice(0, 20),
         });
+
+        monitorCount += count;
+        allNewResultIds = allNewResultIds.concat(newResultIds);
       }
 
-      // Update monitor stats
-      monitorResults[monitor.id] = monitorMatchCount;
+      totalResults += monitorCount;
+      await triggerAiAnalysis(allNewResultIds, monitor.id, monitor.userId, "quora", step);
 
-      await step.run(`update-monitor-stats-${monitor.id}`, async () => {
-        await db
-          .update(monitors)
-          .set({
-            lastCheckedAt: new Date(),
-            newMatchCount: monitorMatchCount,
-            updatedAt: new Date(),
-          })
-          .where(eq(monitors.id, monitor.id));
-      });
+      monitorResults[monitor.id] = monitorCount;
+      await updateMonitorStats(monitor.id, monitorCount, step);
     }
 
     return {

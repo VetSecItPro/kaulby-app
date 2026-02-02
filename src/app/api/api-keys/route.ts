@@ -2,6 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { createApiKey, listApiKeys, revokeApiKey } from "@/lib/api-auth";
 import { findUserWithFallback } from "@/lib/auth-utils";
+import { logError } from "@/lib/error-logger";
 
 export const dynamic = "force-dynamic";
 
@@ -69,12 +70,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Calculate expiration date if provided
-    let expiresAt: Date | undefined;
-    if (expiresInDays && typeof expiresInDays === "number") {
-      expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + expiresInDays);
-    }
+    // Calculate expiration date (default: 365 days, max: 365 days)
+    const MAX_EXPIRY_DAYS = 365;
+    const DEFAULT_EXPIRY_DAYS = 365;
+    const days = (expiresInDays && typeof expiresInDays === "number" && expiresInDays > 0)
+      ? Math.min(expiresInDays, MAX_EXPIRY_DAYS)
+      : DEFAULT_EXPIRY_DAYS;
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + days);
 
     // Use user.id for database operations (handles Clerk ID mismatch)
     const result = await createApiKey(user.id, name, expiresAt);
@@ -85,6 +88,16 @@ export async function POST(request: NextRequest) {
         { status: 403 }
       );
     }
+
+    // Audit log: API key created
+    logError({
+      level: "warning",
+      source: "api",
+      message: `API key created: ${result.prefix}`,
+      userId: user.id,
+      endpoint: "POST /api/api-keys",
+      context: { keyId: result.id, keyPrefix: result.prefix },
+    });
 
     // Return the full key only once - user must save it
     // Include keyInfo for the UI to add to the list
@@ -140,6 +153,16 @@ export async function DELETE(request: NextRequest) {
 
     // Use user.id for database operations (handles Clerk ID mismatch)
     await revokeApiKey(keyId, user.id);
+
+    // Audit log: API key revoked
+    logError({
+      level: "warning",
+      source: "api",
+      message: `API key revoked: ${keyId}`,
+      userId: user.id,
+      endpoint: "DELETE /api/api-keys",
+      context: { keyId },
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

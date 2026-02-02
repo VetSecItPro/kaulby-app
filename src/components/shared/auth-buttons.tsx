@@ -1,21 +1,23 @@
-"use client";
-
 import Link from "next/link";
-import { useAuth } from "@clerk/nextjs";
+import { auth } from "@clerk/nextjs/server";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 
-/**
- * Auth buttons component - displays sign in/up buttons or dashboard link
- * Uses Clerk's useAuth hook to check authentication state
- */
+// Safe auth check — returns null if Clerk secret key is missing (e.g. CI)
+async function getAuthUserId(): Promise<string | null> {
+  try {
+    const { userId } = await auth();
+    return userId;
+  } catch {
+    return null;
+  }
+}
 
-// Navigation auth buttons
-export function AuthButtons() {
-  const { isSignedIn, isLoaded } = useAuth();
+// Navigation auth buttons (server component — no ClerkProvider needed)
+export async function AuthButtons() {
+  const userId = await getAuthUserId();
 
-  // User is signed in - show dashboard link
-  if (isLoaded && isSignedIn) {
+  if (userId) {
     return (
       <Link href="/dashboard">
         <Button>Dashboard</Button>
@@ -23,7 +25,6 @@ export function AuthButtons() {
     );
   }
 
-  // Show auth buttons (works even while Clerk is loading)
   return (
     <>
       <Link href="/sign-in">
@@ -42,11 +43,10 @@ export function AuthButtons() {
 }
 
 // Hero section CTA buttons
-export function HeroCTA() {
-  const { isSignedIn, isLoaded } = useAuth();
+export async function HeroCTA() {
+  const userId = await getAuthUserId();
 
-  // User is signed in - show dashboard link instead of sign-up
-  if (isLoaded && isSignedIn) {
+  if (userId) {
     return (
       <>
         <Link href="/dashboard">
@@ -63,7 +63,6 @@ export function HeroCTA() {
     );
   }
 
-  // Show sign-up buttons (works even while Clerk is loading)
   return (
     <>
       <Link href="/sign-up">
@@ -81,11 +80,10 @@ export function HeroCTA() {
 }
 
 // Bottom CTA section
-export function AuthCTA() {
-  const { isSignedIn, isLoaded } = useAuth();
+export async function AuthCTA() {
+  const userId = await getAuthUserId();
 
-  // User is signed in - show dashboard link
-  if (isLoaded && isSignedIn) {
+  if (userId) {
     return (
       <Link href="/dashboard">
         <Button size="lg" variant="secondary" className="gap-2">
@@ -95,7 +93,6 @@ export function AuthCTA() {
     );
   }
 
-  // Show sign-up button (works even while Clerk is loading)
   return (
     <Link href="/sign-up">
       <Button size="lg" variant="secondary" className="gap-2">

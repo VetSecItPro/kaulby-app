@@ -66,6 +66,10 @@ const nextConfig = {
             key: 'Permissions-Policy',
             value: 'camera=(), microphone=(), geolocation=()',
           },
+          {
+            key: 'Content-Security-Policy-Report-Only',
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://clerk.kaulbyapp.com https://*.clerk.accounts.dev https://challenges.cloudflare.com https://us.i.posthog.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.clerk.com https://img.clerk.com; connect-src 'self' https://*.clerk.accounts.dev https://clerk.kaulbyapp.com https://us.i.posthog.com https://api.polar.sh; frame-src https://challenges.cloudflare.com https://*.clerk.accounts.dev;",
+          },
         ],
       },
     ];
@@ -79,6 +83,7 @@ const nextConfig = {
       '@clerk/nextjs',
       'framer-motion',
       'recharts',
+      '@icons-pack/react-simple-icons',
     ],
   },
 
@@ -95,9 +100,6 @@ const nextConfig = {
 
   // Generate ETags for caching
   generateEtags: true,
-
-  // Optimize font loading
-  optimizeFonts: true,
 
   // Power optimization for faster cold starts
   poweredByHeader: false,

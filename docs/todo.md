@@ -118,7 +118,12 @@ Full admin panel at `/manage` gated to admin accounts only:
 
 Track pre-existing bugs/errors discovered during development here. Fix after current task.
 
-*(None logged yet)*
+1. **errorLogs table never written to (partially fixed)** -- `logError()` utility created in `src/lib/error-logger.ts` and wired into monitor API routes. 50+ other API routes still use `console.error` only. Adopt `logError()` incrementally.
+2. **InngestStep typed as `any`** -- `src/lib/inngest/functions/send-alerts.ts:63`. The Inngest SDK step type is complex; needs investigation to type properly.
+3. **N+1 queries in scan-on-demand.ts** -- All 13 platform scan functions check/insert results one-by-one. Should batch-check with `inArray` and batch-insert.
+4. **No unit tests for business logic** -- `limits.ts`, `content-matcher.ts`, `search-parser.ts`, `security/sanitize.ts` are all untested.
+5. **OAuth state parameters not signed** -- Slack, Discord, HubSpot callback routes accept raw user ID without HMAC signature or expiration.
+6. **82 `any` type usages** -- Across 31 files, mostly in blog data and Inngest functions.
 
 ---
 

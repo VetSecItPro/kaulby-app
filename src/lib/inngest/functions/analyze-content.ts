@@ -1,5 +1,5 @@
 import { inngest } from "../client";
-import { db } from "@/lib/db";
+import { pooledDb } from "@/lib/db";
 import { results, aiLogs, monitors, painPointCategoryEnum, conversationCategoryEnum } from "@/lib/db/schema";
 import { eq, count } from "drizzle-orm";
 import {
@@ -38,6 +38,7 @@ export const analyzeContent = inngest.createFunction(
     id: "analyze-content",
     name: "Analyze Content",
     retries: 2,
+    timeouts: { finish: "5m" },
     concurrency: {
       limit: 5, // Limit concurrent AI calls
     },
@@ -48,7 +49,7 @@ export const analyzeContent = inngest.createFunction(
 
     // Get the result
     const result = await step.run("get-result", async () => {
-      return db.query.results.findFirst({
+      return pooledDb.query.results.findFirst({
         where: eq(results.id, resultId),
       });
     });
@@ -71,7 +72,7 @@ export const analyzeContent = inngest.createFunction(
     // For free users, only analyze first result
     if (!planCheck.hasUnlimitedAi) {
       const userResultCount = await step.run("count-user-results", async () => {
-        const [countResult] = await db
+        const [countResult] = await pooledDb
           .select({ count: count() })
           .from(results)
           .where(eq(results.monitorId, result.monitorId));
@@ -119,7 +120,7 @@ export const analyzeContent = inngest.createFunction(
           ? "neutral"
           : cachedAnalysis.sentiment as "positive" | "negative" | "neutral";
 
-        await db
+        await pooledDb
           .update(results)
           .set({
             sentiment: dbSentiment,
@@ -165,7 +166,7 @@ export const analyzeContent = inngest.createFunction(
     if (planCheck.useComprehensiveAnalysis) {
       // Get monitor info for context
       const monitor = await step.run("get-monitor", async () => {
-        return db.query.monitors.findFirst({
+        return pooledDb.query.monitors.findFirst({
           where: eq(monitors.id, result.monitorId),
           with: { user: true },
         });
@@ -201,7 +202,7 @@ export const analyzeContent = inngest.createFunction(
 
       // Update result with comprehensive AI analysis
       await step.run("update-result-team", async () => {
-        await db
+        await pooledDb
           .update(results)
           .set({
             sentiment: analysis.sentiment.label,
@@ -265,7 +266,7 @@ export const analyzeContent = inngest.createFunction(
         const totalCompletionTokens = comprehensiveResult.meta.completionTokens + categoryResult.meta.completionTokens;
         const totalLatency = comprehensiveResult.meta.latencyMs + categoryResult.meta.latencyMs;
 
-        await db.insert(aiLogs).values({
+        await pooledDb.insert(aiLogs).values({
           userId,
           model: comprehensiveResult.meta.model,
           promptTokens: totalPromptTokens,
@@ -350,7 +351,7 @@ export const analyzeContent = inngest.createFunction(
 
     // Update result with AI analysis
     await step.run("update-result", async () => {
-      await db
+      await pooledDb
         .update(results)
         .set({
           sentiment: sentimentResult.result.sentiment,
@@ -421,7 +422,7 @@ export const analyzeContent = inngest.createFunction(
         summaryResult.meta.completionTokens +
         categoryResult.meta.completionTokens;
 
-      await db.insert(aiLogs).values({
+      await pooledDb.insert(aiLogs).values({
         userId,
         model: sentimentResult.meta.model,
         promptTokens: totalPromptTokens,
@@ -442,7 +443,7 @@ export const analyzeContent = inngest.createFunction(
     // Trigger webhooks for enterprise users (Pro users can also have webhooks if upgraded)
     await step.run("trigger-webhooks-pro", async () => {
       // Get monitor info for webhook
-      const monitor = await db.query.monitors.findFirst({
+      const monitor = await pooledDb.query.monitors.findFirst({
         where: eq(monitors.id, result.monitorId),
         columns: { name: true },
       });

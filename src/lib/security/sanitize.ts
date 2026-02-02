@@ -68,14 +68,14 @@ export function escapeHtmlPreserveSafe(unsafe: string | null | undefined): strin
       new RegExp(`&lt;(${tag})&gt;`, "gi"),
       `<$1>`
     );
-    // Closing tags
+    // Closing tags (the / is escaped to &#x2F; by escapeHtml)
     safe = safe.replace(
-      new RegExp(`&lt;/(${tag})&gt;`, "gi"),
+      new RegExp(`&lt;&#x2F;(${tag})&gt;`, "gi"),
       `</$1>`
     );
-    // Self-closing tags (for <br />)
+    // Self-closing tags (for <br />, the / is escaped to &#x2F;)
     safe = safe.replace(
-      new RegExp(`&lt;(${tag})\\s*/&gt;`, "gi"),
+      new RegExp(`&lt;(${tag})\\s*&#x2F;&gt;`, "gi"),
       `<$1 />`
     );
   }
@@ -279,6 +279,32 @@ export function sanitizeUrl(url: string | null | undefined): string | null {
     }
     return null;
   }
+}
+
+// ============================================================================
+// MONITOR INPUT SANITIZATION
+// ============================================================================
+
+/**
+ * Sanitize user input for monitor names, keywords, and company names.
+ * Strips HTML, script injection attempts, and null bytes.
+ */
+export function sanitizeMonitorInput(input: string): string {
+  return input
+    .trim()
+    .replace(/<[^>]*>/g, "")
+    .replace(/javascript:/gi, "")
+    .replace(/on\w+=/gi, "")
+    .replace(/\0/g, "")
+    .slice(0, 100);
+}
+
+/**
+ * Validate that a keyword is non-empty after sanitization.
+ */
+export function isValidKeyword(keyword: string): boolean {
+  const sanitized = sanitizeMonitorInput(keyword);
+  return sanitized.length >= 1 && sanitized.length <= 100;
 }
 
 // ============================================================================

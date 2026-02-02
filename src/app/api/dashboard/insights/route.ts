@@ -226,7 +226,7 @@ export async function GET() {
       ...engageTodayResults,
     ]);
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       // Actionable items
       respondNow: respondNowResults.map(formatResult),
       respondNowCount: respondNowResults.length,
@@ -265,6 +265,8 @@ export async function GET() {
       // Gamification
       engagedThisWeek: engagedThisWeek[0]?.count || 0,
     });
+    response.headers.set("Cache-Control", "private, max-age=30, stale-while-revalidate=60");
+    return response;
   } catch (error) {
     console.error("Dashboard insights error:", error);
     return NextResponse.json(

@@ -1,7 +1,12 @@
 "use server";
 
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { currentUser } from "@clerk/nextjs/server";
+import { getEffectiveUserId, isLocalDev } from "@/lib/dev-auth";
+import { db } from "@/lib/db";
+import { users } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 import { Resend } from "resend";
+import { escapeHtml } from "@/lib/security";
 
 // Lazy init to avoid build-time errors when RESEND_API_KEY is not set
 let resend: Resend | null = null;
@@ -19,17 +24,29 @@ interface SupportTicketData {
 }
 
 export async function submitSupportTicket(data: SupportTicketData) {
-  const { userId } = await auth();
-  const user = await currentUser();
+  const userId = await getEffectiveUserId();
 
   if (!userId) {
     return { success: false, error: "You must be logged in to submit a support ticket" };
   }
 
-  const userEmail = user?.emailAddresses[0]?.emailAddress || "unknown";
-  const userName = user?.firstName
-    ? `${user.firstName}${user.lastName ? ` ${user.lastName}` : ""}`
-    : user?.username || "Unknown User";
+  let userEmail = "unknown";
+  let userName = "Unknown User";
+
+  if (isLocalDev()) {
+    const dbUser = await db.query.users.findFirst({
+      where: eq(users.id, userId),
+      columns: { email: true, name: true },
+    });
+    userEmail = dbUser?.email || "dev@localhost";
+    userName = dbUser?.name || "Dev User";
+  } else {
+    const user = await currentUser();
+    userEmail = user?.emailAddresses[0]?.emailAddress || "unknown";
+    userName = user?.firstName
+      ? `${user.firstName}${user.lastName ? ` ${user.lastName}` : ""}`
+      : user?.username || "Unknown User";
+  }
 
   // Validate inputs
   if (!data.category || !data.subject || !data.message) {
@@ -157,13 +174,4 @@ Kaulby - Community Monitoring Made Simple
     console.error("Failed to send support ticket:", error);
     return { success: false, error: "Failed to send your message. Please try again or email us directly." };
   }
-}
-
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
 }
