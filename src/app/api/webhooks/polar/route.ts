@@ -3,6 +3,9 @@ import { createHmac, timingSafeEqual } from "crypto";
 import { db, users } from "@/lib/db";
 import { eq, sql } from "drizzle-orm";
 import { getPlanFromProductId, PolarPlanKey } from "@/lib/polar";
+
+// PERF: Webhook processing may take longer than default 10s — FIX-016
+export const maxDuration = 60;
 import { upsertContact, sendSubscriptionEmail } from "@/lib/email";
 import { captureEvent } from "@/lib/posthog";
 import { activateDayPass } from "@/lib/day-pass";

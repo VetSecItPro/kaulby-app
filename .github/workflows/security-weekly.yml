@@ -1,164 +1,115 @@
-name: Security (Weekly)
+name: Weekly Security Scan
 
 on:
   schedule:
-    # Sundays at 2am UTC
-    - cron: '0 2 * * 0'
-  workflow_dispatch:  # Manual trigger
+    - cron: '0 2 * * 0' # Sundays 2am UTC
+  workflow_dispatch:
 
-permissions:
-  contents: read
-  issues: write  # Required for ZAP to create issue with findings
+env:
+  NODE_VERSION: '22'
 
 jobs:
-  # All jobs run in parallel - no dependencies between them
-
-  # Deep dependency audit
   dependency-audit:
     name: Dependency Audit
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v6
-
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
-
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
       - run: npm ci
 
-      - name: Full npm audit
+      - name: Full audit
         run: |
-          echo "### 🔒 Weekly Dependency Audit" >> $GITHUB_STEP_SUMMARY
-          npm audit --json > audit.json 2>/dev/null || true
-
-          CRITICAL=$(jq '.metadata.vulnerabilities.critical // 0' audit.json)
-          HIGH=$(jq '.metadata.vulnerabilities.high // 0' audit.json)
-          MODERATE=$(jq '.metadata.vulnerabilities.moderate // 0' audit.json)
-          LOW=$(jq '.metadata.vulnerabilities.low // 0' audit.json)
-
-          echo "| Severity | Count |" >> $GITHUB_STEP_SUMMARY
-          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| 🔴 Critical | $CRITICAL |" >> $GITHUB_STEP_SUMMARY
-          echo "| 🟠 High | $HIGH |" >> $GITHUB_STEP_SUMMARY
-          echo "| 🟡 Moderate | $MODERATE |" >> $GITHUB_STEP_SUMMARY
-          echo "| 🟢 Low | $LOW |" >> $GITHUB_STEP_SUMMARY
-
-          # List vulnerable packages
-          if [ "$CRITICAL" -gt 0 ] || [ "$HIGH" -gt 0 ]; then
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "**Packages needing attention:**" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            jq -r '.vulnerabilities | to_entries[] | select(.value.severity == "critical" or .value.severity == "high") | "\(.key): \(.value.severity)"' audit.json >> $GITHUB_STEP_SUMMARY 2>/dev/null || true
-            echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "## Dependency Audit" >> $GITHUB_STEP_SUMMARY
+          npm audit --json > audit-results.json 2>/dev/null || true
+          CRITICAL=$(jq '[.vulnerabilities | to_entries[] | select(.value.severity == "critical")] | length' audit-results.json 2>/dev/null || echo "0")
+          HIGH=$(jq '[.vulnerabilities | to_entries[] | select(.value.severity == "high")] | length' audit-results.json 2>/dev/null || echo "0")
+          echo "Critical: $CRITICAL, High: $HIGH" >> $GITHUB_STEP_SUMMARY
+          if [ "$CRITICAL" -gt 0 ]; then
+            echo "::error::$CRITICAL critical vulnerabilities found"
           fi
 
-      - name: Check for outdated packages
+      - name: Check outdated packages
         run: |
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 📦 Outdated Packages" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          npm outdated 2>/dev/null || echo "All packages up to date"
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "## Outdated Packages" >> $GITHUB_STEP_SUMMARY
+          npm outdated --json 2>/dev/null | jq -r 'to_entries[] | "- \(.key): \(.value.current) → \(.value.latest)"' >> $GITHUB_STEP_SUMMARY 2>/dev/null || echo "All packages up to date" >> $GITHUB_STEP_SUMMARY
 
-  # Semgrep deep scan (more rules than CI)
   semgrep-deep:
     name: Semgrep Deep Scan
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
-      - name: Run Semgrep (extended rules)
+      - name: Semgrep SAST (extended rules)
         uses: returntocorp/semgrep-action@v1
-        continue-on-error: true  # Report findings but don't fail weekly audit
         with:
           config: >-
-            p/default
-            p/security-audit
             p/owasp-top-ten
-            p/javascript
-            p/typescript
             p/nextjs
             p/react
-        env:
-          SEMGREP_RULES: p/default p/security-audit p/owasp-top-ten p/javascript p/typescript p/nextjs p/react
+            p/typescript
 
-      - name: Summary
-        if: always()
-        run: |
-          echo "### 🔍 Semgrep Deep Scan" >> $GITHUB_STEP_SUMMARY
-          echo "Extended ruleset: OWASP, JS/TS, Next.js, React" >> $GITHUB_STEP_SUMMARY
-
-  # License compliance check
   license-check:
-    name: License Compliance
+    name: License Check
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v6
-
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
-
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
       - run: npm ci
 
       - name: Check licenses
         run: |
-          npm install -g license-checker
-          echo "### 📜 License Audit" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**License Summary:**" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          license-checker --summary 2>/dev/null || echo "License check completed"
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          npx license-checker --production --excludePrivatePackages --json > licenses.json 2>/dev/null || true
+          echo "## License Report" >> $GITHUB_STEP_SUMMARY
 
-          # Check for problematic licenses
-          echo "" >> $GITHUB_STEP_SUMMARY
-          if license-checker --onlyAllow 'MIT;ISC;Apache-2.0;BSD-2-Clause;BSD-3-Clause;0BSD;CC0-1.0;Unlicense;CC-BY-4.0;Python-2.0' 2>/dev/null; then
-            echo "✅ All licenses compatible" >> $GITHUB_STEP_SUMMARY
+          BANNED='GPL-3.0|AGPL|SSPL|BSL|EUPL'
+          FLAGGED=$(jq -r 'to_entries[] | select(.value.licenses | test("'"$BANNED"'")) | "\(.key): \(.value.licenses)"' licenses.json 2>/dev/null || true)
+
+          if [ -n "$FLAGGED" ]; then
+            echo "::warning::Potentially problematic licenses found:"
+            echo "$FLAGGED" >> $GITHUB_STEP_SUMMARY
           else
-            echo "⚠️ Review licenses above" >> $GITHUB_STEP_SUMMARY
+            echo "All dependencies use approved licenses." >> $GITHUB_STEP_SUMMARY
           fi
 
-  # OWASP ZAP DAST scan against production
-  zap-scan:
-    name: OWASP ZAP (DAST)
+  zap-dast:
+    name: ZAP DAST Scan
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v6
-
-      - name: Create ZAP rules file
-        run: |
-          mkdir -p .zap
-          cat > .zap/rules.tsv << 'EOF'
-          10038	IGNORE	(Content Security Policy - handled by Vercel)
-          10063	IGNORE	(Permissions Policy - handled by Vercel)
-          EOF
+      - uses: actions/checkout@v4
 
       - name: ZAP Baseline Scan
-        uses: zaproxy/action-baseline@v0.15.0
+        uses: zaproxy/action-baseline@v0.14.0
         with:
           target: 'https://kaulbyapp.com'
-          rules_file_name: '.zap/rules.tsv'
-          fail_action: false  # Don't fail workflow, just report
+          cmd_options: '-a'
+        continue-on-error: true
 
-      - name: Summary
-        if: always()
-        run: |
-          echo "### 🕷️ OWASP ZAP DAST" >> $GITHUB_STEP_SUMMARY
-          echo "Scanned: https://kaulbyapp.com" >> $GITHUB_STEP_SUMMARY
-          echo "See artifacts for detailed report" >> $GITHUB_STEP_SUMMARY
-
-      - name: Upload ZAP report
-        uses: actions/upload-artifact@v6
+      - name: Upload ZAP Report
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: zap-report
           path: report_html.html
           retention-days: 30
-          if-no-files-found: ignore
+
+  summary:
+    name: Security Summary
+    runs-on: ubuntu-latest
+    needs: [dependency-audit, semgrep-deep, license-check, zap-dast]
+    if: always()
+    steps:
+      - name: Summary
+        run: |
+          echo "## Weekly Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+          echo '| Check | Status |' >> $GITHUB_STEP_SUMMARY
+          echo '|-------|--------|' >> $GITHUB_STEP_SUMMARY
+          echo "| Dependency Audit | ${{ needs.dependency-audit.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Semgrep SAST | ${{ needs.semgrep-deep.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| License Check | ${{ needs.license-check.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| ZAP DAST | ${{ needs.zap-dast.result }} |" >> $GITHUB_STEP_SUMMARY

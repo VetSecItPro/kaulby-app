@@ -270,7 +270,7 @@ function MobileResultsView({
           {selectedPlatform && (
             <Badge variant="secondary" className="gap-1">
               {selectedPlatform}
-              <button onClick={() => setSelectedPlatform(null)}>
+              <button onClick={() => setSelectedPlatform(null)} aria-label={`Remove ${selectedPlatform} filter`}>
                 <X className="h-3 w-3" />
               </button>
             </Badge>
@@ -278,7 +278,7 @@ function MobileResultsView({
           {selectedSentiment && (
             <Badge variant="secondary" className="gap-1">
               {selectedSentiment}
-              <button onClick={() => setSelectedSentiment(null)}>
+              <button onClick={() => setSelectedSentiment(null)} aria-label={`Remove ${selectedSentiment} filter`}>
                 <X className="h-3 w-3" />
               </button>
             </Badge>
@@ -286,7 +286,7 @@ function MobileResultsView({
           {searchQuery && (
             <Badge variant="secondary" className="gap-1">
               &quot;{searchQuery}&quot;
-              <button onClick={() => setSearchQuery("")}>
+              <button onClick={() => setSearchQuery("")} aria-label="Remove search filter">
                 <X className="h-3 w-3" />
               </button>
             </Badge>

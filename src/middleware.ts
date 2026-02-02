@@ -1,6 +1,15 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+// PERF: Cache env check — env vars don't change at runtime — FIX-021
+let _clerkConfigured: boolean | null = null;
+function clerkConfigured(): boolean {
+  return (_clerkConfigured ??= !!(
+    process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY &&
+    process.env.CLERK_SECRET_KEY
+  ));
+}
+
 // Lazy-loaded Clerk middleware to avoid initialization errors when not configured
 let clerkHandler: ((request: NextRequest, event: never) => Promise<Response>) | null = null;
 
@@ -72,10 +81,8 @@ export default async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Check if Clerk is configured at runtime
-  const isClerkConfigured =
-    process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY &&
-    process.env.CLERK_SECRET_KEY;
+  // PERF: Cache Clerk config check — env vars don't change at runtime — FIX-021
+  const isClerkConfigured = clerkConfigured();
 
   if (!isClerkConfigured) {
     // Allow all routes when auth isn't configured

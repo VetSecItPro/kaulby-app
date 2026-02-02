@@ -87,13 +87,20 @@ function getRedisLimiters() {
 // In-memory fallback (single instance, for local dev)
 // ---------------------------------------------------------------------------
 
+// PERF: Size-limited Map prevents unbounded growth if Redis fails — FIX-026
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT_STORE_MAX = 10_000;
 
 function checkRateLimitMemory(
   userId: string,
   windowMs: number,
   maxRequests: number
 ): { allowed: boolean; remaining: number; resetAt: Date } {
+  // PERF: Evict all entries if store grows too large — FIX-026
+  if (rateLimitStore.size > RATE_LIMIT_STORE_MAX) {
+    rateLimitStore.clear();
+  }
+
   const key = `${userId}:${windowMs}`;
   const now = Date.now();
 
@@ -349,7 +356,7 @@ function cleanupCache(): void {
   keysToDelete.forEach((key) => questionCache.delete(key));
 }
 
-// Run cleanup every 5 minutes
-if (typeof setInterval !== "undefined") {
+// PERF: Only run cleanup interval outside Vercel serverless — FIX-002
+if (typeof setInterval !== "undefined" && !process.env.VERCEL) {
   setInterval(cleanupCache, 5 * 60 * 1000);
 }

@@ -261,6 +261,8 @@ class MemoryCache implements CacheBackend {
    * Clean up expired entries periodically
    */
   private startCleanupInterval(): void {
+    // PERF: Skip interval in Vercel serverless — use lazy cleanup on read instead — FIX-009
+    if (process.env.VERCEL) return;
     // Run cleanup every 5 minutes
     this.cleanupInterval = setInterval(() => {
       const now = Date.now();

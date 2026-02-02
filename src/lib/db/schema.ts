@@ -165,7 +165,8 @@ export const activityLogs = pgTable("activity_logs", {
 // Users table - synced with Clerk
 export const users = pgTable("users", {
   id: text("id").primaryKey(), // Clerk user ID
-  email: text("email").notNull(),
+  // DB: UNIQUE enforces no duplicate emails at DB level — FIX-011
+  email: text("email").notNull().unique(),
   name: text("name"),
   timezone: text("timezone").default("America/New_York").notNull(), // IANA timezone (auto-detected from browser)
   isAdmin: boolean("is_admin").default(false).notNull(),
@@ -175,6 +176,7 @@ export const users = pgTable("users", {
   // Onboarding tracking
   onboardingCompleted: boolean("onboarding_completed").default(false).notNull(),
   // Workspace membership (Enterprise feature)
+  // DB: SET NULL intentional — user record survives workspace deletion — FIX-023
   workspaceId: uuid("workspace_id").references(() => workspaces.id, { onDelete: "set null" }),
   workspaceRole: workspaceRoleEnum("workspace_role"),
   subscriptionStatus: subscriptionStatusEnum("subscription_status").default("free").notNull(),
@@ -381,6 +383,11 @@ export const results = pgTable("results", {
   index("results_last_sent_in_digest_idx").on(table.lastSentInDigestAt),
   index("results_is_saved_idx").on(table.isSaved),
   index("results_posted_at_idx").on(table.postedAt),
+  // DB: Indexes for dashboard queries filtering by view/hide state — FIX-005
+  index("results_is_viewed_idx").on(table.isViewed),
+  index("results_viewed_hidden_idx").on(table.isViewed, table.isHidden),
+  // DB: Composite index for high-intent lead queries — FIX-020
+  index("results_lead_score_viewed_hidden_idx").on(table.leadScore, table.isViewed, table.isHidden),
 ]);
 
 // AI Logs - for cost tracking
@@ -498,7 +505,11 @@ export const webhooks = pgTable("webhooks", {
   headers: jsonb("headers").$type<Record<string, string>>(), // Custom headers
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => [
+  // DB: Index for webhook delivery queries filtering active webhooks — FIX-006
+  index("webhooks_is_active_idx").on(table.isActive),
+  index("webhooks_user_id_idx").on(table.userId),
+]);
 
 // Webhook Deliveries - tracks each delivery attempt with retry logic
 export const webhookDeliveries = pgTable("webhook_deliveries", {
