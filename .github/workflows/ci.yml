@@ -81,22 +81,18 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
 
+      - name: Remove build cache before upload
+        run: rm -rf .next/cache
+
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: nextjs-build
-          path: |
-            .next/standalone
-            .next/static
-            .next/server
-            .next/BUILD_ID
-            .next/build-manifest.json
-            .next/package.json
-            .next/prerender-manifest.json
-            .next/routes-manifest.json
+          path: .next
           retention-days: 1
           include-hidden-files: true
           if-no-files-found: error
+          compression-level: 6
 
       - name: Build summary
         run: |
