@@ -96,9 +96,9 @@ Before implementing any feature, ask:
 
 - **Pre-cleared for all operations**: No permission requests needed for file edits, database pushes, or shell commands.
 - **MANDATORY local validation before pushing**: Always run ALL validation checks locally before saying ready to push:
-  1. `npm run lint` - Fix all ESLint errors
-  2. `npx tsc --noEmit` - Fix all TypeScript errors
-  3. `npm run build` - Ensure build succeeds
+  1. `pnpm lint` - Fix all ESLint errors
+  2. `pnpm exec tsc --noEmit` - Fix all TypeScript errors
+  3. `pnpm build` - Ensure build succeeds
   Never announce "ready to push" until all checks pass locally.
 - **NEVER push to GitHub**: Do not commit or push to GitHub unless explicitly requested. Always explain what you plan to do and wait for user confirmation before any git push. The user will specify when to push and act without requiring permission.
 - **Database operations allowed**: Can push schema changes to Neon freely.
@@ -120,11 +120,11 @@ Before implementing any feature, ask:
 
 ## Commands
 
-- `npm run dev` - Dev server
-- `npm run db:push` - Push schema to database
-- `npm run db:studio` - Open Drizzle Studio
-- `npx inngest-cli@latest dev` - Inngest dev server (separate terminal, includes MCP at http://127.0.0.1:8288/mcp)
-- `npx tsc --noEmit` - **Run before pushing to GitHub** to catch TypeScript errors locally and avoid wasted CI cycles
+- `pnpm dev` - Dev server
+- `pnpm db:push` - Push schema to database
+- `pnpm db:studio` - Open Drizzle Studio
+- `pnpm exec inngest-cli dev` - Inngest dev server (separate terminal, includes MCP at http://127.0.0.1:8288/mcp)
+- `pnpm exec tsc --noEmit` - **Run before pushing to GitHub** to catch TypeScript errors locally and avoid wasted CI cycles
 
 ## Inngest (Background Jobs)
 
@@ -274,16 +274,15 @@ Automated detection and re-engagement for inactive users:
 
 ## Remaining Tasks 📋
 
-| # | Feature | Description |
-|---|---------|-------------|
-| 1 | **Scheduled PDF reports** | Weekly/monthly PDF exports via email |
-| 2 | **Monthly email digest** | Add monthly frequency (currently instant/daily/weekly) |
-| 3 | **Saved searches UI** | Schema exists, needs API + UI |
-| 4 | **Search builder UI** | Visual query builder for non-technical users |
-| 5 | **Email tracking** | Open/click rates for digests |
-| 6 | **Pause digests toggle** | Keep tracking, stop emails temporarily |
+All core features complete. No outstanding tasks.
 
 ### Recently Completed ✅
+- [x] Scheduled PDF reports - Weekly/monthly PDF attachments via `jspdf` in `send-scheduled-reports.ts`
+- [x] Pause digests toggle - Inngest checks `digestPaused` flag in `send-alerts.ts`
+- [x] Email tracking - Open pixels + click wrapping in alert and digest emails via `/api/track`
+- [x] Saved searches UI - Full CRUD component wired into results page
+- [x] Search builder UI - Visual query builder for non-technical users
+- [x] Monthly email digest - Monthly frequency support in digest system
 - [x] Articles/blog system - 20 SEO/AEO-optimized articles at `/articles` with static data, search, category filters
 - [x] AI response suggestions - `/api/ai/suggest-reply` + `reply-suggestion.tsx`
 - [x] Competitor benchmarking - Share of Voice at `/api/analytics/share-of-voice`
