@@ -3,6 +3,9 @@ import { createHmac, timingSafeEqual } from "crypto";
 import { db, users } from "@/lib/db";
 import { eq, sql } from "drizzle-orm";
 import { getPlanFromProductId, PolarPlanKey } from "@/lib/polar";
+
+// PERF: Webhook processing may take longer than default 10s — FIX-016
+export const maxDuration = 60;
 import { upsertContact, sendSubscriptionEmail } from "@/lib/email";
 import { captureEvent } from "@/lib/posthog";
 import { activateDayPass } from "@/lib/day-pass";
@@ -57,7 +60,7 @@ function verifyWebhookSignature(
  *
  * IMPORTANT: Before using this handler, ensure you have:
  * 1. Added polarCustomerId and polarSubscriptionId columns to users table
- * 2. Run: npm run db:push
+ * 2. Run: pnpm db:push
  * 3. Set POLAR_WEBHOOK_SECRET in .env.local
  */
 export async function POST(request: NextRequest) {

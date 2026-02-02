@@ -97,7 +97,7 @@ async function run() {
     await fetch(`${BASE}/`, { signal: AbortSignal.timeout(5000) });
   } catch {
     console.error(`Server not reachable at ${BASE}`);
-    console.error(`Start the dev server first: PORT=${PORT} npm run dev`);
+    console.error(`Start the dev server first: PORT=${PORT} pnpm dev`);
     process.exit(1);
   }
 

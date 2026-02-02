@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 
 export const dynamic = "force-dynamic";
+// PERF: Email webhook processing may take longer than default 10s — FIX-016
+export const maxDuration = 60;
 
 /**
  * Email Forwarding Webhook

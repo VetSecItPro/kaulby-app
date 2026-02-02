@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { apiKeys, users } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, lt, sql } from "drizzle-orm";
 import { createHash, randomBytes } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -80,7 +80,7 @@ async function validateApiKey(key: string): Promise<{
     return { valid: false, error: "API access requires Team plan" };
   }
 
-  // Check rate limits
+  // DB: Atomic rate limit check-and-increment prevents race condition — FIX-014
   const now = new Date();
   const resetAt = apiKey.dailyRequestResetAt ? new Date(apiKey.dailyRequestResetAt) : null;
 
@@ -95,28 +95,33 @@ async function validateApiKey(key: string): Promise<{
       .set({
         dailyRequestCount: 1,
         dailyRequestResetAt: tomorrow,
-        requestCount: apiKey.requestCount + 1,
+        requestCount: sql`${apiKeys.requestCount} + 1`,
         lastUsedAt: now,
       })
       .where(eq(apiKeys.id, apiKey.id));
   } else {
-    // Check if rate limit exceeded
-    if (apiKey.dailyRequestCount >= DAILY_RATE_LIMIT) {
+    // Atomic: increment only if under limit, return affected rows
+    const updated = await db
+      .update(apiKeys)
+      .set({
+        dailyRequestCount: sql`${apiKeys.dailyRequestCount} + 1`,
+        requestCount: sql`${apiKeys.requestCount} + 1`,
+        lastUsedAt: now,
+      })
+      .where(
+        and(
+          eq(apiKeys.id, apiKey.id),
+          lt(apiKeys.dailyRequestCount, DAILY_RATE_LIMIT)
+        )
+      )
+      .returning({ id: apiKeys.id });
+
+    if (updated.length === 0) {
       return {
         valid: false,
         error: `Rate limit exceeded. Limit resets at ${resetAt.toISOString()}`,
       };
     }
-
-    // Increment counters
-    await db
-      .update(apiKeys)
-      .set({
-        dailyRequestCount: apiKey.dailyRequestCount + 1,
-        requestCount: apiKey.requestCount + 1,
-        lastUsedAt: now,
-      })
-      .where(eq(apiKeys.id, apiKey.id));
   }
 
   return {

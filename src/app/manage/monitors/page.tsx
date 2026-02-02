@@ -36,16 +36,22 @@ async function getMonitorStats() {
     })
     .from(monitors)
     .leftJoin(users, eq(monitors.userId, users.id))
-    .orderBy(desc(monitors.createdAt));
+    .orderBy(desc(monitors.createdAt))
+    // PERF: Limit admin query to prevent full table scan — FIX-007
+    .limit(500);
 
-  // Result counts per monitor
-  const resultCounts = await db
-    .select({
-      monitorId: results.monitorId,
-      count: count(),
-    })
-    .from(results)
-    .groupBy(results.monitorId);
+  // Result counts per monitor (only for the monitors we fetched)
+  const monitorIds = allMonitors.map(m => m.id);
+  const resultCounts = monitorIds.length > 0
+    ? await db
+        .select({
+          monitorId: results.monitorId,
+          count: count(),
+        })
+        .from(results)
+        .where(sql`${results.monitorId} IN ${monitorIds}`)
+        .groupBy(results.monitorId)
+    : [];
 
   const resultCountMap = new Map(resultCounts.map((r) => [r.monitorId, r.count]));
 
