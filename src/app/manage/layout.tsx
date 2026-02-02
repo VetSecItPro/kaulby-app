@@ -8,12 +8,16 @@ export default async function ManageLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const isDev = process.env.NODE_ENV === "development";
+  // SECURITY: Admin bypass requires explicit opt-in, never on Vercel — FIX-001
+  const isLocalDev = process.env.NODE_ENV === "development" &&
+                     process.env.ALLOW_DEV_AUTH_BYPASS === "true" &&
+                     !process.env.VERCEL &&
+                     !process.env.VERCEL_ENV;
 
   let subscriptionStatus: "free" | "pro" | "enterprise" = "enterprise";
 
-  // In production, require auth and admin status
-  if (!isDev) {
+  // In production (and non-opted-in dev), require auth and admin status
+  if (!isLocalDev) {
     const { userId } = await auth();
 
     if (!userId) {

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
@@ -471,6 +472,42 @@ const toolPages: Record<string, {
     relatedAlternatives: ["awario", "mention", "brandwatch"],
   },
 };
+
+// SEO: Dynamic metadata per slug for search rankings — FIX-010
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const defaultTool = toolPages["social-listening-for-startups"];
+  const tool = toolPages[slug] || {
+    title: "Social Listening Tool",
+    description: "Track mentions, analyze sentiment, and discover opportunities with AI-powered social listening.",
+    keywords: ["social listening", "brand monitoring"],
+  };
+
+  return {
+    title: `${tool.title} | Kaulby`,
+    description: tool.description,
+    keywords: tool.keywords || defaultTool.keywords,
+    alternates: {
+      canonical: `https://kaulbyapp.com/tools/${slug}`,
+    },
+    openGraph: {
+      title: `${tool.title} | Kaulby`,
+      description: tool.description,
+      url: `https://kaulbyapp.com/tools/${slug}`,
+      siteName: "Kaulby",
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${tool.title} | Kaulby`,
+      description: tool.description,
+    },
+  };
+}
 
 const platformLabels: Record<string, string> = {
   reddit: "Reddit",

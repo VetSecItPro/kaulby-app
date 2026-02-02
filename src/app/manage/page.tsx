@@ -101,24 +101,34 @@ async function getUserGrowth() {
 }
 
 async function getPlatformDistribution() {
+  // PERF: Scope to last 30 days to avoid full table scan — FIX-008
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
   const distribution = await db
     .select({
       platform: results.platform,
       count: count(),
     })
     .from(results)
+    .where(gte(results.createdAt, thirtyDaysAgo))
     .groupBy(results.platform);
 
   return distribution;
 }
 
 async function getSentimentBreakdown() {
+  // PERF: Scope to last 30 days to avoid full table scan — FIX-008
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
   const breakdown = await db
     .select({
       sentiment: results.sentiment,
       count: count(),
     })
     .from(results)
+    .where(gte(results.createdAt, thirtyDaysAgo))
     .groupBy(results.sentiment);
 
   return breakdown;

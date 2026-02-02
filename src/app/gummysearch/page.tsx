@@ -24,6 +24,39 @@ import {
 } from "lucide-react";
 import { MarketingHeader } from "@/components/shared/marketing-header";
 import { MarketingFooter } from "@/components/shared/marketing-footer";
+import type { Metadata } from "next";
+
+// SEO: Full metadata for GummySearch migration landing page — FIX-028
+export const metadata: Metadata = {
+  title: "GummySearch Alternative | Migrate to Kaulby - 16 Platform Monitoring",
+  description:
+    "GummySearch is shutting down. Migrate to Kaulby for AI-powered community monitoring across 16 platforms including Reddit, Hacker News, Product Hunt, and more. Free migration available.",
+  keywords: [
+    "GummySearch alternative",
+    "GummySearch replacement",
+    "GummySearch migration",
+    "Reddit monitoring tool",
+    "community monitoring",
+    "social listening",
+    "brand monitoring",
+  ],
+  openGraph: {
+    title: "GummySearch is Closing — Kaulby is Here",
+    description:
+      "Everything you loved about GummySearch — plus 15 more platforms, better AI, and a team committed to keeping it running.",
+    url: "https://kaulbyapp.com/gummysearch",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "GummySearch Alternative | Migrate to Kaulby",
+    description:
+      "GummySearch is shutting down. Switch to Kaulby for 16-platform community monitoring with AI analysis.",
+  },
+  alternates: {
+    canonical: "https://kaulbyapp.com/gummysearch",
+  },
+};
 
 // Static generation - revalidate every hour
 export const revalidate = 3600;

@@ -126,6 +126,7 @@ export const sendAlert = inngest.createFunction(
         await sendAlertEmail({
           to: alert.destination,
           monitorName: alert.monitor.name,
+          userId: alert.monitor.user?.id,
           results: matchingResults.map((r) => ({
             title: r.title,
             url: r.sourceUrl,
@@ -231,6 +232,11 @@ async function sendDigestForTimezone(
   let skippedNoResults = 0;
 
   for (const user of usersWithAlerts) {
+    // Skip users who have paused digests
+    if (user.digestPaused) {
+      continue;
+    }
+
     // Check if user's plan supports this digest frequency
     if (config.checkPlanAccess) {
       const limits = getPlanLimits(user.subscriptionStatus);
@@ -355,6 +361,7 @@ async function sendDigestForTimezone(
       await sendDigestEmail({
         to: user.email,
         userName: user.name || "there",
+        userId: user.id,
         frequency: config.frequency,
         monitors: monitorsData,
         aiInsights,

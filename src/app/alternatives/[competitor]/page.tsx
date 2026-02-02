@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
@@ -692,6 +693,38 @@ const competitorData: Record<string, {
     relatedTools: ["reddit-monitoring", "social-listening-for-startups"],
   },
 };
+
+// SEO: Dynamic metadata per competitor slug for search rankings — FIX-010
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ competitor: string }>;
+}): Promise<Metadata> {
+  const { competitor: slug } = await params;
+  const data = competitorData[slug];
+  const name = data?.name || slug.charAt(0).toUpperCase() + slug.slice(1);
+
+  return {
+    title: `Kaulby vs ${name} - Best ${name} Alternative | Kaulby`,
+    description: `Compare Kaulby and ${name} for community monitoring. See features, pricing, and why Kaulby is the best ${name} alternative with 16 platforms and AI insights.`,
+    keywords: [`${name} alternative`, `${name} vs kaulby`, "community monitoring", "social listening"],
+    alternates: {
+      canonical: `https://kaulbyapp.com/alternatives/${slug}`,
+    },
+    openGraph: {
+      title: `Kaulby vs ${name} - Best Alternative`,
+      description: `Compare Kaulby and ${name}. See why Kaulby is the best alternative with 16 platforms and AI-powered insights.`,
+      url: `https://kaulbyapp.com/alternatives/${slug}`,
+      siteName: "Kaulby",
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `Kaulby vs ${name}`,
+      description: `Why Kaulby is the best ${name} alternative for community monitoring.`,
+    },
+  };
+}
 
 const kaulbyAdvantages = [
   {

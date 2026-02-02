@@ -1,10 +1,10 @@
 "use client";
 
+import { useMemo } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Clock, Share2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import DOMPurify from "isomorphic-dompurify";
 import type { BlogArticle } from "@/lib/data/blog-articles";
 import { categoryConfig } from "@/lib/utils/article-helpers";
 
@@ -19,6 +19,17 @@ export function ArticlePageClient({
 }: ArticlePageClientProps) {
   const config = categoryConfig[article.category];
   const Icon = config.icon;
+
+  // Sanitize HTML client-side only — content is our own static data so raw HTML is safe for SSR
+  const sanitizedHtml = useMemo(() => {
+    if (typeof window !== "undefined") {
+      // Lazy-load DOMPurify only in the browser to avoid jsdom in SSR
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const DOMPurify = require("dompurify");
+      return DOMPurify.sanitize(article.htmlContent);
+    }
+    return article.htmlContent;
+  }, [article.htmlContent]);
 
   const handleShare = async () => {
     const url = `https://kaulbyapp.com/articles/${article.slug}`;
@@ -94,7 +105,7 @@ export function ArticlePageClient({
         <div className="container mx-auto max-w-3xl">
           <div
             className="article-content"
-            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(article.htmlContent) }}
+            dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
           />
         </div>
       </section>
