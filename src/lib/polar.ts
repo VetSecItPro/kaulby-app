@@ -1,5 +1,5 @@
 // Polar SDK - dynamically imported to prevent build errors when not installed
-// Install with: npm install @polar-sh/sdk
+// Install with: pnpm add @polar-sh/sdk
 type PolarClient = {
   checkouts: {
     custom: {
@@ -47,7 +47,7 @@ export async function getPolarClient(): Promise<PolarClient | null> {
     }) as unknown as PolarClient;
     return _polarClient;
   } catch {
-    console.warn("@polar-sh/sdk not installed. Run: npm install @polar-sh/sdk");
+    console.warn("@polar-sh/sdk not installed. Run: pnpm add @polar-sh/sdk");
     return null;
   }
 }

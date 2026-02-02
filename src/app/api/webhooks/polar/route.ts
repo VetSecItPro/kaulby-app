@@ -60,7 +60,7 @@ function verifyWebhookSignature(
  *
  * IMPORTANT: Before using this handler, ensure you have:
  * 1. Added polarCustomerId and polarSubscriptionId columns to users table
- * 2. Run: npm run db:push
+ * 2. Run: pnpm db:push
  * 3. Set POLAR_WEBHOOK_SECRET in .env.local
  */
 export async function POST(request: NextRequest) {

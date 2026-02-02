@@ -2,8 +2,8 @@
 <!-- What does this PR do? -->
 
 ## Test plan
-- [ ] Local build passes (`npm run build`)
-- [ ] TypeScript + lint clean (`npx tsc --noEmit && npm run lint`)
+- [ ] Local build passes (`pnpm build`)
+- [ ] TypeScript + lint clean (`pnpm exec tsc --noEmit && pnpm lint`)
 - [ ] Tested in browser
 
 ## Checklist
