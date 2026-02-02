@@ -22,6 +22,24 @@ function getResend(): Resend {
 const FROM_EMAIL = "Kaulby <notifications@kaulbyapp.com>";
 const LOGO_URL = "https://kaulbyapp.com/logo-email.jpg";
 const APP_URL = "https://kaulbyapp.com";
+const TRACK_URL = "https://kaulbyapp.com/api/track";
+
+// Email tracking helpers
+function trackingPixel(emailId: string, userId: string, emailType: string): string {
+  return `<img src="${TRACK_URL}/open?eid=${encodeURIComponent(emailId)}&uid=${encodeURIComponent(userId)}&type=${encodeURIComponent(emailType)}" width="1" height="1" alt="" style="display:none;" />`;
+}
+
+function trackLink(url: string, emailId: string, userId: string, emailType: string, extras?: { resultId?: string; monitorId?: string }): string {
+  const params = new URLSearchParams({
+    eid: emailId,
+    uid: userId,
+    type: emailType,
+    url,
+  });
+  if (extras?.resultId) params.set("rid", extras.resultId);
+  if (extras?.monitorId) params.set("mid", extras.monitorId);
+  return `${TRACK_URL}/click?${params.toString()}`;
+}
 
 // Brand colors
 const COLORS = {
@@ -70,6 +88,7 @@ export async function sendWelcomeEmail(params: {
 export async function sendAlertEmail(params: {
   to: string;
   monitorName: string;
+  userId?: string;
   results: Array<{
     title: string;
     url: string;
@@ -78,12 +97,15 @@ export async function sendAlertEmail(params: {
     summary?: string | null;
   }>;
 }) {
+  const emailId = crypto.randomUUID();
+  const userId = params.userId || "unknown";
+
   const resultsHtml = params.results
     .map(
       (r) => `
       <tr>
         <td style="padding: 16px 20px; border-bottom: 1px solid ${COLORS.cardBorder};">
-          <a href="${r.url}" style="color: ${COLORS.accent}; font-weight: 500; text-decoration: none; font-size: 15px; line-height: 1.4;">${escapeHtml(r.title)}</a>
+          <a href="${trackLink(r.url, emailId, userId, "alert")}" style="color: ${COLORS.accent}; font-weight: 500; text-decoration: none; font-size: 15px; line-height: 1.4;">${escapeHtml(r.title)}</a>
           <div style="margin-top: 8px; font-size: 12px; color: ${COLORS.textDim};">
             <span style="display: inline-block; padding: 2px 8px; background: ${COLORS.card}; border: 1px solid ${COLORS.cardBorder}; border-radius: 4px; margin-right: 8px;">${r.platform}</span>
             ${r.sentiment ? `<span style="color: ${r.sentiment.toLowerCase().includes('positive') ? COLORS.success : r.sentiment.toLowerCase().includes('negative') ? COLORS.error : COLORS.textDim};">${r.sentiment}</span>` : ""}
@@ -99,7 +121,7 @@ export async function sendAlertEmail(params: {
     from: FROM_EMAIL,
     to: params.to,
     subject: `${params.results.length} new mention${params.results.length > 1 ? "s" : ""} for "${params.monitorName}"`,
-    html: getAlertEmailHtml(params.monitorName, params.results.length, resultsHtml),
+    html: getAlertEmailHtml(params.monitorName, params.results.length, resultsHtml) + trackingPixel(emailId, userId, "alert"),
   });
 }
 
@@ -122,6 +144,7 @@ export interface WeeklyInsights {
 export async function sendDigestEmail(params: {
   to: string;
   userName: string;
+  userId?: string;
   frequency: "daily" | "weekly" | "monthly";
   monitors: Array<{
     name: string;
@@ -139,6 +162,8 @@ export async function sendDigestEmail(params: {
   platformBreakdown?: Array<{ platform: string; count: number }>;
   categoryBreakdown?: Array<{ category: string; count: number }>;
 }) {
+  const emailId = crypto.randomUUID();
+  const userId = params.userId || "unknown";
   // Build AI insights section if available
   let aiInsightsHtml = "";
   if (params.aiInsights) {
@@ -213,7 +238,7 @@ export async function sendDigestEmail(params: {
                 (r) => `
             <tr>
               <td style="padding: 14px 20px; border-bottom: 1px solid ${COLORS.cardBorder};">
-                <a href="${r.url}" style="color: ${COLORS.accent}; font-weight: 500; text-decoration: none; font-size: 14px; line-height: 1.4;">${escapeHtml(r.title)}</a>
+                <a href="${trackLink(r.url, emailId, userId, "digest")}" style="color: ${COLORS.accent}; font-weight: 500; text-decoration: none; font-size: 14px; line-height: 1.4;">${escapeHtml(r.title)}</a>
                 <div style="margin-top: 6px; font-size: 11px; color: ${COLORS.textDim};">
                   ${r.platform}${r.sentiment ? ` · ${r.sentiment}` : ""}
                 </div>
@@ -287,7 +312,7 @@ export async function sendDigestEmail(params: {
     from: FROM_EMAIL,
     to: params.to,
     subject: `Your ${params.frequency} digest · ${totalResults} new mentions`,
-    html: getDigestEmailHtml(params.userName, params.frequency, totalResults, aiInsightsHtml, breakdownHtml, monitorsHtml),
+    html: getDigestEmailHtml(params.userName, params.frequency, totalResults, aiInsightsHtml, breakdownHtml, monitorsHtml) + trackingPixel(emailId, userId, "digest"),
   });
 }
 

@@ -9,6 +9,7 @@ import { inngest } from "../client";
 import { pooledDb, users, monitors, results } from "@/lib/db";
 import { eq, and, gte, inArray, sql, desc } from "drizzle-orm";
 import { Resend } from "resend";
+import { jsPDF } from "jspdf";
 
 // Lazy init to avoid build-time errors when RESEND_API_KEY is not set
 let resend: Resend | null = null;
@@ -120,11 +121,27 @@ export const sendScheduledReports = inngest.createFunction(
             user.reportSchedule || "weekly"
           );
 
+          const pdfBuffer = generateReportPdf(
+            user.name || "there",
+            reportData,
+            days,
+            user.reportSchedule || "weekly"
+          );
+
+          const periodLabel = user.reportSchedule === "weekly" ? "weekly" : "monthly";
+          const dateStr = now.toISOString().slice(0, 10);
+
           await getResend().emails.send({
             from: "Kaulby Reports <reports@kaulbyapp.com>",
             to: user.email,
             subject: `Your ${user.reportSchedule === "weekly" ? "Weekly" : "Monthly"} Community Monitoring Report`,
             html,
+            attachments: [
+              {
+                filename: `kaulby-${periodLabel}-report-${dateStr}.pdf`,
+                content: pdfBuffer,
+              },
+            ],
           });
 
           // Update last sent timestamp
@@ -368,4 +385,232 @@ function generateReportEmail(
 </body>
 </html>
   `.trim();
+}
+
+function generateReportPdf(
+  userName: string,
+  data: ReportData,
+  days: number,
+  schedule: string
+): Buffer {
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margin = 20;
+  const contentWidth = pageWidth - margin * 2;
+  let y = margin;
+
+  const periodLabel = schedule === "weekly" ? "Weekly" : "Monthly";
+  const positivePercent =
+    data.totals.mentions > 0
+      ? Math.round((data.totals.positive / data.totals.mentions) * 100)
+      : 0;
+
+  // Header
+  doc.setFillColor(15, 23, 42); // slate-900
+  doc.rect(0, 0, pageWidth, 40, "F");
+  doc.setTextColor(20, 184, 166); // teal-500
+  doc.setFontSize(22);
+  doc.setFont("helvetica", "bold");
+  doc.text(`Kaulby ${periodLabel} Report`, margin, 18);
+  doc.setTextColor(148, 163, 184); // slate-400
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "normal");
+  doc.text(
+    `Last ${days} days of community monitoring — Generated ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}`,
+    margin,
+    28
+  );
+  y = 50;
+
+  // Greeting
+  doc.setTextColor(55, 65, 81); // gray-700
+  doc.setFontSize(12);
+  doc.text(`Hi ${userName},`, margin, y);
+  y += 6;
+  doc.setFontSize(10);
+  doc.text(
+    `Here's your community monitoring summary for the past ${schedule === "weekly" ? "week" : "month"}.`,
+    margin,
+    y
+  );
+  y += 14;
+
+  // Summary Stats
+  doc.setFillColor(248, 250, 252); // slate-50
+  doc.roundedRect(margin, y, contentWidth / 2 - 4, 30, 3, 3, "F");
+  doc.roundedRect(margin + contentWidth / 2 + 4, y, contentWidth / 2 - 4, 30, 3, 3, "F");
+
+  doc.setTextColor(15, 23, 42);
+  doc.setFontSize(24);
+  doc.setFont("helvetica", "bold");
+  doc.text(
+    data.totals.mentions.toLocaleString(),
+    margin + contentWidth / 4 - 2,
+    y + 14,
+    { align: "center" }
+  );
+  doc.setTextColor(100, 116, 139);
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  doc.text("Total Mentions", margin + contentWidth / 4 - 2, y + 22, {
+    align: "center",
+  });
+
+  doc.setTextColor(22, 163, 74); // green-600
+  doc.setFontSize(24);
+  doc.setFont("helvetica", "bold");
+  doc.text(
+    `${positivePercent}%`,
+    margin + (contentWidth * 3) / 4 + 2,
+    y + 14,
+    { align: "center" }
+  );
+  doc.setTextColor(100, 116, 139);
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  doc.text(
+    "Positive Sentiment",
+    margin + (contentWidth * 3) / 4 + 2,
+    y + 22,
+    { align: "center" }
+  );
+  y += 38;
+
+  // Sentiment Breakdown
+  doc.setTextColor(15, 23, 42);
+  doc.setFontSize(13);
+  doc.setFont("helvetica", "bold");
+  doc.text("Sentiment Breakdown", margin, y);
+  y += 8;
+
+  const barY = y;
+  const total = data.totals.positive + data.totals.neutral + data.totals.negative || 1;
+  const posW = (data.totals.positive / total) * contentWidth;
+  const neuW = (data.totals.neutral / total) * contentWidth;
+  const negW = (data.totals.negative / total) * contentWidth;
+
+  doc.setFillColor(34, 197, 94); // green
+  doc.rect(margin, barY, posW, 8, "F");
+  doc.setFillColor(148, 163, 184); // gray
+  doc.rect(margin + posW, barY, neuW, 8, "F");
+  doc.setFillColor(239, 68, 68); // red
+  doc.rect(margin + posW + neuW, barY, negW, 8, "F");
+  y += 12;
+
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(34, 197, 94);
+  doc.text(`Positive: ${data.totals.positive}`, margin, y);
+  doc.setTextColor(100, 116, 139);
+  doc.text(`Neutral: ${data.totals.neutral}`, margin + 50, y);
+  doc.setTextColor(239, 68, 68);
+  doc.text(`Negative: ${data.totals.negative}`, margin + 95, y);
+  y += 14;
+
+  // Top Platforms
+  if (data.platforms.length > 0) {
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(13);
+    doc.setFont("helvetica", "bold");
+    doc.text("Top Platforms", margin, y);
+    y += 8;
+
+    const maxMentions = Math.max(...data.platforms.map((p) => p.mentions));
+    for (const p of data.platforms.slice(0, 5)) {
+      const barWidth = (p.mentions / maxMentions) * (contentWidth - 70);
+      doc.setFillColor(20, 184, 166);
+      doc.rect(margin, y, barWidth, 6, "F");
+      doc.setTextColor(55, 65, 81);
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      const platformName = p.platform.charAt(0).toUpperCase() + p.platform.slice(1);
+      doc.text(platformName, margin + barWidth + 4, y + 5);
+      doc.setTextColor(20, 184, 166);
+      doc.text(`${p.mentions}`, pageWidth - margin, y + 5, {
+        align: "right",
+      });
+      y += 10;
+    }
+    y += 6;
+  }
+
+  // Categories
+  if (data.categories.length > 0) {
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(13);
+    doc.setFont("helvetica", "bold");
+    doc.text("Top Categories", margin, y);
+    y += 8;
+
+    for (const c of data.categories.slice(0, 6)) {
+      doc.setTextColor(55, 65, 81);
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      const catLabel = c.category.replace(/_/g, " ");
+      doc.text(`• ${catLabel}`, margin + 2, y);
+      doc.setTextColor(20, 184, 166);
+      doc.text(`${c.count}`, pageWidth - margin, y, { align: "right" });
+      y += 6;
+    }
+    y += 8;
+  }
+
+  // Top Posts
+  if (data.topPosts.length > 0) {
+    // Check if we need a new page
+    if (y > 240) {
+      doc.addPage();
+      y = margin;
+    }
+
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(13);
+    doc.setFont("helvetica", "bold");
+    doc.text("Top Engaging Posts", margin, y);
+    y += 8;
+
+    for (const p of data.topPosts.slice(0, 5)) {
+      if (y > 270) {
+        doc.addPage();
+        y = margin;
+      }
+
+      const title = p.title.length > 90 ? p.title.slice(0, 87) + "..." : p.title;
+      doc.setTextColor(15, 23, 42);
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      doc.text(title, margin + 2, y, { maxWidth: contentWidth - 4 });
+      y += 5;
+      doc.setTextColor(100, 116, 139);
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
+      const platformName = p.platform.charAt(0).toUpperCase() + p.platform.slice(1);
+      doc.text(`${platformName} · ${p.sentiment}`, margin + 2, y);
+      y += 4;
+      doc.setTextColor(20, 184, 166);
+      doc.setFontSize(7);
+      const urlDisplay = p.url.length > 80 ? p.url.slice(0, 77) + "..." : p.url;
+      doc.text(urlDisplay, margin + 2, y);
+      y += 8;
+    }
+  }
+
+  // Footer
+  const footerY = doc.internal.pageSize.getHeight() - 12;
+  doc.setDrawColor(226, 232, 240);
+  doc.line(margin, footerY - 4, pageWidth - margin, footerY - 4);
+  doc.setTextColor(148, 163, 184);
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "normal");
+  doc.text("Generated by Kaulby · kaulbyapp.com", margin, footerY);
+  doc.text(
+    `Page ${doc.getNumberOfPages()}`,
+    pageWidth - margin,
+    footerY,
+    { align: "right" }
+  );
+
+  // Return as Buffer
+  const arrayBuffer = doc.output("arraybuffer");
+  return Buffer.from(arrayBuffer);
 }

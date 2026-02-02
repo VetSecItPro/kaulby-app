@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { AuthButtons } from "@/components/shared/auth-buttons";
+import { MarketingNavLinks } from "@/components/shared/marketing-nav-links";
 
 export function MarketingHeader() {
   return (
@@ -20,20 +21,8 @@ export function MarketingHeader() {
           <span className="text-xl md:text-2xl font-bold gradient-text">Kaulby</span>
         </Link>
         <nav className="flex items-center gap-3 md:gap-6">
-          <Link
-            href="/articles"
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors hidden sm:block"
-            prefetch={true}
-          >
-            Articles
-          </Link>
-          <Link
-            href="/pricing"
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors hidden sm:block"
-            prefetch={true}
-          >
-            Pricing
-          </Link>
+          {/* A11Y: Client component for active state indication — FIX-019 */}
+          <MarketingNavLinks />
           <AuthButtons />
         </nav>
       </div>

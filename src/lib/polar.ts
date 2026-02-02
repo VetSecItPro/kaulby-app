@@ -1,5 +1,5 @@
 // Polar SDK - dynamically imported to prevent build errors when not installed
-// Install with: npm install @polar-sh/sdk
+// Install with: pnpm add @polar-sh/sdk
 type PolarClient = {
   checkouts: {
     custom: {
@@ -38,18 +38,16 @@ export async function getPolarClient(): Promise<PolarClient | null> {
   }
 
   try {
-    // Dynamic import using string variable to avoid TypeScript module resolution at build time
-    // This allows the code to work even when @polar-sh/sdk is not installed
-    const moduleName = "@polar-sh/sdk";
+    // SECURITY: Standard dynamic import replaces Function() eval — FIX-004
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const sdk = await (Function("moduleName", "return import(moduleName)")(moduleName) as Promise<any>);
+    const sdk = await import("@polar-sh/sdk") as any;
     const Polar = sdk.Polar;
     _polarClient = new Polar({
       accessToken: process.env.POLAR_ACCESS_TOKEN,
     }) as unknown as PolarClient;
     return _polarClient;
   } catch {
-    console.warn("@polar-sh/sdk not installed. Run: npm install @polar-sh/sdk");
+    console.warn("@polar-sh/sdk not installed. Run: pnpm add @polar-sh/sdk");
     return null;
   }
 }

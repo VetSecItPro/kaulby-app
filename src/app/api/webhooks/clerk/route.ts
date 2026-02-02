@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { Webhook } from "svix";
 import { WebhookEvent } from "@clerk/nextjs/server";
 import { db, users } from "@/lib/db";
+
+// PERF: Webhook processing may take longer than default 10s — FIX-016
+export const maxDuration = 60;
 import { eq } from "drizzle-orm";
 import { upsertContact, sendWelcomeEmail } from "@/lib/email";
 import { identifyUser } from "@/lib/posthog";
