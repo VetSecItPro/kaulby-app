@@ -31,8 +31,8 @@ const competitorMeta: Record<string, { name: string; description: string }> = {
     description: "Looking for a Syften alternative? Kaulby offers AI sentiment analysis, pain point detection, and 16 platforms vs Syften's limited coverage. Free tier available.",
   },
   gummysearch: {
-    name: "***",
-    description: "*** is shutting down. Kaulby offers everything *** had plus 11 more platforms, better AI, and active development. Migrate free today.",
+    name: "GummySearch",
+    description: "GummySearch is shutting down. Kaulby offers everything GummySearch had plus 11 more platforms, better AI, and active development. Migrate free today.",
   },
   redreach: {
     name: "RedReach",

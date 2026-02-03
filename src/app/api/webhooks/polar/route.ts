@@ -12,7 +12,7 @@ import { activateDayPass } from "@/lib/day-pass";
 
 export const dynamic = "force-dynamic";
 
-// Maximum number of ***s who lock in price forever
+// Maximum number of founding members who lock in price forever
 const FOUNDING_MEMBER_LIMIT = 1000;
 
 // Polar webhook event types
@@ -194,12 +194,12 @@ export async function POST(request: NextRequest) {
           break;
         }
 
-        // Atomically assign *** number using UPDATE with subquery
+        // Atomically assign founding member number using UPDATE with subquery
         let isFoundingMember = false;
-        let ***Number: number | null = null;
+        let foundingMemberNumber: number | null = null;
 
         if (plan === "pro" || plan === "team") {
-          // Use an atomic UPDATE that only sets *** if under limit
+          // Use an atomic UPDATE that only sets founding member if under limit
           const result = await db
             .update(users)
             .set({
@@ -212,12 +212,12 @@ export async function POST(request: NextRequest) {
                 THEN true
                 ELSE false
               END`,
-              ***Number: sql`CASE
+              foundingMemberNumber: sql`CASE
                 WHEN (SELECT COUNT(*) FROM ${users} WHERE ${users.isFoundingMember} = true) < ${FOUNDING_MEMBER_LIMIT}
                 THEN (SELECT COUNT(*) FROM ${users} WHERE ${users.isFoundingMember} = true) + 1
                 ELSE NULL
               END`,
-              ***PriceId: sql`CASE
+              foundingMemberPriceId: sql`CASE
                 WHEN (SELECT COUNT(*) FROM ${users} WHERE ${users.isFoundingMember} = true) < ${FOUNDING_MEMBER_LIMIT}
                 THEN ${productId}
                 ELSE NULL
@@ -227,12 +227,12 @@ export async function POST(request: NextRequest) {
             .where(eq(users.id, user.id))
             .returning({
               isFoundingMember: users.isFoundingMember,
-              ***Number: users.***Number,
+              foundingMemberNumber: users.foundingMemberNumber,
             });
 
           if (result[0]) {
             isFoundingMember = result[0].isFoundingMember || false;
-            ***Number = result[0].***Number;
+            foundingMemberNumber = result[0].foundingMemberNumber;
           }
         } else {
           // Non-founding-member eligible plans
@@ -272,7 +272,7 @@ export async function POST(request: NextRequest) {
             productId,
             subscriptionId,
             isFoundingMember,
-            ***Number,
+            foundingMemberNumber,
           },
         });
         break;

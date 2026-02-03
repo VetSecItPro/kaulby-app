@@ -70,7 +70,7 @@ export default async function DashboardLayout({
     redirect("/banned");
   }
 
-  // Track user activity for *** (fire and forget, don't await)
+  // Track user activity for churn detection (fire and forget, don't await)
   // Updates lastActiveAt to detect inactive users later
   db.update(users)
     .set({ lastActiveAt: new Date() })

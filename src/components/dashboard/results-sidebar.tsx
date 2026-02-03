@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 /**
- * Results Sidebar - ***-style filtering sidebar
+ * Results Sidebar - GummySearch-style filtering sidebar
  *
  * Shows:
  * - Platform breakdown with counts

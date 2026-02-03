@@ -1,7 +1,7 @@
 /**
  * Boolean Search Parser
  *
- * Supports ***-style search operators:
+ * Supports GummySearch-style search operators:
  * - "exact phrase" - Match exact phrase
  * - title:keyword - Search only in titles
  * - body:keyword - Search only in content/body

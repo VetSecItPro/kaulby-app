@@ -72,13 +72,13 @@ test.describe("Articles Pages", () => {
   });
 });
 
-test.describe("*** Migration Page", () => {
+test.describe("GummySearch Migration Page", () => {
   test("gummysearch page has migration content", async ({ page }) => {
     await page.goto("/gummysearch");
 
     await expect(page.locator("h1")).toBeVisible();
 
-    // Should mention ***
+    // Should mention GummySearch
     await expect(page.getByText(/gummysearch/i).first()).toBeVisible();
 
     // Should have CTA for migration
