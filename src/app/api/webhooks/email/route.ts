@@ -34,8 +34,8 @@ export async function POST(request: NextRequest) {
   try {
     const payload = await request.json();
 
-    // Log full payload to see all available fields
-    console.log("📧 Full webhook payload:", JSON.stringify(payload, null, 2));
+    // SECURITY: Log metadata only — FIX-011
+    console.log("📧 Email webhook received:", { type: (payload as Record<string,unknown>)?.type });
 
     // Resend wraps email data in "data" object
     const email = payload.data || payload;
@@ -57,7 +57,8 @@ export async function POST(request: NextRequest) {
         });
         if (response.ok) {
           const fullEmail = await response.json();
-          console.log("📧 Full inbound email:", JSON.stringify(fullEmail, null, 2));
+          // SECURITY: Log metadata only — FIX-011
+          console.log("📧 Inbound email processed");
           text = fullEmail.text;
           html = fullEmail.html;
         } else {
@@ -112,4 +113,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Webhook failed" }, { status: 500 });
   }
 }
-

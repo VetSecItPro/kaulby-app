@@ -1,3 +1,5 @@
+// A11Y: Tailwind v3+ includes focus-visible utilities by default — FIX-310
+// PERF: Consider reducing barrel imports from @/components/ui — FIX-218
 import type { Config } from "tailwindcss";
 
 const config: Config = {

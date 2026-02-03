@@ -20,9 +20,11 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // FIX-219: Add limit to prevent unbounded query
     const searches = await db.query.savedSearches.findMany({
       where: eq(savedSearches.userId, userId),
       orderBy: [desc(savedSearches.lastUsedAt), desc(savedSearches.createdAt)],
+      limit: 100, // Limit to 100 saved searches max
     });
 
     return NextResponse.json({ searches });

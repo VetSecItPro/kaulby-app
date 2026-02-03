@@ -77,6 +77,9 @@ export const metadata: Metadata = {
     images: ["/icon-512.png"],
   },
   manifest: "/manifest.json",
+  alternates: {
+    canonical: "https://kaulbyapp.com", // SEO: FIX-320
+  },
 };
 
 export default function RootLayout({
@@ -95,12 +98,19 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} antialiased bg-background`}
         suppressHydrationWarning
       >
+        {/* A11Y: Skip to main content link — FIX-302 */}
+        <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:bg-white focus:text-black focus:px-4 focus:py-2 focus:rounded">
+          Skip to main content
+        </a>
+
         {/* Sitewide Structured Data for SEO & AEO */}
         <OrganizationSchema />
         <SoftwareApplicationSchema />
 
         <ResilientClerkProvider>
-          {children}
+          <div id="main-content">
+            {children}
+          </div>
           <Toaster />
           <CookieConsent />
         </ResilientClerkProvider>

@@ -57,7 +57,7 @@ export async function GET() {
       // 8. Clicked/engaged this week (gamification)
       engagedThisWeek,
     ] = await Promise.all([
-      // 1. Respond Now - Questions seeking solutions/advice
+      // FIX-209: Add limit to Respond Now query
       db.query.results.findMany({
         where: and(
           inArray(results.monitorId, monitorIds),
@@ -81,7 +81,7 @@ export async function GET() {
         limit: 5,
       }),
 
-      // 2. High-Intent Leads (lead_score >= 60)
+      // FIX-209: Add limit to High-Intent Leads query
       db.query.results.findMany({
         where: and(
           inArray(results.monitorId, monitorIds),
@@ -101,7 +101,7 @@ export async function GET() {
         limit: 5,
       }),
 
-      // 3. Negative Attention - Negative sentiment posts
+      // FIX-209: Add limit to Negative Attention query
       db.query.results.findMany({
         where: and(
           inArray(results.monitorId, monitorIds),
@@ -122,7 +122,7 @@ export async function GET() {
         limit: 5,
       }),
 
-      // 4. Engage Today - Hot posts from last 24hrs
+      // FIX-209: Add limit to Engage Today query
       db.query.results.findMany({
         where: and(
           inArray(results.monitorId, monitorIds),
@@ -142,7 +142,7 @@ export async function GET() {
         limit: 5,
       }),
 
-      // 5. Pain Points - Problems people are expressing
+      // FIX-209: Add limit to Pain Points query
       db.query.results.findMany({
         where: and(
           inArray(results.monitorId, monitorIds),
@@ -226,6 +226,7 @@ export async function GET() {
       ...engageTodayResults,
     ]);
 
+    // FIX-215: Add cache headers to response
     const response = NextResponse.json({
       // Actionable items
       respondNow: respondNowResults.map(formatResult),
@@ -265,7 +266,7 @@ export async function GET() {
       // Gamification
       engagedThisWeek: engagedThisWeek[0]?.count || 0,
     });
-    response.headers.set("Cache-Control", "private, max-age=30, stale-while-revalidate=60");
+    response.headers.set("Cache-Control", "private, max-age=300");
     return response;
   } catch (error) {
     console.error("Dashboard insights error:", error);

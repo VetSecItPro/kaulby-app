@@ -1,3 +1,4 @@
+// TODO: Add OpenGraph images for social sharing — FIX-304
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { MarketingHeader } from "@/components/shared/marketing-header";

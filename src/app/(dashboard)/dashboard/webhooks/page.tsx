@@ -41,6 +41,7 @@ export default async function WebhooksPage() {
     });
 
     // Get recent deliveries for all user's webhooks
+    // TODO(FIX-105): N+1 query pattern - should use a single query with inArray instead of looping
     if (userWebhooks.length > 0) {
       const webhookIds = userWebhooks.map(w => w.id);
       const oneDayAgo = new Date();

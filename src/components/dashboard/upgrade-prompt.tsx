@@ -1,5 +1,10 @@
 "use client";
 
+// TODO: FIX-321 (LOW) - Upgrade prompts should show current usage vs. limit
+// Example: "You've used 3/3 monitors" or "1/3 keywords remaining"
+// This helps users understand why they're hitting limits and makes upgrade more compelling.
+// Pass usage data as props to UpgradePromptDialog, ConversionUpgradeModal, and UpgradeCard.
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {

@@ -3,6 +3,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function Loading() {
   return (
     <div className="flex flex-col min-h-screen">
+      {/* A11Y: Screen reader text — FIX-313 */}
+      <span className="sr-only">Loading...</span>
+
       {/* Header skeleton */}
       <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur">
         <div className="container mx-auto px-4 py-3 md:py-4 flex items-center justify-between">

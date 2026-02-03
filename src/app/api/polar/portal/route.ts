@@ -52,10 +52,9 @@ export async function POST() {
     });
   } catch (error) {
     console.error("Polar portal error:", error);
-    // Log more details for debugging
+    // SECURITY: Sanitized error logging — FIX-001
     if (error instanceof Error) {
-      console.error("Error message:", error.message);
-      console.error("Error stack:", error.stack);
+      console.error("Portal session creation failed:", error.message);
     }
     // Check if it's a Polar API error with more details
     const errorMessage = error instanceof Error ? error.message : "Unknown error";

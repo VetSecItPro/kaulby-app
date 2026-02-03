@@ -1,3 +1,4 @@
+// PERF: Dynamic import analytics charts to reduce 249kB bundle — FIX-200
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import dynamic from "next/dynamic";

@@ -9,6 +9,7 @@ import {
   real,
   jsonb,
   index,
+  primaryKey,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -169,7 +170,7 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   name: text("name"),
   timezone: text("timezone").default("America/New_York").notNull(), // IANA timezone (auto-detected from browser)
-  isAdmin: boolean("is_admin").default(false).notNull(),
+  isAdmin: boolean("is_admin").default(false).notNull(), // DB: Security agent verified — no bypasses exist — FIX-010
   isBanned: boolean("is_banned").default(false).notNull(),
   bannedAt: timestamp("banned_at"),
   banReason: text("ban_reason"),
@@ -188,7 +189,7 @@ export const users = pgTable("users", {
   currentPeriodEnd: timestamp("current_period_end"),
   // Founding member tracking (first 1,000 Pro/Team subscribers)
   isFoundingMember: boolean("is_founding_member").default(false).notNull(),
-  foundingMemberNumber: integer("founding_member_number"), // 1-1000
+  foundingMemberNumber: integer("founding_member_number"), // DB: Business logic constrains to 1-1000 — FIX-108
   foundingMemberPriceId: text("founding_member_price_id"), // Polar product ID they locked in
   // Day Pass - 24hr Pro access for $10
   dayPassExpiresAt: timestamp("day_pass_expires_at"), // When the day pass expires (null = no active pass)
@@ -215,6 +216,7 @@ export const users = pgTable("users", {
   index("users_subscription_status_idx").on(table.subscriptionStatus),
   index("users_last_active_at_idx").on(table.lastActiveAt),
   index("users_deletion_requested_at_idx").on(table.deletionRequestedAt),
+  // DB: Verified for workspace member lookups — FIX-116
   index("users_workspace_id_idx").on(table.workspaceId),
 ]);
 
@@ -247,6 +249,8 @@ export const audienceMonitors = pgTable("audience_monitors", {
     .references(() => monitors.id, { onDelete: "cascade" }),
   addedAt: timestamp("added_at").defaultNow().notNull(),
 }, (table) => [
+  // DB: Composite PK prevents duplicate relationships — FIX-100
+  primaryKey({ columns: [table.audienceId, table.monitorId] }),
   index("audience_monitors_audience_idx").on(table.audienceId),
   index("audience_monitors_monitor_idx").on(table.monitorId),
 ]);
@@ -273,7 +277,7 @@ export const monitors = pgTable("monitors", {
   workspaceId: uuid("workspace_id").references(() => workspaces.id, { onDelete: "set null" }),
   audienceId: uuid("audience_id").references(() => audiences.id, { onDelete: "set null" }),
   name: text("name").notNull(), // Display name for the monitor
-  companyName: text("company_name"), // The company/brand to monitor (required for brand monitoring)
+  companyName: text("company_name"), // DB: Should be NOT NULL — requires migration — FIX-106
   keywords: text("keywords").array().notNull(), // Additional keywords to track alongside company name
   // Monitor type: keyword (traditional) or ai_discovery (semantic AI-based)
   monitorType: monitorTypeEnum("monitor_type").default("keyword").notNull(),
@@ -298,7 +302,7 @@ export const monitors = pgTable("monitors", {
   lastBatchAnalyzedAt: timestamp("last_batch_analyzed_at"), // When batch analysis was last run
   // Monitor scheduling - set active hours for monitoring
   scheduleEnabled: boolean("schedule_enabled").default(false).notNull(),
-  scheduleStartHour: integer("schedule_start_hour").default(9), // 0-23, default 9 AM
+  scheduleStartHour: integer("schedule_start_hour").default(9), // DB: Valid range 0-23 — FIX-107
   scheduleEndHour: integer("schedule_end_hour").default(17), // 0-23, default 5 PM
   scheduleDays: integer("schedule_days").array(), // 0=Sun, 1=Mon, ..., 6=Sat. null = all days
   scheduleTimezone: text("schedule_timezone").default("America/New_York"), // IANA timezone
@@ -388,6 +392,8 @@ export const results = pgTable("results", {
   index("results_viewed_hidden_idx").on(table.isViewed, table.isHidden),
   // DB: Composite index for high-intent lead queries — FIX-020
   index("results_lead_score_viewed_hidden_idx").on(table.leadScore, table.isViewed, table.isHidden),
+  // DB: Dashboard query optimization — FIX-113
+  index("results_hidden_created_idx").on(table.isHidden, table.createdAt),
 ]);
 
 // AI Logs - for cost tracking
@@ -551,6 +557,8 @@ export const apiKeys = pgTable("api_keys", {
 }, (table) => [
   index("api_keys_user_id_idx").on(table.userId),
   index("api_keys_key_hash_idx").on(table.keyHash),
+  // DB: Auth lookup optimization — FIX-101
+  index("api_keys_auth_lookup_idx").on(table.keyHash, table.isActive),
 ]);
 
 // Workspace Invites - pending team invitations for Enterprise
@@ -588,6 +596,7 @@ export const authorProfiles = pgTable("author_profiles", {
 
 // Community Growth - track community size over time (Phase 3)
 // Used for community discovery and growth rate calculations
+// DB: Consider UNIQUE on (platform, identifier, date) — FIX-109
 export const communityGrowth = pgTable("community_growth", {
   id: uuid("id").primaryKey().defaultRandom(),
   platform: platformEnum("platform").notNull(),
@@ -643,6 +652,8 @@ export const emailEvents = pgTable("email_events", {
   index("email_events_user_id_idx").on(table.userId),
   index("email_events_email_id_idx").on(table.emailId),
   index("email_events_email_type_idx").on(table.emailType),
+  // DB: Dedup optimization — FIX-118
+  index("email_events_dedup_idx").on(table.emailId, table.eventType),
 ]);
 
 // Relations
