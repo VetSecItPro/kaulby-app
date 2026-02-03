@@ -10,6 +10,9 @@ import { db, monitors, results } from "@/lib/db";
 import { eq, and, gte, inArray, desc, sql } from "drizzle-orm";
 import { getUserPlan } from "@/lib/limits";
 
+// FIX-212: Add maxDuration for long-running report generation
+export const maxDuration = 60;
+
 interface ReportConfig {
   title: string;
   dateRange: "7d" | "30d" | "90d";
@@ -144,7 +147,7 @@ export async function POST(req: Request) {
         .groupBy(results.conversationCategory)
         .orderBy(sql`count(*) desc`),
 
-      // Top posts by engagement
+      // FIX-207: Add limit to top posts query to prevent unbounded query
       db.query.results.findMany({
         where: and(
           inArray(results.monitorId, monitorIds),

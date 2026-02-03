@@ -161,10 +161,12 @@ export async function GET(request: NextRequest) {
 
     const whereCondition = and(...conditions);
 
+    // PERF: Bounded aggregation query — FIX-206
     // Fetch all results for aggregation
     // Note: For large datasets, this could be optimized with SQL GROUP BY queries
     const userResults = await db.query.results.findMany({
       where: whereCondition,
+      limit: 5000,
       columns: {
         platform: true,
         sourceUrl: true,

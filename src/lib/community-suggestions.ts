@@ -290,7 +290,10 @@ function getCommunitySuggestions(
     existingCommunities.map((c) => c.toLowerCase())
   );
 
-  // Track scores for each community
+  // FIX-211: Track scores for each community
+  // TODO: Add max-size check to prevent unbounded Map growth (e.g., limit to 1000 communities)
+  // This could become an issue if a user has thousands of keywords or if SUBREDDIT_CATEGORIES
+  // grows significantly. Consider implementing a MAX_COMMUNITIES constant and pruning strategy.
   const communityScores: Map<
     string,
     { score: number; keywords: Set<string>; categories: Set<string> }

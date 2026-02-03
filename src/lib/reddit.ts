@@ -17,6 +17,7 @@
  */
 
 import { cachedQuery, getRedditCacheTTL, CACHE_TTL } from "@/lib/cache";
+import { randomBytes } from "crypto";
 
 interface RedditPost {
   id: string;
@@ -108,8 +109,9 @@ function transformSerperResult(
   const urlMatch = result.link.match(/\/comments\/([a-z0-9]+)\//);
   const subredditMatch = result.link.match(/\/r\/([^/]+)\//);
 
+  // SECURITY: Cryptographic randomness — FIX-002
   return {
-    id: urlMatch?.[1] || `serper-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    id: urlMatch?.[1] || `serper-${Date.now()}-${randomBytes(8).toString('hex')}`,
     title: result.title.replace(/ : \w+$/, "").replace(/ - Reddit$/, ""),
     selftext: result.snippet || "",
     author: "unknown",
@@ -347,4 +349,3 @@ export async function searchRedditResilient(
     };
   }
 }
-

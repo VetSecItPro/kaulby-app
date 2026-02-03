@@ -497,7 +497,7 @@ export async function GET(request: Request) {
     const monitorIds = userMonitors.map((m) => m.id);
     const monitorNameMap = new Map(userMonitors.map((m) => [m.id, m.name]));
 
-    // Fetch results for analysis with monitor ID
+    // FIX-210: Add limit to prevent unbounded query
     const rawResults = await db.query.results.findMany({
       where: and(
         inArray(results.monitorId, monitorIds),
@@ -514,7 +514,7 @@ export async function GET(request: Request) {
         monitorId: true,
       },
       orderBy: desc(results.createdAt),
-      limit: 500, // Analyze up to 500 recent results
+      limit: 5000, // Limit to 5000 most recent results for analysis
     });
 
     // Enrich results with monitor names

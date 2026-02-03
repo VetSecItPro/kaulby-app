@@ -136,6 +136,7 @@ export async function POST(
       );
     }
 
+    // TODO(FIX-112): Workspace invite acceptance should use a database transaction to ensure atomicity
     // Add user to workspace as editor (default role for new members)
     // Use user.id for Clerk ID mismatch compatibility
     await db

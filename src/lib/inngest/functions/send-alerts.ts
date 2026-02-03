@@ -403,6 +403,7 @@ export const sendDailyDigest = inngest.createFunction(
     const TARGET_HOUR = 9; // 9 AM local time
 
     // Get distinct timezones from users with daily email alerts (SQL JOIN instead of loading all user data)
+    // DB: Safety limit on timezone query — FIX-104
     const uniqueTimezones = await step.run("get-unique-timezones", async () => {
       const rows = await pooledDb
         .selectDistinct({ timezone: users.timezone })
@@ -414,7 +415,8 @@ export const sendDailyDigest = inngest.createFunction(
           eq(alerts.frequency, "daily"),
           eq(alerts.channel, "email"),
           sql`${users.timezone} IS NOT NULL`
-        ));
+        ))
+        .limit(1000);
       return rows
         .map(r => r.timezone)
         .filter((tz): tz is string => tz !== null && isValidTimezone(tz));

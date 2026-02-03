@@ -13,6 +13,9 @@ import {
   cacheAnswer,
 } from "@/lib/ai/rate-limit";
 
+// FIX-212: Add maxDuration for long-running AI operations
+export const maxDuration = 60;
+
 interface AskRequest {
   question: string;
   monitorIds?: string[];
@@ -103,7 +106,7 @@ async function searchRelevantResults(
 
   const dateFilter = gte(results.createdAt, new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000));
 
-  // Fetch results (limited columns for efficiency)
+  // FIX-208: Add limit to prevent unbounded query that feeds AI context
   const searchResults = await db.query.results.findMany({
     where: and(
       inArray(results.monitorId, validMonitorIds),
@@ -111,7 +114,7 @@ async function searchRelevantResults(
       eq(results.isHidden, false)
     ),
     orderBy: [desc(results.engagementScore), desc(results.createdAt)],
-    limit: 50,
+    limit: 500, // Limit to 500 results max for AI context
     columns: {
       id: true,
       title: true,

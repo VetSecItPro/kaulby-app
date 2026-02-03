@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+// TODO: Replace console.error() with structured logging across API routes to prevent PII leakage — FIX-005
+// PERF: Middleware bundle is 76.7kB — consider code-splitting non-essential logic — FIX-216
+
 // PERF: Cache env check — env vars don't change at runtime — FIX-021
 let _clerkConfigured: boolean | null = null;
 function clerkConfigured(): boolean {
@@ -93,6 +96,8 @@ export default async function middleware(request: NextRequest) {
   const handler = await getClerkHandler();
   return handler(request, {} as never);
 }
+
+// TODO: Consider CSRF tokens for critical state-changing routes (account deletion, role changes) — FIX-009
 
 export const config = {
   matcher: [

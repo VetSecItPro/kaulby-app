@@ -133,6 +133,7 @@ export const scheduledAccountDeletion = inngest.createFunction(
     }
 
     // Step 8: Delete all user data from database
+    // TODO(FIX-111): Account deletion should use a database transaction for atomicity to ensure all-or-nothing deletion
     await step.run("delete-user-data", async () => {
       await deleteAllUserData(userId);
       console.log(`[Account Deletion] All data deleted for user ${userId}`);

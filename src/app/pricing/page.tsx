@@ -220,6 +220,7 @@ export default function PricingPage() {
             </div>
             <span className="text-2xl font-bold gradient-text">Kaulby</span>
           </Link>
+          {/* A11Y: Consider wrapping in <nav> — FIX-303 */}
           <nav className="flex items-center gap-4">
             <Link href="/articles" className="text-sm font-medium">
               Articles
@@ -281,6 +282,7 @@ export default function PricingPage() {
             <div className="inline-flex items-center rounded-full bg-muted p-1 relative">
               <button
                 onClick={() => setBillingInterval("monthly")}
+                aria-pressed={billingInterval === "monthly"} // A11Y: FIX-306
                 className={cn(
                   "px-5 py-2 rounded-full text-sm font-medium transition-colors",
                   billingInterval === "monthly"
@@ -292,6 +294,7 @@ export default function PricingPage() {
               </button>
               <button
                 onClick={() => setBillingInterval("annual")}
+                aria-pressed={billingInterval === "annual"}
                 className={cn(
                   "px-5 py-2 rounded-full text-sm font-medium transition-colors",
                   billingInterval === "annual"
@@ -462,64 +465,67 @@ export default function PricingPage() {
             <h2 className="text-2xl font-bold text-center mb-8">
               Compare Plans
             </h2>
-            <div className="rounded-lg border overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead className="w-[200px]">Feature</TableHead>
-                    <TableHead className="text-center">Free</TableHead>
-                    <TableHead className="text-center bg-primary/5">
-                      <div className="flex items-center justify-center gap-1">
-                        Pro
-                        <Badge variant="secondary" className="text-[10px]">Popular</Badge>
-                      </div>
-                    </TableHead>
-                    <TableHead className="text-center">Team</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {featureComparison.map((row) => (
-                    <TableRow key={row.feature}>
-                      <TableCell className="font-medium">{row.feature}</TableCell>
-                      <TableCell className="text-center">
-                        {typeof row.free === "boolean" ? (
-                          row.free ? (
-                            <Check className="h-4 w-4 text-green-500 mx-auto" />
-                          ) : (
-                            <X className="h-4 w-4 text-muted-foreground/50 mx-auto" />
-                          )
-                        ) : (
-                          <span className="text-sm">{row.free}</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-center bg-primary/5">
-                        {typeof row.pro === "boolean" ? (
-                          row.pro ? (
-                            <Check className="h-4 w-4 text-green-500 mx-auto" />
-                          ) : (
-                            <X className="h-4 w-4 text-muted-foreground/50 mx-auto" />
-                          )
-                        ) : (
-                          <span className="text-sm">{row.pro}</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {typeof row.team === "boolean" ? (
-                          row.team ? (
-                            <Check className="h-4 w-4 text-green-500 mx-auto" />
-                          ) : (
-                            <X className="h-4 w-4 text-muted-foreground/50 mx-auto" />
-                          )
-                        ) : row.team === "Coming soon" ? (
-                          <span className="text-xs text-muted-foreground">{row.team}</span>
-                        ) : (
-                          <span className="text-sm">{row.team}</span>
-                        )}
-                      </TableCell>
+            {/* A11Y: Mobile scroll — FIX-317 */}
+            <div className="overflow-x-auto">
+              <div className="rounded-lg border overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="w-[200px]">Feature</TableHead>
+                      <TableHead className="text-center">Free</TableHead>
+                      <TableHead className="text-center bg-primary/5">
+                        <div className="flex items-center justify-center gap-1">
+                          Pro
+                          <Badge variant="secondary" className="text-[10px]">Popular</Badge>
+                        </div>
+                      </TableHead>
+                      <TableHead className="text-center">Team</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {featureComparison.map((row) => (
+                      <TableRow key={row.feature}>
+                        <TableCell className="font-medium">{row.feature}</TableCell>
+                        <TableCell className="text-center">
+                          {typeof row.free === "boolean" ? (
+                            row.free ? (
+                              <Check className="h-4 w-4 text-green-500 mx-auto" />
+                            ) : (
+                              <X className="h-4 w-4 text-muted-foreground/50 mx-auto" />
+                            )
+                          ) : (
+                            <span className="text-sm">{row.free}</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center bg-primary/5">
+                          {typeof row.pro === "boolean" ? (
+                            row.pro ? (
+                              <Check className="h-4 w-4 text-green-500 mx-auto" />
+                            ) : (
+                              <X className="h-4 w-4 text-muted-foreground/50 mx-auto" />
+                            )
+                          ) : (
+                            <span className="text-sm">{row.pro}</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {typeof row.team === "boolean" ? (
+                            row.team ? (
+                              <Check className="h-4 w-4 text-green-500 mx-auto" />
+                            ) : (
+                              <X className="h-4 w-4 text-muted-foreground/50 mx-auto" />
+                            )
+                          ) : row.team === "Coming soon" ? (
+                            <span className="text-xs text-muted-foreground">{row.team}</span>
+                          ) : (
+                            <span className="text-sm">{row.team}</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
           </div>
 
@@ -528,6 +534,8 @@ export default function PricingPage() {
             <h2 className="text-2xl font-bold text-center mb-8">
               Frequently Asked Questions
             </h2>
+            {/* A11Y: Keyboard navigation instructions — FIX-322 */}
+            <p className="sr-only">Use arrow keys to navigate questions. Press Enter or Space to expand.</p>
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="free-plan">
                 <AccordionTrigger>Is there really a free plan?</AccordionTrigger>

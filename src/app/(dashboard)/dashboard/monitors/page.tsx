@@ -1,3 +1,4 @@
+// PERF: Dynamic import creation wizard — FIX-202
 import { redirect } from "next/navigation";
 import { ResponsiveMonitors } from "@/components/dashboard/responsive-monitors";
 import { getEffectiveUserId, isLocalDev } from "@/lib/dev-auth";

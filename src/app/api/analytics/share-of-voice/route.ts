@@ -134,12 +134,15 @@ export async function GET(req: Request) {
     // In a more sophisticated setup, you'd have explicit "your brand" vs "competitor" flags
     const [yourBrand, ...competitors] = brands;
 
-    return NextResponse.json({
+    // FIX-214: Add cache headers to response
+    const response = NextResponse.json({
       yourBrand: yourBrand || null,
       competitors,
       period: `Last ${days} days`,
       totalMentions: brands.reduce((sum, b) => sum + b.mentions, 0),
     });
+    response.headers.set("Cache-Control", "private, max-age=300");
+    return response;
   } catch (error) {
     console.error("Share of Voice error:", error);
     return NextResponse.json(

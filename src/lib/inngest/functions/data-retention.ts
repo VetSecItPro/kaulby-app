@@ -30,6 +30,7 @@ export const dataRetention = inngest.createFunction(
     };
 
     // Bulk delete for free-tier users (all old results, even saved)
+    // SECURITY: Drizzle's sql`` template tag safely handles ${table.column} as column references, not raw string interpolation — FIX-115
     const freeDeleted = await step.run("cleanup-free-tier", async () => {
       const whereClause = and(
         sql`${results.monitorId} IN (

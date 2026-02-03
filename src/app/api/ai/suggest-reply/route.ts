@@ -53,6 +53,7 @@ export async function POST(req: Request) {
       );
     }
 
+    // SECURITY: Rate limit verified — FIX-004
     // Rate limiting
     const rateLimitCheck = await checkAllRateLimits(userId, plan);
     if (!rateLimitCheck.allowed) {

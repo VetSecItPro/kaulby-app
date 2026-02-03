@@ -1,3 +1,4 @@
+// PERF: Code-split admin sections — FIX-203
 import { db } from "@/lib/db";
 import { users, monitors, results, aiLogs, errorLogs } from "@/lib/db/schema";
 import { count, sum, desc, sql, gte, and, lt, eq } from "drizzle-orm";

@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { monitors } from "@/lib/db/schema";
 import { eq, desc, count } from "drizzle-orm";
 import { Platform, ALL_PLATFORMS } from "@/lib/plans";
+import { sanitizeMonitorInput, isValidKeyword } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
@@ -116,13 +117,33 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // SECURITY: Input sanitization — FIX-003
+      const sanitizedName = sanitizeMonitorInput(name);
+      const sanitizedKeywords = keywords
+        .map((k: string) => (typeof k === "string" ? sanitizeMonitorInput(k) : ""))
+        .filter((k: string) => isValidKeyword(k));
+
+      if (!sanitizedName || sanitizedName.length === 0) {
+        return NextResponse.json(
+          { error: "Invalid name after sanitization" },
+          { status: 400 }
+        );
+      }
+
+      if (sanitizedKeywords.length === 0) {
+        return NextResponse.json(
+          { error: "No valid keywords after sanitization" },
+          { status: 400 }
+        );
+      }
+
       // Create monitor
       const [newMonitor] = await db
         .insert(monitors)
         .values({
           userId,
-          name,
-          keywords,
+          name: sanitizedName,
+          keywords: sanitizedKeywords,
           platforms: platformsList,
           isActive: true,
         })
