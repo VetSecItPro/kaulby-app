@@ -43,7 +43,7 @@ const AI_RATE_LIMITS = {
 // ---------------------------------------------------------------------------
 
 const hasRedis = Boolean(
-  process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
+  process.env.UPSTASH_REDIS_REST_URL?.trim() && process.env.UPSTASH_REDIS_REST_TOKEN?.trim()
 );
 
 function createRedisRatelimiter(
@@ -52,7 +52,10 @@ function createRedisRatelimiter(
 ): Ratelimit | null {
   if (!hasRedis || maxRequests === 0) return null;
   return new Ratelimit({
-    redis: Redis.fromEnv(),
+    redis: new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL!.trim(),
+      token: process.env.UPSTASH_REDIS_REST_TOKEN!.trim(),
+    }),
     limiter: Ratelimit.slidingWindow(maxRequests, window),
     prefix: "kaulby:ratelimit",
     analytics: false,
