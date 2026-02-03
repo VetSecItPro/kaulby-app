@@ -24,7 +24,7 @@ interface ConversationCategoryMeta {
 }
 
 /**
- * Categorize a conversation using ***-style categories.
+ * Categorize a conversation using GummySearch-style categories.
  *
  * Categories:
  * - pain_point: User expressing frustration or problem

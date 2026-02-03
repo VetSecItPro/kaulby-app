@@ -82,7 +82,7 @@ interface ResultCardProps {
   showLeadScore?: boolean;
 }
 
-// Conversation category styling - these are the high-value ***-style categories
+// Conversation category styling - these are the high-value GummySearch-style categories
 // Using Lucide icons for professional B2B appearance
 const conversationCategoryStyles: Record<ConversationCategory, { bg: string; text: string; label: string; Icon: typeof Target }> = {
   solution_request: { bg: "bg-green-100 dark:bg-green-900/30", text: "text-green-700 dark:text-green-300", label: "Looking for Solution", Icon: Target },
@@ -200,7 +200,7 @@ export const ResultCard = memo(function ResultCard({
                 {getPlatformDisplayName(result.platform)}
               </Badge>
               {result.sentiment && sentimentIcons[result.sentiment]}
-              {/* Conversation Category Badge - ***-style high-value classification */}
+              {/* Conversation Category Badge - GummySearch-style high-value classification */}
               {result.conversationCategory && conversationCategoryStyles[result.conversationCategory] && (() => {
                 const { Icon, bg, text, label } = conversationCategoryStyles[result.conversationCategory];
                 return (
@@ -377,7 +377,7 @@ interface ResultsFilterBarProps {
   leadScoreCounts?: { hot: number; warm: number; cool: number; cold: number };
 }
 
-// Category filter chips - ***-style quick filtering
+// Category filter chips - GummySearch-style quick filtering
 const categoryFilterOptions: { key: ConversationCategory; label: string; Icon: typeof Target }[] = [
   { key: "solution_request", label: "Solutions", Icon: Target },
   { key: "money_talk", label: "Budget", Icon: DollarSign },
@@ -418,7 +418,7 @@ export const ResultsFilterBar = memo(function ResultsFilterBar({
 
   return (
     <div className="space-y-3">
-      {/* Match count header - ***-style */}
+      {/* Match count header - GummySearch-style */}
       {showMatchCount && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span className="font-medium text-foreground">{filteredCount}</span>
@@ -501,7 +501,7 @@ export const ResultsFilterBar = memo(function ResultsFilterBar({
         )}
       </div>
 
-      {/* Category filter chips - ***-style */}
+      {/* Category filter chips - GummySearch-style */}
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-xs text-muted-foreground font-medium">Filter by type:</span>
         {categoryFilterOptions.map(({ key, label, Icon }) => {

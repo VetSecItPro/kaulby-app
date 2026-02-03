@@ -62,7 +62,7 @@ async function searchRedditSubreddits(query: string, limit: number = 25): Promis
  * 2. Use AI to generate additional relevant subreddits and rank them
  * 3. Combine and deduplicate
  *
- * This is how the pros do it (*** used similar approaches)
+ * This is how the pros do it (GummySearch used similar approaches)
  */
 export async function findRelevantSubreddits(
   companyName: string,

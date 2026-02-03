@@ -136,7 +136,7 @@ DECISION RULES:
 - Questions that could turn into sales → leadQuality: 60+
 - When uncertain, use lower urgency but accurate category`,
 
-  // ***-style conversation categorization
+  // GummySearch-style conversation categorization
   // Classifies discussions into actionable buckets for quick filtering
   // Optimized for Gemini 2.5 Flash - clear rules, explicit examples
   conversationCategorization: `Classify this discussion into ONE category for sales/marketing prioritization.

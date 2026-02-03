@@ -1,7 +1,7 @@
 /**
  * Reddit Integration Module
  *
- * Implements a resilient tiered approach to avoid ***'s fate:
+ * Implements a resilient tiered approach to avoid GummySearch's fate:
  * 1. Serper (Google Search) - Primary, cheap ($50/mo for 50k searches)
  * 2. Apify - Backup when Serper fails
  * 3. Public JSON - Last resort (risky, can be blocked)
@@ -225,7 +225,7 @@ async function searchRedditApify(
 
 /**
  * Fetch from public Reddit JSON endpoint
- * WARNING: This is what *** used - NOT recommended for production
+ * WARNING: This is what GummySearch used - NOT recommended for production
  * Only use as absolute last resort
  */
 async function searchRedditPublic(

@@ -226,7 +226,7 @@ export async function GET(request: NextRequest) {
       .map(([sentiment, count]) => ({ sentiment, count }))
       .sort((a, b) => b.count - a.count);
 
-    // Engagement histogram buckets (***-style)
+    // Engagement histogram buckets (GummySearch-style)
     const engagementBuckets: EngagementBucket[] = [
       { label: "0", min: 0, max: 0, count: 0 },
       { label: "1-5", min: 1, max: 5, count: 0 },

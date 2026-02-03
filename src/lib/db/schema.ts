@@ -68,7 +68,7 @@ export const painPointCategoryEnum = pgEnum("pain_point_category", [
   "general_discussion",
 ]);
 
-// Conversation category - ***-style content classification
+// Conversation category - GummySearch-style content classification
 // Helps users quickly filter for the most valuable discussions
 export const conversationCategoryEnum = pgEnum("conversation_category", [
   "pain_point",       // Frustration, complaint, problem description
@@ -188,8 +188,8 @@ export const users = pgTable("users", {
   currentPeriodEnd: timestamp("current_period_end"),
   // Founding member tracking (first 1,000 Pro/Team subscribers)
   isFoundingMember: boolean("is_founding_member").default(false).notNull(),
-  ***Number: integer("founding_member_number"), // 1-1000
-  ***PriceId: text("founding_member_price_id"), // Polar product ID they locked in
+  foundingMemberNumber: integer("founding_member_number"), // 1-1000
+  foundingMemberPriceId: text("founding_member_price_id"), // Polar product ID they locked in
   // Day Pass - 24hr Pro access for $10
   dayPassExpiresAt: timestamp("day_pass_expires_at"), // When the day pass expires (null = no active pass)
   dayPassPurchaseCount: integer("day_pass_purchase_count").default(0).notNull(), // Track repeat buyers
@@ -198,7 +198,7 @@ export const users = pgTable("users", {
   deletionRequestedAt: timestamp("deletion_requested_at"), // When user requested deletion (null = not requested)
   // Third-party integrations (HubSpot, Salesforce, etc.)
   integrations: jsonb("integrations").$type<Record<string, unknown>>(),
-  // Activity tracking for ***
+  // Activity tracking for churn detection
   lastActiveAt: timestamp("last_active_at"), // Last meaningful activity (dashboard visit, monitor action)
   reengagementEmailSentAt: timestamp("reengagement_email_sent_at"), // Prevent duplicate re-engagement emails
   // Scheduled PDF Reports (Team tier feature)
@@ -218,7 +218,7 @@ export const users = pgTable("users", {
   index("users_workspace_id_idx").on(table.workspaceId),
 ]);
 
-// Audiences - collections of monitors grouped by topic/project (***-style)
+// Audiences - collections of monitors grouped by topic/project (GummySearch-style)
 export const audiences = pgTable("audiences", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: text("user_id")
@@ -340,7 +340,7 @@ export const results = pgTable("results", {
   sentiment: sentimentEnum("sentiment"),
   sentimentScore: real("sentiment_score"),
   painPointCategory: painPointCategoryEnum("pain_point_category"),
-  // Conversation category - ***-style classification for quick filtering
+  // Conversation category - GummySearch-style classification for quick filtering
   conversationCategory: conversationCategoryEnum("conversation_category"),
   conversationCategoryConfidence: real("conversation_category_confidence"), // 0.0 to 1.0
   engagementScore: integer("engagement_score"), // For hot_discussion detection (upvotes + comments)

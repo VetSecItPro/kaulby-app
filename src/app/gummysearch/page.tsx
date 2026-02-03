@@ -26,32 +26,32 @@ import { MarketingHeader } from "@/components/shared/marketing-header";
 import { MarketingFooter } from "@/components/shared/marketing-footer";
 import type { Metadata } from "next";
 
-// SEO: Full metadata for *** migration landing page — FIX-028
+// SEO: Full metadata for GummySearch migration landing page — FIX-028
 export const metadata: Metadata = {
-  title: "*** Alternative | Migrate to Kaulby - 16 Platform Monitoring",
+  title: "GummySearch Alternative | Migrate to Kaulby - 16 Platform Monitoring",
   description:
-    "*** is shutting down. Migrate to Kaulby for AI-powered community monitoring across 16 platforms including Reddit, Hacker News, Product Hunt, and more. Free migration available.",
+    "GummySearch is shutting down. Migrate to Kaulby for AI-powered community monitoring across 16 platforms including Reddit, Hacker News, Product Hunt, and more. Free migration available.",
   keywords: [
-    "*** alternative",
-    "*** replacement",
-    "*** migration",
+    "GummySearch alternative",
+    "GummySearch replacement",
+    "GummySearch migration",
     "Reddit monitoring tool",
     "community monitoring",
     "social listening",
     "brand monitoring",
   ],
   openGraph: {
-    title: "*** is Closing — Kaulby is Here",
+    title: "GummySearch is Closing — Kaulby is Here",
     description:
-      "Everything you loved about *** — plus 15 more platforms, better AI, and a team committed to keeping it running.",
+      "Everything you loved about GummySearch — plus 15 more platforms, better AI, and a team committed to keeping it running.",
     url: "https://kaulbyapp.com/gummysearch",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "*** Alternative | Migrate to Kaulby",
+    title: "GummySearch Alternative | Migrate to Kaulby",
     description:
-      "*** is shutting down. Switch to Kaulby for 16-platform community monitoring with AI analysis.",
+      "GummySearch is shutting down. Switch to Kaulby for 16-platform community monitoring with AI analysis.",
   },
   alternates: {
     canonical: "https://kaulbyapp.com/gummysearch",
@@ -110,7 +110,7 @@ const benefits = [
   },
 ];
 
-export default function ***Page() {
+export default function GummySearchPage() {
   return (
     <div className="min-h-screen bg-background">
       <MarketingHeader />
@@ -120,15 +120,15 @@ export default function ***Page() {
         <div className="container mx-auto max-w-4xl text-center">
           <Badge variant="secondary" className="mb-4 text-sm px-4 py-1">
             <Sparkles className="h-3 w-3 mr-1" />
-            For *** Users
+            For GummySearch Users
           </Badge>
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6">
-            *** is Closing.
+            GummySearch is Closing.
             <br />
             <span className="text-primary">Kaulby is Here.</span>
           </h1>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Everything you loved about *** - plus 11 more platforms, better AI, and a team committed to keeping it running.
+            Everything you loved about GummySearch - plus 11 more platforms, better AI, and a team committed to keeping it running.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/sign-up?ref=gummysearch">
@@ -155,7 +155,7 @@ export default function ***Page() {
           <div className="flex flex-col md:flex-row items-center justify-center gap-4 text-center md:text-left">
             <div className="flex items-center gap-2">
               <Clock className="h-6 w-6 text-primary" />
-              <span className="font-semibold text-lg">*** Migration Offer:</span>
+              <span className="font-semibold text-lg">GummySearch Migration Offer:</span>
             </div>
             <p className="text-muted-foreground">
               Sign up with code <code className="bg-primary/10 px-2 py-1 rounded font-mono font-semibold text-primary">GUMMY30</code> for 30% off your first 3 months of Pro or Team.
@@ -194,7 +194,7 @@ export default function ***Page() {
         <div className="container mx-auto max-w-4xl">
           <h2 className="text-3xl font-bold text-center mb-4">Feature Comparison</h2>
           <p className="text-muted-foreground text-center mb-12">
-            See how Kaulby compares to *** feature by feature.
+            See how Kaulby compares to GummySearch feature by feature.
           </p>
           <Card>
             <CardContent className="p-0">
@@ -202,7 +202,7 @@ export default function ***Page() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[50%]">Feature</TableHead>
-                    <TableHead className="text-center">***</TableHead>
+                    <TableHead className="text-center">GummySearch</TableHead>
                     <TableHead className="text-center bg-primary/5">Kaulby</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -286,9 +286,9 @@ export default function ***Page() {
           <Card className="border-2 border-primary/20">
             <CardContent className="p-8 text-center">
               <Download className="h-12 w-12 text-primary mx-auto mb-4" />
-              <h3 className="text-2xl font-bold mb-2">Export Your *** Data</h3>
+              <h3 className="text-2xl font-bold mb-2">Export Your GummySearch Data</h3>
               <p className="text-muted-foreground mb-6">
-                Before *** shuts down, export your monitors and historical data. Then you can use our setup wizard to recreate your monitoring configuration in Kaulby.
+                Before GummySearch shuts down, export your monitors and historical data. Then you can use our setup wizard to recreate your monitoring configuration in Kaulby.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link href="/sign-up?ref=gummysearch">
@@ -310,7 +310,7 @@ export default function ***Page() {
             Don&apos;t Let Your Monitoring Stop
           </h2>
           <p className="text-xl opacity-90 mb-8">
-            Join hundreds of former *** users who made the switch. Start your free migration today.
+            Join hundreds of former GummySearch users who made the switch. Start your free migration today.
           </p>
           <Link href="/sign-up?ref=gummysearch">
             <Button size="lg" variant="secondary" className="gap-2 text-lg px-8">

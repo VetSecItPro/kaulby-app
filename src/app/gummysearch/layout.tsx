@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "*** Alternative - Kaulby | Reddit & Community Monitoring",
+  title: "GummySearch Alternative - Kaulby | Reddit & Community Monitoring",
   description:
-    "*** is closing. Kaulby is the best alternative with 16 platforms (Reddit, Hacker News, Product Hunt, Google Reviews & more), AI sentiment analysis, and pain point detection. Migrate free today.",
+    "GummySearch is closing. Kaulby is the best alternative with 16 platforms (Reddit, Hacker News, Product Hunt, Google Reviews & more), AI sentiment analysis, and pain point detection. Migrate free today.",
   keywords: [
-    "*** alternative",
-    "*** replacement",
+    "GummySearch alternative",
+    "GummySearch replacement",
     "Reddit monitoring tool",
     "Reddit brand monitoring",
     "community monitoring",
@@ -22,9 +22,9 @@ export const metadata: Metadata = {
     "Product Hunt monitoring",
   ],
   openGraph: {
-    title: "*** Alternative - Kaulby",
+    title: "GummySearch Alternative - Kaulby",
     description:
-      "*** is closing. Migrate to Kaulby - monitor Reddit, HN, Product Hunt & 9 more platforms with AI-powered insights.",
+      "GummySearch is closing. Migrate to Kaulby - monitor Reddit, HN, Product Hunt & 9 more platforms with AI-powered insights.",
     url: "https://kaulbyapp.com/gummysearch",
     siteName: "Kaulby",
     type: "website",
@@ -33,15 +33,15 @@ export const metadata: Metadata = {
         url: "https://kaulbyapp.com/og-gummysearch.png",
         width: 1200,
         height: 630,
-        alt: "Kaulby - *** Alternative",
+        alt: "Kaulby - GummySearch Alternative",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "*** Alternative - Kaulby",
+    title: "GummySearch Alternative - Kaulby",
     description:
-      "*** is closing. Migrate to Kaulby - 16 platforms, AI analysis, same features you loved.",
+      "GummySearch is closing. Migrate to Kaulby - 16 platforms, AI analysis, same features you loved.",
     images: ["https://kaulbyapp.com/og-gummysearch.png"],
   },
   alternates: {
@@ -53,7 +53,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default function ***Layout({
+export default function GummySearchLayout({
   children,
 }: {
   children: React.ReactNode;

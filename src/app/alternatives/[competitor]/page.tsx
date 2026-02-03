@@ -459,9 +459,9 @@ const competitorData: Record<string, {
     relatedTools: ["reddit-monitoring", "social-listening-for-startups"],
   },
   gummysearch: {
-    name: "***",
+    name: "GummySearch",
     tagline: "Reddit Audience Research",
-    description: "*** was a Reddit-focused audience research tool that helped find customers. Now shutting down.",
+    description: "GummySearch was a Reddit-focused audience research tool that helped find customers. Now shutting down.",
     pricing: "Was $29-59/month (Shutting Down)",
     limitations: [
       "Shutting down in 2025",
@@ -487,24 +487,24 @@ const competitorData: Record<string, {
     ],
     faqs: [
       {
-        question: "*** is shutting down - what should I use instead?",
-        answer: "Kaulby is the best *** alternative. It offers the same Reddit monitoring with AI analysis, PLUS 11 more platforms (Hacker News, Product Hunt, review sites). Unlike ***, Kaulby isn't dependent on a single platform, so you're protected from future API changes.",
+        question: "GummySearch is shutting down - what should I use instead?",
+        answer: "Kaulby is the best GummySearch alternative. It offers the same Reddit monitoring with AI analysis, PLUS 11 more platforms (Hacker News, Product Hunt, review sites). Unlike GummySearch, Kaulby isn't dependent on a single platform, so you're protected from future API changes.",
       },
       {
-        question: "Does Kaulby have the same features as ***?",
-        answer: "Yes, and more. Kaulby offers: AI sentiment analysis, pain point detection, conversation categorization (Solution Requests, Pain Points, Money Talk) - just like ***. Plus: 8 additional platforms, review site monitoring, and a free tier. *** was Reddit-only; Kaulby monitors 16 platforms.",
+        question: "Does Kaulby have the same features as GummySearch?",
+        answer: "Yes, and more. Kaulby offers: AI sentiment analysis, pain point detection, conversation categorization (Solution Requests, Pain Points, Money Talk) - just like GummySearch. Plus: 8 additional platforms, review site monitoring, and a free tier. GummySearch was Reddit-only; Kaulby monitors 16 platforms.",
       },
       {
-        question: "Why did *** shut down?",
-        answer: "*** was 100% dependent on Reddit's API. When Reddit changed their API terms in 2023, *** couldn't reach an agreement. This shows the risk of single-platform tools. Kaulby monitors 16 platforms precisely to avoid this vulnerability.",
+        question: "Why did GummySearch shut down?",
+        answer: "GummySearch was 100% dependent on Reddit's API. When Reddit changed their API terms in 2023, GummySearch couldn't reach an agreement. This shows the risk of single-platform tools. Kaulby monitors 16 platforms precisely to avoid this vulnerability.",
       },
       {
-        question: "How do I migrate from *** to Kaulby?",
-        answer: "Sign up for Kaulby free, recreate your keyword monitors, and start tracking. Since *** is shutting down, there's no data to migrate - just set up fresh monitors. Kaulby's free tier lets you start immediately with no credit card.",
+        question: "How do I migrate from GummySearch to Kaulby?",
+        answer: "Sign up for Kaulby free, recreate your keyword monitors, and start tracking. Since GummySearch is shutting down, there's no data to migrate - just set up fresh monitors. Kaulby's free tier lets you start immediately with no credit card.",
       },
       {
-        question: "Is Kaulby as good as *** for Reddit?",
-        answer: "*** users report that Kaulby matches its Reddit features (AI analysis, conversation categories, pain point detection). Kaulby adds 11 more platforms, a free tier, and isn't dependent on any single platform's API. Many *** refugees have switched successfully.",
+        question: "Is Kaulby as good as GummySearch for Reddit?",
+        answer: "GummySearch users report that Kaulby matches its Reddit features (AI analysis, conversation categories, pain point detection). Kaulby adds 11 more platforms, a free tier, and isn't dependent on any single platform's API. Many GummySearch refugees have switched successfully.",
       },
     ],
     migrationSteps: [

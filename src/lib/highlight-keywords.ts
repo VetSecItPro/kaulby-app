@@ -1,7 +1,7 @@
 /**
  * Keyword Highlighting Utility
  *
- * Highlights search keywords in text, similar to ***'s yellow highlighting.
+ * Highlights search keywords in text, similar to GummySearch's yellow highlighting.
  * Supports both simple keywords and parsed search queries.
  */
 

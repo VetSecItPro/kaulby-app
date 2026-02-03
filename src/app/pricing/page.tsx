@@ -256,7 +256,7 @@ export default function PricingPage() {
               Start free and upgrade when you need real-time monitoring and full AI insights.
             </p>
             <p className="text-sm text-primary font-medium mt-4">
-              First 1,000 ***s lock in Pro or Team price forever
+              First 1,000 Founding Members lock in Pro or Team price forever
             </p>
 
             {/* Trust Signals */}
@@ -600,9 +600,9 @@ export default function PricingPage() {
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="founding-member">
-                <AccordionTrigger>What is the *** program?</AccordionTrigger>
+                <AccordionTrigger>What is the Founding Members program?</AccordionTrigger>
                 <AccordionContent>
-                  The first 1,000 Pro and Team subscribers become ***s and lock in their current
+                  The first 1,000 Pro and Team subscribers become Founding Members and lock in their current
                   price forever, even when we raise prices in the future. This is our way of thanking early
                   supporters who believe in Kaulby.
                 </AccordionContent>
@@ -636,7 +636,7 @@ export default function PricingPage() {
                   </Link>
                   <Link href="/gummysearch">
                     <Button size="lg" variant="outline">
-                      Coming from ***?
+                      Coming from GummySearch?
                     </Button>
                   </Link>
                 </div>

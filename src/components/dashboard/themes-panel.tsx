@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 /**
- * Themes Panel - ***-style quick access to conversation categories
+ * Themes Panel - GummySearch-style quick access to conversation categories
  *
  * Shows theme cards with:
  * - Theme name and icon
@@ -27,7 +27,7 @@ import { Button } from "@/components/ui/button";
 
 type ConversationCategory = "pain_point" | "solution_request" | "advice_request" | "money_talk" | "hot_discussion";
 
-// Theme configuration matching ***'s categories
+// Theme configuration matching GummySearch's categories
 const themeConfig: Record<
   ConversationCategory,
   {

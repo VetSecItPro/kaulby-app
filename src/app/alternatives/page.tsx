@@ -13,7 +13,7 @@ export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: "Kaulby Alternatives - Compare Social Listening Tools | Kaulby",
-  description: "Compare Kaulby to popular social listening tools like ***, Brand24, Mention, Hootsuite, and more. See why startups choose Kaulby for community monitoring.",
+  description: "Compare Kaulby to popular social listening tools like GummySearch, Brand24, Mention, Hootsuite, and more. See why startups choose Kaulby for community monitoring.",
   openGraph: {
     title: "Kaulby Alternatives - Compare Social Listening Tools",
     description: "Compare Kaulby to popular social listening tools. 16 platforms, AI-powered insights, free tier available.",
@@ -27,9 +27,9 @@ export const metadata: Metadata = {
 const alternatives = [
   {
     slug: "gummysearch",
-    name: "***",
+    name: "GummySearch",
     tagline: "Reddit Audience Research (Shutting Down)",
-    description: "*** was Reddit-only. Kaulby monitors 16 platforms with the same AI features.",
+    description: "GummySearch was Reddit-only. Kaulby monitors 16 platforms with the same AI features.",
     status: "Shutting Down",
     pricing: "Was $29-59/mo",
     highlight: true,
@@ -112,8 +112,8 @@ const faqs = [
     answer: "Kaulby is purpose-built for startups with a free tier, affordable Pro plan at $29/mo, and focus on communities where startup customers discuss products (Reddit, Hacker News, Product Hunt). Enterprise tools like Brandwatch and Sprout Social are overkill for most startups.",
   },
   {
-    question: "What is the best *** alternative?",
-    answer: "Kaulby is the best *** alternative. It offers the same Reddit monitoring with AI analysis, plus 15 more platforms (Hacker News, Product Hunt, Indie Hackers, GitHub, Dev.to, review sites). Unlike ***, Kaulby isn't dependent on a single platform's API.",
+    question: "What is the best GummySearch alternative?",
+    answer: "Kaulby is the best GummySearch alternative. It offers the same Reddit monitoring with AI analysis, plus 15 more platforms (Hacker News, Product Hunt, Indie Hackers, GitHub, Dev.to, review sites). Unlike GummySearch, Kaulby isn't dependent on a single platform's API.",
   },
   {
     question: "How does Kaulby compare to Brand24 and Mention?",
@@ -140,7 +140,7 @@ export default function AlternativesPage() {
       {/* Structured Data */}
       <WebPageSchema
         title="Kaulby Alternatives - Compare Social Listening Tools"
-        description="Compare Kaulby to popular social listening tools like ***, Brand24, Mention, and more."
+        description="Compare Kaulby to popular social listening tools like GummySearch, Brand24, Mention, and more."
         url="https://kaulbyapp.com/alternatives"
         breadcrumbs={[
           { name: "Home", url: "https://kaulbyapp.com" },

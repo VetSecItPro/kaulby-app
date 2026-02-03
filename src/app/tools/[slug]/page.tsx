@@ -525,7 +525,7 @@ const platformLabels: Record<string, string> = {
 };
 
 const alternativeLabels: Record<string, string> = {
-  gummysearch: "***",
+  gummysearch: "GummySearch",
   f5bot: "F5Bot",
   syften: "Syften",
   brand24: "Brand24",
