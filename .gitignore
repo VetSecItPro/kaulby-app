@@ -46,3 +46,9 @@ test-results/
 # Planning/audit documents (local only)
 kaulby-optimize-*.md
 kaulby-audit-*.md
+
+# Internal audit and security reports
+.claude/audits/
+.security-reports/
+.security-audit.json
+docs/todo.md
