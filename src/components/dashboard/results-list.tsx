@@ -125,12 +125,17 @@ export function ResultsList({ results, hasUnlimitedAi = true, highlightKeywords 
 
       <div className="grid gap-4">
         {filteredResults.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            {categoryFilter && `No ${categoryFilter.replace("_", " ")} results`}
-            {!categoryFilter && filter === "unread" && "No unread results"}
-            {!categoryFilter && filter === "saved" && "No saved results"}
-            {!categoryFilter && filter === "hidden" && "No hidden results"}
-            {!categoryFilter && filter === "all" && "No results found"}
+          <div className="text-center py-12 px-4">
+            <div className="max-w-md mx-auto">
+              {/* A11Y: Empty state for filtered results — FIX-323 */}
+              <p className="text-lg font-medium text-muted-foreground mb-2">
+                No results match your filters
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {categoryFilter && `Try clearing the "${categoryFilter.replace("_", " ")}" filter or `}
+                {filter !== "all" && `switching to "All" results`}
+              </p>
+            </div>
           </div>
         ) : (
           filteredResults.map((result, index) => (

@@ -16,7 +16,7 @@ export const metadata: Metadata = {
     url: "https://kaulbyapp.com/articles",
   },
   alternates: {
-    canonical: "https://kaulbyapp.com/articles",
+    canonical: "https://kaulbyapp.com/articles", // SEO: FIX-312
   },
 };
 

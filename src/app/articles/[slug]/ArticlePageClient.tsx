@@ -20,6 +20,7 @@ export function ArticlePageClient({
   const config = categoryConfig[article.category];
   const Icon = config.icon;
 
+  // SECURITY: Articles are static data (not user-generated). Client-only DOMPurify is acceptable — FIX-008
   // Sanitize HTML client-side only — content is our own static data so raw HTML is safe for SSR
   const sanitizedHtml = useMemo(() => {
     if (typeof window !== "undefined") {

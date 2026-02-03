@@ -75,6 +75,7 @@ export function CookieConsent() {
 
   if (!visible) return null;
 
+  // TODO (FIX-311): Cookie consent banner covers bottom content on mobile - consider adding bottom padding to body or using position: sticky instead of fixed
   return (
     <div className="fixed bottom-0 inset-x-0 z-50 p-4 sm:p-6 pointer-events-none">
       <div className="mx-auto max-w-lg pointer-events-auto rounded-xl border border-border/60 bg-background/95 backdrop-blur-md shadow-lg p-5">

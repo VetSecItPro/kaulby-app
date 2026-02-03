@@ -41,7 +41,7 @@ export function SoftwareApplicationSchema() {
     offers: {
       "@type": "AggregateOffer",
       lowPrice: "0",
-      highPrice: "79",
+      highPrice: "99", // SEO: Updated pricing — FIX-300
       priceCurrency: "USD",
       offerCount: "3",
     },

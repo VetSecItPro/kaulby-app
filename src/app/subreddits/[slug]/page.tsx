@@ -1,3 +1,10 @@
+// TODO: FIX-325 (LOW) - Add breadcrumb navigation for deep SEO pages
+// This page and other programmatic SEO pages (e.g., /articles/[slug]) should include
+// breadcrumbs for better UX and SEO. Example structure:
+// Home > Subreddits > r/startups
+// Implement with JSON-LD BreadcrumbList schema + visual breadcrumb component
+// See: https://developers.google.com/search/docs/appearance/structured-data/breadcrumb
+
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { notFound } from "next/navigation";

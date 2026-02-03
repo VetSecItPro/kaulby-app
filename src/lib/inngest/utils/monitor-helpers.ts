@@ -58,11 +58,13 @@ export async function getActiveMonitors(
   step: MonitorStep
 ): Promise<MonitorRow[]> {
   return step.run("get-monitors", async () => {
+    // DB: Safety limit on monitor scan — FIX-103
     return pooledDb.query.monitors.findMany({
       where: and(
         eq(monitors.isActive, true),
         sql`${platform} = ANY(${monitors.platforms})`
       ),
+      limit: 1000,
     });
   });
 }

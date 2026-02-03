@@ -1,3 +1,4 @@
+// PERF: Lazy-load filters to reduce 224kB bundle — FIX-201
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { monitors, results } from "@/lib/db/schema";

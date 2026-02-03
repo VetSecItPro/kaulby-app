@@ -3,7 +3,7 @@ import Image from "next/image";
 
 export default function SignUpPage() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-black px-4">
+    <main className="flex min-h-screen flex-col items-center justify-center bg-black px-4">
       {/* Logo */}
       <div className="mb-8 animate-fade-in">
         <Image
@@ -45,6 +45,6 @@ export default function SignUpPage() {
           }
         />
       </div>
-    </div>
+    </main>
   );
 }

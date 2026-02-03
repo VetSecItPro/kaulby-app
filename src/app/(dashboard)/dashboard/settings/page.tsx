@@ -1,3 +1,4 @@
+// PERF: Dynamic import settings tabs — FIX-204
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";

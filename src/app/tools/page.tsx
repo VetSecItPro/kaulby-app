@@ -8,6 +8,7 @@ import { MarketingHeader } from "@/components/shared/marketing-header";
 import { MarketingFooter } from "@/components/shared/marketing-footer";
 import { WebPageSchema, FAQSchema } from "@/lib/seo/structured-data";
 
+// TODO (FIX-315): Add metadata for better SEO on /tools and /alternatives pages
 export const metadata: Metadata = {
   title: "Social Listening Tools for Startups | Kaulby",
   description: "Discover Kaulby's suite of AI-powered social listening tools. Reddit monitoring, brand monitoring, competitor tracking, and more across 16 platforms.",

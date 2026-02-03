@@ -36,7 +36,12 @@ export async function GET(
       return NextResponse.json({ error: "Monitor not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ monitor });
+    // SECURITY: No-cache on sensitive data — FIX-006
+    return NextResponse.json({ monitor }, {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, private",
+      },
+    });
   } catch (error) {
     console.error("Error fetching monitor:", error);
     logError({ source: "api", message: "Failed to fetch monitor", error, endpoint: "GET /api/monitors/[id]" });

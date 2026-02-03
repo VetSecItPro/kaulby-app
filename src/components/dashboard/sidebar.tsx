@@ -144,7 +144,11 @@ function DayPassTimer({ expiresAt }: { expiresAt: string }) {
   }, [expiresAt]);
 
   return (
-    <span className="ml-1 px-1.5 py-0.5 text-[9px] font-mono font-semibold tracking-wide rounded-full bg-purple-600/20 text-purple-400 border border-purple-500/30">
+    <span
+      className="ml-1 px-1.5 py-0.5 text-[9px] font-mono font-semibold tracking-wide rounded-full bg-purple-600/20 text-purple-400 border border-purple-500/30"
+      role="timer" // A11Y: FIX-314
+      aria-label={`Day Pass expires in ${timeRemaining}`}
+    >
       {timeRemaining}
     </span>
   );
@@ -163,6 +167,7 @@ export function Sidebar({ isAdmin = false, subscriptionStatus = "free", hasActiv
     setMounted(true);
   }, []);
 
+  // TODO (FIX-318): Add debounce to hover prefetch to reduce unnecessary network requests
   // Prefetch route on hover
   const handleMouseEnter = (href: string) => {
     if (!prefetchedRoutes.has(href)) {
