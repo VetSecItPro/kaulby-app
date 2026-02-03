@@ -12,11 +12,11 @@ async function clearTestData() {
   const users = await sql`
     SELECT id, email, name, subscription_status
     FROM users
-    WHERE email = 'dev@kaulbyapp.com'
+    WHERE email = ${process.env.TEST_EMAIL || 'test@example.com'}
   `;
 
   if (users.length === 0) {
-    console.log('No user found with email dev@kaulbyapp.com');
+    console.log('No user found with the specified email');
     process.exit(1);
   }
 

@@ -28,6 +28,8 @@ yarn-error.log*
 
 # local env files
 .env*.local
+.env.production
+.env.development
 
 # vercel
 .vercel
@@ -51,4 +53,7 @@ kaulby-audit-*.md
 .claude/audits/
 .security-reports/
 .security-audit.json
-docs/todo.md
+docs/
+
+# MCP configuration (local dev tool config)
+.mcp.json
