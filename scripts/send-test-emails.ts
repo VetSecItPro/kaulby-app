@@ -16,7 +16,7 @@ import {
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM_EMAIL = "Kaulby <notifications@kaulbyapp.com>";
-const TEST_EMAIL = "dev@kaulbyapp.com";
+const TEST_EMAIL = process.env.TEST_EMAIL || "test@example.com";
 
 // Sample data for Pro tier Daily Digest
 const dailyDigestData: DailyDigestData = {

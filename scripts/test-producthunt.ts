@@ -12,7 +12,7 @@ import { eq } from "drizzle-orm";
 
 const PH_API_BASE = "https://api.producthunt.com/v2/api/graphql";
 const PH_TOKEN_URL = "https://api.producthunt.com/v2/oauth/token";
-const TEST_EMAIL = "dev@kaulbyapp.com";
+const TEST_EMAIL = process.env.TEST_EMAIL || "test@example.com";
 
 async function getAccessToken(): Promise<string | null> {
   const clientId = process.env.PRODUCTHUNT_API_KEY;

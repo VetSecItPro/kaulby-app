@@ -3,7 +3,7 @@
  * Run with: npx tsx scripts/test-team-features.ts
  *
  * This script tests:
- * 1. Creating a workspace for John (dev@kaulbyapp.com)
+ * 1. Creating a workspace for the test user
  * 2. Adding test users to the workspace
  * 3. Creating monitors and assigning workspaceId
  * 4. Testing member deletion and monitor transfer to owner
@@ -18,7 +18,7 @@ import { db } from "../src/lib/db";
 import { users, monitors, workspaces, audiences } from "../src/lib/db/schema";
 import { eq, and, inArray } from "drizzle-orm";
 
-const JOHN_EMAIL = "dev@kaulbyapp.com";
+const OWNER_EMAIL = process.env.TEST_EMAIL || "test@example.com";
 
 // Test user IDs (using UUIDs to avoid conflicts with real Clerk IDs)
 const TEST_USER_IDS = {
@@ -38,23 +38,23 @@ async function main() {
 
   try {
     // ========================================
-    // STEP 1: Find John's account
+    // STEP 1: Find Owner's account
     // ========================================
-    console.log("\n[STEP 1] Finding John's account...");
+    console.log("\n[STEP 1] Finding Owner's account...");
 
     const john = await db.query.users.findFirst({
-      where: eq(users.email, JOHN_EMAIL),
+      where: eq(users.email, OWNER_EMAIL),
     });
 
     if (!john) {
-      console.error(`❌ User ${JOHN_EMAIL} not found. Please ensure this account exists.`);
+      console.error(`❌ User ${OWNER_EMAIL} not found. Please ensure this account exists.`);
       process.exit(1);
     }
 
-    console.log(`✓ Found John: ${john.name || john.email} (ID: ${john.id})`);
+    console.log(`✓ Found Owner: ${john.name || john.email} (ID: ${john.id})`);
     console.log(`  Current subscription: ${john.subscriptionStatus}`);
 
-    // Ensure John has enterprise subscription for team features
+    // Ensure Owner has enterprise subscription for team features
     if (john.subscriptionStatus !== "enterprise") {
       console.log("  Upgrading to enterprise for testing...");
       await db
@@ -79,7 +79,7 @@ async function main() {
       const [newWorkspace] = await db
         .insert(workspaces)
         .values({
-          name: "John's Test Workspace",
+          name: "Owner's Test Workspace",
           ownerId: john.id,
           seatLimit: 5,
           seatCount: 1,
@@ -89,7 +89,7 @@ async function main() {
       console.log(`✓ Created workspace: ${workspace.name} (ID: ${workspace.id})`);
     }
 
-    // Update John to be owner of workspace
+    // Update Owner to be owner of workspace
     await db
       .update(users)
       .set({
@@ -97,7 +97,7 @@ async function main() {
         workspaceRole: "owner",
       })
       .where(eq(users.id, john.id));
-    console.log(`✓ John is now the workspace owner`);
+    console.log(`✓ Owner is now the workspace owner`);
 
     // ========================================
     // STEP 3: Create test users
@@ -142,7 +142,7 @@ async function main() {
     // Update workspace seat count
     await db
       .update(workspaces)
-      .set({ seatCount: 4 }) // John + 3 test users
+      .set({ seatCount: 4 }) // Owner + 3 test users
       .where(eq(workspaces.id, workspace.id));
 
     // ========================================
@@ -151,7 +151,7 @@ async function main() {
     console.log("\n[STEP 4] Creating monitors for each user...");
 
     const allUsers = [
-      { id: john.id, name: "John" },
+      { id: john.id, name: "Owner" },
       { id: TEST_USER_IDS.testUser1, name: "TestUser1" },
       { id: TEST_USER_IDS.testUser2, name: "TestUser2" },
       { id: TEST_USER_IDS.testUser3, name: "TestUser3" },
@@ -194,7 +194,7 @@ async function main() {
     });
     console.log(`  TestUser2 has ${testUser2Monitors.length} monitors before removal`);
 
-    // Transfer monitors to workspace owner (John)
+    // Transfer monitors to workspace owner (Owner)
     await db
       .update(monitors)
       .set({
@@ -207,7 +207,7 @@ async function main() {
           eq(monitors.workspaceId, workspace.id)
         )
       );
-    console.log(`✓ Transferred ${testUser2Monitors.length} monitors to John`);
+    console.log(`✓ Transferred ${testUser2Monitors.length} monitors to Owner`);
 
     // Remove TestUser2 from workspace
     await db
@@ -219,14 +219,14 @@ async function main() {
       .where(eq(users.id, TEST_USER_IDS.testUser2));
     console.log(`✓ Removed TestUser2 from workspace`);
 
-    // Verify John now has the monitors
+    // Verify Owner now has the monitors
     const johnMonitorsAfter = await db.query.monitors.findMany({
       where: and(
         eq(monitors.userId, john.id),
         eq(monitors.workspaceId, workspace.id)
       ),
     });
-    console.log(`  John now has ${johnMonitorsAfter.length} monitors (was 3, now should be 6)`);
+    console.log(`  Owner now has ${johnMonitorsAfter.length} monitors (was 3, now should be 6)`);
 
     // ========================================
     // STEP 6: Test monitor reassignment
@@ -274,9 +274,9 @@ async function main() {
     // ========================================
     console.log("\n[STEP 7] Cleaning up test users and their monitors...");
 
-    // Delete monitors for TestUser1 and TestUser3, transfer to John first
+    // Delete monitors for TestUser1 and TestUser3, transfer to Owner first
     for (const testUserId of [TEST_USER_IDS.testUser1, TEST_USER_IDS.testUser3]) {
-      // Transfer monitors back to John
+      // Transfer monitors back to Owner
       await db
         .update(monitors)
         .set({ userId: john.id })
@@ -288,7 +288,7 @@ async function main() {
         .set({ workspaceId: null, workspaceRole: null })
         .where(eq(users.id, testUserId));
     }
-    console.log("✓ Transferred remaining monitors to John");
+    console.log("✓ Transferred remaining monitors to Owner");
     console.log("✓ Removed TestUser1 and TestUser3 from workspace");
 
     // Delete test users completely
@@ -312,7 +312,7 @@ async function main() {
     await db.delete(workspaces).where(eq(workspaces.id, workspace.id));
     console.log("✓ Deleted test workspace");
 
-    // Reset John to be a solo user (no workspace)
+    // Reset Owner to be a solo user (no workspace)
     await db
       .update(users)
       .set({
@@ -320,7 +320,7 @@ async function main() {
         workspaceRole: null,
       })
       .where(eq(users.id, john.id));
-    console.log("✓ Reset John to solo user (no workspace)");
+    console.log("✓ Reset Owner to solo user (no workspace)");
 
     // ========================================
     // FINAL STATUS
@@ -330,18 +330,18 @@ async function main() {
     console.log("=".repeat(60));
 
     // Verify final state
-    const finalJohn = await db.query.users.findFirst({
+    const finalOwner = await db.query.users.findFirst({
       where: eq(users.id, john.id),
     });
     console.log("\nFinal state:");
-    console.log(`  John's workspace: ${finalJohn?.workspaceId || "None (solo user)"}`);
-    console.log(`  John's workspace role: ${finalJohn?.workspaceRole || "N/A"}`);
-    console.log(`  John's subscription: ${finalJohn?.subscriptionStatus}`);
+    console.log(`  Owner's workspace: ${finalOwner?.workspaceId || "None (solo user)"}`);
+    console.log(`  Owner's workspace role: ${finalOwner?.workspaceRole || "N/A"}`);
+    console.log(`  Owner's subscription: ${finalOwner?.subscriptionStatus}`);
 
     const johnFinalMonitors = await db.query.monitors.findMany({
       where: eq(monitors.userId, john.id),
     });
-    console.log(`  John's monitors: ${johnFinalMonitors.length}`);
+    console.log(`  Owner's monitors: ${johnFinalMonitors.length}`);
 
   } catch (error) {
     console.error("\n❌ TEST FAILED:", error);
