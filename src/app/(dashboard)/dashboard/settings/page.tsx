@@ -108,7 +108,7 @@ export default async function SettingsPage() {
       description: "For power users and professionals",
       features: [
         "10 monitors",
-        "8 platforms",
+        "9 platforms",
         "10 keywords per monitor",
         "Unlimited results",
         "90-day history",
@@ -129,7 +129,7 @@ export default async function SettingsPage() {
       features: [
         "Everything in Pro",
         "30 monitors",
-        "All 16 platforms",
+        "All 17 platforms",
         "20 keywords per monitor",
         "1-year history",
         "2-hour refresh cycle",

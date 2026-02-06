@@ -498,14 +498,14 @@ export default function HelpPage() {
                 <li>Enter a descriptive <strong>Monitor Name</strong> (e.g., &quot;Brand Mentions&quot;, &quot;Competitor X Feedback&quot;)</li>
                 <li>Enter your <strong>Company/Brand Name</strong> — this is the primary search term</li>
                 <li>Optionally add <strong>Additional Keywords</strong> to narrow results (e.g., &quot;pricing&quot;, &quot;support&quot;)</li>
-                <li>Select which <strong>Platforms</strong> to monitor (Reddit on Free; 8 platforms on Pro; all 16 platforms on Team)</li>
+                <li>Select which <strong>Platforms</strong> to monitor (Reddit on Free; 9 platforms on Pro; all 17 platforms on Team)</li>
                 <li>Click <strong>Create Monitor</strong></li>
               </ol>
             </div>
 
             <div className="p-4 rounded-lg bg-muted/50">
               <p className="text-xs text-muted-foreground">
-                <strong>Plan limits:</strong> Free: 1 monitor, 3 keywords · Pro: 10 monitors, 10 keywords each, 8 platforms · Team: 30 monitors, 20 keywords each, all 16 platforms
+                <strong>Plan limits:</strong> Free: 1 monitor, 3 keywords · Pro: 10 monitors, 10 keywords each, 9 platforms · Team: 30 monitors, 20 keywords each, all 17 platforms
               </p>
             </div>
           </CardContent>
@@ -697,7 +697,7 @@ export default function HelpPage() {
           <CardHeader>
             <CardTitle className="text-lg">Supported Platforms Overview</CardTitle>
             <CardDescription>
-              Kaulby monitors 16 platforms where your audience discusses products and services
+              Kaulby monitors 17 platforms where your audience discusses products and services
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -829,7 +829,7 @@ export default function HelpPage() {
 
             <div className="p-4 rounded-lg bg-muted/50">
               <p className="text-sm text-muted-foreground">
-                <strong>Platform availability:</strong> Free users can monitor Reddit only. Pro plans include 8 platforms. Team plans include all 16 platforms.
+                <strong>Platform availability:</strong> Free users can monitor Reddit only. Pro plans include 9 platforms. Team plans include all 17 platforms.
               </p>
             </div>
           </CardContent>
@@ -845,7 +845,7 @@ export default function HelpPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              You don&apos;t need to monitor all 16 platforms. Focus on where your customers actually spend time. Here are recommendations by business type:
+              You don&apos;t need to monitor all 17 platforms. Focus on where your customers actually spend time. Here are recommendations by business type:
             </p>
 
             <div className="space-y-4">
@@ -1884,7 +1884,7 @@ export default function HelpPage() {
               <div className="p-4 rounded-lg border">
                 <h4 className="font-medium mb-2">Can&apos;t access certain platforms</h4>
                 <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• <strong>Plan restrictions:</strong> Free users only have Reddit access — Pro has 8 platforms, Team has all 16</li>
+                  <li>• <strong>Plan restrictions:</strong> Free users only have Reddit access — Pro has 9 platforms, Team has all 17</li>
                   <li>• <strong>Grayed out:</strong> Platforms showing as locked require Pro or Team plan depending on the platform</li>
                   <li>• <strong>Day Pass:</strong> Need temporary access? Buy a 24-hour Day Pass for $9</li>
                 </ul>

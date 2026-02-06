@@ -82,7 +82,7 @@ const plans: Plan[] = [
     trialDays: 14,
     features: [
       { text: "10 monitors" },
-      { text: "8 platforms (Reddit, HN, IH, PH, Google, YouTube, GitHub, Trustpilot)" },
+      { text: "9 platforms (Reddit, HN, IH, PH, Google, YouTube, GitHub, Trustpilot, X)" },
       { text: "10 keywords per monitor" },
       { text: "Unlimited results" },
       { text: "90-day history" },
@@ -105,7 +105,7 @@ const plans: Plan[] = [
     features: [
       { text: "Everything in Pro" },
       { text: "30 monitors" },
-      { text: "All 16 platforms" },
+      { text: "All 17 platforms" },
       { text: "20 keywords per monitor" },
       { text: "1-year history" },
       { text: "2-hour refresh cycle" },
@@ -125,7 +125,7 @@ const plans: Plan[] = [
 const featureComparison = [
   { feature: "Monitors", free: "1", pro: "10", team: "30" },
   { feature: "Keywords per monitor", free: "3", pro: "10", team: "20" },
-  { feature: "Platforms", free: "Reddit only", pro: "8 platforms", team: "All 16 platforms" },
+  { feature: "Platforms", free: "Reddit only", pro: "9 platforms", team: "All 17 platforms" },
   { feature: "Results visible", free: "Last 3", pro: "Unlimited", team: "Unlimited" },
   { feature: "History retention", free: "3 days", pro: "90 days", team: "1 year" },
   { feature: "Refresh cycle", free: "24 hours", pro: "4 hours", team: "2 hours" },
@@ -577,11 +577,11 @@ export default function PricingPage() {
               <AccordionItem value="platforms">
                 <AccordionTrigger>What platforms do you monitor?</AccordionTrigger>
                 <AccordionContent>
-                  We monitor 16 platforms total: Reddit, Hacker News, Indie Hackers, Product Hunt,
-                  Google Reviews, YouTube, GitHub, Trustpilot, Dev.to, Hashnode, App Store, Play Store,
+                  We monitor 17 platforms total: Reddit, Hacker News, Indie Hackers, Product Hunt,
+                  Google Reviews, YouTube, GitHub, Trustpilot, X (Twitter), Dev.to, Hashnode, App Store, Play Store,
                   Quora, G2, Yelp, and Amazon Reviews. The Free plan includes Reddit only.
-                  Pro includes 8 core platforms (Reddit, HN, Indie Hackers, Product Hunt, Google Reviews, YouTube, GitHub, Trustpilot).
-                  Team includes all 16 platforms.
+                  Pro includes 9 core platforms (Reddit, HN, Indie Hackers, Product Hunt, Google Reviews, YouTube, GitHub, Trustpilot, X).
+                  Team includes all 17 platforms.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="refresh">

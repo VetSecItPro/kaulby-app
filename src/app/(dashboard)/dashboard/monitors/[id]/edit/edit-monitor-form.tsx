@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useId } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,11 +15,11 @@ import Link from "next/link";
 import type { PlanLimits } from "@/lib/plans";
 import { COMMON_TIMEZONES, WEEKDAYS } from "@/lib/monitor-schedule";
 
-// All 16 platforms with tier-based access
-// Pro tier (8 platforms): reddit, hackernews, indiehackers, producthunt, googlereviews, youtube, github, trustpilot
-// Team tier (16 platforms): + devto, hashnode, appstore, playstore, quora, g2, yelp, amazonreviews
+// All 17 platforms with tier-based access
+// Pro tier (9 platforms): reddit, hackernews, indiehackers, producthunt, googlereviews, youtube, github, trustpilot, x
+// Team tier (17 platforms): + devto, hashnode, appstore, playstore, quora, g2, yelp, amazonreviews
 const ALL_PLATFORMS = [
-  // Pro tier platforms (8)
+  // Pro tier platforms (9)
   { id: "reddit", name: "Reddit", description: "Track subreddits and discussions", tier: "free" },
   { id: "hackernews", name: "Hacker News", description: "Tech and startup discussions", tier: "pro" },
   { id: "indiehackers", name: "Indie Hackers", description: "Indie makers and solo founders", tier: "pro" },
@@ -28,6 +28,7 @@ const ALL_PLATFORMS = [
   { id: "youtube", name: "YouTube", description: "Video comments and discussions", tier: "pro" },
   { id: "github", name: "GitHub", description: "Issues and discussions", tier: "pro" },
   { id: "trustpilot", name: "Trustpilot", description: "Customer reviews and ratings", tier: "pro" },
+  { id: "x", name: "X (Twitter)", description: "Posts and conversations on X", tier: "pro" },
   // Team tier only platforms (8 more)
   { id: "devto", name: "Dev.to", description: "Developer blog posts and discussions", tier: "team" },
   { id: "hashnode", name: "Hashnode", description: "Tech blog network", tier: "team" },
@@ -46,6 +47,7 @@ interface EditMonitorFormProps {
 }
 
 export function EditMonitorForm({ monitorId, limits, userPlan }: EditMonitorFormProps) {
+  const formId = useId();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -276,9 +278,9 @@ export function EditMonitorForm({ monitorId, limits, userPlan }: EditMonitorForm
           <CardContent className="space-y-6">
             {/* Monitor Name */}
             <div className="space-y-2">
-              <Label htmlFor="name">Monitor Name</Label>
+              <Label htmlFor={`${formId}-name`}>Monitor Name</Label>
               <Input
-                id="name"
+                id={`${formId}-name`}
                 placeholder="e.g., Brand Reputation, Customer Feedback"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -292,9 +294,9 @@ export function EditMonitorForm({ monitorId, limits, userPlan }: EditMonitorForm
 
             {/* Company/Brand Name */}
             <div className="space-y-2">
-              <Label htmlFor="companyName">Company/Brand Name</Label>
+              <Label htmlFor={`${formId}-companyName`}>Company/Brand Name</Label>
               <Input
-                id="companyName"
+                id={`${formId}-companyName`}
                 placeholder="e.g., High Rise Coffee, Acme Corp"
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
@@ -309,13 +311,13 @@ export function EditMonitorForm({ monitorId, limits, userPlan }: EditMonitorForm
             {/* Active Toggle */}
             <div className="flex items-center justify-between rounded-lg border p-4">
               <div className="space-y-0.5">
-                <Label htmlFor="active">Active</Label>
+                <Label htmlFor={`${formId}-active`}>Active</Label>
                 <p className="text-sm text-muted-foreground">
                   Enable or disable this monitor
                 </p>
               </div>
               <Switch
-                id="active"
+                id={`${formId}-active`}
                 checked={isActive}
                 onCheckedChange={setIsActive}
               />
@@ -327,14 +329,14 @@ export function EditMonitorForm({ monitorId, limits, userPlan }: EditMonitorForm
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-muted-foreground" />
                   <div className="space-y-0.5">
-                    <Label htmlFor="schedule">Schedule Active Hours</Label>
+                    <Label htmlFor={`${formId}-schedule`}>Schedule Active Hours</Label>
                     <p className="text-sm text-muted-foreground">
                       Only scan during specific hours
                     </p>
                   </div>
                 </div>
                 <Switch
-                  id="schedule"
+                  id={`${formId}-schedule`}
                   checked={scheduleEnabled}
                   onCheckedChange={setScheduleEnabled}
                 />
@@ -435,7 +437,7 @@ export function EditMonitorForm({ monitorId, limits, userPlan }: EditMonitorForm
             {/* Keywords (Optional) with Counter */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="keywords">
+                <Label htmlFor={`${formId}-keywords`}>
                   Additional Keywords <span className="text-muted-foreground font-normal">(optional)</span>
                 </Label>
                 {/* Keyword Counter */}
@@ -451,7 +453,7 @@ export function EditMonitorForm({ monitorId, limits, userPlan }: EditMonitorForm
               </div>
               <div className="flex gap-2">
                 <Input
-                  id="keywords"
+                  id={`${formId}-keywords`}
                   placeholder={isAtKeywordLimit ? "Keyword limit reached" : "e.g., customer service, pricing, alternative"}
                   value={keywordInput}
                   onChange={(e) => setKeywordInput(e.target.value)}
@@ -510,7 +512,7 @@ export function EditMonitorForm({ monitorId, limits, userPlan }: EditMonitorForm
               <Label>Platforms</Label>
               <p className="text-xs text-muted-foreground mb-2">
                 {isTeamUser
-                  ? "All 16 platforms available"
+                  ? "All 17 platforms available"
                   : isPaidUser
                     ? "8 Pro platforms available • Upgrade to Team for all 16"
                     : "Upgrade to Pro for 8 platforms or Team for all 16"}
@@ -522,7 +524,7 @@ export function EditMonitorForm({ monitorId, limits, userPlan }: EditMonitorForm
                   return (
                     <label
                       key={platform.id}
-                      htmlFor={`platform-${platform.id}`}
+                      htmlFor={`${formId}-platform-${platform.id}`}
                       className={`flex items-start space-x-3 rounded-lg border p-4 transition-colors ${
                         isLocked
                           ? "opacity-60 cursor-not-allowed bg-muted/30"
@@ -530,7 +532,7 @@ export function EditMonitorForm({ monitorId, limits, userPlan }: EditMonitorForm
                       } ${isSelected ? "border-primary bg-primary/5" : ""}`}
                     >
                       <Checkbox
-                        id={`platform-${platform.id}`}
+                        id={`${formId}-platform-${platform.id}`}
                         checked={isSelected}
                         disabled={isLocked}
                         onCheckedChange={() => togglePlatform(platform.id)}

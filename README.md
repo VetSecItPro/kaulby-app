@@ -1,8 +1,8 @@
 # Kaulby - AI-Powered Community Monitoring
 
-Kaulby monitors 16 platforms for brand mentions, competitor activity, and customer feedback. AI-powered sentiment analysis, pain point detection, lead scoring, and automated alerts.
+Kaulby monitors 17 platforms for brand mentions, competitor activity, and customer feedback. AI-powered sentiment analysis, pain point detection, lead scoring, and automated alerts.
 
-**Platforms:** Reddit, Hacker News, Product Hunt, Dev.to, Google Reviews, Trustpilot, App Store, Play Store, Quora, YouTube, G2, Yelp, Amazon Reviews, Indie Hackers, GitHub, Hashnode
+**Platforms:** Reddit, Hacker News, Product Hunt, Dev.to, Google Reviews, Trustpilot, App Store, Play Store, Quora, YouTube, G2, Yelp, Amazon Reviews, Indie Hackers, GitHub, Hashnode, X (Twitter)
 
 ## Tech Stack
 
@@ -101,7 +101,7 @@ src/
 
 ## Features
 
-- **Multi-platform monitoring** across 16 platforms via Apify
+- **Multi-platform monitoring** across 17 platforms via Apify and xAI
 - **AI-powered analysis** — sentiment, pain points, lead scoring, content categorization
 - **Real-time alerts** — email, webhooks, Slack, Discord
 - **Email digests** — daily, weekly, monthly with PDF report attachments

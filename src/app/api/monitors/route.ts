@@ -1,4 +1,3 @@
-import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { db } from "@/lib/db";
@@ -15,16 +14,13 @@ import { Platform, ALL_PLATFORMS } from "@/lib/plans";
 import { sanitizeMonitorInput, isValidKeyword } from "@/lib/security";
 import { captureEvent } from "@/lib/posthog";
 import { logError } from "@/lib/error-logger";
+import { getEffectiveUserId, isLocalDev as checkIsLocalDev } from "@/lib/dev-auth";
 
 export const dynamic = "force-dynamic";
 
 // In development, ensure user exists in database
 async function ensureDevUserExists(userId: string): Promise<void> {
-  const isLocalDev = process.env.NODE_ENV === "development" &&
-                     !process.env.VERCEL &&
-                     !process.env.VERCEL_ENV;
-
-  if (!isLocalDev) return;
+  if (!checkIsLocalDev()) return;
 
   // Check if user exists
   const existingUser = await db.query.users.findFirst({
@@ -34,23 +30,18 @@ async function ensureDevUserExists(userId: string): Promise<void> {
 
   if (existingUser) return;
 
-  // Get user info from Clerk
-  const clerkUser = await currentUser();
-  const email = clerkUser?.emailAddresses?.[0]?.emailAddress || `dev-${userId}@localhost`;
-  const name = [clerkUser?.firstName, clerkUser?.lastName].filter(Boolean).join(" ") || "Dev User";
-
-  // Create dev user
+  // Create dev user with defaults
   await db.insert(users).values({
     id: userId,
-    email,
-    name,
+    email: `dev-${userId}@localhost`,
+    name: "Dev User",
     subscriptionStatus: "enterprise", // Give full access in dev mode
   }).onConflictDoNothing();
 }
 
 export async function POST(request: Request) {
   try {
-    const { userId } = await auth();
+    const userId = await getEffectiveUserId();
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

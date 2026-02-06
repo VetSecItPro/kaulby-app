@@ -87,6 +87,9 @@ const STAGGER_CONFIG = {
   github: 5 * 60 * 1000,
   devto: 5 * 60 * 1000,
   hashnode: 5 * 60 * 1000,
+
+  // Social media (Phase 5): 5 minute window
+  x: 5 * 60 * 1000,
 } as const;
 
 type PlatformName = keyof typeof STAGGER_CONFIG;

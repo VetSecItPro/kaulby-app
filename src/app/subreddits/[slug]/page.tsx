@@ -32,7 +32,7 @@ import {
 } from "lucide-react";
 import { MarketingHeader } from "@/components/shared/marketing-header";
 import { MarketingFooter } from "@/components/shared/marketing-footer";
-import { ALL_TRACKED_SUBREDDITS } from "@/lib/inngest";
+import { ALL_TRACKED_SUBREDDITS } from "@/lib/data/tracked-subreddits";
 import { SubredditSchema } from "@/lib/seo/structured-data";
 
 // Subreddit metadata for SEO (descriptions, topics, use cases)

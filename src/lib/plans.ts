@@ -1,16 +1,16 @@
-// Platform types - 16 total platforms
-// Core 8 (Pro tier): reddit, hackernews, indiehackers, producthunt, googlereviews, youtube, github, trustpilot
+// Platform types - 17 total platforms
+// Core 9 (Pro tier): reddit, hackernews, indiehackers, producthunt, googlereviews, youtube, github, trustpilot, x
 // Additional 8 (Team tier): devto, hashnode, appstore, playstore, quora, g2, yelp, amazonreviews
 export type Platform =
   | "reddit" | "hackernews" | "producthunt" | "devto"
   | "googlereviews" | "trustpilot" | "appstore" | "playstore"
   | "quora" | "youtube" | "g2" | "yelp" | "amazonreviews"
-  | "indiehackers" | "github" | "hashnode";
+  | "indiehackers" | "github" | "hashnode" | "x";
 
 // Platform groupings for tier access
 const PRO_PLATFORMS: Platform[] = [
   "reddit", "hackernews", "indiehackers", "producthunt",
-  "googlereviews", "youtube", "github", "trustpilot"
+  "googlereviews", "youtube", "github", "trustpilot", "x"
 ];
 
 export const ALL_PLATFORMS: Platform[] = [
@@ -122,7 +122,7 @@ export const PLANS: Record<"free" | "pro" | "enterprise", PlanDefinition> = {
     trialDays: 14,
     features: [
       "10 monitors",
-      "8 platforms (Reddit, HN, IH, PH, Google, YouTube, GitHub, Trustpilot)",
+      "9 platforms (Reddit, HN, IH, PH, Google, YouTube, GitHub, Trustpilot, X)",
       "10 keywords per monitor",
       "Unlimited results",
       "90-day history",
@@ -138,7 +138,7 @@ export const PLANS: Record<"free" | "pro" | "enterprise", PlanDefinition> = {
       resultsHistoryDays: 90,
       resultsVisible: -1, // unlimited
       refreshDelayHours: 4, // 4-hour refresh cycle (6x faster than free)
-      platforms: ["reddit", "hackernews", "indiehackers", "producthunt", "googlereviews", "youtube", "github", "trustpilot"],
+      platforms: ["reddit", "hackernews", "indiehackers", "producthunt", "googlereviews", "youtube", "github", "trustpilot", "x"],
       digestFrequencies: ["daily"], // Pro only gets daily digest
       aiFeatures: {
         sentiment: true,
@@ -169,7 +169,7 @@ export const PLANS: Record<"free" | "pro" | "enterprise", PlanDefinition> = {
     features: [
       "Everything in Pro",
       "30 monitors",
-      "All 16 platforms",
+      "All 17 platforms",
       "20 keywords per monitor",
       "1-year history",
       "2-hour refresh cycle",
@@ -187,7 +187,7 @@ export const PLANS: Record<"free" | "pro" | "enterprise", PlanDefinition> = {
       resultsHistoryDays: 365,
       resultsVisible: -1, // unlimited
       refreshDelayHours: 2, // 2-hour refresh
-      platforms: ["reddit", "hackernews", "indiehackers", "producthunt", "googlereviews", "youtube", "github", "trustpilot", "devto", "hashnode", "appstore", "playstore", "quora", "g2", "yelp", "amazonreviews"],
+      platforms: ["reddit", "hackernews", "indiehackers", "producthunt", "googlereviews", "youtube", "github", "trustpilot", "x", "devto", "hashnode", "appstore", "playstore", "quora", "g2", "yelp", "amazonreviews"],
       digestFrequencies: ["daily", "weekly", "monthly", "realtime"],
       aiFeatures: {
         sentiment: true,
