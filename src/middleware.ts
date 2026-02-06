@@ -31,6 +31,7 @@ async function getClerkHandler() {
       "/pricing",
       "/privacy",
       "/terms",
+      "/install", // PWA installation instructions
       "/gummysearch", // GummySearch migration landing page
       "/subreddits(.*)", // Programmatic SEO - subreddit landing pages
       "/alternatives(.*)", // Programmatic SEO - competitor comparison pages
