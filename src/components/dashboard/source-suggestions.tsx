@@ -123,6 +123,11 @@ const platformMetadata: Record<Platform, {
     bestFor: ["developer content", "tech trends", "programming tutorials"],
     suggestFor: ["developer", "blog", "programming", "tech", "tutorial"],
   },
+  x: {
+    description: "Real-time posts and conversations on X (Twitter)",
+    bestFor: ["brand monitoring", "industry trends", "customer feedback", "competitor tracking"],
+    suggestFor: ["brand", "trending", "social", "news", "influencer", "B2C"],
+  },
 };
 
 /**
@@ -259,7 +264,7 @@ const SuggestionCard = memo(function SuggestionCard({
  * Source Suggestions Component
  *
  * Intelligently suggests platforms users should consider monitoring
- * based on their current setup and keywords. Works across all 16 platforms.
+ * based on their current setup and keywords. Works across all 17 platforms.
  */
 export const SourceSuggestions = memo(function SourceSuggestions({
   currentPlatforms,

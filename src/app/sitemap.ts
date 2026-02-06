@@ -1,5 +1,5 @@
 import { MetadataRoute } from "next";
-import { ALL_TRACKED_SUBREDDITS } from "@/lib/inngest";
+import { ALL_TRACKED_SUBREDDITS } from "@/lib/data/tracked-subreddits";
 import { blogArticles } from "@/lib/data/blog-articles";
 
 // All tool slugs

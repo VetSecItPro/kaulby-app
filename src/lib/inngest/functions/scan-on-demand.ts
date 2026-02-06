@@ -17,6 +17,7 @@ import {
 } from "@/lib/apify";
 import { findRelevantSubredditsCached } from "@/lib/ai";
 import { searchRedditResilient } from "@/lib/reddit";
+import { searchX } from "./monitor-x";
 
 /**
  * Scan a single monitor on-demand when user clicks "Scan Now"
@@ -192,6 +193,12 @@ export const scanOnDemand = inngest.createFunction(
           case "devto":
             platformCount = await step.run(`scan-devto-${monitorId}`, async () => {
               return scanDevToForMonitor(monitor);
+            });
+            break;
+
+          case "x":
+            platformCount = await step.run(`scan-x-${monitorId}`, async () => {
+              return scanXForMonitor(monitor);
             });
             break;
         }
@@ -1892,6 +1899,96 @@ async function scanDevToForMonitor(monitor: MonitorData): Promise<number> {
     }
   } catch (error) {
     console.error("[Dev.to] Error scanning:", error);
+  }
+
+  return count;
+}
+
+/**
+ * Scan X/Twitter for posts matching monitor keywords.
+ * Uses xAI's Grok API with x_search tool.
+ */
+async function scanXForMonitor(monitor: MonitorData): Promise<number> {
+  let count = 0;
+
+  try {
+    const searchResult = await searchX(monitor.keywords, 50);
+
+    if (searchResult.error) {
+      console.warn(`[X] Search warning for monitor ${monitor.id}: ${searchResult.error}`);
+      if (searchResult.posts.length === 0) return 0;
+    }
+
+    // Filter posts using content matching
+    const matchedItems = [];
+    for (const post of searchResult.posts) {
+      const matchResult = await contentMatchesMonitor(
+        { title: post.text.slice(0, 100), body: post.text, author: post.authorUsername, platform: "x" },
+        monitor
+      );
+
+      if (matchResult.isMatch) {
+        matchedItems.push({
+          sourceUrl: post.url || `https://x.com/${post.authorUsername}`,
+          title: post.text.slice(0, 200),
+          content: post.text,
+          author: post.authorUsername,
+          postedAt: post.createdAt ? new Date(post.createdAt) : new Date(),
+          metadata: {
+            authorDisplayName: post.author,
+            likes: post.likes,
+            retweets: post.retweets,
+            replies: post.replies,
+          },
+        });
+      }
+    }
+
+    if (matchedItems.length > 0) {
+      // Batch check for existing results
+      const urls = matchedItems.map(m => m.sourceUrl);
+      const existing = await pooledDb.query.results.findMany({
+        where: inArray(results.sourceUrl, urls),
+        columns: { sourceUrl: true },
+      });
+      const existingUrls = new Set(existing.map(r => r.sourceUrl));
+
+      // Filter to only new items
+      const newItems = matchedItems.filter(m => !existingUrls.has(m.sourceUrl));
+
+      if (newItems.length > 0) {
+        // Batch insert
+        const inserted = await pooledDb.insert(results).values(
+          newItems.map(item => ({
+            monitorId: monitor.id,
+            platform: "x" as const,
+            sourceUrl: item.sourceUrl,
+            title: item.title,
+            content: item.content,
+            author: item.author,
+            postedAt: item.postedAt,
+            metadata: item.metadata,
+          }))
+        ).returning();
+
+        count += inserted.length;
+
+        // Single batch usage increment
+        await incrementResultsCount(monitor.userId, inserted.length);
+
+        // Batch send analysis events
+        if (inserted.length > 0) {
+          await inngest.send(
+            inserted.map(result => ({
+              name: "content/analyze" as const,
+              data: { resultId: result.id, userId: monitor.userId },
+            }))
+          );
+        }
+      }
+    }
+  } catch (error) {
+    console.error("[X] Error scanning:", error);
   }
 
   return count;

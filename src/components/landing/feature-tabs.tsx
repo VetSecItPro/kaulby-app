@@ -13,7 +13,7 @@ const tabs = [
     id: "mentions",
     label: "Mentions",
     icon: MessageSquare,
-    subtitle: "Track every conversation about your brand across 16 platforms.",
+    subtitle: "Track every conversation about your brand across 17 platforms.",
   },
   {
     id: "insights",

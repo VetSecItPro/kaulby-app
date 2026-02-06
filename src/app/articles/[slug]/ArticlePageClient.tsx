@@ -119,7 +119,7 @@ export function ArticlePageClient({
               Start Monitoring Your Brand Today
             </h3>
             <p className="text-muted-foreground mb-6">
-              Track mentions across 16 platforms with AI-powered analysis.
+              Track mentions across 17 platforms with AI-powered analysis.
               Free plan available.
             </p>
             <Link href="/sign-up">

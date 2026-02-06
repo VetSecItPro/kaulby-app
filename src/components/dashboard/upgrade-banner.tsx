@@ -85,7 +85,7 @@ export function UpgradeBanner({ plan, variant = "full", context = "dashboard" }:
             <div>
               <p className="text-sm font-medium">Upgrade to Pro</p>
               <p className="text-xs text-muted-foreground">
-                Get 4-hour refresh, all 16 platforms, and full AI analysis
+                Get 4-hour refresh, all 17 platforms, and full AI analysis
               </p>
             </div>
           </div>

@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   description: "Compare Kaulby to popular social listening tools like GummySearch, Brand24, Mention, Hootsuite, and more. See why startups choose Kaulby for community monitoring.",
   openGraph: {
     title: "Kaulby Alternatives - Compare Social Listening Tools",
-    description: "Compare Kaulby to popular social listening tools. 16 platforms, AI-powered insights, free tier available.",
+    description: "Compare Kaulby to popular social listening tools. 17 platforms, AI-powered insights, free tier available.",
     url: "https://kaulbyapp.com/alternatives",
   },
   alternates: {
@@ -29,7 +29,7 @@ const alternatives = [
     slug: "gummysearch",
     name: "GummySearch",
     tagline: "Reddit Audience Research (Shutting Down)",
-    description: "GummySearch was Reddit-only. Kaulby monitors 16 platforms with the same AI features.",
+    description: "GummySearch was Reddit-only. Kaulby monitors 17 platforms with the same AI features.",
     status: "Shutting Down",
     pricing: "Was $29-59/mo",
     highlight: true,
@@ -87,7 +87,7 @@ const alternatives = [
     slug: "redreach",
     name: "RedReach",
     tagline: "Reddit Marketing Tool",
-    description: "RedReach is Reddit-only. Kaulby monitors 16 platforms including review sites.",
+    description: "RedReach is Reddit-only. Kaulby monitors 17 platforms including review sites.",
     pricing: "$19+/mo",
   },
   {
@@ -126,7 +126,7 @@ const faqs = [
 ];
 
 const kaulbyAdvantages = [
-  "16 platforms (Reddit, HN, Indie Hackers, GitHub, Dev.to, reviews, and more)",
+  "17 platforms (Reddit, HN, Indie Hackers, GitHub, Dev.to, reviews, and more)",
   "AI sentiment analysis on all tiers",
   "Pain point detection and conversation categorization",
   "Free forever tier available",

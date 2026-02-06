@@ -18,6 +18,8 @@ export { monitorIndieHackers } from "./functions/monitor-indiehackers";
 export { monitorGitHub } from "./functions/monitor-github";
 export { monitorDevTo } from "./functions/monitor-devto";
 export { monitorHashnode } from "./functions/monitor-hashnode";
+// Phase 5 - Social media
+export { monitorX } from "./functions/monitor-x";
 export { scanOnDemand } from "./functions/scan-on-demand";
 export { analyzeContent } from "./functions/analyze-content";
 export { analyzeContentBatch } from "./functions/analyze-content-batch";
@@ -51,6 +53,8 @@ import { monitorIndieHackers } from "./functions/monitor-indiehackers";
 import { monitorGitHub } from "./functions/monitor-github";
 import { monitorDevTo } from "./functions/monitor-devto";
 import { monitorHashnode } from "./functions/monitor-hashnode";
+// Phase 5 - Social media
+import { monitorX } from "./functions/monitor-x";
 import { scanOnDemand } from "./functions/scan-on-demand";
 import { analyzeContent } from "./functions/analyze-content";
 import { analyzeContentBatch } from "./functions/analyze-content-batch";
@@ -84,6 +88,8 @@ export const functions = [
   monitorGitHub,
   monitorDevTo,
   monitorHashnode,
+  // Phase 5 - Social media
+  monitorX,
   scanOnDemand,
   analyzeContent,
   analyzeContentBatch,

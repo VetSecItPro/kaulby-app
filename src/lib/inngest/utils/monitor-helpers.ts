@@ -1,7 +1,7 @@
 /**
  * Shared utilities for monitor cron functions.
  *
- * Extracts the ~80% identical boilerplate from 16 platform monitor files
+ * Extracts the ~80% identical boilerplate from 17 platform monitor files
  * into reusable helper functions. Platform files only need to implement:
  * 1. Content fetching (platform-specific API calls)
  * 2. Content filtering/matching

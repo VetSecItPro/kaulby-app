@@ -52,8 +52,10 @@ test.describe("Marketing Pages", () => {
     await page.setViewportSize({ width: 1280, height: 720 });
     await page.goto("/");
 
-    // Click pricing link (visible on desktop)
-    await page.getByRole("link", { name: /pricing/i }).first().click();
+    // Click pricing link in the header nav (not the hero CTA "View Pricing")
+    const navPricingLink = page.locator("header nav").getByRole("link", { name: /^pricing$/i });
+    await navPricingLink.click();
+    await page.waitForURL(/pricing/);
     await expect(page).toHaveURL(/pricing/);
 
     // Go back to home - use href="/" link

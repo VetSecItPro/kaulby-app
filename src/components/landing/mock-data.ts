@@ -114,6 +114,20 @@ export const MOCK_RESULTS: MockResult[] = [
     monitorName: "Feature Requests",
     isNew: false,
   },
+  {
+    id: "6",
+    platform: "x",
+    title: "Been using @trellis_app for 2 months now and the AI task prioritization has genuinely changed how our team works",
+    author: "@sarahbuilds",
+    time: "3h ago",
+    sentiment: "positive",
+    category: "solution_request",
+    leadScore: 78,
+    aiSummary:
+      "Organic endorsement from a startup founder with 12K followers. Mentions specific AI features and team productivity gains. High engagement with 45 likes and 12 retweets.",
+    monitorName: "Trellis Brand Mentions",
+    isNew: true,
+  },
 ];
 
 export const MOCK_MONITORS: MockMonitor[] = [
