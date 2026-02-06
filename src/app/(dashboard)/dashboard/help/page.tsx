@@ -1549,7 +1549,7 @@ export default function HelpPage() {
               <h4 className="font-medium">What&apos;s Included</h4>
               <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-2">
                 <li>Up to 10 monitors during your 24-hour window</li>
-                <li>Access to 8 Pro platforms</li>
+                <li>Access to 9 Pro platforms</li>
                 <li>Unlimited AI analysis</li>
                 <li>10 keywords per monitor</li>
                 <li>CSV export</li>

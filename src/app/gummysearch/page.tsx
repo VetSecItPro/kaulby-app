@@ -51,7 +51,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "GummySearch Alternative | Migrate to Kaulby",
     description:
-      "GummySearch is shutting down. Switch to Kaulby for 16-platform community monitoring with AI analysis.",
+      "GummySearch is shutting down. Switch to Kaulby for 17-platform community monitoring with AI analysis.",
   },
   alternates: {
     canonical: "https://kaulbyapp.com/gummysearch",

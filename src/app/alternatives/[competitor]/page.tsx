@@ -604,7 +604,7 @@ const competitorData: Record<string, {
     faqs: [
       {
         question: "Is Kaulby a good Subreddit Signals alternative?",
-        answer: "Yes, especially if you want broader monitoring beyond Reddit. Subreddit Signals excels at Reddit lead generation with CRM integration. Kaulby offers 16-platform monitoring with AI sentiment analysis, pain point detection, and conversation categorization. Choose Subreddit Signals for pure sales focus, Kaulby for comprehensive monitoring.",
+        answer: "Yes, especially if you want broader monitoring beyond Reddit. Subreddit Signals excels at Reddit lead generation with CRM integration. Kaulby offers 17-platform monitoring with AI sentiment analysis, pain point detection, and conversation categorization. Choose Subreddit Signals for pure sales focus, Kaulby for comprehensive monitoring.",
       },
       {
         question: "Does Kaulby have CRM integration like Subreddit Signals?",
@@ -762,7 +762,7 @@ export default async function AlternativePage({
   const defaultFaqs = [
     {
       question: `Is Kaulby a good ${slug} alternative?`,
-      answer: `Yes, Kaulby is an excellent alternative offering 16-platform monitoring, AI-powered sentiment analysis, pain point detection, and a free tier. Compare features above to see the differences.`,
+      answer: `Yes, Kaulby is an excellent alternative offering 17-platform monitoring, AI-powered sentiment analysis, pain point detection, and a free tier. Compare features above to see the differences.`,
     },
     {
       question: "Does Kaulby have a free tier?",

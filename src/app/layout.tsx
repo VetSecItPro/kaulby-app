@@ -4,6 +4,8 @@ import { Instrument_Serif } from "next/font/google";
 import { Toaster } from "@/components/ui/toaster";
 import { ResilientClerkProvider } from "@/components/shared/clerk-provider";
 import { CookieConsent } from "@/components/shared/cookie-consent";
+import { ServiceWorkerRegister } from "@/components/shared/service-worker-register";
+import { PWAInstallPrompt } from "@/components/shared/pwa-install-prompt";
 import { OrganizationSchema, SoftwareApplicationSchema } from "@/lib/seo/structured-data";
 
 import "./globals.css";
@@ -108,11 +110,13 @@ export default function RootLayout({
         <SoftwareApplicationSchema />
 
         <ResilientClerkProvider>
+          <ServiceWorkerRegister />
           <div id="main-content">
             {children}
           </div>
           <Toaster />
           <CookieConsent />
+          <PWAInstallPrompt />
         </ResilientClerkProvider>
       </body>
     </html>
