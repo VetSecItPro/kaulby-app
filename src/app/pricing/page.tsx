@@ -418,7 +418,7 @@ export default function PricingPage() {
                   </li>
                   <li className="flex items-center gap-2">
                     <Check className="h-4 w-4 text-amber-600 shrink-0" />
-                    <span className="text-sm">8 Pro platforms</span>
+                    <span className="text-sm">9 Pro platforms</span>
                   </li>
                   <li className="flex items-center gap-2">
                     <Check className="h-4 w-4 text-amber-600 shrink-0" />

@@ -116,8 +116,8 @@ src/
 | Tier | Monitors | Platforms | Refresh |
 |------|----------|-----------|---------|
 | Free | 1 | Reddit | 24hr |
-| Pro | 10 | 8 platforms | 4hr |
-| Team | 30 | All 16 | 2hr |
+| Pro | 10 | 9 platforms | 4hr |
+| Team | 30 | All 17 | 2hr |
 
 ## Deployment
 

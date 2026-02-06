@@ -2,21 +2,30 @@
   "name": "Kaulby",
   "short_name": "Kaulby",
   "description": "AI-Powered Community Monitoring",
-  "start_url": "/",
+  "start_url": "/dashboard",
+  "id": "/dashboard",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#000000",
-  "_comment_FIX-305": "Dark theme is intentional — app is always dark mode",
+  "orientation": "any",
   "icons": [
     {
       "src": "/icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "/icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }

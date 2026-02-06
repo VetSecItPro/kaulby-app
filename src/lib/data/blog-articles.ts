@@ -1244,7 +1244,7 @@ export const blogArticles: BlogArticle[] = [
 
 <p>The key takeaway: do not put all your monitoring eggs in one basket. Choose a tool that diversifies across platforms, stores your data securely, and adapts to changes in the landscape. Your community insights are too valuable to lose to another shutdown.</p>
 
-<p><strong>Migrating from GummySearch?</strong> <a href="/sign-up">Try Kaulby free</a> and set up your first monitor in minutes. See how 16-platform coverage compares to Reddit-only monitoring.</p>`,
+<p><strong>Migrating from GummySearch?</strong> <a href="/sign-up">Try Kaulby free</a> and set up your first monitor in minutes. See how 17-platform coverage compares to Reddit-only monitoring.</p>`,
   },
   {
     slug: "share-of-voice-measuring-your-brand-against-competitors",
@@ -1916,7 +1916,7 @@ export const blogArticles: BlogArticle[] = [
 <p>The new platforms are available based on your subscription tier:</p>
 <ul>
 <li><strong>Free plan:</strong> Reddit monitoring (great for getting started)</li>
-<li><strong>Pro plan:</strong> 8 platforms including YouTube, G2, and Trustpilot</li>
+<li><strong>Pro plan:</strong> 9 platforms including YouTube, Trustpilot, and X (Twitter)</li>
 <li><strong>Team plan:</strong> All 17 platforms including Yelp and Amazon Reviews</li>
 </ul>
 <p>Check the <a href="/pricing">pricing page</a> for full details on what each plan includes.</p>
@@ -1931,10 +1931,10 @@ export const blogArticles: BlogArticle[] = [
 <p>If you're new to Kaulby, <a href="/sign-up">create a free account</a> and set up your first monitor in under two minutes. You'll start seeing results within your first scan cycle.</p>
 
 <h2>What's Coming Next</h2>
-<p>Sixteen platforms is a milestone, but we're not stopping here. We're continuously evaluating new platforms based on user feedback and market demand. If there's a platform you'd like to see Kaulby monitor, let us know through the feedback widget in your dashboard.</p>
+<p>Seventeen platforms is a milestone, but we're not stopping here. We're continuously evaluating new platforms based on user feedback and market demand. If there's a platform you'd like to see Kaulby monitor, let us know through the feedback widget in your dashboard.</p>
 <p>We're also investing in deeper platform-specific features. Think YouTube channel analytics, G2 category tracking, and Amazon ASIN-level monitoring. Our goal is to make Kaulby the most comprehensive <a href="/tools/social-listening-for-startups">social listening platform</a> available, period.</p>
 
-<blockquote><strong>Start monitoring YouTube, G2, Yelp, and Amazon Reviews today.</strong> <a href="/sign-up">Sign up free</a> or upgrade your plan to access the full 16-platform monitoring suite. Your customers are talking. Now you can listen everywhere.</blockquote>`,
+<blockquote><strong>Start monitoring YouTube, G2, Yelp, and Amazon Reviews today.</strong> <a href="/sign-up">Sign up free</a> or upgrade your plan to access the full 17-platform monitoring suite. Your customers are talking. Now you can listen everywhere.</blockquote>`,
   },
   {
     slug: "email-digests-and-smart-alerts-never-miss-important-mention",
