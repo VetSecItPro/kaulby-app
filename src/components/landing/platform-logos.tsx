@@ -19,6 +19,7 @@ import {
   SiGoogleplay,
   SiG2,
   SiYelp,
+  SiX,
 } from "@icons-pack/react-simple-icons";
 
 function AmazonLogo({ size = 14, className }: { size?: number; className?: string }) {
@@ -57,6 +58,7 @@ const logoMap: Record<string, LogoEntry> = {
   playstore: { component: SiGoogleplay },
   g2: { component: SiG2 },
   yelp: { component: SiYelp },
+  x: { component: SiX },
   amazon: { component: AmazonLogo },
 };
 

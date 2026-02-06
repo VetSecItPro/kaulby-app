@@ -165,12 +165,12 @@ const toolPages: Record<string, {
   "social-listening-for-startups": {
     title: "Social Listening for Startups",
     subtitle: "Affordable social listening built for bootstrapped founders",
-    description: "Enterprise-grade social listening at startup-friendly prices. Monitor 16 platforms, get AI insights, and find customers - all without the enterprise price tag.",
+    description: "Enterprise-grade social listening at startup-friendly prices. Monitor 17 platforms, get AI insights, and find customers - all without the enterprise price tag.",
     keywords: ["social listening startups", "affordable social listening", "startup monitoring tool"],
     features: [
       {
         icon: Globe,
-        title: "16 Platforms, One Dashboard",
+        title: "17 Platforms, One Dashboard",
         description: "Monitor Reddit, Hacker News, Product Hunt, Google Reviews, Trustpilot, App Store, Play Store, Quora, YouTube, G2, Yelp, and Amazon Reviews.",
       },
       {
@@ -234,7 +234,7 @@ const toolPages: Record<string, {
       },
       {
         question: "What platforms does Kaulby monitor?",
-        answer: "Kaulby monitors 16 platforms: Reddit, Hacker News, Product Hunt, Google Reviews, Trustpilot, App Store reviews, Play Store reviews, Quora, YouTube, G2, Yelp, and Amazon Reviews. These are the platforms where startups get discovered and discussed, unlike traditional social listening tools that focus on Twitter and Facebook.",
+        answer: "Kaulby monitors 17 platforms: Reddit, Hacker News, Product Hunt, Google Reviews, Trustpilot, App Store reviews, Play Store reviews, Quora, YouTube, G2, Yelp, and Amazon Reviews. These are the platforms where startups get discovered and discussed, unlike traditional social listening tools that focus on Twitter and Facebook.",
       },
       {
         question: "How can social listening help me find customers?",
@@ -252,7 +252,7 @@ const toolPages: Record<string, {
       },
       {
         name: "Choose your platforms",
-        text: "Select which platforms to monitor (Pro tier unlocks all 16 platforms).",
+        text: "Select which platforms to monitor (Pro tier unlocks all 17 platforms).",
       },
       {
         name: "Configure notifications",
@@ -274,7 +274,7 @@ const toolPages: Record<string, {
       {
         icon: Globe,
         title: "Multi-Platform Coverage",
-        description: "Monitor 16 platforms including Reddit, review sites, app stores, and more.",
+        description: "Monitor 17 platforms including Reddit, review sites, app stores, and more.",
       },
       {
         icon: Bell,
@@ -325,7 +325,7 @@ const toolPages: Record<string, {
     faqs: [
       {
         question: "What is brand monitoring?",
-        answer: "Brand monitoring is the process of tracking mentions of your company, products, and executives across the internet. It helps you understand public perception, respond to feedback, prevent PR crises, and gather competitive intelligence. Kaulby monitors 16 platforms including Reddit, review sites, YouTube, G2, Yelp, and Amazon.",
+        answer: "Brand monitoring is the process of tracking mentions of your company, products, and executives across the internet. It helps you understand public perception, respond to feedback, prevent PR crises, and gather competitive intelligence. Kaulby monitors 17 platforms including Reddit, review sites, YouTube, G2, Yelp, and Amazon.",
       },
       {
         question: "Why should I monitor my brand online?",
@@ -355,7 +355,7 @@ const toolPages: Record<string, {
       },
       {
         name: "Select platforms to monitor",
-        text: "Choose from 16 platforms: Reddit, review sites, app stores, YouTube, G2, Yelp, Amazon, and more.",
+        text: "Choose from 17 platforms: Reddit, review sites, app stores, YouTube, G2, Yelp, Amazon, and more.",
       },
       {
         name: "Configure alert preferences",
@@ -371,7 +371,7 @@ const toolPages: Record<string, {
   "competitor-monitoring": {
     title: "Competitor Monitoring Tool",
     subtitle: "Track what customers say about your competitors",
-    description: "Monitor competitor mentions across 16 platforms. Understand their strengths, weaknesses, and customer sentiment to gain competitive advantage.",
+    description: "Monitor competitor mentions across 17 platforms. Understand their strengths, weaknesses, and customer sentiment to gain competitive advantage.",
     keywords: ["competitor monitoring", "competitor tracking", "competitive intelligence"],
     features: [
       {
@@ -762,7 +762,7 @@ export default async function ToolPage({
             <CardContent className="p-8 text-center">
               <h3 className="text-2xl font-bold mb-2">Start Free, Upgrade When Ready</h3>
               <p className="text-muted-foreground mb-6">
-                Free tier includes 1 monitor on Reddit. Pro starts at $29/month for full access to all 16 platforms.
+                Free tier includes 1 monitor on Reddit. Pro starts at $29/month for full access to all 17 platforms.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link href="/sign-up">

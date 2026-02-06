@@ -165,7 +165,7 @@ const SentimentBar = memo(function SentimentBar({
  * - Platform badges showing coverage
  * - Sentiment breakdown bar
  *
- * Designed to work across all 16 platforms, not just Reddit.
+ * Designed to work across all 17 platforms, not just Reddit.
  */
 export const AudienceCard = memo(function AudienceCard({
   id,

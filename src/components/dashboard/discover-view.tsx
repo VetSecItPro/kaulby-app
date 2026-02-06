@@ -166,6 +166,12 @@ const PLATFORM_RECOMMENDATIONS: Record<Platform, {
     bestFor: "Developer relations and technical content",
     tip: "Monitor industry trends and mentions",
   },
+  x: {
+    headline: "X (Twitter) Conversations",
+    description: "Real-time posts and discussions on X",
+    bestFor: "Brand monitoring, industry buzz, and customer feedback",
+    tip: "Track brand mentions and competitor discussions in real time",
+  },
 };
 
 /**
@@ -371,7 +377,7 @@ export function DiscoverView({
           Discover
         </h1>
         <p className="text-muted-foreground mt-1">
-          Expand your monitoring coverage and find new opportunities across all 16 platforms.
+          Expand your monitoring coverage and find new opportunities across all 17 platforms.
         </p>
       </div>
 

@@ -196,7 +196,7 @@ export const blogArticles: BlogArticle[] = [
 
 <h2>Getting Started With AI Sentiment Analysis</h2>
 
-<p><a href="/tools/social-listening-for-startups">Kaulby</a> applies AI sentiment analysis to every mention it finds across 16 platforms. Each mention is automatically categorized, scored for sentiment intensity, and tagged with actionable labels (pain point, solution request, feature request, and more). You get a dashboard that shows trends over time and lets you filter to exactly the mentions that need your attention.</p>
+<p><a href="/tools/social-listening-for-startups">Kaulby</a> applies AI sentiment analysis to every mention it finds across 17 platforms. Each mention is automatically categorized, scored for sentiment intensity, and tagged with actionable labels (pain point, solution request, feature request, and more). You get a dashboard that shows trends over time and lets you filter to exactly the mentions that need your attention.</p>
 
 <blockquote><p>The goal of sentiment analysis is not to read every mention. It is to make sure you never miss the mentions that matter.</p></blockquote>
 
@@ -205,7 +205,7 @@ export const blogArticles: BlogArticle[] = [
   {
     slug: "your-brand-is-being-discussed-right-now",
     title: "Your Brand Is Being Discussed Right Now. Here Is How to Find Out What They Are Saying",
-    description: "The reality of unmonitored brand mentions, where discussions happen across 16 platforms, and how to set up comprehensive tracking.",
+    description: "The reality of unmonitored brand mentions, where discussions happen across 17 platforms, and how to set up comprehensive tracking.",
     category: "Brand Tracking",
     readTime: "8 min read",
     featured: true,
@@ -306,7 +306,7 @@ export const blogArticles: BlogArticle[] = [
 
 <p>Manual checking is a losing strategy. You need automated monitoring that scans your target platforms continuously and alerts you when something needs attention. More importantly, you need AI that can distinguish between a casual mention and an urgent issue, so you are not buried in noise.</p>
 
-<p><a href="/tools/brand-monitoring">Kaulby monitors 16 platforms</a> in a single dashboard, applying AI sentiment analysis to every mention. Each mention is categorized by type (pain point, recommendation, question, comparison) and scored by urgency. You get email alerts for high-priority mentions and daily digests that summarize everything else.</p>
+<p><a href="/tools/brand-monitoring">Kaulby monitors 17 platforms</a> in a single dashboard, applying AI sentiment analysis to every mention. Each mention is categorized by type (pain point, recommendation, question, comparison) and scored by urgency. You get email alerts for high-priority mentions and daily digests that summarize everything else.</p>
 
 <h3>Step 4: Build a Response Workflow</h3>
 
@@ -687,7 +687,7 @@ export const blogArticles: BlogArticle[] = [
 <li><strong>Delayed responses look insincere</strong> - Responding to a two-week-old complaint feels like damage control, not genuine care</li>
 <li><strong>Other customers are watching</strong> - How you handle criticism publicly influences how prospective customers perceive your brand</li>
 </ul>
-<p>Setting up <a href="/tools/brand-monitoring">brand monitoring</a> across multiple platforms ensures you catch negative mentions within hours, not weeks. Kaulby tracks mentions across 16 platforms including Reddit, Hacker News, Google Reviews, Trustpilot, G2, Yelp, and more, with AI-powered sentiment analysis that flags negative mentions for immediate attention.</p>
+<p>Setting up <a href="/tools/brand-monitoring">brand monitoring</a> across multiple platforms ensures you catch negative mentions within hours, not weeks. Kaulby tracks mentions across 17 platforms including Reddit, Hacker News, Google Reviews, Trustpilot, G2, Yelp, and more, with AI-powered sentiment analysis that flags negative mentions for immediate attention.</p>
 
 <h2>The Response Framework: ALARA</h2>
 <p>Not every negative mention deserves the same response. Use the ALARA framework to guide your approach:</p>
@@ -1045,7 +1045,7 @@ export const blogArticles: BlogArticle[] = [
 <p>Monitor and log but don't invest outreach time. These mentions contribute to your understanding of market trends, common pain points, and community dynamics. They're inputs for your marketing strategy, not direct sales opportunities.</p>
 
 <h2>How Kaulby Automates Community Lead Scoring</h2>
-<p>Manually scoring hundreds of community mentions is impractical. Kaulby's AI-powered lead scoring analyzes every mention across 16 platforms, including <a href="/tools/reddit-monitoring">Reddit</a>, Hacker News, G2, Trustpilot, Quora, and more, and automatically assigns a lead score based on the signals described above.</p>
+<p>Manually scoring hundreds of community mentions is impractical. Kaulby's AI-powered lead scoring analyzes every mention across 17 platforms, including <a href="/tools/reddit-monitoring">Reddit</a>, Hacker News, G2, Trustpilot, Quora, and more, and automatically assigns a lead score based on the signals described above.</p>
 <p>Each mention includes a breakdown of the scoring factors so you can see exactly why it was rated the way it was. High-scoring mentions can trigger instant alerts via email, Slack, or webhooks so your team can respond while the conversation is still hot.</p>
 <p>Combined with <a href="/tools/social-listening-for-startups">social listening for startups</a>, lead scoring transforms community monitoring from a passive awareness tool into an active revenue driver.</p>
 
@@ -1122,7 +1122,7 @@ export const blogArticles: BlogArticle[] = [
 <p>Your Reddit audience is not your Trustpilot audience. The feedback, tone, and expectations differ by platform. Unified monitoring gives you a nuanced understanding of how different segments perceive your brand.</p>
 
 <h3>4. You Save Time (Dramatically)</h3>
-<p>Checking 5, 10, or 16 platforms manually is not realistic. Even with browser bookmarks and a spreadsheet, you will fall behind within days. A <a href="/tools/brand-monitoring">brand monitoring tool</a> that aggregates everything into one feed turns hours of manual checking into minutes of focused review.</p>
+<p>Checking 5, 10, or 17 platforms manually is not realistic. Even with browser bookmarks and a spreadsheet, you will fall behind within days. A <a href="/tools/brand-monitoring">brand monitoring tool</a> that aggregates everything into one feed turns hours of manual checking into minutes of focused review.</p>
 
 <h3>5. You Can Actually Respond</h3>
 <p>Knowing about a mention is only useful if you can act on it. When all your mentions are in one place, you can prioritize responses, assign team members, and track resolution. A scattered approach means important mentions slip through the cracks.</p>
@@ -1131,13 +1131,13 @@ export const blogArticles: BlogArticle[] = [
 
 <p>If you are convinced (and you should be), here is how to get started:</p>
 
-<blockquote>Start with the platforms where your audience is most active, then expand. You do not need to monitor all 16 platforms on day one, but you should not stop at one.</blockquote>
+<blockquote>Start with the platforms where your audience is most active, then expand. You do not need to monitor all 17 platforms on day one, but you should not stop at one.</blockquote>
 
 <p><strong>Step 1: Identify your key platforms.</strong> Where do your customers hang out? Where do they leave reviews? Where does your industry have discussions? For most B2B SaaS companies, that is Reddit, Hacker News, G2, and Product Hunt at minimum. For consumer products, add Google Reviews, Yelp, Trustpilot, and the app stores.</p>
 
 <p><strong>Step 2: Define your keywords.</strong> Your brand name, product name, common misspellings, competitor names, and industry terms. Think about what someone would type when they are looking for a solution you provide.</p>
 
-<p><strong>Step 3: Choose a tool that supports true multi-platform monitoring.</strong> Many tools claim multi-platform support but only cover mainstream social media (Twitter, Facebook, Instagram). For community monitoring, you need coverage of forums, review sites, Q&A platforms, and developer communities. <a href="/tools/social-listening-for-startups">Kaulby monitors 16 platforms</a> specifically chosen for community discussions.</p>
+<p><strong>Step 3: Choose a tool that supports true multi-platform monitoring.</strong> Many tools claim multi-platform support but only cover mainstream social media (Twitter, Facebook, Instagram). For community monitoring, you need coverage of forums, review sites, Q&A platforms, and developer communities. <a href="/tools/social-listening-for-startups">Kaulby monitors 17 platforms</a> specifically chosen for community discussions.</p>
 
 <p><strong>Step 4: Set up alerts for high-priority mentions.</strong> Not every mention requires immediate action. Configure alerts for negative sentiment, competitor comparisons, and high-engagement discussions. Let AI analysis handle the categorization so you can focus on what matters.</p>
 
@@ -1225,12 +1225,12 @@ export const blogArticles: BlogArticle[] = [
 
 <h2>Why Kaulby Is Built Differently</h2>
 
-<p>Kaulby was designed with the lessons of platform dependency in mind. Rather than relying on a single platform, Kaulby monitors 16 platforms across forums, review sites, Q&A platforms, developer communities, and app stores. Data access uses reputable third-party services with contingency plans for API changes.</p>
+<p>Kaulby was designed with the lessons of platform dependency in mind. Rather than relying on a single platform, Kaulby monitors 17 platforms across forums, review sites, Q&A platforms, developer communities, and app stores. Data access uses reputable third-party services with contingency plans for API changes.</p>
 
 <p>Key differences from GummySearch:</p>
 
 <ul>
-<li><strong>16 platforms</strong> vs. Reddit-only (Reddit, Hacker News, Product Hunt, Dev.to, Google Reviews, Trustpilot, App Store, Play Store, Quora, YouTube, G2, Yelp, Amazon Reviews, Indie Hackers, GitHub, Hashnode)</li>
+<li><strong>17 platforms</strong> vs. Reddit-only (Reddit, Hacker News, Product Hunt, Dev.to, Google Reviews, Trustpilot, App Store, Play Store, Quora, YouTube, G2, Yelp, Amazon Reviews, Indie Hackers, GitHub, Hashnode, X/Twitter)</li>
 <li><strong>AI-powered analysis</strong> with sentiment detection, pain point extraction, and automatic categorization</li>
 <li><strong>Real-time alerts</strong> via email, webhooks, and Slack</li>
 <li><strong><a href="/tools/competitor-monitoring">Competitor monitoring</a></strong> with share of voice tracking</li>
@@ -1362,7 +1362,7 @@ export const blogArticles: BlogArticle[] = [
 
 <p>Share of voice is one of those metrics that gets more valuable the longer you track it. A single week's snapshot is interesting. Six months of data reveals the trajectory of your market position. Start measuring now, and future you will be grateful for the baseline.</p>
 
-<p><strong>Want to see your share of voice across 16 platforms?</strong> <a href="/sign-up">Create a free Kaulby account</a> and set up competitive monitors in minutes.</p>`,
+<p><strong>Want to see your share of voice across 17 platforms?</strong> <a href="/sign-up">Create a free Kaulby account</a> and set up competitive monitors in minutes.</p>`,
   },
   {
     slug: "beyond-keywords-how-ai-categorization-transforms-mentions",
@@ -1381,7 +1381,7 @@ export const blogArticles: BlogArticle[] = [
 
 <h2>The Limitations of Keyword-Only Monitoring</h2>
 
-<p>Keyword monitoring catches mentions. That is its job, and it does it well. But consider what happens when you monitor a brand name across 16 platforms. You might get dozens or hundreds of mentions per week. Some are glowing recommendations. Some are frustrated complaints. Some are casual name-drops with no actionable content. Some are questions from potential customers. Some are competitor comparisons.</p>
+<p>Keyword monitoring catches mentions. That is its job, and it does it well. But consider what happens when you monitor a brand name across 17 platforms. You might get dozens or hundreds of mentions per week. Some are glowing recommendations. Some are frustrated complaints. Some are casual name-drops with no actionable content. Some are questions from potential customers. Some are competitor comparisons.</p>
 
 <p>With keyword-only monitoring, all of these arrive in the same undifferentiated feed. You have to read every single mention, mentally categorize it, decide if it needs a response, and figure out the priority. For a small team monitoring multiple keywords across multiple platforms, this quickly becomes overwhelming.</p>
 
@@ -1557,7 +1557,7 @@ export const blogArticles: BlogArticle[] = [
 
 <p>Protecting your brand reputation is not about controlling the narrative. It is about being present in the conversation, responding with integrity, and consistently delivering on your promises. Small teams that do this well build reputations that no PR department could manufacture.</p>
 
-<p><strong>Start protecting your brand today.</strong> <a href="/sign-up">Sign up for Kaulby free</a> and see every mention of your brand across 16 platforms, with AI that helps you focus on what matters most. Check out our <a href="/pricing">pricing plans</a> for teams that need advanced alerts and analytics.</p>`,
+<p><strong>Start protecting your brand today.</strong> <a href="/sign-up">Sign up for Kaulby free</a> and see every mention of your brand across 17 platforms, with AI that helps you focus on what matters most. Check out our <a href="/pricing">pricing plans</a> for teams that need advanced alerts and analytics.</p>`,
   },
   {
     slug: "finding-competitor-weaknesses-through-community-feedback",
@@ -1594,7 +1594,7 @@ export const blogArticles: BlogArticle[] = [
 
 <h3>Step 2: Monitor Across Multiple Platforms</h3>
 <p>Competitor complaints don't stay in one place. A developer might post on GitHub about a bug, then rant on Reddit about poor support, while a non-technical user leaves a scathing G2 review. You need <a href="/tools/competitor-monitoring">cross-platform competitor monitoring</a> to capture the full picture.</p>
-<p><a href="/tools/brand-monitoring">Kaulby monitors 16 platforms simultaneously</a>, including review sites like G2, Trustpilot, Yelp, and Amazon Reviews alongside community platforms like Reddit, Hacker News, and Product Hunt. This breadth matters because competitor weaknesses often manifest differently across platforms.</p>
+<p><a href="/tools/brand-monitoring">Kaulby monitors 17 platforms simultaneously</a>, including review sites like G2, Trustpilot, Yelp, and Amazon Reviews alongside community platforms like Reddit, Hacker News, and Product Hunt. This breadth matters because competitor weaknesses often manifest differently across platforms.</p>
 
 <h3>Step 3: Categorize the Complaints</h3>
 <p>Once you're collecting mentions, sort them into categories:</p>
@@ -1642,7 +1642,7 @@ export const blogArticles: BlogArticle[] = [
 <p>The most successful teams don't treat competitor feedback analysis as a one-time project. They build it into their weekly rhythm. Set up automated monitoring with Kaulby to track competitor mentions across <a href="/tools/reddit-monitoring">Reddit</a>, review platforms, and developer communities. Review the AI-generated sentiment reports weekly. Share the most impactful insights with your product, marketing, and sales teams.</p>
 <p>Over time, you'll develop a real-time understanding of where competitors are falling short and where your biggest opportunities lie. That's not just competitive intelligence. That's a sustainable competitive advantage.</p>
 
-<blockquote><strong>Ready to uncover your competitors' blind spots?</strong> Kaulby monitors competitor mentions across 16 platforms with AI-powered sentiment analysis, so you can spot weaknesses before they become your competitors' priorities. <a href="/sign-up">Start monitoring for free</a>.</blockquote>`,
+<blockquote><strong>Ready to uncover your competitors' blind spots?</strong> Kaulby monitors competitor mentions across 17 platforms with AI-powered sentiment analysis, so you can spot weaknesses before they become your competitors' priorities. <a href="/sign-up">Start monitoring for free</a>.</blockquote>`,
   },
   {
     slug: "from-mentions-to-revenue-community-led-growth",
@@ -1740,10 +1740,10 @@ export const blogArticles: BlogArticle[] = [
 
 <h2>Building Your Community-Led Growth Engine</h2>
 <p>Community-led growth isn't a hack or a shortcut. It's a sustainable acquisition channel that compounds over time. The more you listen, engage, and deliver value, the more your brand gets recommended organically in the communities that matter.</p>
-<p>Start by setting up comprehensive monitoring across the platforms where your audience gathers. Kaulby tracks mentions across 16 platforms with <a href="/tools/social-listening-for-startups">AI-powered analysis</a>, making it practical to monitor at scale even with a small team. Then build the engagement habits and measurement systems described above.</p>
+<p>Start by setting up comprehensive monitoring across the platforms where your audience gathers. Kaulby tracks mentions across 17 platforms with <a href="/tools/social-listening-for-startups">AI-powered analysis</a>, making it practical to monitor at scale even with a small team. Then build the engagement habits and measurement systems described above.</p>
 <p>The companies that win with community-led growth aren't the ones with the biggest budgets. They're the ones that show up consistently, help genuinely, and treat every mention as a conversation worth having.</p>
 
-<blockquote><strong>Ready to turn mentions into revenue?</strong> <a href="/sign-up">Start your free Kaulby account</a> and see every community conversation that matters to your business, across 16 platforms, analyzed by AI, delivered to your inbox.</blockquote>`,
+<blockquote><strong>Ready to turn mentions into revenue?</strong> <a href="/sign-up">Start your free Kaulby account</a> and see every community conversation that matters to your business, across 17 platforms, analyzed by AI, delivered to your inbox.</blockquote>`,
   },
   {
     slug: "introducing-ai-powered-reply-suggestions",
@@ -1902,7 +1902,7 @@ export const blogArticles: BlogArticle[] = [
 <p>The AI analysis is particularly powerful here. Amazon reviews often contain detailed, specific feedback that reveals exactly why customers chose one product over another. Kaulby's sentiment analysis extracts these insights automatically, saving you hours of manual review reading.</p>
 
 <h2>The Full Platform Lineup</h2>
-<p>With these additions, Kaulby now covers 16 platforms across every major category:</p>
+<p>With these additions, Kaulby now covers 17 platforms across every major category:</p>
 <ul>
 <li><strong>Community and Discussion:</strong> <a href="/tools/reddit-monitoring">Reddit</a>, Hacker News, Quora, Indie Hackers</li>
 <li><strong>Developer Platforms:</strong> GitHub, Dev.to, Hashnode</li>
@@ -1917,7 +1917,7 @@ export const blogArticles: BlogArticle[] = [
 <ul>
 <li><strong>Free plan:</strong> Reddit monitoring (great for getting started)</li>
 <li><strong>Pro plan:</strong> 8 platforms including YouTube, G2, and Trustpilot</li>
-<li><strong>Team plan:</strong> All 16 platforms including Yelp and Amazon Reviews</li>
+<li><strong>Team plan:</strong> All 17 platforms including Yelp and Amazon Reviews</li>
 </ul>
 <p>Check the <a href="/pricing">pricing page</a> for full details on what each plan includes.</p>
 
@@ -1951,7 +1951,7 @@ export const blogArticles: BlogArticle[] = [
 <p>That's why we built Kaulby's alert and digest system from the ground up to be fast, smart, and configurable. Here's how it works and how to set it up for maximum impact.</p>
 
 <h2>How Kaulby's Alert System Works</h2>
-<p>Kaulby continuously scans 16 platforms for your monitored keywords. When new mentions are found, they flow through our AI analysis pipeline (sentiment detection, categorization, pain point identification) and then into our alert system. From there, you have three ways to receive notifications.</p>
+<p>Kaulby continuously scans 17 platforms for your monitored keywords. When new mentions are found, they flow through our AI analysis pipeline (sentiment detection, categorization, pain point identification) and then into our alert system. From there, you have three ways to receive notifications.</p>
 
 <h3>Instant Alerts</h3>
 <p>For time-sensitive mentions, instant alerts deliver notifications the moment a relevant mention is detected. These are ideal for:</p>

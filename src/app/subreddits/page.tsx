@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { ArrowRight, Search, Users, TrendingUp, Zap } from "lucide-react";
 import { MarketingHeader } from "@/components/shared/marketing-header";
 import { MarketingFooter } from "@/components/shared/marketing-footer";
-import { ALL_TRACKED_SUBREDDITS } from "@/lib/inngest";
+import { ALL_TRACKED_SUBREDDITS } from "@/lib/data/tracked-subreddits";
 import { db } from "@/lib/db";
 import { communityGrowth } from "@/lib/db/schema";
 import { desc, inArray } from "drizzle-orm";

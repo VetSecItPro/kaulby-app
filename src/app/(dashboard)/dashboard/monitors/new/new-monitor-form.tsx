@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useId } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,11 +17,11 @@ import { SearchQueryInput } from "@/components/search-query-input";
 import type { PlanLimits } from "@/lib/plans";
 import { COMMON_TIMEZONES, WEEKDAYS } from "@/lib/monitor-schedule";
 
-// All 16 platforms with tier-based access
-// Pro tier (8 platforms): reddit, hackernews, indiehackers, producthunt, googlereviews, youtube, github, trustpilot
-// Team tier (16 platforms): + devto, hashnode, appstore, playstore, quora, g2, yelp, amazonreviews
+// All 17 platforms with tier-based access
+// Pro tier (9 platforms): reddit, hackernews, indiehackers, producthunt, googlereviews, youtube, github, trustpilot, x
+// Team tier (17 platforms): + devto, hashnode, appstore, playstore, quora, g2, yelp, amazonreviews
 const ALL_PLATFORMS = [
-  // Pro tier platforms (8)
+  // Pro tier platforms (9)
   { id: "reddit", name: "Reddit", description: "Track subreddits and discussions", tier: "free", needsUrl: false },
   { id: "hackernews", name: "Hacker News", description: "Tech and startup discussions", tier: "pro", needsUrl: false },
   { id: "indiehackers", name: "Indie Hackers", description: "Indie makers and solo founders", tier: "pro", needsUrl: false },
@@ -30,6 +30,7 @@ const ALL_PLATFORMS = [
   { id: "youtube", name: "YouTube", description: "Video comments and discussions", tier: "pro", needsUrl: true, urlPlaceholder: "https://www.youtube.com/watch?v=...", urlHelp: "YouTube video URL to monitor comments" },
   { id: "github", name: "GitHub", description: "Issues and discussions", tier: "pro", needsUrl: false },
   { id: "trustpilot", name: "Trustpilot", description: "Customer reviews and ratings", tier: "pro", needsUrl: true, urlPlaceholder: "https://www.trustpilot.com/review/example.com", urlHelp: "Trustpilot company review page URL" },
+  { id: "x", name: "X (Twitter)", description: "Posts and conversations on X", tier: "pro", needsUrl: false },
   // Team tier only platforms (8 more)
   { id: "devto", name: "Dev.to", description: "Developer blog posts and discussions", tier: "team", needsUrl: false },
   { id: "hashnode", name: "Hashnode", description: "Tech blog network", tier: "team", needsUrl: false },
@@ -86,6 +87,7 @@ interface NewMonitorFormProps {
 type MonitorType = "keyword" | "ai_discovery";
 
 export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
+  const formId = useId();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [name, setName] = useState("");
@@ -250,9 +252,9 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
           <CardContent className="space-y-6">
             {/* Monitor Name */}
             <div className="space-y-2">
-              <Label htmlFor="name">Monitor Name</Label>
+              <Label htmlFor={`${formId}-name`}>Monitor Name</Label>
               <Input
-                id="name"
+                id={`${formId}-name`}
                 placeholder="e.g., Brand Reputation, Customer Feedback"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -266,9 +268,9 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
 
             {/* Company/Brand Name */}
             <div className="space-y-2">
-              <Label htmlFor="companyName">Company/Brand Name</Label>
+              <Label htmlFor={`${formId}-companyName`}>Company/Brand Name</Label>
               <Input
-                id="companyName"
+                id={`${formId}-companyName`}
                 placeholder="e.g., High Rise Coffee, Acme Corp"
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
@@ -344,12 +346,12 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
               <div className="space-y-2 p-4 rounded-lg border bg-purple-500/5 border-purple-500/20">
                 <div className="flex items-center gap-2 mb-2">
                   <Wand2 className="h-4 w-4 text-purple-500" />
-                  <Label htmlFor="discoveryPrompt" className="text-purple-300">
+                  <Label htmlFor={`${formId}-discoveryPrompt`} className="text-purple-300">
                     What are you looking for?
                   </Label>
                 </div>
                 <Textarea
-                  id="discoveryPrompt"
+                  id={`${formId}-discoveryPrompt`}
                   placeholder="e.g., People who are frustrated with their current project management tool and looking for alternatives&#10;&#10;or&#10;&#10;Developers asking for recommendations on API testing tools"
                   value={discoveryPrompt}
                   onChange={(e) => setDiscoveryPrompt(e.target.value)}
@@ -374,7 +376,7 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
             {monitorType === "keyword" && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="keywords">
+                <Label htmlFor={`${formId}-keywords`}>
                   Additional Keywords <span className="text-muted-foreground font-normal">(optional)</span>
                 </Label>
                 {/* Keyword Counter */}
@@ -390,7 +392,7 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
               </div>
               <div className="flex gap-2">
                 <Input
-                  id="keywords"
+                  id={`${formId}-keywords`}
                   placeholder={isAtKeywordLimit ? "Keyword limit reached" : "e.g., customer service, pricing, alternative"}
                   value={keywordInput}
                   onChange={(e) => setKeywordInput(e.target.value)}
@@ -488,7 +490,7 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
                 <Label>Platforms</Label>
                 <p className="text-xs text-muted-foreground mt-1">
                   {isTeamUser
-                    ? "All 16 platforms available"
+                    ? "All 17 platforms available"
                     : isPaidUser
                       ? "8 Pro platforms available • Upgrade to Team for all 16"
                       : "Upgrade to Pro for 8 platforms or Team for all 16"}
@@ -503,7 +505,7 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
                   return (
                     <label
                       key={platform.id}
-                      htmlFor={`platform-${platform.id}`}
+                      htmlFor={`${formId}-platform-${platform.id}`}
                       className={`flex items-start space-x-3 rounded-lg border p-4 transition-colors ${
                         isLocked
                           ? "opacity-60 cursor-not-allowed bg-muted/30"
@@ -511,7 +513,7 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
                       } ${isSelected ? "border-primary bg-primary/5" : ""}`}
                     >
                       <Checkbox
-                        id={`platform-${platform.id}`}
+                        id={`${formId}-platform-${platform.id}`}
                         checked={isSelected}
                         disabled={isLocked}
                         onCheckedChange={(checked) => {
@@ -565,11 +567,11 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
                       if (!platform) return null;
                       return (
                         <div key={platformId} className="space-y-2">
-                          <Label htmlFor={`url-${platformId}`} className="text-sm font-medium">
+                          <Label htmlFor={`${formId}-url-${platformId}`} className="text-sm font-medium">
                             {platform.name} URL
                           </Label>
                           <Input
-                            id={`url-${platformId}`}
+                            id={`${formId}-url-${platformId}`}
                             placeholder={platform.urlPlaceholder}
                             value={platformUrls[platformId] || ""}
                             onChange={(e) => setPlatformUrls(prev => ({ ...prev, [platformId]: e.target.value }))}
@@ -592,14 +594,14 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-muted-foreground" />
                   <div className="space-y-0.5">
-                    <Label htmlFor="schedule">Schedule Active Hours</Label>
+                    <Label htmlFor={`${formId}-schedule`}>Schedule Active Hours</Label>
                     <p className="text-sm text-muted-foreground">
                       Only scan during specific hours
                     </p>
                   </div>
                 </div>
                 <Switch
-                  id="schedule"
+                  id={`${formId}-schedule`}
                   checked={scheduleEnabled}
                   onCheckedChange={setScheduleEnabled}
                 />

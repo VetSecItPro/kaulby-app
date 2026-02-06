@@ -249,7 +249,7 @@ export function ArticlesPageClient({
             Ready to Monitor Your Brand?
           </h2>
           <p className="text-xl opacity-90 mb-8">
-            Start tracking mentions across 16 platforms with AI-powered
+            Start tracking mentions across 17 platforms with AI-powered
             sentiment analysis. Free to get started.
           </p>
           <Link href="/sign-up">

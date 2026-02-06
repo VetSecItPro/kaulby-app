@@ -14,76 +14,10 @@ import { inngest } from "../client";
 import { pooledDb } from "@/lib/db";
 import { communityGrowth } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
-
-// Top subreddits for business/startup monitoring (prioritized for SEO)
-// These are the most valuable for Kaulby's target audience
-const PRIORITY_SUBREDDITS = [
-  // Business & Startups
-  "startups", "entrepreneur", "smallbusiness", "SaaS", "startup",
-  "venturecapital", "sweatystartup", "GrowthHacking", "EntrepreneurRideAlong",
-  "Startups_Subterfuge", "sidehustle", "PassiveIncome", "ecommerce",
-
-  // Product & Marketing
-  "marketing", "socialmedia", "digital_marketing", "PPC", "SEO",
-  "content_marketing", "emailmarketing", "CopyWriting", "advertising",
-  "productdesign", "ProductManagement", "userexperience",
-
-  // Technology & Dev
-  "webdev", "programming", "javascript", "reactjs", "nextjs", "node",
-  "Python", "golang", "rust", "devops", "sysadmin", "selfhosted",
-  "machinelearning", "artificial", "ChatGPT", "LocalLLaMA",
-
-  // Finance & Investing
-  "personalfinance", "financialindependence", "investing", "stocks",
-  "wallstreetbets", "CryptoCurrency", "Bitcoin", "ethereum",
-
-  // Productivity & Tools
-  "productivity", "Notion", "ObsidianMD", "LifeProTips", "getdisciplined",
-  "todoist", "Airtable", "nocode", "lowcode",
-
-  // Industry Verticals
-  "realestateinvesting", "dropship", "FulfillmentByAmazon", "shopify",
-  "Etsy", "AmazonSeller", "Flipping", "reselling",
-
-  // Communities for feedback
-  "SideProject", "IMadeThis", "AlphaAndBetaUsers", "indiebiz",
-  "Lightbulb", "somebodymakethis", "AppIdeas", "startup_ideas",
-
-  // Support & Discussion
-  "Advice", "AskReddit", "explainlikeimfive", "NoStupidQuestions",
-  "TooAfraidToAsk", "findareddit", "newtoreddit",
-];
-
-// Extended list - less priority but still valuable
-const EXTENDED_SUBREDDITS = [
-  // Tech-specific
-  "typescript", "svelte", "vuejs", "angular", "flutter", "swift",
-  "AndroidDev", "iOSProgramming", "gamedev", "godot", "unity3d",
-  "aws", "googlecloud", "azure", "kubernetes", "docker",
-
-  // Design
-  "Design", "graphic_design", "UI_Design", "web_design", "Figma",
-
-  // More business
-  "consulting", "freelance", "WorkOnline", "digitalnomad", "remotework",
-  "Entrepreneur30", "microsaas", "IndieHackers", "buildinpublic",
-
-  // Tech discussion
-  "technology", "Futurology", "hardware", "gadgets", "tech",
-  "Hacking", "netsec", "cybersecurity", "privacytoolsIO",
-
-  // Career
-  "cscareerquestions", "jobs", "recruitinghell", "antiwork",
-  "careerguidance", "findapath",
-
-  // Finance extended
-  "options", "pennystocks", "Daytrading", "StockMarket",
-  "RealEstate", "landlord", "Homebuilding",
-
-  // Hobby that overlap with business
-  "photography", "videography", "podcasting", "Twitch", "youtube",
-  "socialmediamarketing", "influencermarketing",
-];
+import {
+  PRIORITY_SUBREDDITS,
+  EXTENDED_SUBREDDITS,
+} from "@/lib/data/tracked-subreddits";
 
 interface SubredditStats {
   subreddit: string;
@@ -383,5 +317,5 @@ export const fetchSubredditStats = inngest.createFunction(
   }
 );
 
-// Export the list of subreddits for sitemap generation
-export const ALL_TRACKED_SUBREDDITS = [...PRIORITY_SUBREDDITS, ...EXTENDED_SUBREDDITS];
+// Re-export for backward compatibility (barrel file re-exports this)
+export { ALL_TRACKED_SUBREDDITS } from "@/lib/data/tracked-subreddits";

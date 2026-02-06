@@ -28,9 +28,9 @@ import type { Metadata } from "next";
 
 // SEO: Full metadata for GummySearch migration landing page — FIX-028
 export const metadata: Metadata = {
-  title: "GummySearch Alternative | Migrate to Kaulby - 16 Platform Monitoring",
+  title: "GummySearch Alternative | Migrate to Kaulby - 17 Platform Monitoring",
   description:
-    "GummySearch is shutting down. Migrate to Kaulby for AI-powered community monitoring across 16 platforms including Reddit, Hacker News, Product Hunt, and more. Free migration available.",
+    "GummySearch is shutting down. Migrate to Kaulby for AI-powered community monitoring across 17 platforms including Reddit, Hacker News, Product Hunt, and more. Free migration available.",
   keywords: [
     "GummySearch alternative",
     "GummySearch replacement",
@@ -90,7 +90,7 @@ const featureComparison = [
 const benefits = [
   {
     icon: Globe,
-    title: "16 Platforms, Not Just 1",
+    title: "17 Platforms, Not Just 1",
     description: "Monitor Reddit, Hacker News, Product Hunt, Google Reviews, Trustpilot, App Store, Play Store, Quora, YouTube, G2, Yelp, and Amazon Reviews - all in one place.",
   },
   {

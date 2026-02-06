@@ -1,6 +1,6 @@
 # CLAUDE.md - Kaulby
 
-AI-powered community monitoring SaaS. Tracks 16 platforms (Reddit, Hacker News, Product Hunt, Dev.to, Google Reviews, Trustpilot, App Store, Play Store, Quora, YouTube, G2, Yelp, Amazon Reviews, Indie Hackers, GitHub, Hashnode) for keywords, analyzes sentiment/pain points via AI, sends alerts.
+AI-powered community monitoring SaaS. Tracks 17 platforms (Reddit, Hacker News, Product Hunt, Dev.to, Google Reviews, Trustpilot, App Store, Play Store, Quora, YouTube, G2, Yelp, Amazon Reviews, Indie Hackers, GitHub, Hashnode, X/Twitter) for keywords, analyzes sentiment/pain points via AI, sends alerts.
 
 ## Development Philosophy
 
@@ -59,13 +59,13 @@ AI-powered community monitoring SaaS. Tracks 16 platforms (Reddit, Hacker News, 
 | Tier | Monitors | Keywords | Platforms | Refresh |
 |------|----------|----------|-----------|---------|
 | Free | 1 | 3 | Reddit only | 24hr |
-| Pro | 10 | 10 | 8 platforms | 4hr |
-| Team | 30 | 20 | All 16 platforms | 2hr |
+| Pro | 10 | 10 | 9 platforms | 4hr |
+| Team | 30 | 20 | All 17 platforms | 2hr |
 
 **Platform Tiers:**
 - **Free**: Reddit only
-- **Pro (8 platforms)**: Reddit, Hacker News, Indie Hackers, Product Hunt, Google Reviews, YouTube, GitHub, Trustpilot
-- **Team (16 platforms)**: All Pro platforms + Dev.to, Hashnode, App Store, Play Store, Quora, G2, Yelp, Amazon Reviews
+- **Pro (9 platforms)**: Reddit, Hacker News, Indie Hackers, Product Hunt, Google Reviews, YouTube, GitHub, Trustpilot, X (Twitter)
+- **Team (17 platforms)**: All Pro platforms + Dev.to, Hashnode, App Store, Play Store, Quora, G2, Yelp, Amazon Reviews
 
 ## Key Files
 
@@ -100,7 +100,7 @@ Import from: `import { escapeHtml, sanitizeUrl } from '@/lib/security'`
 ## Features
 
 ### Core
-- Multi-platform monitoring (16 platforms via Apify)
+- Multi-platform monitoring (17 platforms via Apify and xAI)
 - AI-powered sentiment analysis and categorization
 - Real-time and scheduled alerts (email, webhooks, Slack)
 - Daily/weekly/monthly email digests with AI insights
@@ -156,7 +156,7 @@ Import from: `import { escapeHtml, sanitizeUrl } from '@/lib/security'`
 │  │              INNGEST                      │                  │
 │  │         (Background Jobs)                 │                  │
 │  │                                           │                  │
-│  │  • Platform scans (16 platforms)         │                  │
+│  │  • Platform scans (17 platforms)         │                  │
 │  │  • AI analysis batches                   │                  │
 │  │  • Email digests (daily/weekly)          │                  │
 │  │  • Data retention cleanup                │                  │

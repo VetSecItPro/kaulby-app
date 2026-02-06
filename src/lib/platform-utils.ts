@@ -3,16 +3,17 @@
  * All platform-related colors and styling should be defined here
  */
 
-// Pro tier platforms (8)
+// Pro tier platforms (9)
 export const proPlatforms = [
   "reddit",
   "hackernews",
-  "indiehackers",   // NEW: Indie Hackers community
+  "indiehackers",   // Indie Hackers community
   "producthunt",
   "googlereviews",
   "youtube",
-  "github",         // NEW: GitHub Issues/Discussions
+  "github",         // GitHub Issues/Discussions
   "trustpilot",
+  "x",              // X (Twitter) via xAI x_search API
 ] as const;
 
 // Team-only platforms (8 additional)
@@ -27,7 +28,7 @@ export const teamOnlyPlatforms = [
   "amazonreviews",
 ] as const;
 
-// All active platforms (16 total)
+// All active platforms (17 total)
 export const platforms = [...proPlatforms, ...teamOnlyPlatforms] as const;
 export type Platform = (typeof platforms)[number];
 
@@ -47,6 +48,7 @@ export const platformDisplayNames: Record<Platform | LegacyPlatform, string> = {
   youtube: "YouTube",
   github: "GitHub",
   trustpilot: "Trustpilot",
+  x: "X (Twitter)",
   // Team-only platforms
   devto: "Dev.to",
   hashnode: "Hashnode",
@@ -119,6 +121,12 @@ export const platformColors = {
     badgeLight: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400",
     bar: "bg-emerald-500",
     icon: "text-emerald-500",
+  },
+  x: {
+    badge: "bg-zinc-800/10 text-zinc-800 dark:bg-zinc-200/10 dark:text-zinc-200",
+    badgeLight: "bg-zinc-100 text-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-300",
+    bar: "bg-zinc-800 dark:bg-zinc-200",
+    icon: "text-zinc-800 dark:text-zinc-200",
   },
   // Team-only platforms
   devto: {

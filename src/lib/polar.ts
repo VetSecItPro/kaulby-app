@@ -52,12 +52,12 @@ export async function getPolarClient(): Promise<PolarClient | null> {
   }
 }
 
-// Platform types (shared with plans.ts) - 16 total platforms
+// Platform types (shared with plans.ts) - 17 total platforms
 export type Platform =
   | "reddit" | "hackernews" | "producthunt" | "devto"
   | "googlereviews" | "trustpilot" | "appstore" | "playstore"
   | "quora" | "youtube" | "g2" | "yelp" | "amazonreviews"
-  | "indiehackers" | "github" | "hashnode";
+  | "indiehackers" | "github" | "hashnode" | "x";
 
 // Digest frequency types
 export type DigestFrequency = "weekly" | "daily" | "realtime";
@@ -162,7 +162,7 @@ export const POLAR_PLANS: Record<"free" | "pro" | "team", PolarPlanDefinition> =
     trialDays: 14,
     features: [
       "10 monitors",
-      "8 platforms (Reddit, HN, IH, PH, Google, YouTube, GitHub, Trustpilot)",
+      "9 platforms (Reddit, HN, IH, PH, Google, YouTube, GitHub, Trustpilot, X)",
       "10 keywords per monitor",
       "Unlimited results",
       "90-day history",
@@ -178,7 +178,7 @@ export const POLAR_PLANS: Record<"free" | "pro" | "team", PolarPlanDefinition> =
       resultsHistoryDays: 90,
       resultsVisible: -1,
       refreshDelayHours: 4,
-      platforms: ["reddit", "hackernews", "indiehackers", "producthunt", "googlereviews", "youtube", "github", "trustpilot"],
+      platforms: ["reddit", "hackernews", "indiehackers", "producthunt", "googlereviews", "youtube", "github", "trustpilot", "x"],
       digestFrequencies: ["daily"],
       aiFeatures: {
         sentiment: true,
@@ -209,7 +209,7 @@ export const POLAR_PLANS: Record<"free" | "pro" | "team", PolarPlanDefinition> =
     features: [
       "Everything in Pro",
       "30 monitors",
-      "All 16 platforms",
+      "All 17 platforms",
       "20 keywords per monitor",
       "1-year history",
       "2-hour refresh cycle",
@@ -227,7 +227,7 @@ export const POLAR_PLANS: Record<"free" | "pro" | "team", PolarPlanDefinition> =
       resultsHistoryDays: 365,
       resultsVisible: -1,
       refreshDelayHours: 2,
-      platforms: ["reddit", "hackernews", "indiehackers", "producthunt", "googlereviews", "youtube", "github", "trustpilot", "devto", "hashnode", "appstore", "playstore", "quora", "g2", "yelp", "amazonreviews"],
+      platforms: ["reddit", "hackernews", "indiehackers", "producthunt", "googlereviews", "youtube", "github", "trustpilot", "x", "devto", "hashnode", "appstore", "playstore", "quora", "g2", "yelp", "amazonreviews"],
       digestFrequencies: ["daily", "weekly", "realtime"],
       aiFeatures: {
         sentiment: true,

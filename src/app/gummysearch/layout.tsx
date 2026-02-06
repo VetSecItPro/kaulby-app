@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "GummySearch Alternative - Kaulby | Reddit & Community Monitoring",
   description:
-    "GummySearch is closing. Kaulby is the best alternative with 16 platforms (Reddit, Hacker News, Product Hunt, Google Reviews & more), AI sentiment analysis, and pain point detection. Migrate free today.",
+    "GummySearch is closing. Kaulby is the best alternative with 17 platforms (Reddit, Hacker News, Product Hunt, Google Reviews & more), AI sentiment analysis, and pain point detection. Migrate free today.",
   keywords: [
     "GummySearch alternative",
     "GummySearch replacement",
@@ -41,7 +41,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "GummySearch Alternative - Kaulby",
     description:
-      "GummySearch is closing. Migrate to Kaulby - 16 platforms, AI analysis, same features you loved.",
+      "GummySearch is closing. Migrate to Kaulby - 17 platforms, AI analysis, same features you loved.",
     images: ["https://kaulbyapp.com/og-gummysearch.png"],
   },
   alternates: {

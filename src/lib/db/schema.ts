@@ -38,6 +38,8 @@ export const platformEnum = pgEnum("platform", [
   "indiehackers",    // Indie Hackers community posts
   "github",          // GitHub Issues and Discussions
   "hashnode",        // Hashnode blog articles
+  // Phase 5 - Social media
+  "x",               // X (Twitter) via xAI x_search API
 ]);
 
 export const alertChannelEnum = pgEnum("alert_channel", [
