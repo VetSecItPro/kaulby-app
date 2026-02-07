@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { users, monitors, results } from "@/lib/db/schema";
 import { eq, and, inArray, desc, lt } from "drizzle-orm";
 import { getPlanLimits } from "@/lib/plans";
+import { checkApiRateLimit } from "@/lib/rate-limit";
 
 // Force dynamic rendering
 export const dynamic = "force-dynamic";
@@ -46,6 +47,11 @@ export async function GET(request: NextRequest) {
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const rateLimit = await checkApiRateLimit(userId, 'export');
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfter ?? 60) } });
     }
 
     // Check if user has CSV export access

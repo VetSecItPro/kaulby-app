@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db, users } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import { findUserWithFallback } from "@/lib/auth-utils";
+import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,13 @@ export async function PATCH(request: NextRequest) {
   }
 
   try {
-    const { timezone } = await request.json();
+    // Rate limiting check
+    const rateLimit = await checkApiRateLimit(userId, 'write');
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfter ?? 60) } });
+    }
+
+    const { timezone } = await parseJsonBody(request);
 
     if (!timezone || typeof timezone !== "string" || !isValidTimezone(timezone)) {
       return NextResponse.json(
@@ -49,6 +56,9 @@ export async function PATCH(request: NextRequest) {
 
     return NextResponse.json({ success: true, timezone });
   } catch (error) {
+    if (error instanceof BodyTooLargeError) {
+      return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
+    }
     console.error("Timezone update error:", error);
     return NextResponse.json(
       { error: "Failed to update timezone" },

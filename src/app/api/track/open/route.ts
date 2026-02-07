@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { emailEvents } from "@/lib/db/schema";
+import { isValidUuid } from "@/lib/security";
 
 // 1x1 transparent GIF
 const TRACKING_PIXEL = Buffer.from(
@@ -25,6 +26,11 @@ export async function GET(request: NextRequest) {
       "Expires": "0",
     },
   });
+
+  // Validate uid format to prevent data poisoning
+  if (userId && !isValidUuid(userId)) {
+    return response;
+  }
 
   // Track the open event asynchronously
   if (emailId && userId && emailType) {

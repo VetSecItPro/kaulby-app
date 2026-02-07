@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { budgetAlerts, users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { isValidEmail, sanitizeUrl } from "@/lib/security";
+import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const body = await request.json();
+    // Rate limiting check
+    const rateLimit = await checkApiRateLimit(userId, 'write');
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfter ?? 60) } });
+    }
+
+    const body = await parseJsonBody(request);
     const { name, period, thresholdUsd, warningPercent, notifyEmail, notifySlack } = body;
 
     // Validate required fields
@@ -79,6 +86,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ alert: newAlert }, { status: 201 });
   } catch (error) {
+    if (error instanceof BodyTooLargeError) {
+      return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
+    }
     console.error("Error creating budget alert:", error);
     return NextResponse.json({ error: "Failed to create budget alert" }, { status: 500 });
   }

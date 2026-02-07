@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import { findUserWithFallback } from "@/lib/auth-utils";
 import { permissions } from "@/lib/permissions";
 import { logActivity } from "@/lib/activity-log";
+import { checkApiRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,12 @@ export async function DELETE(request: Request) {
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Rate limiting check
+    const rateLimit = await checkApiRateLimit(userId, 'write');
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfter ?? 60) } });
     }
 
     const { searchParams } = new URL(request.url);

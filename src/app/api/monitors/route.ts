@@ -15,6 +15,7 @@ import { sanitizeMonitorInput, isValidKeyword } from "@/lib/security";
 import { captureEvent } from "@/lib/posthog";
 import { logError } from "@/lib/error-logger";
 import { getEffectiveUserId, isLocalDev as checkIsLocalDev } from "@/lib/dev-auth";
+import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -47,10 +48,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Rate limiting check
+    const rateLimit = await checkApiRateLimit(userId, 'write');
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfter ?? 60) } });
+    }
+
     // In dev mode, auto-create user if not exists
     await ensureDevUserExists(userId);
 
-    const body = await request.json();
+    const body = await parseJsonBody(request, 51200); // 50KB limit for monitor creation
     const { name, companyName, keywords, searchQuery, platforms, platformUrls,
       scheduleEnabled, scheduleStartHour, scheduleEndHour, scheduleDays, scheduleTimezone,
       monitorType, discoveryPrompt } = body;
@@ -229,9 +236,11 @@ export async function POST(request: Request) {
       }),
     }, { status: 201 });
   } catch (error) {
+    if (error instanceof BodyTooLargeError) {
+      return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
+    }
     console.error("Error creating monitor:", error);
     logError({ source: "api", message: "Failed to create monitor", error, endpoint: "POST /api/monitors" });
     return NextResponse.json({ error: "Failed to create monitor" }, { status: 500 });
   }
 }
-

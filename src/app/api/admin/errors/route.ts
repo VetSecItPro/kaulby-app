@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { errorLogs, users } from "@/lib/db/schema";
 import { eq, desc, and, gte, lte, or, ilike, count, sql } from "drizzle-orm";
+import { checkApiRateLimit } from "@/lib/rate-limit";
 
 /**
  * GET /api/admin/errors
@@ -12,6 +13,11 @@ export async function GET(request: NextRequest) {
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const rateLimit = await checkApiRateLimit(userId, 'read');
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfter ?? 60) } });
   }
 
   // Check if user is admin
