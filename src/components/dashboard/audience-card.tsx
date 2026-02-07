@@ -210,6 +210,7 @@ export const AudienceCard = memo(function AudienceCard({
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                  aria-label="Audience options"
                 >
                   <MoreVertical className="h-4 w-4" />
                 </Button>

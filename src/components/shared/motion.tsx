@@ -197,7 +197,7 @@ export function AnimatedCard({ children, className, delay = 0 }: AnimatedCardPro
       transition={{ duration: 0.4, delay, ease: "easeOut" }}
       whileHover={{
         y: -2,
-        boxShadow: "0 10px 40px -10px rgba(0,0,0,0.1)",
+        boxShadow: "0 10px 40px -10px hsl(var(--foreground) / 0.1)",
         transition: { duration: 0.2 },
       }}
       className={className}

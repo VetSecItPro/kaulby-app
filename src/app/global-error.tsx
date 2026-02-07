@@ -16,7 +16,7 @@ export default function GlobalError({
 
   return (
     <html lang="en" className="dark">
-      <body className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center p-4">
+      <body className="min-h-screen bg-background text-foreground flex items-center justify-center p-4">
         <div className="max-w-md w-full text-center space-y-6">
           <div className="flex justify-center">
             <div className="rounded-full bg-red-500/10 p-4">
@@ -42,7 +42,7 @@ export default function GlobalError({
             <h1 className="text-2xl font-semibold tracking-tight">
               Something went wrong
             </h1>
-            <p className="text-gray-400">
+            <p className="text-muted-foreground">
               A critical error occurred. Please refresh the page.
             </p>
           </div>
@@ -50,7 +50,7 @@ export default function GlobalError({
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button
               onClick={reset}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white text-black rounded-md font-medium hover:bg-gray-200 transition-colors"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md font-medium hover:bg-primary/90 transition-colors"
             >
               <svg
                 className="h-4 w-4"
@@ -70,14 +70,14 @@ export default function GlobalError({
             </button>
             <button
               onClick={() => window.location.href = "/"}
-              className="inline-flex items-center justify-center px-4 py-2 border border-gray-600 rounded-md font-medium hover:bg-gray-800 transition-colors"
+              className="inline-flex items-center justify-center px-4 py-2 border border-border rounded-md font-medium hover:bg-muted transition-colors"
             >
               Go Home
             </button>
           </div>
 
           {error.digest && (
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-muted-foreground/60">
               Error ID: {error.digest}
             </p>
           )}

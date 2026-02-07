@@ -148,9 +148,9 @@ function SentimentDonut({
 
   let offset = 0;
   const segments = [
-    { color: "rgb(34 197 94)", length: positiveAngle, label: "positive" },
-    { color: "rgb(156 163 175)", length: neutralAngle, label: "neutral" },
-    { color: "rgb(239 68 68)", length: negativeAngle, label: "negative" },
+    { color: "hsl(var(--success))", length: positiveAngle, label: "positive" },
+    { color: "hsl(var(--muted-foreground))", length: neutralAngle, label: "neutral" },
+    { color: "hsl(var(--destructive))", length: negativeAngle, label: "negative" },
   ].filter(s => s.length > 0);
 
   return (

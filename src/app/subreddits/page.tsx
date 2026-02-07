@@ -154,7 +154,7 @@ export default async function SubredditsIndexPage() {
       {/* Stats Banner */}
       <section className="py-8 px-4 bg-primary text-primary-foreground">
         <div className="container mx-auto max-w-4xl">
-          <div className="grid grid-cols-3 gap-8 text-center">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 text-center">
             <div>
               <div className="text-3xl font-bold">{ALL_TRACKED_SUBREDDITS.length}+</div>
               <div className="text-sm opacity-80">Subreddits Tracked</div>

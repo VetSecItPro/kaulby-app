@@ -534,7 +534,7 @@ function DesktopMonitors({ monitors, refreshInfo }: ResponsiveMonitorsProps) {
               <Trash2 className="h-4 w-4 mr-1" />
               Delete
             </Button>
-            <Button variant="ghost" size="icon" onClick={clearSelection}>
+            <Button variant="ghost" size="icon" onClick={clearSelection} aria-label="Clear selection">
               <X className="h-4 w-4" />
             </Button>
           </div>

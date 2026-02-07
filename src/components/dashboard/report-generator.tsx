@@ -392,7 +392,7 @@ export function ReportGenerator({
                     }
                     placeholder="https://your-logo.com/logo.png"
                   />
-                  <Button variant="outline" size="icon">
+                  <Button variant="outline" size="icon" aria-label="Upload logo">
                     <Upload className="h-4 w-4" />
                   </Button>
                 </div>

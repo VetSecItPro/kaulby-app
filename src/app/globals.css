@@ -37,11 +37,21 @@
     /* Teal accent */
     --teal: 172 66% 50%;
     --teal-foreground: 0 0% 100%;
+    /* Semantic colors */
+    --success: 142 71% 45%;
+    --warning: 38 92% 50%;
+    --info: 217 91% 60%;
+    /* Brand colors */
+    --reddit: 16 100% 50%;
+    --hackernews: 24 100% 50%;
+    --producthunt: 14 72% 52%;
+    --slack: 274 78% 27%;
+    --discord: 235 86% 65%;
   }
 
   .dark {
-    /* Pure black background for premium feel */
-    --background: 0 0% 0%;
+    /* Near-black background — avoids halation (white text bleeding on pure #000) */
+    --background: 0 0% 3.9%;
     --foreground: 0 0% 98%;
     --card: 0 0% 4%;
     --card-foreground: 0 0% 98%;
@@ -68,6 +78,16 @@
     --chart-5: 220 70% 50%;
     --teal: 172 66% 50%;
     --teal-foreground: 0 0% 0%;
+    /* Semantic colors */
+    --success: 142 71% 45%;
+    --warning: 38 92% 50%;
+    --info: 217 91% 60%;
+    /* Brand colors */
+    --reddit: 16 100% 50%;
+    --hackernews: 24 100% 50%;
+    --producthunt: 14 72% 52%;
+    --slack: 274 78% 27%;
+    --discord: 235 86% 65%;
   }
 }
 
@@ -166,9 +186,9 @@ input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,
 input:-webkit-autofill:active {
-  -webkit-box-shadow: 0 0 0 30px #000 inset !important;
-  -webkit-text-fill-color: #fff !important;
-  caret-color: #fff !important;
+  -webkit-box-shadow: 0 0 0 30px hsl(var(--background)) inset !important;
+  -webkit-text-fill-color: hsl(var(--foreground)) !important;
+  caret-color: hsl(var(--foreground)) !important;
 }
 
 /* Force dark input styling */
@@ -176,8 +196,27 @@ input:-webkit-autofill:active {
 .dark-input:focus,
 .dark-input:hover,
 .dark-input:active {
-  background-color: #000 !important;
-  color: #fff !important;
+  background-color: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+/* Remove iOS tap highlight on interactive elements */
+button,
+a,
+[role="button"] {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Respect reduced-motion preference (WCAG 2.1 AA — Criterion 2.3.3) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* Safe area insets for iOS devices */
