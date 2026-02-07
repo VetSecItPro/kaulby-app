@@ -62,9 +62,9 @@ function detectWebhookType(url: string): "slack" | "discord" | "generic" {
 
 // Webhook type badges
 const webhookTypeBadges = {
-  slack: { label: "Slack", color: "bg-[#4A154B] text-white", icon: Hash },
-  discord: { label: "Discord", color: "bg-[#5865F2] text-white", icon: MessageSquare },
-  generic: { label: "Generic", color: "bg-gray-500 text-white", icon: Webhook },
+  slack: { label: "Slack", color: "bg-purple-900 text-white", icon: Hash },
+  discord: { label: "Discord", color: "bg-indigo-500 text-white", icon: MessageSquare },
+  generic: { label: "Generic", color: "bg-muted-foreground text-white", icon: Webhook },
 };
 
 interface WebhookData {
@@ -308,7 +308,7 @@ export function WebhookManagement({
                   {/* Slack Instructions */}
                   <div className="p-3 rounded-lg bg-muted/50 border">
                     <div className="flex items-center gap-2 mb-2">
-                      <Hash className="h-4 w-4 text-[#4A154B]" />
+                      <Hash className="h-4 w-4 text-purple-900" />
                       <span className="font-medium text-sm">Slack</span>
                     </div>
                     <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
@@ -323,7 +323,7 @@ export function WebhookManagement({
                   {/* Discord Instructions */}
                   <div className="p-3 rounded-lg bg-muted/50 border">
                     <div className="flex items-center gap-2 mb-2">
-                      <MessageSquare className="h-4 w-4 text-[#5865F2]" />
+                      <MessageSquare className="h-4 w-4 text-indigo-500" />
                       <span className="font-medium text-sm">Discord</span>
                     </div>
                     <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">

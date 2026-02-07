@@ -282,14 +282,14 @@ function MobileResultCard({ result, allMarkedRead }: { result: Result; allMarked
                   <span className="w-2 h-2 rounded-full bg-primary" />
                 )}
               </div>
-              <h3 className="font-medium text-sm line-clamp-2">{result.title}</h3>
+              <h3 className="font-medium text-base line-clamp-2">{result.title}</h3>
             </div>
           </div>
 
           {/* Content Preview */}
           {result.aiSummary && (
             <div className="mb-3">
-              <p className={`text-sm text-muted-foreground ${isExpanded ? "" : "line-clamp-3"}`}>
+              <p className={`text-base text-muted-foreground ${isExpanded ? "" : "line-clamp-3"}`}>
                 {result.aiSummary}
               </p>
               {result.aiSummary.length > 150 && (

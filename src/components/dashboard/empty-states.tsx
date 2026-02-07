@@ -41,25 +41,25 @@ function MonitorIllustration() {
         {/* Background circles */}
         <motion.div
           animate={{ scale: [1, 1.1, 1] }}
-          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
           className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/20 to-purple-500/20"
         />
         <motion.div
           animate={{ scale: [1.1, 1, 1.1] }}
-          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
           className="absolute inset-4 rounded-full bg-gradient-to-br from-primary/30 to-purple-500/30"
         />
         {/* Icon */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <Radio className="w-12 h-12 text-primary" />
+          <Radio className="w-12 h-12 text-primary" aria-hidden="true" />
         </div>
         {/* Floating elements */}
         <motion.div
           animate={{ y: [-4, 4, -4] }}
-          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
           className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-primary/40 flex items-center justify-center"
         >
-          <Sparkles className="w-3 h-3 text-primary" />
+          <Sparkles className="w-3 h-3 text-primary" aria-hidden="true" />
         </motion.div>
       </div>
     </IllustrationWrapper>
@@ -72,11 +72,11 @@ function ResultsIllustration() {
       <div className="relative w-full h-full">
         <motion.div
           animate={{ scale: [1, 1.05, 1] }}
-          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
           className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-500/20 to-primary/20"
         />
         <div className="absolute inset-0 flex items-center justify-center">
-          <Search className="w-12 h-12 text-primary" />
+          <Search className="w-12 h-12 text-primary" aria-hidden="true" />
         </div>
         {/* Animated search rings */}
         <motion.div
@@ -95,7 +95,7 @@ function AlertsIllustration() {
       <div className="relative w-full h-full">
         <motion.div
           animate={{ scale: [1, 1.08, 1] }}
-          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
           className="absolute inset-0 rounded-full bg-gradient-to-br from-amber-500/20 to-primary/20"
         />
         <div className="absolute inset-0 flex items-center justify-center">
@@ -103,7 +103,7 @@ function AlertsIllustration() {
             animate={{ rotate: [-5, 5, -5] }}
             transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 2 }}
           >
-            <Bell className="w-12 h-12 text-primary" />
+            <Bell className="w-12 h-12 text-primary" aria-hidden="true" />
           </motion.div>
         </div>
       </div>
@@ -121,7 +121,7 @@ function AnalyticsIllustration() {
           className="absolute inset-0 rounded-full bg-gradient-to-br from-green-500/20 to-primary/20"
         />
         <div className="absolute inset-0 flex items-center justify-center">
-          <BarChart3 className="w-12 h-12 text-primary" />
+          <BarChart3 className="w-12 h-12 text-primary" aria-hidden="true" />
         </div>
         {/* Animated bars */}
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1">
@@ -149,7 +149,7 @@ function AudienceIllustration() {
           className="absolute inset-0 rounded-full bg-gradient-to-br from-purple-500/20 to-primary/20"
         />
         <div className="absolute inset-0 flex items-center justify-center">
-          <Users className="w-12 h-12 text-primary" />
+          <Users className="w-12 h-12 text-primary" aria-hidden="true" />
         </div>
       </div>
     </IllustrationWrapper>
@@ -166,7 +166,7 @@ function WebhookIllustration() {
           className="absolute inset-0 rounded-full bg-gradient-to-br from-cyan-500/20 to-primary/20"
         />
         <div className="absolute inset-0 flex items-center justify-center">
-          <Webhook className="w-12 h-12 text-primary" />
+          <Webhook className="w-12 h-12 text-primary" aria-hidden="true" />
         </div>
         {/* Connection dots */}
         <motion.div
@@ -189,7 +189,7 @@ function InsightsIllustration() {
           className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/20 to-amber-500/20"
         />
         <div className="absolute inset-0 flex items-center justify-center">
-          <Sparkles className="w-12 h-12 text-primary" />
+          <Sparkles className="w-12 h-12 text-primary" aria-hidden="true" />
         </div>
         {/* Floating sparkles */}
         {[0, 1, 2].map((i) => (
@@ -252,50 +252,50 @@ const EMPTY_STATE_CONFIG: Record<
 > = {
   monitors: {
     illustration: MonitorIllustration,
-    defaultTitle: "No monitors yet",
-    defaultDescription: "Create your first monitor to start tracking mentions of your brand across the web.",
+    defaultTitle: "Ready to start listening?",
+    defaultDescription: "Create your first monitor and we'll start tracking mentions of your brand across the web.",
     defaultActionLabel: "Create Monitor",
     defaultActionHref: "/dashboard/monitors/new",
   },
   results: {
     illustration: ResultsIllustration,
-    defaultTitle: "No results yet",
-    defaultDescription: "Your monitors are scanning. Results will appear here when we find matching mentions.",
+    defaultTitle: "Your mentions are on the way!",
+    defaultDescription: "Your monitors are actively scanning. Results will appear here as we find matching mentions.",
     defaultActionLabel: "View Monitors",
     defaultActionHref: "/dashboard/monitors",
   },
   alerts: {
     illustration: AlertsIllustration,
-    defaultTitle: "No alerts configured",
+    defaultTitle: "Stay in the loop",
     defaultDescription: "Set up alerts to get notified when we find new mentions via email, Slack, or Discord.",
     defaultActionLabel: "Configure Alerts",
     defaultActionHref: "/dashboard/settings",
   },
   analytics: {
     illustration: AnalyticsIllustration,
-    defaultTitle: "Not enough data yet",
-    defaultDescription: "Analytics will appear once we've collected enough mentions to show trends.",
+    defaultTitle: "Insights are brewing",
+    defaultDescription: "Analytics will light up once we've collected enough mentions to show meaningful trends.",
     defaultActionLabel: "Create Monitor",
     defaultActionHref: "/dashboard/monitors/new",
   },
   audiences: {
     illustration: AudienceIllustration,
-    defaultTitle: "No audiences yet",
-    defaultDescription: "Create audiences to group communities and target your monitoring more effectively.",
+    defaultTitle: "Group your communities",
+    defaultDescription: "Create audiences to organize communities and focus your monitoring where it matters most.",
     defaultActionLabel: "Create Audience",
     defaultActionHref: "/dashboard/audiences/new",
   },
   webhooks: {
     illustration: WebhookIllustration,
-    defaultTitle: "No webhooks configured",
-    defaultDescription: "Connect webhooks to receive real-time notifications in your own systems.",
+    defaultTitle: "Connect your tools",
+    defaultDescription: "Set up webhooks to receive real-time notifications in your own systems.",
     defaultActionLabel: "Add Webhook",
     defaultActionHref: "/dashboard/webhooks",
   },
   insights: {
     illustration: InsightsIllustration,
-    defaultTitle: "No insights available",
-    defaultDescription: "AI-powered insights will appear once we've analyzed enough mentions.",
+    defaultTitle: "AI insights are warming up",
+    defaultDescription: "We'll surface AI-powered insights as soon as we've analyzed enough mentions.",
     defaultActionLabel: "View Results",
     defaultActionHref: "/dashboard/results",
   },

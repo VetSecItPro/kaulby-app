@@ -38,13 +38,13 @@ interface ShareOfVoiceProps {
 
 // Default colors for competitors
 const COLORS = [
-  "#6366f1", // Your brand - indigo
-  "#f97316", // Orange
-  "#22c55e", // Green
-  "#eab308", // Yellow
-  "#ec4899", // Pink
-  "#8b5cf6", // Purple
-  "#14b8a6", // Teal
+  "hsl(var(--chart-5))",  // Your brand - indigo
+  "hsl(var(--warning))",  // Orange
+  "hsl(var(--success))",  // Green
+  "hsl(var(--chart-3))",  // Yellow
+  "hsl(var(--chart-2))",  // Pink
+  "hsl(var(--chart-1))",  // Purple
+  "hsl(var(--primary))",  // Teal
 ];
 
 /**

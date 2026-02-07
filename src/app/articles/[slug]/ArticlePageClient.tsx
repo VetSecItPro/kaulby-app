@@ -20,8 +20,9 @@ export function ArticlePageClient({
   const config = categoryConfig[article.category];
   const Icon = config.icon;
 
-  // SECURITY: Articles are static data (not user-generated). Client-only DOMPurify is acceptable — FIX-008
-  // Sanitize HTML client-side only — content is our own static data so raw HTML is safe for SSR
+  // SECURITY [FIX-008]: htmlContent is static developer-authored data from blog-articles.ts (string literals in source).
+  // DOMPurify runs client-side as defense-in-depth. SSR returns raw static HTML — accepted risk since
+  // compromising this data requires source code access. Adding isomorphic-dompurify (jsdom ~2MB) not justified.
   const sanitizedHtml = useMemo(() => {
     if (typeof window !== "undefined") {
       // Lazy-load DOMPurify only in the browser to avoid jsdom in SSR
@@ -105,7 +106,7 @@ export function ArticlePageClient({
       <section className="px-4 pb-12">
         <div className="container mx-auto max-w-3xl">
           <div
-            className="article-content"
+            className="article-content max-w-prose"
             dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
           />
         </div>
@@ -137,7 +138,7 @@ export function ArticlePageClient({
         <section className="py-16 px-4 border-t">
           <div className="container mx-auto max-w-5xl">
             <h2 className="text-2xl font-bold mb-8">Related Articles</h2>
-            <div className="grid md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {relatedArticles.map((related) => {
                 const relatedConfig = categoryConfig[related.category];
                 const RelatedIcon = relatedConfig.icon;

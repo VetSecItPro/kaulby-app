@@ -193,7 +193,7 @@ export const MobileHeader = memo(function MobileHeader({
               <span className="sr-only">Open menu</span>
             </Button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-[280px] p-0">
+          <SheetContent side="right" className="w-[85vw] max-w-[280px] p-0">
             <SheetHeader className="p-4 pb-2 border-b">
               <div className="flex items-center justify-between">
                 <SheetTitle className="text-left">Menu</SheetTitle>

@@ -256,11 +256,11 @@ export const ResultCard = memo(function ResultCard({
               size="icon"
               onClick={handleToggleSaved}
               disabled={isPending}
+              aria-label={isSaved ? "Unsave result" : "Save result"}
               className={cn(
                 "h-8 w-8",
                 isSaved && "text-amber-500 hover:text-amber-600"
               )}
-              aria-label={isSaved ? "Remove from saved" : "Save result"}
             >
               {isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -506,9 +506,14 @@ export const ResultsFilterBar = memo(function ResultsFilterBar({
         )}
       </div>
 
-      {/* Category filter chips - GummySearch-style */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-xs text-muted-foreground font-medium">Filter by type:</span>
+      {/* Category filter chips - collapsed on mobile to reduce cognitive load */}
+      <details className="group" open={!!categoryFilter || !!leadScoreFilter}>
+        <summary className="text-xs text-muted-foreground font-medium cursor-pointer select-none list-none flex items-center gap-1 py-1 hover:text-foreground transition-colors">
+          <span className="transition-transform group-open:rotate-90">&#9654;</span>
+          More filters {(categoryFilter || leadScoreFilter) && <Badge variant="secondary" className="h-4 px-1 text-[10px]">Active</Badge>}
+        </summary>
+      <div className="flex items-center gap-2 flex-wrap mt-2">
+        <span className="text-xs text-muted-foreground font-medium">Type:</span>
         {categoryFilterOptions.map(({ key, label, Icon }) => {
           const count = categoryCounts[key] || 0;
           const isActive = categoryFilter === key;
@@ -604,6 +609,7 @@ export const ResultsFilterBar = memo(function ResultsFilterBar({
           )}
         </div>
       )}
+      </details>
     </div>
   );
 });

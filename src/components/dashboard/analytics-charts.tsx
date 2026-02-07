@@ -50,12 +50,12 @@ interface AnalyticsData {
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-  solution_request: "#22c55e",
-  money_talk: "#f59e0b",
-  pain_point: "#ef4444",
-  advice_request: "#3b82f6",
-  hot_discussion: "#8b5cf6",
-  uncategorized: "#6b7280",
+  solution_request: "hsl(var(--success))",
+  money_talk: "hsl(var(--warning))",
+  pain_point: "hsl(var(--destructive))",
+  advice_request: "hsl(var(--info))",
+  hot_discussion: "hsl(var(--chart-5))",
+  uncategorized: "hsl(var(--muted-foreground))",
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -68,15 +68,15 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 const PLATFORM_COLORS: Record<string, string> = {
-  reddit: "#FF4500",
-  hackernews: "#FF6600",
-  producthunt: "#DA552F",
-  devto: "#0A0A0A",
-  googlereviews: "#4285F4",
-  trustpilot: "#00B67A",
-  appstore: "#0D96F6",
-  playstore: "#34A853",
-  quora: "#B92B27",
+  reddit: "hsl(var(--reddit))",
+  hackernews: "hsl(var(--hackernews))",
+  producthunt: "hsl(var(--producthunt))",
+  devto: "hsl(var(--muted-foreground))",
+  googlereviews: "hsl(var(--info))",
+  trustpilot: "hsl(var(--success))",
+  appstore: "hsl(var(--chart-4))",
+  playstore: "hsl(var(--success))",
+  quora: "hsl(var(--destructive))",
 };
 
 const PLATFORM_LABELS: Record<string, string> = {
@@ -92,9 +92,9 @@ const PLATFORM_LABELS: Record<string, string> = {
 };
 
 const SENTIMENT_COLORS = {
-  positive: "#22c55e",
-  negative: "#ef4444",
-  neutral: "#6b7280",
+  positive: "hsl(var(--success))",
+  negative: "hsl(var(--destructive))",
+  neutral: "hsl(var(--muted-foreground))",
 };
 
 type TimeRange = "7d" | "30d" | "90d" | "1y";
@@ -236,7 +236,7 @@ export function AnalyticsCharts({ subscriptionStatus = "free" }: AnalyticsCharts
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Mentions</CardTitle>
@@ -370,8 +370,8 @@ export function AnalyticsCharts({ subscriptionStatus = "free" }: AnalyticsCharts
               <Area
                 type="monotone"
                 dataKey="count"
-                stroke="#6366f1"
-                fill="#6366f1"
+                stroke="hsl(var(--chart-5))"
+                fill="hsl(var(--chart-5))"
                 fillOpacity={0.2}
                 name="Mentions"
               />
@@ -442,7 +442,7 @@ export function AnalyticsCharts({ subscriptionStatus = "free" }: AnalyticsCharts
       </Card>
 
       {/* Category and Platform Breakdown */}
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         {/* Category Breakdown */}
         <Card>
           <CardHeader>
