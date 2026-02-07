@@ -96,7 +96,7 @@ class RedisCache implements CacheBackend {
 
   generateKey(prefix: string, params: Record<string, unknown>): string {
     const normalized = JSON.stringify(params, Object.keys(params).sort());
-    const hash = crypto.createHash("md5").update(normalized).digest("hex");
+    const hash = crypto.createHash("sha256").update(normalized).digest("hex").slice(0, 32);
     return `kaulby:cache:${prefix}:${hash}`;
   }
 
@@ -175,7 +175,7 @@ class MemoryCache implements CacheBackend {
 
   generateKey(prefix: string, params: Record<string, unknown>): string {
     const normalized = JSON.stringify(params, Object.keys(params).sort());
-    const hash = crypto.createHash("md5").update(normalized).digest("hex");
+    const hash = crypto.createHash("sha256").update(normalized).digest("hex").slice(0, 32);
     return `kaulby:${prefix}:${hash}`;
   }
 
@@ -334,7 +334,7 @@ class UnifiedCache {
 
   generateKey(prefix: string, params: Record<string, unknown>): string {
     const normalized = JSON.stringify(params, Object.keys(params).sort());
-    const hash = crypto.createHash("md5").update(normalized).digest("hex");
+    const hash = crypto.createHash("sha256").update(normalized).digest("hex").slice(0, 32);
     return `kaulby:${prefix}:${hash}`;
   }
 

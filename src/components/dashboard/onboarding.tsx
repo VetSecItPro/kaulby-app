@@ -34,6 +34,7 @@ import {
   Sparkles,
   X,
   Loader2,
+  Lock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -508,10 +509,10 @@ export function OnboardingWizard({ isOpen, onClose, userName, userPlan = "free" 
             </DialogHeader>
 
             <div className="py-4 space-y-4">
-              {/* Platform selection - show all but gray out unavailable ones for free plan */}
+              {/* Platform selection - show available first, locked platforms collapsed for free plan */}
               <div className="grid gap-2 max-h-[200px] overflow-y-auto">
-                {ALL_PLATFORMS.map((platform) => {
-                  const isLocked = userPlan === "free" && platform.id !== "reddit";
+                {ALL_PLATFORMS.filter((p) => !(userPlan === "free" && p.id !== "reddit")).map((platform) => {
+                  const isLocked = false;
 
                   return (
                     <label
@@ -555,14 +556,22 @@ export function OnboardingWizard({ isOpen, onClose, userName, userPlan = "free" 
                 })}
               </div>
 
-              {/* Upgrade nudge for free plan */}
+              {/* Upgrade nudge for free plan — collapsed list of locked platforms */}
               {userPlan === "free" && (
-                <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
-                  <p className="text-sm text-center">
+                <details className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+                  <summary className="text-sm text-center cursor-pointer select-none list-none">
                     <Zap className="h-4 w-4 inline mr-1 text-primary" />
-                    <span className="font-medium">Upgrade to Pro</span> to monitor all 17 platforms
-                  </p>
-                </div>
+                    <span className="font-medium">Upgrade to Pro</span> to unlock {ALL_PLATFORMS.length - 1} more platforms
+                  </summary>
+                  <div className="grid gap-1 mt-3">
+                    {ALL_PLATFORMS.filter((p) => p.id !== "reddit").map((platform) => (
+                      <div key={platform.id} className="flex items-center gap-2 text-sm text-muted-foreground opacity-60 px-2 py-1">
+                        <Lock className="h-3 w-3" />
+                        <span>{platform.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </details>
               )}
 
               {/* Summary */}

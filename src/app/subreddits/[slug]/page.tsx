@@ -364,7 +364,7 @@ export default async function SubredditPage({
 
           {/* Stats Cards */}
           {memberCount > 0 && (
-            <div className="grid grid-cols-3 gap-4 max-w-lg mx-auto mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-lg mx-auto mb-8">
               <div className="bg-muted/50 rounded-lg p-4">
                 <div className="flex items-center justify-center gap-1 text-primary mb-1">
                   <Users className="h-4 w-4" />

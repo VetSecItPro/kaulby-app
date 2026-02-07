@@ -60,11 +60,11 @@ const tourSteps: Step[] = [
 // Custom styles for the tour
 const tourStyles = {
   options: {
-    primaryColor: "#14b8a6", // teal-500
+    primaryColor: "hsl(172, 66%, 50%)", // teal-500 (primary)
     zIndex: 10000,
-    arrowColor: "#1f2937",
-    backgroundColor: "#1f2937",
-    textColor: "#f9fafb",
+    arrowColor: "hsl(0, 0%, 12%)",
+    backgroundColor: "hsl(0, 0%, 12%)",
+    textColor: "hsl(0, 0%, 98%)",
     overlayColor: "rgba(0, 0, 0, 0.7)",
   },
   tooltip: {
@@ -81,7 +81,7 @@ const tourStyles = {
     lineHeight: "1.6",
   },
   buttonNext: {
-    backgroundColor: "#14b8a6",
+    backgroundColor: "hsl(172, 66%, 50%)",
     color: "#000",
     borderRadius: "8px",
     padding: "8px 16px",
@@ -89,11 +89,11 @@ const tourStyles = {
     fontWeight: 500,
   },
   buttonBack: {
-    color: "#9ca3af",
+    color: "hsl(0, 0%, 65%)",
     marginRight: "8px",
   },
   buttonSkip: {
-    color: "#6b7280",
+    color: "hsl(0, 0%, 65%)",
   },
   spotlight: {
     borderRadius: "8px",

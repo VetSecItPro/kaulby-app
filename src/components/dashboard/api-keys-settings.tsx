@@ -342,6 +342,7 @@ export function ApiKeysSettings({ subscriptionStatus }: ApiKeysSettingsProps) {
                         size="icon"
                         className="h-7 w-7"
                         onClick={() => setShowKey(!showKey)}
+                        aria-label={showKey ? "Hide API key" : "Show API key"}
                       >
                         {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </Button>
@@ -351,6 +352,7 @@ export function ApiKeysSettings({ subscriptionStatus }: ApiKeysSettingsProps) {
                         size="icon"
                         className="h-7 w-7"
                         onClick={handleCopy}
+                        aria-label="Copy API key"
                       >
                         {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
                       </Button>

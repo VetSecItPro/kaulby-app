@@ -54,6 +54,7 @@ kaulby-ai-roadmap.md
 # Internal audit and security reports
 .claude/audits/
 .security-reports/
+.redteam-reports/
 .security-audit.json
 docs/
 
@@ -62,3 +63,4 @@ kaulby-test-results.md
 
 # MCP configuration (local dev tool config)
 .mcp.json
+.design-reports/

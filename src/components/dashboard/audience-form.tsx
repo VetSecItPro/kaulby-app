@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { useToast } from "@/hooks/use-toast";
 
 const PRESET_COLORS = [
   "#ef4444", // red
@@ -33,6 +34,7 @@ interface AudienceFormProps {
 
 export function AudienceForm({ audience }: AudienceFormProps) {
   const router = useRouter();
+  const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [name, setName] = useState(audience?.name || "");
   const [description, setDescription] = useState(audience?.description || "");
@@ -63,12 +65,12 @@ export function AudienceForm({ audience }: AudienceFormProps) {
         router.push(`/dashboard/audiences/${data.id}`);
         router.refresh();
       } else {
-        const error = await response.json();
-        alert(error.error || "Failed to save audience");
+        const errorData = await response.json();
+        toast({ title: "Error", description: errorData.error || "Failed to save audience", variant: "destructive" });
       }
     } catch (error) {
       console.error("Failed to save audience:", error);
-      alert("Failed to save audience");
+      toast({ title: "Error", description: "Failed to save audience. Please try again.", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }

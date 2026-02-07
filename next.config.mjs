@@ -80,9 +80,8 @@ const nextConfig = {
             value: 'camera=(), microphone=(), geolocation=()',
           },
           {
-            key: 'Content-Security-Policy-Report-Only',
-            // SECURITY: Removed unsafe-eval after FIX-004 eliminated Function() eval — FIX-003
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' https://clerk.kaulbyapp.com https://*.clerk.accounts.dev https://challenges.cloudflare.com https://us.i.posthog.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.clerk.com https://img.clerk.com; connect-src 'self' https://*.clerk.accounts.dev https://clerk.kaulbyapp.com https://us.i.posthog.com https://api.polar.sh; frame-src https://challenges.cloudflare.com https://*.clerk.accounts.dev;",
+            key: 'Content-Security-Policy',
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' https://clerk.kaulbyapp.com https://*.clerk.accounts.dev https://challenges.cloudflare.com https://us.i.posthog.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.clerk.com https://img.clerk.com; connect-src 'self' https://*.clerk.accounts.dev https://clerk.kaulbyapp.com https://us.i.posthog.com https://api.polar.sh; frame-src https://challenges.cloudflare.com https://*.clerk.accounts.dev; frame-ancestors 'none';",
           },
         ],
       },

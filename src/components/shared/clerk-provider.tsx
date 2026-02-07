@@ -52,10 +52,10 @@ export function ResilientClerkProvider({ children }: ResilientClerkProviderProps
         appearance={{
           baseTheme: dark,
           variables: {
-            colorPrimary: "#14b8a6",
-            colorBackground: "#0a0a0a",
-            colorInputBackground: "#171717",
-            colorInputText: "#fafafa",
+            colorPrimary: "hsl(172, 66%, 50%)",
+            colorBackground: "hsl(0, 0%, 3.9%)",
+            colorInputBackground: "hsl(0, 0%, 10%)",
+            colorInputText: "hsl(0, 0%, 98%)",
           },
         }}
         afterSignOutUrl="/"

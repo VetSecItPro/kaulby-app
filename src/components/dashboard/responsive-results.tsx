@@ -242,7 +242,7 @@ function MobileResultsView({
         </div>
         <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
           <SheetTrigger asChild>
-            <Button variant="outline" size="icon" className="relative">
+            <Button variant="outline" size="icon" className="relative" aria-label="Open filters">
               <SlidersHorizontal className="h-4 w-4" />
               {hasFilters && (
                 <span className="absolute -top-1 -right-1 h-2 w-2 bg-primary rounded-full" />

@@ -374,7 +374,7 @@ export function ResponsiveSettings({
                 onValueChange={handleTimezoneChange}
                 disabled={isSavingTimezone}
               >
-                <SelectTrigger className="w-[220px]">
+                <SelectTrigger className="w-full sm:w-[220px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
