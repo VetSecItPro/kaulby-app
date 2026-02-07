@@ -11,6 +11,7 @@ import { db, users } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import { getAuthorizationUrl, isHubSpotConfigured } from "@/lib/integrations/hubspot";
 import { nanoid } from "nanoid";
+import { checkApiRateLimit } from "@/lib/rate-limit";
 
 // Initiate OAuth flow
 export async function POST() {
@@ -18,6 +19,12 @@ export async function POST() {
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Rate limiting check
+    const rateLimit = await checkApiRateLimit(userId, 'write');
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfter ?? 60) } });
     }
 
     if (!isHubSpotConfigured()) {
@@ -69,6 +76,12 @@ export async function DELETE() {
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Rate limiting check
+    const rateLimit = await checkApiRateLimit(userId, 'write');
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfter ?? 60) } });
     }
 
     const user = await db.query.users.findFirst({

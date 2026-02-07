@@ -13,6 +13,7 @@ import {
 import { Platform, ALL_PLATFORMS } from "@/lib/plans";
 import { sanitizeMonitorInput, isValidKeyword } from "@/lib/security";
 import { logError } from "@/lib/error-logger";
+import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,12 @@ export async function GET(
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Rate limiting check for read
+    const rateLimit = await checkApiRateLimit(userId, 'read');
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfter ?? 60) } });
     }
 
     const monitor = await db.query.monitors.findFirst({
@@ -61,6 +68,12 @@ export async function PATCH(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Rate limiting check for write
+    const rateLimit = await checkApiRateLimit(userId, 'write');
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfter ?? 60) } });
+    }
+
     // Check ownership
     const existing = await db.query.monitors.findFirst({
       where: and(eq(monitors.id, id), eq(monitors.userId, userId)),
@@ -70,7 +83,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Monitor not found" }, { status: 404 });
     }
 
-    const body = await request.json();
+    const body = await parseJsonBody(request);
     const { name, companyName, keywords, platforms, isActive,
       scheduleEnabled, scheduleStartHour, scheduleEndHour, scheduleDays, scheduleTimezone } = body;
 
@@ -193,6 +206,9 @@ export async function PATCH(
       ...(platformWarning && { warning: platformWarning }),
     });
   } catch (error) {
+    if (error instanceof BodyTooLargeError) {
+      return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
+    }
     console.error("Error updating monitor:", error);
     logError({ source: "api", message: "Failed to update monitor", error, endpoint: "PATCH /api/monitors/[id]" });
     return NextResponse.json({ error: "Failed to update monitor" }, { status: 500 });
@@ -209,6 +225,12 @@ export async function DELETE(
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Rate limiting check for write
+    const rateLimit = await checkApiRateLimit(userId, 'write');
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfter ?? 60) } });
     }
 
     // Check ownership

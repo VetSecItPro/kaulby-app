@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(
         new URL(
           `/dashboard/settings?tab=integrations&error=${encodeURIComponent(
-            error === "access_denied" ? "Access denied by user" : error
+            error === "access_denied" ? "Access denied by user" : "Failed to authorize Slack"
           )}`,
           request.url
         )
@@ -119,9 +119,7 @@ export async function GET(request: NextRequest) {
     console.error("Slack callback error:", error);
     return NextResponse.redirect(
       new URL(
-        `/dashboard/settings?tab=integrations&error=${encodeURIComponent(
-          error instanceof Error ? error.message : "Failed to connect Slack"
-        )}`,
+        "/dashboard/settings?tab=integrations&error=Failed+to+connect+Slack.+Please+try+again.",
         request.url
       )
     );

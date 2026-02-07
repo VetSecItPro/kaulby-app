@@ -5,6 +5,7 @@ import { users, monitors, results, audiences, webhooks, alerts } from "@/lib/db/
 import { eq, inArray } from "drizzle-orm";
 import { getPlanLimits } from "@/lib/plans";
 
+import { checkApiRateLimit } from "@/lib/rate-limit";
 export const dynamic = "force-dynamic";
 
 /**
@@ -91,6 +92,12 @@ export async function GET(request: Request) {
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Rate limiting check for export
+    const rateLimit = await checkApiRateLimit(userId, "export");
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: { "Retry-After": String(rateLimit.retryAfter ?? 60) } });
     }
 
     const { searchParams } = new URL(request.url);

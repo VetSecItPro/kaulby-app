@@ -7,6 +7,7 @@ import { randomBytes } from "crypto";
 import { sendWorkspaceInviteEmail } from "@/lib/email";
 import { findUserWithFallback } from "@/lib/auth-utils";
 import { logActivity } from "@/lib/activity-log";
+import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,11 @@ export async function GET() {
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const rateLimit = await checkApiRateLimit(userId, 'read');
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfter ?? 60) } });
     }
 
     // Get user (with email fallback for Clerk ID mismatch)
@@ -67,7 +73,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
+    // Rate limiting check
+    const rateLimit = await checkApiRateLimit(userId, 'write');
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfter ?? 60) } });
+    }
+
+    const body = await parseJsonBody(request);
     const { email } = body;
 
     if (!email || typeof email !== "string") {
@@ -178,6 +190,9 @@ export async function POST(request: Request) {
       },
     }, { status: 201 });
   } catch (error) {
+    if (error instanceof BodyTooLargeError) {
+      return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
+    }
     console.error("Error creating invite:", error);
     return NextResponse.json({ error: "Failed to create invite" }, { status: 500 });
   }

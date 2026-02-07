@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(
         new URL(
           `/dashboard/settings?tab=integrations&error=${encodeURIComponent(
-            errorDescription || error
+            error === "access_denied" ? "Access denied by user" : "Failed to authorize HubSpot"
           )}`,
           request.url
         )
@@ -124,9 +124,7 @@ export async function GET(request: NextRequest) {
     console.error("HubSpot callback error:", error);
     return NextResponse.redirect(
       new URL(
-        `/dashboard/settings?tab=integrations&error=${encodeURIComponent(
-          error instanceof Error ? error.message : "Failed to connect HubSpot"
-        )}`,
+        "/dashboard/settings?tab=integrations&error=Failed+to+connect+HubSpot.+Please+try+again.",
         request.url
       )
     );

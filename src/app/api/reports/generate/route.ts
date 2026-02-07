@@ -9,6 +9,7 @@ import { auth } from "@clerk/nextjs/server";
 import { db, monitors, results } from "@/lib/db";
 import { eq, and, gte, inArray, desc, sql } from "drizzle-orm";
 import { getUserPlan } from "@/lib/limits";
+import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
 
 // FIX-212: Add maxDuration for long-running report generation
 export const maxDuration = 60;
@@ -64,6 +65,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Rate limiting check
+    const rateLimit = await checkApiRateLimit(userId, "write");
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: { "Retry-After": String(rateLimit.retryAfter ?? 60) } });
+    }
+
     // Check if user has Team tier
     const plan = await getUserPlan(userId);
     if (plan !== "enterprise") {
@@ -73,7 +80,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const config: ReportConfig = await req.json();
+    const config: ReportConfig = await parseJsonBody(req, 262144); // 256KB for report config
     const { title, dateRange, sections, branding, format } = config;
 
     // Calculate date range
@@ -219,6 +226,9 @@ export async function POST(req: Request) {
       },
     });
   } catch (error) {
+    if (error instanceof BodyTooLargeError) {
+      return NextResponse.json({ error: "Request body too large" }, { status: 413 });
+    }
     console.error("Report generation error:", error);
     return NextResponse.json(
       { error: "Failed to generate report" },
