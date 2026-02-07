@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createApiKey, listApiKeys, revokeApiKey } from "@/lib/api-auth";
 import { findUserWithFallback } from "@/lib/auth-utils";
 import { logError } from "@/lib/error-logger";
+import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,11 @@ export async function GET() {
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const rateLimit = await checkApiRateLimit(userId, 'read');
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfter ?? 60) } });
     }
 
     // Check if user has Team plan (with email fallback for Clerk ID mismatch)
@@ -51,7 +57,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
+    // Rate limiting check
+    const rateLimit = await checkApiRateLimit(userId, 'write');
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfter ?? 60) } });
+    }
+
+    const body = await parseJsonBody(request);
     const { name, expiresInDays } = body;
 
     if (!name || typeof name !== "string" || name.length < 1) {
@@ -115,6 +127,9 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
+    if (error instanceof BodyTooLargeError) {
+      return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
+    }
     console.error("Create API key error:", error);
     return NextResponse.json(
       { error: "Failed to create API key" },
@@ -132,6 +147,12 @@ export async function DELETE(request: NextRequest) {
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Rate limiting check
+    const rateLimit = await checkApiRateLimit(userId, 'write');
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfter ?? 60) } });
     }
 
     const { searchParams } = new URL(request.url);

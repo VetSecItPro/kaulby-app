@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { db, monitors, results } from "@/lib/db";
 import { eq, and, gte, inArray, sql } from "drizzle-orm";
 import { getUserPlan } from "@/lib/limits";
+import { checkApiRateLimit } from "@/lib/rate-limit";
 
 interface BrandData {
   name: string;
@@ -20,6 +21,11 @@ export async function GET(req: Request) {
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const rateLimit = await checkApiRateLimit(userId, 'read');
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfter ?? 60) } });
     }
 
     // Check if user has Team tier (enterprise feature)

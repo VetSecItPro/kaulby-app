@@ -4,6 +4,7 @@ import { getPolarClient, DAY_PASS_PRODUCT_ID } from "@/lib/polar";
 import { db, users } from "@/lib/db";
 import { eq } from "drizzle-orm";
 
+import { checkApiRateLimit } from "@/lib/rate-limit";
 export const dynamic = "force-dynamic";
 
 /**
@@ -16,6 +17,12 @@ export async function POST() {
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Rate limiting check
+    const rateLimit = await checkApiRateLimit(userId, "write");
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: { "Retry-After": String(rateLimit.retryAfter ?? 60) } });
     }
 
     const polar = await getPolarClient();

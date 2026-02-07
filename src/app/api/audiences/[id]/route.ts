@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { db, audiences } from "@/lib/db";
 import { eq, and } from "drizzle-orm";
 import { z } from "zod";
+import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -28,8 +29,14 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Rate limiting check
+    const rateLimit = await checkApiRateLimit(userId, 'write');
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfter ?? 60) } });
+    }
+
     const { id } = await params;
-    const body = await request.json();
+    const body = await parseJsonBody(request);
     const parsed = updateAudienceSchema.safeParse(body);
 
     if (!parsed.success) {
@@ -59,6 +66,9 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
     return NextResponse.json(updated);
   } catch (error) {
+    if (error instanceof BodyTooLargeError) {
+      return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
+    }
     console.error("Failed to update audience:", error);
     return NextResponse.json(
       { error: "Failed to update audience" },
@@ -76,6 +86,12 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Rate limiting check
+    const rateLimit = await checkApiRateLimit(userId, 'write');
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfter ?? 60) } });
     }
 
     const { id } = await params;

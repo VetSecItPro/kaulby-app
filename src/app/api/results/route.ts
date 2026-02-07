@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db, monitors, results } from "@/lib/db";
 import { eq, desc, inArray, and, lt } from "drizzle-orm";
 import { getEffectiveUserId } from "@/lib/dev-auth";
+import { checkApiRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,11 @@ export async function GET(request: NextRequest) {
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const rateLimit = await checkApiRateLimit(userId, 'read');
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfter ?? 60) } });
     }
 
     // Parse query params

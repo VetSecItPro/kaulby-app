@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { getPolarClient, POLAR_PLANS, PolarPlanKey, getProductId, BillingInterval } from "@/lib/polar";
 
+import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
 export const dynamic = "force-dynamic";
 
 /**
@@ -22,6 +23,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Rate limiting check
+    const rateLimit = await checkApiRateLimit(userId, "write");
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: { "Retry-After": String(rateLimit.retryAfter ?? 60) } });
+    }
+
     const polar = await getPolarClient();
     if (!polar) {
       return NextResponse.json(
@@ -30,7 +37,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { plan, billingInterval = "monthly" } = await request.json();
+    const { plan, billingInterval = "monthly" } = await parseJsonBody(request);
 
     // Validate plan
     if (!plan || !(plan in POLAR_PLANS) || plan === "free") {
@@ -83,6 +90,9 @@ export async function POST(request: NextRequest) {
       checkoutId: checkout.id,
     });
   } catch (error) {
+    if (error instanceof BodyTooLargeError) {
+      return NextResponse.json({ error: "Request body too large" }, { status: 413 });
+    }
     console.error("Polar checkout error:", error);
     return NextResponse.json(
       { error: "Failed to create checkout session" },

@@ -5,6 +5,7 @@ import { workspaces, workspaceInvites, users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { sendInviteAcceptedEmail } from "@/lib/email";
 import { findUserWithFallback } from "@/lib/auth-utils";
+import { checkApiRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -76,6 +77,11 @@ export async function POST(
     }
 
     const { token } = await params;
+    // Rate limiting check for accepting invite
+    const rateLimit = await checkApiRateLimit(userId, "write");
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: { "Retry-After": String(rateLimit.retryAfter ?? 60) } });
+    }
 
     // Get invite
     const invite = await db.query.workspaceInvites.findFirst({

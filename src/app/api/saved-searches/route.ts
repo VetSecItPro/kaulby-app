@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { savedSearches, users } from "@/lib/db/schema";
 import { eq, desc, and } from "drizzle-orm";
+import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
 
 // Maximum saved searches per plan
 const SAVED_SEARCH_LIMITS = {
@@ -18,6 +19,11 @@ export async function GET() {
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const rateLimit = await checkApiRateLimit(userId, 'read');
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfter ?? 60) } });
     }
 
     // FIX-219: Add limit to prevent unbounded query
@@ -46,7 +52,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
+    // Rate limiting check
+    const rateLimit = await checkApiRateLimit(userId, 'write');
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfter ?? 60) } });
+    }
+
+    const body = await parseJsonBody(request);
     const { name, query, filters } = body;
 
     if (!name || typeof name !== "string" || name.trim().length === 0) {
@@ -113,6 +125,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ search: newSearch }, { status: 201 });
   } catch (error) {
+    if (error instanceof BodyTooLargeError) {
+      return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
+    }
     console.error("Failed to create saved search:", error);
     return NextResponse.json(
       { error: "Failed to create saved search" },

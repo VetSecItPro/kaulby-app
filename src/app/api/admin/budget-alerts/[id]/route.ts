@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { budgetAlerts, users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { isValidEmail, sanitizeUrl } from "@/lib/security";
+import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,12 @@ export async function PATCH(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    // Rate limiting check
+    const rateLimit = await checkApiRateLimit(userId, 'write');
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfter ?? 60) } });
+    }
+
     // Check alert exists
     const existing = await db.query.budgetAlerts.findFirst({
       where: eq(budgetAlerts.id, id),
@@ -42,7 +49,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Budget alert not found" }, { status: 404 });
     }
 
-    const body = await request.json();
+    const body = await parseJsonBody(request);
     const { name, period, thresholdUsd, warningPercent, notifyEmail, notifySlack, isActive } = body;
 
     // Build update object
@@ -112,6 +119,9 @@ export async function PATCH(
 
     return NextResponse.json({ alert: updatedAlert });
   } catch (error) {
+    if (error instanceof BodyTooLargeError) {
+      return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
+    }
     console.error("Error updating budget alert:", error);
     return NextResponse.json({ error: "Failed to update budget alert" }, { status: 500 });
   }
@@ -132,6 +142,12 @@ export async function DELETE(
 
     if (!(await isAdmin(userId))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Rate limiting check
+    const rateLimit = await checkApiRateLimit(userId, 'write');
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfter ?? 60) } });
     }
 
     // Check alert exists

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { db, audiences, audienceMonitors, monitors } from "@/lib/db";
 import { eq, and } from "drizzle-orm";
 import { z } from "zod";
+import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -25,8 +26,14 @@ export async function POST(request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Rate limiting check
+    const rateLimit = await checkApiRateLimit(userId, 'write');
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfter ?? 60) } });
+    }
+
     const { id: audienceId } = await params;
-    const body = await request.json();
+    const body = await parseJsonBody(request);
     const parsed = addMonitorSchema.safeParse(body);
 
     if (!parsed.success) {
@@ -79,6 +86,9 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     return NextResponse.json({ success: true }, { status: 201 });
   } catch (error) {
+    if (error instanceof BodyTooLargeError) {
+      return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
+    }
     console.error("Failed to add monitor to audience:", error);
     return NextResponse.json(
       { error: "Failed to add monitor to audience" },
@@ -99,8 +109,14 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Rate limiting check
+    const rateLimit = await checkApiRateLimit(userId, 'write');
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfter ?? 60) } });
+    }
+
     const { id: audienceId } = await params;
-    const body = await request.json();
+    const body = await parseJsonBody(request);
     const parsed = addMonitorSchema.safeParse(body);
 
     if (!parsed.success) {
@@ -133,6 +149,9 @@ export async function DELETE(request: Request, { params }: RouteParams) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    if (error instanceof BodyTooLargeError) {
+      return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
+    }
     console.error("Failed to remove monitor from audience:", error);
     return NextResponse.json(
       { error: "Failed to remove monitor from audience" },
