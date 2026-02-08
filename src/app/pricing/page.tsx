@@ -32,6 +32,7 @@ import { Check, X, ShieldCheck, CreditCard, RefreshCw, ArrowRight } from "lucide
 import { CheckoutModal } from "@/components/checkout-modal";
 import { MarketingFooter } from "@/components/shared/marketing-footer";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import type { BillingInterval } from "@/lib/plans";
 
 interface Feature {
@@ -177,11 +178,11 @@ export default function PricingPage() {
       if (data.url) {
         window.location.href = data.url;
       } else if (data.error) {
-        alert(data.error);
+        toast.error(data.error);
       }
     } catch (error) {
       console.error("Day pass purchase error:", error);
-      alert("Failed to start checkout. Please try again.");
+      toast.error("Failed to start checkout. Please try again.");
     } finally {
       setIsPurchasingDayPass(false);
     }

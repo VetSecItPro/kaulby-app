@@ -35,6 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { toast } from "sonner";
 
 const TIMEZONE_OPTIONS = [
   { value: "America/New_York", label: "Eastern Time (ET)" },
@@ -249,7 +250,7 @@ export function ResponsiveSettings({
         } else {
           const error = await response.json();
           console.error("Checkout error:", error);
-          alert(error.error || "Failed to create checkout session");
+          toast.error(error.error || "Failed to create checkout session");
         }
       } else {
         // Downgrade or cancel: Go to customer portal
@@ -273,7 +274,7 @@ export function ResponsiveSettings({
                 window.open(error.fallbackUrl, "_blank");
               }
             } else {
-              alert("You're already on the Free plan or your subscription is still being set up.");
+              toast.info("You're already on the Free plan or your subscription is still being set up.");
             }
           } else {
             // Server error - offer manual management
@@ -288,7 +289,7 @@ export function ResponsiveSettings({
       }
     } catch (error) {
       console.error("Plan switch error:", error);
-      alert("Something went wrong. Please try again.");
+      toast.error("Something went wrong. Please try again.");
     } finally {
       setSwitchingPlan(null);
     }

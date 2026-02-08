@@ -16,7 +16,6 @@ function getDb() {
     if (!process.env.DATABASE_URL) {
       throw new Error("DATABASE_URL environment variable is not set");
     }
-    // TODO(FIX-114): Database connection does not explicitly enforce SSL. Consider adding sslmode=require to connection string for production.
     sqlInstance = neon(process.env.DATABASE_URL);
     dbInstance = drizzle(sqlInstance, { schema });
   }
@@ -48,7 +47,6 @@ function getPooledDb() {
     // ws is required for Node.js environments (Inngest runs in Node, not Edge)
     neonConfig.webSocketConstructor = ws;
 
-    // TODO(FIX-114): Pooled database connection does not explicitly enforce SSL. Consider adding sslmode=require to connection string for production.
     const pool = new Pool({ connectionString: process.env.DATABASE_URL });
     pooledDbInstance = drizzleWs(pool, { schema });
   }
