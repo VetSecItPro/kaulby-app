@@ -301,7 +301,7 @@ export function ReportGenerator({
                     setConfig((prev) => ({ ...prev, dateRange: value as ReportConfig["dateRange"] }))
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger aria-label="Date range">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -320,7 +320,7 @@ export function ReportGenerator({
                     setConfig((prev) => ({ ...prev, format: value as "pdf" | "html" }))
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger aria-label="Report format">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

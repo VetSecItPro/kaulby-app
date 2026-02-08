@@ -458,7 +458,7 @@ export function AudienceDetail({
                   value={selectedMonitorId}
                   onValueChange={setSelectedMonitorId}
                 >
-                  <SelectTrigger className="w-[200px]">
+                  <SelectTrigger className="w-[200px]" aria-label="Select monitor to add">
                     <SelectValue placeholder="Select monitor..." />
                   </SelectTrigger>
                   <SelectContent>

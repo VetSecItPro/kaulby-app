@@ -350,7 +350,7 @@ export default function ErrorLogsPage() {
                 setPage(1);
               }}
             >
-              <SelectTrigger className="w-[140px]">
+              <SelectTrigger className="w-[140px]" aria-label="Filter by error level">
                 <SelectValue placeholder="All Levels" />
               </SelectTrigger>
               <SelectContent>
@@ -367,7 +367,7 @@ export default function ErrorLogsPage() {
                 setPage(1);
               }}
             >
-              <SelectTrigger className="w-[160px]">
+              <SelectTrigger className="w-[160px]" aria-label="Filter by error source">
                 <SelectValue placeholder="All Sources" />
               </SelectTrigger>
               <SelectContent>
@@ -388,7 +388,7 @@ export default function ErrorLogsPage() {
                 setPage(1);
               }}
             >
-              <SelectTrigger className="w-[140px]">
+              <SelectTrigger className="w-[140px]" aria-label="Filter by resolution status">
                 <SelectValue placeholder="All Status" />
               </SelectTrigger>
               <SelectContent>

@@ -74,6 +74,10 @@ export function SearchQueryInput({ value, onChange, isPro = false }: SearchQuery
         <div className="flex gap-2 items-start">
           <div className="flex-1">
             <Input
+              id="advanced-search-input"
+              aria-label="Advanced search query"
+              aria-invalid={!validation.valid && !!value.trim()}
+              aria-describedby={!validation.valid && value.trim() ? "search-validation-error" : undefined}
               placeholder='e.g., "pricing feedback" OR competitor NOT support'
               value={value}
               onChange={(e) => onChange(e.target.value)}
@@ -82,8 +86,8 @@ export function SearchQueryInput({ value, onChange, isPro = false }: SearchQuery
           </div>
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" size="icon" className="shrink-0">
-                <HelpCircle className="h-4 w-4" />
+              <Button variant="outline" size="icon" className="shrink-0" aria-label="Search syntax help">
+                <HelpCircle className="h-4 w-4" aria-hidden="true" />
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-80 text-sm" align="end">
@@ -115,8 +119,8 @@ export function SearchQueryInput({ value, onChange, isPro = false }: SearchQuery
 
         {/* Validation Error */}
         {!validation.valid && value.trim() && (
-          <div className="flex items-center gap-2 text-destructive text-xs">
-            <AlertCircle className="h-3 w-3" />
+          <div id="search-validation-error" role="alert" className="flex items-center gap-2 text-destructive text-xs">
+            <AlertCircle className="h-3 w-3" aria-hidden="true" />
             {validation.error}
           </div>
         )}

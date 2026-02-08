@@ -1,9 +1,3 @@
-// TODO: FIX-319 (CRITICAL) - Form validation errors should use aria-live regions for screen reader announcement
-// All form components across the dashboard should implement:
-// - <div role="alert" aria-live="polite" aria-atomic="true">{errorMessage}</div>
-// - This applies to monitor creation, settings forms, team invitations, etc.
-// - See: https://www.w3.org/WAI/WCAG21/Techniques/aria/ARIA19
-
 import { redirect } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

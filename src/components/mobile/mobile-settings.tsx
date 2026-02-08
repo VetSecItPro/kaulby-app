@@ -203,7 +203,7 @@ export function MobileSettings({
                   onValueChange={onTimezoneChange}
                   disabled={isSavingTimezone}
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="w-full" aria-label="Timezone">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

@@ -402,13 +402,15 @@ export function TeamSettings({ subscriptionStatus }: TeamSettingsProps) {
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                   <Input
+                    id="workspace-name"
+                    aria-label="Workspace name"
                     placeholder="Workspace name"
                     value={workspaceName}
                     onChange={(e) => setWorkspaceName(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleCreateWorkspace()}
                   />
                   {error && (
-                    <p className="text-sm text-destructive">{error}</p>
+                    <p role="alert" className="text-sm text-destructive">{error}</p>
                   )}
                 </div>
                 <DialogFooter>
@@ -484,7 +486,7 @@ export function TeamSettings({ subscriptionStatus }: TeamSettingsProps) {
                       onValueChange={(value) => handleChangeRole(member.id, value as WorkspaceRole)}
                       disabled={changingRole === member.id}
                     >
-                      <SelectTrigger className="w-[100px] h-8 text-xs">
+                      <SelectTrigger className="w-[100px] h-8 text-xs" aria-label={`Role for ${member.name || member.email}`}>
                         <SelectValue>
                           {changingRole === member.id ? (
                             <Loader2 className="h-3 w-3 animate-spin" />
@@ -589,7 +591,10 @@ export function TeamSettings({ subscriptionStatus }: TeamSettingsProps) {
             </h4>
             <div className="flex gap-2">
               <Input
+                id="invite-email"
+                aria-label="Team member email address"
                 type="email"
+                autoComplete="email"
                 placeholder="colleague@company.com"
                 value={inviteEmail}
                 onChange={(e) => setInviteEmail(e.target.value)}
@@ -662,7 +667,7 @@ export function TeamSettings({ subscriptionStatus }: TeamSettingsProps) {
                         onValueChange={(value) => handleReassignMonitor(monitor.id, value)}
                         disabled={reassigning === monitor.id}
                       >
-                        <SelectTrigger className="w-[140px] h-8 text-xs">
+                        <SelectTrigger className="w-[140px] h-8 text-xs" aria-label={`Assignee for ${monitor.name}`}>
                           <SelectValue>
                             {reassigning === monitor.id ? (
                               <Loader2 className="h-3 w-3 animate-spin" />

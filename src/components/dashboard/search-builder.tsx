@@ -231,7 +231,7 @@ export function SearchBuilder({ onApply }: SearchBuilderProps) {
                     value={newOperator}
                     onValueChange={(v) => setNewOperator(v as "AND" | "OR" | "NOT")}
                   >
-                    <SelectTrigger className="w-24">
+                    <SelectTrigger className="w-24" aria-label="Search operator">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -246,7 +246,7 @@ export function SearchBuilder({ onApply }: SearchBuilderProps) {
                   value={newField}
                   onValueChange={(v) => setNewField(v as typeof newField)}
                 >
-                  <SelectTrigger className="w-32">
+                  <SelectTrigger className="w-32" aria-label="Search field">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -261,7 +261,7 @@ export function SearchBuilder({ onApply }: SearchBuilderProps) {
                 <div className="flex-1">
                   {newField === "platform" ? (
                     <Select value={newTerm} onValueChange={setNewTerm}>
-                      <SelectTrigger>
+                      <SelectTrigger aria-label="Select platform">
                         <SelectValue placeholder="Select platform..." />
                       </SelectTrigger>
                       <SelectContent>

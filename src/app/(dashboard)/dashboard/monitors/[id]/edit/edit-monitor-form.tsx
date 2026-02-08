@@ -352,7 +352,7 @@ export function EditMonitorForm({ monitorId, limits, userPlan }: EditMonitorForm
                         value={String(scheduleStartHour)}
                         onValueChange={(v) => setScheduleStartHour(parseInt(v))}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger aria-label="Start time">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -370,7 +370,7 @@ export function EditMonitorForm({ monitorId, limits, userPlan }: EditMonitorForm
                         value={String(scheduleEndHour)}
                         onValueChange={(v) => setScheduleEndHour(parseInt(v))}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger aria-label="End time">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -418,7 +418,7 @@ export function EditMonitorForm({ monitorId, limits, userPlan }: EditMonitorForm
                       value={scheduleTimezone}
                       onValueChange={setScheduleTimezone}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger aria-label="Timezone">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
