@@ -137,6 +137,7 @@ export async function GET(request: Request) {
       userResults = await db.query.results.findMany({
         where: inArray(results.monitorId, monitorIds),
         orderBy: (results, { desc }) => [desc(results.createdAt)],
+        limit: 50000,
       });
     }
 

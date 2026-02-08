@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, memo } from "react";
+import { useState, useEffect, useMemo, memo } from "react";
 import { ChevronDown, ChevronRight, MessageSquare, Globe, Smile, BarChart3, Loader2, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -101,6 +101,7 @@ export const ResultsSidebar = memo(function ResultsSidebar({
 
   // Fetch aggregations data
   useEffect(() => {
+    const controller = new AbortController();
     async function fetchAggregations() {
       setIsLoading(true);
       setError(null);
@@ -111,7 +112,9 @@ export const ResultsSidebar = memo(function ResultsSidebar({
         if (dateFrom) params.set("dateFrom", dateFrom);
         if (dateTo) params.set("dateTo", dateTo);
 
-        const response = await fetch(`/api/results/aggregations?${params}`);
+        const response = await fetch(`/api/results/aggregations?${params}`, {
+          signal: controller.signal,
+        });
         if (!response.ok) {
           throw new Error("Failed to fetch aggregations");
         }
@@ -119,25 +122,31 @@ export const ResultsSidebar = memo(function ResultsSidebar({
         const result = await response.json();
         setData(result);
       } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") return;
         setError(err instanceof Error ? err.message : "An error occurred");
       } finally {
-        setIsLoading(false);
+        if (!controller.signal.aborted) setIsLoading(false);
       }
     }
 
     fetchAggregations();
+    return () => controller.abort();
   }, [monitorId, dateFrom, dateTo]);
 
   // Group communities by platform
-  const communitiesByPlatform = data?.communities.reduce(
-    (acc, c) => {
-      if (!acc[c.platform]) {
-        acc[c.platform] = [];
-      }
-      acc[c.platform].push(c);
-      return acc;
-    },
-    {} as Record<string, typeof data.communities>
+  const communitiesByPlatform = useMemo(
+    () =>
+      data?.communities.reduce(
+        (acc, c) => {
+          if (!acc[c.platform]) {
+            acc[c.platform] = [];
+          }
+          acc[c.platform].push(c);
+          return acc;
+        },
+        {} as Record<string, typeof data.communities>
+      ),
+    [data?.communities]
   );
 
   if (isLoading) {

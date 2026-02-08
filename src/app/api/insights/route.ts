@@ -520,7 +520,7 @@ export async function GET(request: Request) {
         monitorId: true,
       },
       orderBy: desc(results.createdAt),
-      limit: 5000, // Limit to 5000 most recent results for analysis
+      limit: 1000, // PERF: Reduced from 5000 — AI analysis uses top 50, rest for stats
     });
 
     // Enrich results with monitor names
