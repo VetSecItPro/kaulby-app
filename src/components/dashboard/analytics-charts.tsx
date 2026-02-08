@@ -129,43 +129,52 @@ export function AnalyticsCharts({ subscriptionStatus = "free" }: AnalyticsCharts
   const isTeam = subscriptionStatus === "enterprise";
 
   useEffect(() => {
+    const controller = new AbortController();
     async function fetchAnalytics() {
       setLoading(true);
       try {
-        const response = await fetch(`/api/analytics?range=${range}`);
+        const response = await fetch(`/api/analytics?range=${range}`, {
+          signal: controller.signal,
+        });
         if (response.ok) {
           const analytics = await response.json();
           setData(analytics);
         }
       } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") return;
         console.error("Failed to fetch analytics:", error);
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     }
     fetchAnalytics();
+    return () => controller.abort();
   }, [range]);
 
   // Fetch Share of Voice data for Team tier users
   useEffect(() => {
+    if (!isTeam) return;
+    const controller = new AbortController();
     async function fetchShareOfVoice() {
-      if (!isTeam) return;
-
       setSovLoading(true);
       try {
         const days = range === "7d" ? 7 : range === "30d" ? 30 : range === "90d" ? 90 : 365;
-        const response = await fetch(`/api/analytics/share-of-voice?days=${days}`);
+        const response = await fetch(`/api/analytics/share-of-voice?days=${days}`, {
+          signal: controller.signal,
+        });
         if (response.ok) {
           const sovResult = await response.json();
           setSovData(sovResult);
         }
       } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") return;
         console.error("Failed to fetch share of voice:", error);
       } finally {
-        setSovLoading(false);
+        if (!controller.signal.aborted) setSovLoading(false);
       }
     }
     fetchShareOfVoice();
+    return () => controller.abort();
   }, [range, isTeam]);
 
   if (loading) {

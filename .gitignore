@@ -65,3 +65,4 @@ kaulby-test-results.md
 .mcp.json
 .design-reports/
 .a11y/
+.perf/
