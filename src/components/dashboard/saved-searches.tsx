@@ -214,8 +214,9 @@ export function SavedSearches({
                   size="sm"
                   className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 ml-2"
                   onClick={(e) => handleDeleteSearch(search.id, e)}
+                  aria-label={`Delete saved search ${search.name}`}
                 >
-                  <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                  <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" aria-hidden="true" />
                 </Button>
               </DropdownMenuItem>
             ))

@@ -64,3 +64,4 @@ kaulby-test-results.md
 # MCP configuration (local dev tool config)
 .mcp.json
 .design-reports/
+.a11y/
