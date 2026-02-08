@@ -67,3 +67,18 @@ kaulby-test-results.md
 .a11y/
 .perf/
 .cleancode/
+.deps-reports/
+.deps-audit.json
+
+# ============================================
+# ALL INTERNAL DOCUMENTATION - KEEP PRIVATE
+# ============================================
+CLAUDE.md
+ARCHITECTURE.md
+
+# All markdown files (notes, plans, strategy)
+*.md
+
+# EXCEPTIONS: Public-facing files
+\!README.md
+\!.github/pull_request_template.md
