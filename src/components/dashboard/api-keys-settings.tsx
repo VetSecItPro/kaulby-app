@@ -291,13 +291,15 @@ export function ApiKeysSettings({ subscriptionStatus }: ApiKeysSettingsProps) {
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                   <Input
+                    id="api-key-name"
+                    aria-label="API key name"
                     placeholder="API key name (e.g., Production, Zapier Integration)"
                     value={keyName}
                     onChange={(e) => setKeyName(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleCreateKey()}
                   />
                   {error && (
-                    <p className="text-sm text-destructive">{error}</p>
+                    <p role="alert" className="text-sm text-destructive">{error}</p>
                   )}
                 </div>
                 <DialogFooter>

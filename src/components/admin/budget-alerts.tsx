@@ -277,7 +277,7 @@ export function BudgetAlerts({ initialAlerts }: BudgetAlertsProps) {
                     value={formData.period}
                     onValueChange={(v) => setFormData({ ...formData, period: v as "daily" | "weekly" | "monthly" })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger aria-label="Alert period">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>

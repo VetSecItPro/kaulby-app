@@ -134,6 +134,7 @@ export function AudienceForm({ audience }: AudienceFormProps) {
                 value={color}
                 onChange={(e) => setColor(e.target.value)}
                 className="w-8 h-8 p-0 border-0 cursor-pointer"
+                aria-label="Custom color picker"
               />
             </div>
           </div>
