@@ -2,17 +2,12 @@ name: E2E Documentation Updates
 
 on:
   schedule:
-    - cron: '0 0 * * 1' # Weekly on Monday midnight UTC
-  workflow_dispatch:     # Manual trigger
+    - cron: '0 0 * * 1'
+  workflow_dispatch:
 
 jobs:
   update-docs:
-    # Only run on main branch
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Placeholder
-        run: |
-          echo "E2E Documentation System installed"
-          echo "Will run weekly after merge to main"
-          echo "Package: @vetsecitpro/e2e-intelligence"
+    uses: VetSecItPro/e2e-intelligence/.github/workflows/e2e-docs-template.yml@main
+    with:
+      repo-name: kaulby
+      node-version: '20'
