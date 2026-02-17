@@ -132,8 +132,7 @@ export const scheduledAccountDeletion = inngest.createFunction(
       });
     }
 
-    // Step 8: Delete all user data from database
-    // TODO(FIX-111): Account deletion should use a database transaction for atomicity to ensure all-or-nothing deletion
+    // Step 8: Delete all user data from database (FIX-111: uses transaction for atomicity)
     await step.run("delete-user-data", async () => {
       await deleteAllUserData(userId);
       console.log(`[Account Deletion] All data deleted for user ${userId}`);
@@ -182,132 +181,74 @@ export const scheduledAccountDeletion = inngest.createFunction(
 async function deleteAllUserData(userId: string): Promise<void> {
   console.log(`[Account Deletion] Starting comprehensive data deletion for user ${userId}`);
 
-  // =========================================================================
-  // PHASE 1: Gather all related IDs before deletion
-  // =========================================================================
+  // FIX-111: Wrap entire deletion in a transaction for atomicity
+  await pooledDb.transaction(async (tx) => {
+    // PHASE 1: Gather all related IDs before deletion
+    const userMonitors = await tx
+      .select({ id: monitors.id })
+      .from(monitors)
+      .where(eq(monitors.userId, userId));
+    const monitorIds = userMonitors.map(m => m.id);
 
-  // Get all monitor IDs for this user
-  const userMonitors = await pooledDb
-    .select({ id: monitors.id })
-    .from(monitors)
-    .where(eq(monitors.userId, userId));
-  const monitorIds = userMonitors.map(m => m.id);
-  console.log(`[Account Deletion] Found ${monitorIds.length} monitors to delete`);
+    const userAudiences = await tx
+      .select({ id: audiences.id })
+      .from(audiences)
+      .where(eq(audiences.userId, userId));
+    const audienceIds = userAudiences.map(a => a.id);
 
-  // Get all audience IDs for this user
-  const userAudiences = await pooledDb
-    .select({ id: audiences.id })
-    .from(audiences)
-    .where(eq(audiences.userId, userId));
-  const audienceIds = userAudiences.map(a => a.id);
-  console.log(`[Account Deletion] Found ${audienceIds.length} audiences to delete`);
+    const userWebhookRows = await tx
+      .select({ id: webhooks.id })
+      .from(webhooks)
+      .where(eq(webhooks.userId, userId));
+    const webhookIds = userWebhookRows.map(w => w.id);
 
-  // Get all webhook IDs
-  const userWebhooks = await pooledDb
-    .select({ id: webhooks.id })
-    .from(webhooks)
-    .where(eq(webhooks.userId, userId));
-  const webhookIds = userWebhooks.map(w => w.id);
-  console.log(`[Account Deletion] Found ${webhookIds.length} webhooks to delete`);
+    // PHASE 2: Delete data in correct order (deepest dependencies first)
+    if (webhookIds.length > 0) {
+      await tx.delete(webhookDeliveries).where(inArray(webhookDeliveries.webhookId, webhookIds));
+    }
+    await tx.delete(webhooks).where(eq(webhooks.userId, userId));
 
-  // =========================================================================
-  // PHASE 2: Delete data in correct order (deepest dependencies first)
-  // =========================================================================
+    if (monitorIds.length > 0) {
+      await tx.delete(alerts).where(inArray(alerts.monitorId, monitorIds));
+      await tx.delete(results).where(inArray(results.monitorId, monitorIds));
+    }
 
-  // --- Webhook-related data ---
-  // 1. Delete webhook delivery logs (foreign key to webhooks)
-  if (webhookIds.length > 0) {
-    await pooledDb.delete(webhookDeliveries).where(inArray(webhookDeliveries.webhookId, webhookIds));
-    console.log(`[Account Deletion] Deleted webhook deliveries`);
-  }
+    if (audienceIds.length > 0) {
+      await tx.delete(audienceMonitors).where(inArray(audienceMonitors.audienceId, audienceIds));
+    }
 
-  // 2. Delete webhooks
-  await pooledDb.delete(webhooks).where(eq(webhooks.userId, userId));
-  console.log(`[Account Deletion] Deleted webhooks`);
+    await tx.delete(monitors).where(eq(monitors.userId, userId));
 
-  // --- Monitor-related data ---
-  // 3. Delete alerts (foreign key to monitors)
-  if (monitorIds.length > 0) {
-    await pooledDb.delete(alerts).where(inArray(alerts.monitorId, monitorIds));
-    console.log(`[Account Deletion] Deleted alerts`);
-  }
+    if (audienceIds.length > 0) {
+      await tx.delete(communities).where(inArray(communities.audienceId, audienceIds));
+    }
+    await tx.delete(audiences).where(eq(audiences.userId, userId));
 
-  // 6. Delete results (foreign key to monitors) - includes all historical mention data
-  if (monitorIds.length > 0) {
-    await pooledDb.delete(results).where(inArray(results.monitorId, monitorIds));
-    console.log(`[Account Deletion] Deleted results`);
-  }
+    await tx.delete(apiKeys).where(eq(apiKeys.userId, userId));
+    await tx.delete(aiLogs).where(eq(aiLogs.userId, userId));
+    await tx.delete(usage).where(eq(usage.userId, userId));
 
-  // 7. Delete audience-monitor junction records
-  if (audienceIds.length > 0) {
-    await pooledDb.delete(audienceMonitors).where(inArray(audienceMonitors.audienceId, audienceIds));
-    console.log(`[Account Deletion] Deleted audience-monitor relationships`);
-  }
+    // PHASE 3: Handle workspace ownership and membership
+    const { workspaces: workspacesTable, workspaceInvites } = await import("@/lib/db/schema");
+    const ownedWorkspaces = await tx
+      .select({ id: workspacesTable.id })
+      .from(workspacesTable)
+      .where(eq(workspacesTable.ownerId, userId));
 
-  // 8. Delete monitors
-  await pooledDb.delete(monitors).where(eq(monitors.userId, userId));
-  console.log(`[Account Deletion] Deleted monitors`);
+    for (const workspace of ownedWorkspaces) {
+      await tx.delete(workspaceInvites).where(eq(workspaceInvites.workspaceId, workspace.id));
+      await tx
+        .update(users)
+        .set({ workspaceId: null, workspaceRole: null })
+        .where(eq(users.workspaceId, workspace.id));
+      await tx.delete(workspacesTable).where(eq(workspacesTable.id, workspace.id));
+    }
 
-  // --- Audience-related data ---
-  // 9. Delete communities (foreign key to audiences)
-  if (audienceIds.length > 0) {
-    await pooledDb.delete(communities).where(inArray(communities.audienceId, audienceIds));
-    console.log(`[Account Deletion] Deleted communities`);
-  }
+    // PHASE 4: Delete the user record itself
+    await tx.delete(users).where(eq(users.id, userId));
+  });
 
-  // 10. Delete audiences
-  await pooledDb.delete(audiences).where(eq(audiences.userId, userId));
-  console.log(`[Account Deletion] Deleted audiences`);
-
-  // --- Integration data ---
-  // 11. Delete API keys (hashed keys and metadata)
-  await pooledDb.delete(apiKeys).where(eq(apiKeys.userId, userId));
-  console.log(`[Account Deletion] Deleted API keys`);
-
-  // --- Analytics and logs ---
-  // 13. Delete AI logs (AI analysis history, prompts, responses)
-  await pooledDb.delete(aiLogs).where(eq(aiLogs.userId, userId));
-  console.log(`[Account Deletion] Deleted AI logs`);
-
-  // 14. Delete usage records (API call counts, limits tracking)
-  await pooledDb.delete(usage).where(eq(usage.userId, userId));
-  console.log(`[Account Deletion] Deleted usage records`);
-
-  // =========================================================================
-  // PHASE 3: Handle workspace ownership and membership
-  // =========================================================================
-
-  // Check if this user owns any workspaces
-  const { workspaces: workspacesTable, workspaceInvites } = await import("@/lib/db/schema");
-  const ownedWorkspaces = await pooledDb
-    .select({ id: workspacesTable.id })
-    .from(workspacesTable)
-    .where(eq(workspacesTable.ownerId, userId));
-
-  for (const workspace of ownedWorkspaces) {
-    // Delete workspace invites first (foreign key to workspace)
-    await pooledDb.delete(workspaceInvites).where(eq(workspaceInvites.workspaceId, workspace.id));
-
-    // Remove workspace reference from all member users
-    await pooledDb
-      .update(users)
-      .set({ workspaceId: null, workspaceRole: null })
-      .where(eq(users.workspaceId, workspace.id));
-
-    // Delete the workspace
-    await pooledDb.delete(workspacesTable).where(eq(workspacesTable.id, workspace.id));
-    console.log(`[Account Deletion] Deleted owned workspace ${workspace.id}`);
-  }
-
-  // =========================================================================
-  // PHASE 4: Delete the user record itself
-  // =========================================================================
-
-  // 15. Finally, delete the user record (contains PII: email, name, etc.)
-  await pooledDb.delete(users).where(eq(users.id, userId));
-  console.log(`[Account Deletion] Deleted user record`);
-
-  console.log(`[Account Deletion] ✓ All data deleted for user ${userId}`);
+  console.log(`[Account Deletion] All data deleted for user ${userId}`);
 }
 
 // Export all functions

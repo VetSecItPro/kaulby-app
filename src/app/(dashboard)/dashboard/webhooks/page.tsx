@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { users, webhooks, webhookDeliveries } from "@/lib/db/schema";
-import { eq, desc, and, gte } from "drizzle-orm";
+import { eq, desc, and, gte, inArray } from "drizzle-orm";
 import { WebhookManagement } from "@/components/dashboard/webhook-management";
 import { getEffectiveUserId, isLocalDev } from "@/lib/dev-auth";
 
@@ -40,24 +40,21 @@ export default async function WebhooksPage() {
       orderBy: desc(webhooks.createdAt),
     });
 
-    // Get recent deliveries for all user's webhooks
-    // TODO(FIX-105): N+1 query pattern - should use a single query with inArray instead of looping
+    // Get recent deliveries for all user's webhooks in a single query
     if (userWebhooks.length > 0) {
       const webhookIds = userWebhooks.map(w => w.id);
       const oneDayAgo = new Date();
       oneDayAgo.setDate(oneDayAgo.getDate() - 1);
 
-      for (const webhookId of webhookIds) {
-        const deliveries = await db.query.webhookDeliveries.findMany({
-          where: and(
-            eq(webhookDeliveries.webhookId, webhookId),
-            gte(webhookDeliveries.createdAt, oneDayAgo)
-          ),
-          orderBy: desc(webhookDeliveries.createdAt),
-          limit: 10,
-        });
-        recentDeliveries.push(...deliveries);
-      }
+      const deliveries = await db.query.webhookDeliveries.findMany({
+        where: and(
+          inArray(webhookDeliveries.webhookId, webhookIds),
+          gte(webhookDeliveries.createdAt, oneDayAgo)
+        ),
+        orderBy: desc(webhookDeliveries.createdAt),
+        limit: 50,
+      });
+      recentDeliveries.push(...deliveries);
     }
   }
 

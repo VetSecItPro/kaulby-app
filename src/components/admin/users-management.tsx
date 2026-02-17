@@ -144,8 +144,6 @@ export function UsersManagement({
   };
 
   const handleBan = async (user: UserData) => {
-    // For now, banning would require adding a banned field to the schema
-    // This is a placeholder for the functionality
     await toggleUserBan(user.id);
     setActionDialog({ type: null, user: null });
     router.refresh();

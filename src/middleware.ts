@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { hasCsrfCookie, setCsrfCookie } from "@/lib/csrf";
 
-// TODO: Replace console.error() with structured logging across API routes to prevent PII leakage — FIX-005
 // PERF: Middleware bundle is 76.7kB — consider code-splitting non-essential logic — FIX-216
 
 // PERF: Cache env check — env vars don't change at runtime — FIX-021
@@ -95,10 +95,32 @@ export default async function middleware(request: NextRequest) {
 
   // Use Clerk middleware when configured
   const handler = await getClerkHandler();
-  return handler(request, {} as never);
+  const response = await handler(request, {} as never);
+
+  // SECURITY (FIX-009): Set CSRF cookie on authenticated dashboard responses
+  // Uses double-submit cookie pattern — API routes verify via X-CSRF-Token header.
+  // Server actions already have built-in Origin header CSRF protection in Next.js 14.
+  if (
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/manage")
+  ) {
+    const nextResponse =
+      response instanceof NextResponse
+        ? response
+        : NextResponse.next({ headers: response.headers });
+
+    if (!hasCsrfCookie(request)) {
+      setCsrfCookie(nextResponse);
+    }
+    return nextResponse;
+  }
+
+  return response;
 }
 
-// TODO: Consider CSRF tokens for critical state-changing routes (account deletion, role changes) — FIX-009
+// FIX-009: CSRF protection implemented — see src/lib/csrf.ts
+// Middleware sets kaulby_csrf cookie on /dashboard and /manage routes.
+// API routes can verify via verifyCsrfToken(request) for critical state changes.
 
 export const config = {
   matcher: [

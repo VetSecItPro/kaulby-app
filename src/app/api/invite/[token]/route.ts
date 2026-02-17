@@ -142,35 +142,36 @@ export async function POST(
       );
     }
 
-    // TODO(FIX-112): Workspace invite acceptance should use a database transaction to ensure atomicity
-    // Add user to workspace as editor (default role for new members)
-    // Use user.id for Clerk ID mismatch compatibility
-    await db
-      .update(users)
-      .set({
-        workspaceId: workspace.id,
-        workspaceRole: "editor",
-        updatedAt: new Date(),
-      })
-      .where(eq(users.id, user.id));
+    // FIX-112: Use transaction for atomicity — all three updates succeed or none do
+    await db.transaction(async (tx) => {
+      // Add user to workspace as editor (default role for new members)
+      await tx
+        .update(users)
+        .set({
+          workspaceId: workspace.id,
+          workspaceRole: "editor",
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, user.id));
 
-    // Update invite status
-    await db
-      .update(workspaceInvites)
-      .set({
-        status: "accepted",
-        acceptedAt: new Date(),
-      })
-      .where(eq(workspaceInvites.id, invite.id));
+      // Update invite status
+      await tx
+        .update(workspaceInvites)
+        .set({
+          status: "accepted",
+          acceptedAt: new Date(),
+        })
+        .where(eq(workspaceInvites.id, invite.id));
 
-    // Update workspace seat count
-    await db
-      .update(workspaces)
-      .set({
-        seatCount: workspace.seatCount + 1,
-        updatedAt: new Date(),
-      })
-      .where(eq(workspaces.id, workspace.id));
+      // Update workspace seat count
+      await tx
+        .update(workspaces)
+        .set({
+          seatCount: workspace.seatCount + 1,
+          updatedAt: new Date(),
+        })
+        .where(eq(workspaces.id, workspace.id));
+    });
 
     // Notify workspace owner
     try {

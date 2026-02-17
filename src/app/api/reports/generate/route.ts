@@ -1,7 +1,7 @@
 /**
  * Report Generation API
  *
- * POST - Generate analytics report (HTML or PDF-ready)
+ * POST - Generate analytics report (PDF or HTML)
  */
 
 import { NextResponse } from "next/server";
@@ -10,6 +10,7 @@ import { db, monitors, results } from "@/lib/db";
 import { eq, and, gte, inArray, desc, sql } from "drizzle-orm";
 import { getUserPlan } from "@/lib/limits";
 import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
+import { jsPDF } from "jspdf";
 
 // FIX-212: Add maxDuration for long-running report generation
 export const maxDuration = 60;
@@ -218,11 +219,14 @@ export async function POST(req: Request) {
       });
     }
 
-    // For PDF, return HTML that can be printed
-    // In production, you'd use a PDF library like @react-pdf/renderer or puppeteer
-    return new NextResponse(html, {
+    // Generate real PDF using jsPDF
+    const pdfBuffer = generatePdfReport(title, branding, reportData, enabledSections, days);
+
+    return new NextResponse(new Uint8Array(pdfBuffer), {
       headers: {
-        "Content-Type": "text/html",
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="kaulby-report.pdf"`,
+        "Cache-Control": "no-store",
       },
     });
   } catch (error) {
@@ -467,4 +471,246 @@ function generateHtmlReport(
 </body>
 </html>
   `.trim();
+}
+
+function generatePdfReport(
+  title: string,
+  branding: ReportConfig["branding"],
+  data: ReportData,
+  enabledSections: Set<string>,
+  days: number
+): Buffer {
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margin = 20;
+  const contentWidth = pageWidth - margin * 2;
+  let y = margin;
+
+  const companyName = branding.companyName || "Your Company";
+  const sentimentPercentage = data.totals.mentions > 0
+    ? Math.round((data.totals.positive / data.totals.mentions) * 100)
+    : 0;
+
+  // --- Header ---
+  doc.setFillColor(15, 23, 42); // slate-900
+  doc.rect(0, 0, pageWidth, 40, "F");
+  doc.setTextColor(20, 184, 166); // teal-500
+  doc.setFontSize(22);
+  doc.setFont("helvetica", "bold");
+  doc.text(title, margin, 18);
+  doc.setTextColor(148, 163, 184); // slate-400
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "normal");
+  doc.text(
+    `${companyName} — Last ${days} days — Generated ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}`,
+    margin,
+    28
+  );
+  y = 50;
+
+  // Helper: check if we need a new page
+  const ensureSpace = (needed: number) => {
+    if (y + needed > doc.internal.pageSize.getHeight() - 20) {
+      doc.addPage();
+      y = margin;
+    }
+  };
+
+  // Helper: draw section title
+  const drawSectionTitle = (text: string) => {
+    ensureSpace(20);
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(13);
+    doc.setFont("helvetica", "bold");
+    doc.text(text, margin, y);
+    y += 2;
+    doc.setDrawColor(229, 231, 235); // gray-200
+    doc.line(margin, y, pageWidth - margin, y);
+    y += 8;
+  };
+
+  // --- Executive Summary ---
+  if (enabledSections.has("executive_summary")) {
+    ensureSpace(30);
+    drawSectionTitle("Executive Summary");
+
+    doc.setTextColor(55, 65, 81); // gray-700
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    const summaryText = `Over the past ${days} days, you received ${data.totals.mentions.toLocaleString()} mentions across ${data.platforms.length} platform${data.platforms.length !== 1 ? "s" : ""}. ${
+      sentimentPercentage >= 60
+        ? "Sentiment is predominantly positive."
+        : sentimentPercentage <= 40
+          ? "There are sentiment concerns to address."
+          : "Sentiment is mixed."
+    }`;
+    const lines = doc.splitTextToSize(summaryText, contentWidth);
+    doc.text(lines, margin, y);
+    y += lines.length * 5 + 10;
+  }
+
+  // --- Mention Volume ---
+  if (enabledSections.has("mention_volume")) {
+    ensureSpace(50);
+    drawSectionTitle("Mention Overview");
+
+    // Stat boxes: 4 across
+    const boxW = (contentWidth - 12) / 4;
+    const statItems: Array<{ value: string; label: string; color: [number, number, number] }> = [
+      { value: data.totals.mentions.toLocaleString(), label: "Total Mentions", color: [15, 23, 42] },
+      { value: data.totals.positive.toLocaleString(), label: "Positive", color: [34, 197, 94] },
+      { value: data.totals.neutral.toLocaleString(), label: "Neutral", color: [100, 116, 139] },
+      { value: data.totals.negative.toLocaleString(), label: "Negative", color: [220, 38, 38] },
+    ];
+
+    for (let i = 0; i < statItems.length; i++) {
+      const x = margin + i * (boxW + 4);
+      doc.setFillColor(248, 250, 252); // slate-50
+      doc.roundedRect(x, y, boxW, 28, 3, 3, "F");
+
+      doc.setTextColor(statItems[i].color[0], statItems[i].color[1], statItems[i].color[2]);
+      doc.setFontSize(20);
+      doc.setFont("helvetica", "bold");
+      doc.text(statItems[i].value, x + boxW / 2, y + 13, { align: "center" });
+
+      doc.setTextColor(100, 116, 139);
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
+      doc.text(statItems[i].label, x + boxW / 2, y + 22, { align: "center" });
+    }
+    y += 36;
+  }
+
+  // --- Sentiment Analysis ---
+  if (enabledSections.has("sentiment_analysis")) {
+    ensureSpace(40);
+    drawSectionTitle("Sentiment Analysis");
+
+    const total = data.totals.positive + data.totals.neutral + data.totals.negative || 1;
+    const posW = (data.totals.positive / total) * contentWidth;
+    const neuW = (data.totals.neutral / total) * contentWidth;
+    const negW = (data.totals.negative / total) * contentWidth;
+
+    doc.setFillColor(34, 197, 94); // green
+    doc.rect(margin, y, posW, 8, "F");
+    doc.setFillColor(148, 163, 184); // gray
+    doc.rect(margin + posW, y, neuW, 8, "F");
+    doc.setFillColor(239, 68, 68); // red
+    doc.rect(margin + posW + neuW, y, negW, 8, "F");
+    y += 12;
+
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(34, 197, 94);
+    doc.text(`Positive: ${data.totals.positive}`, margin, y);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`Neutral: ${data.totals.neutral}`, margin + 50, y);
+    doc.setTextColor(239, 68, 68);
+    doc.text(`Negative: ${data.totals.negative}`, margin + 95, y);
+    y += 14;
+  }
+
+  // --- Platform Breakdown ---
+  if (enabledSections.has("platform_breakdown") && data.platforms.length > 0) {
+    ensureSpace(20 + data.platforms.length * 10);
+    drawSectionTitle("Platform Breakdown");
+
+    const maxMentions = Math.max(...data.platforms.map((p) => p.mentions));
+    for (const p of data.platforms) {
+      ensureSpace(12);
+      const barWidth = (p.mentions / maxMentions) * (contentWidth - 70);
+      doc.setFillColor(20, 184, 166); // teal-500
+      doc.rect(margin, y, barWidth, 6, "F");
+
+      doc.setTextColor(55, 65, 81);
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      const platformName = p.platform.charAt(0).toUpperCase() + p.platform.slice(1);
+      doc.text(platformName, margin + barWidth + 4, y + 5);
+
+      doc.setTextColor(20, 184, 166);
+      doc.text(
+        `${p.mentions} (${p.engagement.toLocaleString()} engagement)`,
+        pageWidth - margin,
+        y + 5,
+        { align: "right" }
+      );
+      y += 10;
+    }
+    y += 6;
+  }
+
+  // --- Category Analysis ---
+  if (enabledSections.has("category_analysis") && data.categories.length > 0) {
+    ensureSpace(20 + data.categories.length * 7);
+    drawSectionTitle("Category Analysis");
+
+    for (const c of data.categories) {
+      ensureSpace(8);
+      doc.setTextColor(55, 65, 81);
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      const catLabel = c.category.replace(/_/g, " ");
+      doc.text(`• ${catLabel}`, margin + 2, y);
+      doc.setTextColor(20, 184, 166);
+      doc.text(`${c.count}`, pageWidth - margin, y, { align: "right" });
+      y += 7;
+    }
+    y += 8;
+  }
+
+  // --- Top Posts ---
+  if (enabledSections.has("top_posts") && data.topPosts.length > 0) {
+    ensureSpace(30);
+    drawSectionTitle("Top Posts");
+
+    for (const p of data.topPosts.slice(0, 10)) {
+      ensureSpace(20);
+      const postTitle = p.title.length > 90 ? p.title.slice(0, 87) + "..." : p.title;
+
+      doc.setTextColor(15, 23, 42);
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      doc.text(postTitle, margin + 2, y, { maxWidth: contentWidth - 4 });
+      y += 5;
+
+      doc.setTextColor(100, 116, 139);
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
+      const platformName = p.platform.charAt(0).toUpperCase() + p.platform.slice(1);
+      const sentimentLabel = p.sentiment.charAt(0).toUpperCase() + p.sentiment.slice(1);
+      doc.text(
+        `${platformName} · ${sentimentLabel} · ${p.engagement.toLocaleString()} engagement`,
+        margin + 2,
+        y
+      );
+      y += 4;
+
+      doc.setTextColor(20, 184, 166);
+      doc.setFontSize(7);
+      const urlDisplay = p.url.length > 80 ? p.url.slice(0, 77) + "..." : p.url;
+      doc.text(urlDisplay, margin + 2, y);
+      y += 9;
+    }
+  }
+
+  // --- Footer on every page ---
+  const totalPages = doc.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    const footerY = doc.internal.pageSize.getHeight() - 12;
+    doc.setDrawColor(226, 232, 240);
+    doc.line(margin, footerY - 4, pageWidth - margin, footerY - 4);
+    doc.setTextColor(148, 163, 184);
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    doc.text("Generated by Kaulby · kaulbyapp.com", margin, footerY);
+    doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin, footerY, {
+      align: "right",
+    });
+  }
+
+  // Return as Buffer
+  const arrayBuffer = doc.output("arraybuffer");
+  return Buffer.from(arrayBuffer);
 }

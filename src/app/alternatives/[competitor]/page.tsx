@@ -592,7 +592,7 @@ const competitorData: Record<string, {
       { feature: "G2 Reviews", competitor: false, kaulby: true },
       { feature: "Yelp Reviews", competitor: false, kaulby: true },
       { feature: "Amazon Reviews", competitor: false, kaulby: true },
-      { feature: "CRM Integration", competitor: true, kaulby: "Coming Soon" },
+      { feature: "CRM Integration", competitor: true, kaulby: "HubSpot" },
       { feature: "Lead Scoring", competitor: true, kaulby: true },
       { feature: "AI Sentiment Analysis", competitor: false, kaulby: true },
       { feature: "Multi-Platform Support", competitor: false, kaulby: true },
@@ -608,7 +608,7 @@ const competitorData: Record<string, {
       },
       {
         question: "Does Kaulby have CRM integration like Subreddit Signals?",
-        answer: "CRM integration is coming soon to Kaulby. Currently, Kaulby offers webhook integrations that can connect to CRMs via Zapier or Make. Subreddit Signals has direct HubSpot/Salesforce integration today. If CRM sync is critical, consider your timeline.",
+        answer: "Kaulby offers HubSpot CRM integration, allowing you to sync leads directly. Additionally, Kaulby provides webhook integrations that can connect to other CRMs like Salesforce via Zapier or Make. Subreddit Signals also has direct HubSpot/Salesforce integration.",
       },
       {
         question: "Which is better for lead generation?",

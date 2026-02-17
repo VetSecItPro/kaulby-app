@@ -1,4 +1,3 @@
-// TODO: Add OpenGraph images for social sharing — FIX-304
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { MarketingHeader } from "@/components/shared/marketing-header";
@@ -45,11 +44,21 @@ export async function generateMetadata({
       publishedTime: article.publishedDate,
       authors: ["Kaulby"],
       tags: article.seoKeywords,
+      siteName: "Kaulby",
+      images: [
+        {
+          url: "https://kaulbyapp.com/og-image.png",
+          width: 1200,
+          height: 630,
+          alt: article.title,
+        },
+      ],
     },
     twitter: {
       card: "summary_large_image",
       title: article.title,
       description: article.description,
+      images: ["https://kaulbyapp.com/og-image.png"],
     },
     alternates: {
       canonical: url,

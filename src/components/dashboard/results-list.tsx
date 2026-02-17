@@ -1,8 +1,11 @@
 "use client";
 
-import { useState, useTransition, useMemo, useCallback } from "react";
+import { useState, useTransition, useMemo, useCallback, useEffect, useRef } from "react";
 import { ResultCard, ResultsFilterBar } from "./result-card";
 import { markAllResultsViewed } from "@/app/(dashboard)/dashboard/results/actions";
+import { Loader2 } from "lucide-react";
+
+const PAGE_SIZE = 20;
 
 type ConversationCategory = "pain_point" | "solution_request" | "advice_request" | "money_talk" | "hot_discussion";
 
@@ -37,6 +40,8 @@ export function ResultsList({ results, hasUnlimitedAi = true, highlightKeywords 
   const [categoryFilter, setCategoryFilter] = useState<ConversationCategory | null>(null);
   const [isPending, startTransition] = useTransition();
   const [allMarkedRead, setAllMarkedRead] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
 
   // Memoize count calculations - only recalculate when results or allMarkedRead changes
   const { unviewedCount, savedCount, hiddenCount, totalCount, categoryCounts } = useMemo(() => {
@@ -105,6 +110,33 @@ export function ResultsList({ results, hasUnlimitedAi = true, highlightKeywords 
     });
   }, []);
 
+  // Reset visible count when filters change
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [filter, categoryFilter]);
+
+  const totalFiltered = filteredResults.length;
+  const displayedResults = filteredResults.slice(0, visibleCount);
+  const hasMoreToShow = visibleCount < totalFiltered;
+
+  // IntersectionObserver for infinite scroll
+  useEffect(() => {
+    const sentinel = loadMoreRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && visibleCount < totalFiltered) {
+          setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, totalFiltered));
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [visibleCount, totalFiltered]);
+
   return (
     <div className="space-y-4">
       <ResultsFilterBar
@@ -138,15 +170,37 @@ export function ResultsList({ results, hasUnlimitedAi = true, highlightKeywords 
             </div>
           </div>
         ) : (
-          filteredResults.map((result, index) => (
-            <ResultCard
-              key={result.id}
-              result={result}
-              showHidden={filter === "hidden"}
-              isAiBlurred={!hasUnlimitedAi && index > 0}
-              highlightKeywords={highlightKeywords}
-            />
-          ))
+          <>
+            {displayedResults.map((result, index) => (
+              <ResultCard
+                key={result.id}
+                result={result}
+                showHidden={filter === "hidden"}
+                isAiBlurred={!hasUnlimitedAi && index > 0}
+                highlightKeywords={highlightKeywords}
+              />
+            ))}
+
+            {/* Sentinel element for IntersectionObserver */}
+            <div ref={loadMoreRef} className="h-1" />
+
+            {/* Loading spinner while more results are being revealed */}
+            {hasMoreToShow && (
+              <div className="flex items-center justify-center py-6">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                <span className="ml-2 text-sm text-muted-foreground">
+                  Loading more results...
+                </span>
+              </div>
+            )}
+
+            {/* End-of-list message */}
+            {!hasMoreToShow && totalFiltered > PAGE_SIZE && (
+              <p className="text-center text-sm text-muted-foreground py-4">
+                No more results
+              </p>
+            )}
+          </>
         )}
       </div>
     </div>

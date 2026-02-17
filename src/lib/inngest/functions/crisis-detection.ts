@@ -1,6 +1,8 @@
 import { inngest } from "../client";
-import { pooledDb, users, monitors, results } from "@/lib/db";
+import { pooledDb, users, monitors, results, alerts } from "@/lib/db";
 import { eq, and, gte, inArray, sql, desc } from "drizzle-orm";
+import { sendAlertEmail } from "@/lib/email";
+import { sendWebhookNotification } from "@/lib/notifications";
 
 interface CrisisAlert {
   userId: string;
@@ -203,19 +205,134 @@ export const detectCrisis = inngest.createFunction(
 
     // Send alerts
     if (crisisAlerts.length > 0) {
-      await step.run("send-crisis-alerts", async () => {
-        // Here you would send email/Slack notifications
-        // For now, we'll just log and could store in a crisis_alerts table
-        console.log(`Crisis alerts detected: ${crisisAlerts.length}`);
-
-        // You could also trigger email notifications via Resend
-        // or Slack webhooks for each alert
-        for (const alert of crisisAlerts) {
-          console.log(
-            `[${alert.severity.toUpperCase()}] ${alert.monitorName}: ${alert.message}`
-          );
+      // Group alerts by user to avoid sending multiple emails per user
+      const alertsByUser: Record<string, CrisisAlert[]> = {};
+      for (const alert of crisisAlerts) {
+        if (!alertsByUser[alert.userId]) {
+          alertsByUser[alert.userId] = [];
         }
-      });
+        alertsByUser[alert.userId].push(alert);
+      }
+
+      const userIds = Object.keys(alertsByUser);
+
+      // Send email notifications grouped by user
+      for (const userId of userIds) {
+        const userAlerts = alertsByUser[userId];
+        await step.run(`send-crisis-email-${userId}`, async () => {
+          const user = teamUsers.find((u) => u.id === userId);
+          if (!user?.email) {
+            console.warn(`No email found for user ${userId}, skipping crisis email`);
+            return;
+          }
+
+          // Build results array for sendAlertEmail from crisis details
+          const emailResults = userAlerts.flatMap((crisisAlert: CrisisAlert) => {
+            const severityLabel = crisisAlert.severity === "critical" ? "CRITICAL" : "WARNING";
+            // Include the top negative results if available
+            if (crisisAlert.details.topNegativeResults && crisisAlert.details.topNegativeResults.length > 0) {
+              return crisisAlert.details.topNegativeResults.map((r) => ({
+                title: `[${severityLabel}] ${r.title}`,
+                url: `https://kaulbyapp.com/dashboard/monitors/${crisisAlert.monitorId}`,
+                platform: r.platform,
+                sentiment: "negative" as const,
+                summary: crisisAlert.message,
+              }));
+            }
+            // Fallback: create a single entry for the alert itself
+            return [{
+              title: `[${severityLabel}] ${crisisAlert.monitorName}: ${crisisAlert.type.replace(/_/g, " ")}`,
+              url: `https://kaulbyapp.com/dashboard/monitors/${crisisAlert.monitorId}`,
+              platform: "multiple",
+              sentiment: "negative" as const,
+              summary: crisisAlert.message,
+            }];
+          });
+
+          try {
+            await sendAlertEmail({
+              to: user.email,
+              monitorName: `Crisis Alert: ${userAlerts.map((a: CrisisAlert) => a.monitorName).join(", ")}`,
+              userId: user.id,
+              results: emailResults,
+            });
+          } catch (error) {
+            console.error(`Failed to send crisis email to user ${userId}:`, error);
+          }
+        });
+      }
+
+      // Send webhook notifications (Slack/Discord) for each user's monitors
+      for (const userId of userIds) {
+        const userAlerts = alertsByUser[userId];
+        await step.run(`send-crisis-webhooks-${userId}`, async () => {
+          // Get all active Slack/webhook alerts for this user's monitors
+          const monitorIdSet: Record<string, boolean> = {};
+          userAlerts.forEach((a: CrisisAlert) => { monitorIdSet[a.monitorId] = true; });
+          const monitorIds = Object.keys(monitorIdSet);
+
+          const webhookAlerts = await pooledDb.query.alerts.findMany({
+            where: and(
+              inArray(alerts.monitorId, monitorIds),
+              eq(alerts.channel, "slack"),
+              eq(alerts.isActive, true)
+            ),
+          });
+
+          if (webhookAlerts.length === 0) return;
+
+          // Deduplicate webhook URLs to avoid sending duplicate messages
+          const sentWebhookUrls: Record<string, boolean> = {};
+
+          for (const webhookAlert of webhookAlerts) {
+            if (sentWebhookUrls[webhookAlert.destination]) continue;
+            sentWebhookUrls[webhookAlert.destination] = true;
+
+            // Find the crisis alerts relevant to this monitor
+            const relevantAlerts = userAlerts.filter(
+              (a: CrisisAlert) => a.monitorId === webhookAlert.monitorId
+            );
+
+            const webhookResults = relevantAlerts.flatMap((crisisAlert: CrisisAlert) => {
+              const severityLabel = crisisAlert.severity === "critical" ? "CRITICAL" : "WARNING";
+              if (crisisAlert.details.topNegativeResults && crisisAlert.details.topNegativeResults.length > 0) {
+                return crisisAlert.details.topNegativeResults.map((r) => ({
+                  id: r.id,
+                  title: `[${severityLabel}] ${r.title}`,
+                  sourceUrl: `https://kaulbyapp.com/dashboard/monitors/${crisisAlert.monitorId}`,
+                  platform: r.platform,
+                  sentiment: "negative" as const,
+                  aiSummary: crisisAlert.message,
+                }));
+              }
+              return [{
+                id: crisisAlert.monitorId,
+                title: `[${severityLabel}] ${crisisAlert.monitorName}: ${crisisAlert.type.replace(/_/g, " ")}`,
+                sourceUrl: `https://kaulbyapp.com/dashboard/monitors/${crisisAlert.monitorId}`,
+                platform: "multiple",
+                sentiment: "negative" as const,
+                aiSummary: crisisAlert.message,
+              }];
+            });
+
+            try {
+              const result = await sendWebhookNotification(webhookAlert.destination, {
+                monitorName: `Crisis Alert: ${relevantAlerts.map((a: CrisisAlert) => a.monitorName).join(", ")}`,
+                results: webhookResults,
+                dashboardUrl: `https://kaulbyapp.com/dashboard`,
+              });
+
+              if (!result.success) {
+                console.error(`Crisis webhook failed for ${result.type}: ${result.error}`);
+              }
+            } catch (error) {
+              console.error(`Failed to send crisis webhook to ${webhookAlert.destination}:`, error);
+            }
+          }
+        });
+      }
+
+      console.log(`Crisis alerts processed: ${crisisAlerts.length} alerts for ${userIds.length} users`);
     }
 
     return {

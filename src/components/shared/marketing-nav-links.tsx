@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
-const navLinks = [
+export const navLinks = [
   { href: "/articles", label: "Articles" },
   { href: "/pricing", label: "Pricing" },
 ];
@@ -22,7 +22,7 @@ export function MarketingNavLinks() {
             key={link.href}
             href={link.href}
             className={cn(
-              "text-sm transition-colors hidden sm:block",
+              "text-sm transition-colors hidden md:block",
               isActive
                 ? "text-foreground font-medium"
                 : "text-muted-foreground hover:text-foreground"

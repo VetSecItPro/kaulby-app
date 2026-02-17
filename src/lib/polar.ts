@@ -218,7 +218,7 @@ export const POLAR_PLANS: Record<"free" | "pro" | "team", PolarPlanDefinition> =
       "Webhooks",
       "5 team seats (+$15/user)",
       "Priority support",
-      "API access (coming soon)",
+      "API access",
     ],
     limits: {
       monitors: 30,

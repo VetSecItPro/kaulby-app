@@ -44,12 +44,7 @@ export async function GET() {
       return NextResponse.json({ workspace: null });
     }
 
-    // FIX-213: Get all members
-    // TODO: Consider potential N+1 query pattern - if workspace has many members,
-    // this could be optimized by using a join or by paginating members list.
-    // For now, team workspaces are limited to 5 seats, so this is acceptable.
-    // If seat limits increase significantly, consider refactoring to use a single
-    // query with JOIN or implement pagination for large teams.
+    // Get workspace members (bounded by 5-seat limit)
     const members = await db.query.users.findMany({
       where: eq(users.workspaceId, workspace.id),
     });

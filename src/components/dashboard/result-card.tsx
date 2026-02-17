@@ -98,10 +98,7 @@ const sentimentIcons = {
   neutral: <Minus className="h-4 w-4 text-gray-500" />,
 };
 
-// TODO: FIX-308 (LOW) - Consider using layout="position" on the motion.div to reduce CLS
-// This would constrain animations to transform/opacity only, avoiding layout shifts.
-// See: https://www.framer.com/motion/component/#layout-animations
-// Current implementation uses y-axis transform which can cause slight layout shifts during hover/initial animation
+// FIX-308: Using layout="position" to constrain animations to transform/opacity only, reducing CLS
 
 // Memoize to prevent re-renders when parent updates but props haven't changed
 export const ResultCard = memo(function ResultCard({
@@ -178,6 +175,7 @@ export const ResultCard = memo(function ResultCard({
 
   return (
     <motion.div
+      layout="position"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
