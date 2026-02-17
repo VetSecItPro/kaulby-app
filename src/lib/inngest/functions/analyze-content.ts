@@ -15,6 +15,7 @@ import {
 import { incrementAiCallsCount, getUserPlan } from "@/lib/limits";
 import { getPlanLimits } from "@/lib/plans";
 import { cache } from "@/lib/cache";
+import { matchDetectionKeywords } from "@/lib/detection-matcher";
 import crypto from "crypto";
 
 /**
@@ -183,22 +184,31 @@ export const analyzeContent = inngest.createFunction(
         subreddit: (metadata?.subreddit as string) || undefined,
       };
 
-      // Run comprehensive analysis and conversation categorization in parallel
-      const [comprehensiveResult, categoryResult] = await Promise.all([
+      // Check custom detection keywords BEFORE AI call (cost optimization)
+      const teamKeywordMatch = await step.run("check-detection-keywords-team", async () => {
+        return matchDetectionKeywords(contentToAnalyze, userId);
+      });
+
+      // Run comprehensive analysis and optionally conversation categorization in parallel
+      const [comprehensiveResult, teamCategoryResult] = await Promise.all([
         step.run("analyze-comprehensive", async () => {
           return analyzeComprehensive(contentToAnalyze, context);
         }),
-        step.run("categorize-conversation-team", async () => {
-          const metadata = result.metadata as Record<string, unknown> | null;
-          return categorizeConversation(contentToAnalyze, {
-            upvotes: (metadata?.upvotes as number) || (metadata?.score as number) || undefined,
-            commentCount: (metadata?.commentCount as number) || (metadata?.numComments as number) || undefined,
-          });
-        }),
+        teamKeywordMatch
+          ? Promise.resolve(null)
+          : step.run("categorize-conversation-team", async () => {
+              const metadata = result.metadata as Record<string, unknown> | null;
+              return categorizeConversation(contentToAnalyze, {
+                upvotes: (metadata?.upvotes as number) || (metadata?.score as number) || undefined,
+                commentCount: (metadata?.commentCount as number) || (metadata?.numComments as number) || undefined,
+              });
+            }),
       ]);
 
       const analysis = comprehensiveResult.result;
-      const category = categoryResult.result;
+      const category = teamKeywordMatch
+        ? { category: teamKeywordMatch.category, confidence: teamKeywordMatch.confidence, signals: [teamKeywordMatch.matchedKeyword], reasoning: "keyword_match" }
+        : teamCategoryResult!.result;
 
       // Update result with comprehensive AI analysis
       await step.run("update-result-team", async () => {
@@ -259,12 +269,13 @@ export const analyzeContent = inngest.createFunction(
         console.log(`[AI Analysis] Cached TEAM tier analysis (key: ${cacheKey.slice(-8)})`);
       });
 
-      // Log AI usage for Team tier (comprehensive + categorization)
+      // Log AI usage for Team tier (comprehensive + optional categorization)
       await step.run("log-ai-usage-team", async () => {
-        const totalCost = comprehensiveResult.meta.cost + categoryResult.meta.cost;
-        const totalPromptTokens = comprehensiveResult.meta.promptTokens + categoryResult.meta.promptTokens;
-        const totalCompletionTokens = comprehensiveResult.meta.completionTokens + categoryResult.meta.completionTokens;
-        const totalLatency = comprehensiveResult.meta.latencyMs + categoryResult.meta.latencyMs;
+        const aiCallCount = teamCategoryResult ? 2 : 1;
+        const totalCost = comprehensiveResult.meta.cost + (teamCategoryResult?.meta.cost || 0);
+        const totalPromptTokens = comprehensiveResult.meta.promptTokens + (teamCategoryResult?.meta.promptTokens || 0);
+        const totalCompletionTokens = comprehensiveResult.meta.completionTokens + (teamCategoryResult?.meta.completionTokens || 0);
+        const totalLatency = comprehensiveResult.meta.latencyMs + (teamCategoryResult?.meta.latencyMs || 0);
 
         await pooledDb.insert(aiLogs).values({
           userId,
@@ -276,7 +287,7 @@ export const analyzeContent = inngest.createFunction(
           traceId,
         });
 
-        await incrementAiCallsCount(userId, 2); // 2 AI calls: comprehensive + categorization
+        await incrementAiCallsCount(userId, aiCallCount);
       });
 
       await step.run("flush-langfuse", async () => {
@@ -316,8 +327,9 @@ export const analyzeContent = inngest.createFunction(
       return {
         tier: "team",
         analysis: comprehensiveResult.result,
-        conversationCategory: categoryResult.result,
-        totalCost: comprehensiveResult.meta.cost + categoryResult.meta.cost,
+        conversationCategory: category,
+        keywordMatchUsed: !!teamKeywordMatch,
+        totalCost: comprehensiveResult.meta.cost + (teamCategoryResult?.meta.cost || 0),
         model: comprehensiveResult.meta.model,
       };
     }
@@ -330,7 +342,12 @@ export const analyzeContent = inngest.createFunction(
     // Type assertion for metadata
     const metadata = result.metadata as Record<string, unknown> | null;
 
-    // Run all analyses in parallel
+    // Check custom detection keywords BEFORE AI call (cost optimization)
+    const keywordMatch = await step.run("check-detection-keywords", async () => {
+      return matchDetectionKeywords(contentToAnalyze, userId);
+    });
+
+    // Run AI analyses in parallel — skip categorization if keyword matched
     const [sentimentResult, painPointResult, summaryResult, categoryResult] = await Promise.all([
       step.run("analyze-sentiment", async () => {
         return analyzeSentiment(contentToAnalyze);
@@ -341,13 +358,22 @@ export const analyzeContent = inngest.createFunction(
       step.run("summarize-content", async () => {
         return summarizeContent(contentToAnalyze);
       }),
-      step.run("categorize-conversation", async () => {
-        return categorizeConversation(contentToAnalyze, {
-          upvotes: (metadata?.upvotes as number) || (metadata?.score as number) || undefined,
-          commentCount: (metadata?.commentCount as number) || (metadata?.numComments as number) || undefined,
-        });
-      }),
+      keywordMatch
+        ? Promise.resolve(null) // Skip AI categorization — keyword match found
+        : step.run("categorize-conversation", async () => {
+            return categorizeConversation(contentToAnalyze, {
+              upvotes: (metadata?.upvotes as number) || (metadata?.score as number) || undefined,
+              commentCount: (metadata?.commentCount as number) || (metadata?.numComments as number) || undefined,
+            });
+          }),
     ]);
+
+    // Resolve conversation category: keyword match takes precedence over AI
+    const resolvedCategory = keywordMatch
+      ? { category: keywordMatch.category, confidence: keywordMatch.confidence }
+      : categoryResult
+        ? { category: categoryResult.result.category, confidence: categoryResult.result.confidence }
+        : { category: "advice_request" as const, confidence: 0.3 };
 
     // Update result with AI analysis
     await step.run("update-result", async () => {
@@ -357,8 +383,8 @@ export const analyzeContent = inngest.createFunction(
           sentiment: sentimentResult.result.sentiment,
           sentimentScore: sentimentResult.result.score,
           painPointCategory: painPointResult.result.category,
-          conversationCategory: categoryResult.result.category,
-          conversationCategoryConfidence: categoryResult.result.confidence,
+          conversationCategory: resolvedCategory.category,
+          conversationCategoryConfidence: resolvedCategory.confidence,
           aiSummary: summaryResult.result.summary,
           // Store Pro tier analysis as JSON metadata
           aiAnalysis: JSON.stringify({
@@ -366,7 +392,12 @@ export const analyzeContent = inngest.createFunction(
             sentiment: sentimentResult.result,
             painPoint: painPointResult.result,
             summary: summaryResult.result,
-            conversationCategory: categoryResult.result,
+            conversationCategory: categoryResult?.result || {
+              category: resolvedCategory.category,
+              confidence: resolvedCategory.confidence,
+              source: "keyword_match",
+              matchedKeyword: keywordMatch?.matchedKeyword,
+            },
             analyzedAt: new Date().toISOString(),
           }),
         })
@@ -380,15 +411,20 @@ export const analyzeContent = inngest.createFunction(
         sentiment: sentimentResult.result.sentiment,
         sentimentScore: sentimentResult.result.score,
         painPointCategory: painPointResult.result.category,
-        conversationCategory: categoryResult.result.category,
-        conversationCategoryConfidence: categoryResult.result.confidence,
+        conversationCategory: resolvedCategory.category,
+        conversationCategoryConfidence: resolvedCategory.confidence,
         aiSummary: summaryResult.result.summary,
         aiAnalysis: JSON.stringify({
           tier: "pro",
           sentiment: sentimentResult.result,
           painPoint: painPointResult.result,
           summary: summaryResult.result,
-          conversationCategory: categoryResult.result,
+          conversationCategory: categoryResult?.result || {
+            category: resolvedCategory.category,
+            confidence: resolvedCategory.confidence,
+            source: "keyword_match",
+            matchedKeyword: keywordMatch?.matchedKeyword,
+          },
           analyzedAt: new Date().toISOString(),
         }),
       };
@@ -396,31 +432,32 @@ export const analyzeContent = inngest.createFunction(
       console.log(`[AI Analysis] Cached PRO tier analysis (key: ${cacheKey.slice(-8)})`);
     });
 
-    // Log AI usage
+    // Log AI usage (3 or 4 calls depending on keyword match)
     await step.run("log-ai-usage", async () => {
+      const aiCallCount = categoryResult ? 4 : 3;
       const totalCost =
         sentimentResult.meta.cost +
         painPointResult.meta.cost +
         summaryResult.meta.cost +
-        categoryResult.meta.cost;
+        (categoryResult?.meta.cost || 0);
 
       const totalLatency =
         sentimentResult.meta.latencyMs +
         painPointResult.meta.latencyMs +
         summaryResult.meta.latencyMs +
-        categoryResult.meta.latencyMs;
+        (categoryResult?.meta.latencyMs || 0);
 
       const totalPromptTokens =
         sentimentResult.meta.promptTokens +
         painPointResult.meta.promptTokens +
         summaryResult.meta.promptTokens +
-        categoryResult.meta.promptTokens;
+        (categoryResult?.meta.promptTokens || 0);
 
       const totalCompletionTokens =
         sentimentResult.meta.completionTokens +
         painPointResult.meta.completionTokens +
         summaryResult.meta.completionTokens +
-        categoryResult.meta.completionTokens;
+        (categoryResult?.meta.completionTokens || 0);
 
       await pooledDb.insert(aiLogs).values({
         userId,
@@ -432,7 +469,7 @@ export const analyzeContent = inngest.createFunction(
         traceId,
       });
 
-      await incrementAiCallsCount(userId, 4); // 4 AI calls: sentiment + pain point + summary + category
+      await incrementAiCallsCount(userId, aiCallCount);
     });
 
     // Flush Langfuse events
@@ -464,7 +501,7 @@ export const analyzeContent = inngest.createFunction(
               author: result.author,
               postedAt: result.postedAt,
               sentiment: sentimentResult.result.sentiment,
-              conversationCategory: categoryResult.result.category,
+              conversationCategory: resolvedCategory.category,
               aiSummary: summaryResult.result.summary,
               engagement: (metadata?.upvotes as number) || (metadata?.score as number) || undefined,
               commentCount: (metadata?.commentCount as number) || (metadata?.numComments as number) || undefined,
@@ -479,12 +516,13 @@ export const analyzeContent = inngest.createFunction(
       sentiment: sentimentResult.result,
       painPoint: painPointResult.result,
       summary: summaryResult.result,
-      conversationCategory: categoryResult.result,
+      conversationCategory: resolvedCategory,
+      keywordMatchUsed: !!keywordMatch,
       totalCost:
         sentimentResult.meta.cost +
         painPointResult.meta.cost +
         summaryResult.meta.cost +
-        categoryResult.meta.cost,
+        (categoryResult?.meta.cost || 0),
     };
   }
 );
