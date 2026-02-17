@@ -93,8 +93,8 @@ export function AudiencesList({ audiences, suggestions = [] }: AudiencesListProp
             </div>
             <h3 className="text-lg font-semibold mb-2">No audiences yet</h3>
             <p className="text-sm text-muted-foreground text-center mb-4 max-w-sm">
-              Create audiences to group your monitors and track different customer segments
-              like &quot;Power Users&quot;, &quot;Enterprise Prospects&quot;, or &quot;Churned Customers&quot;.
+              Create audiences to group your monitors and track different customer segments.
+              Choose from 12 pre-built templates or start from scratch.
             </p>
             <Link href="/dashboard/audiences/new">
               <Button>
