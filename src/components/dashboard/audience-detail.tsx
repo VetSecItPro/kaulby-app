@@ -36,6 +36,7 @@ import {
   Activity,
   BarChart3,
 } from "lucide-react";
+import { ExportDialog } from "./export-dialog";
 import { getPlatformDisplayName, getPlatformBadgeColor, getPlatformBarColor } from "@/lib/platform-utils";
 import type { Audience, Monitor, Result } from "@/lib/db/schema";
 
@@ -65,6 +66,8 @@ interface AudienceDetailProps {
   results: Result[];
   availableMonitors: Monitor[];
   stats?: AudienceDetailStats;
+  /** Whether user has export access (Pro+) */
+  hasExportAccess?: boolean;
 }
 
 /**
@@ -193,6 +196,7 @@ export function AudienceDetail({
   results,
   availableMonitors,
   stats,
+  hasExportAccess = false,
 }: AudienceDetailProps) {
   const router = useRouter();
   const [isAddingMonitor, setIsAddingMonitor] = useState(false);
@@ -274,12 +278,18 @@ export function AudienceDetail({
             </div>
           </div>
         </div>
-        <Link href={`/dashboard/audiences/${audience.id}/edit`}>
-          <Button variant="outline">
-            <Pencil className="h-4 w-4 mr-2" />
-            Edit
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <ExportDialog
+            hasExportAccess={hasExportAccess}
+            triggerLabel="Export"
+          />
+          <Link href={`/dashboard/audiences/${audience.id}/edit`}>
+            <Button variant="outline">
+              <Pencil className="h-4 w-4 mr-2" />
+              Edit
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Enhanced Stats */}
