@@ -699,6 +699,8 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   apiKeys: many(apiKeys),
   notifications: many(notifications),
   detectionKeywords: many(userDetectionKeywords),
+  bookmarkCollections: many(bookmarkCollections),
+  bookmarks: many(bookmarks),
 }));
 
 export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
@@ -842,6 +844,64 @@ export const userDetectionKeywordsRelations = relations(userDetectionKeywords, (
   }),
 }));
 
+// Bookmark Collections - user-created folders for organizing saved results
+export const bookmarkCollections = pgTable("bookmark_collections", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  color: text("color"), // Hex color for UI
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("bookmark_collections_user_id_idx").on(table.userId),
+]);
+
+// Bookmarks - link results to collections
+export const bookmarks = pgTable("bookmarks", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  resultId: uuid("result_id")
+    .notNull()
+    .references(() => results.id, { onDelete: "cascade" }),
+  collectionId: uuid("collection_id")
+    .references(() => bookmarkCollections.id, { onDelete: "cascade" }),
+  note: text("note"), // Optional note about why this was bookmarked
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("bookmarks_user_id_idx").on(table.userId),
+  index("bookmarks_collection_id_idx").on(table.collectionId),
+  index("bookmarks_result_id_idx").on(table.resultId),
+  // Prevent duplicate bookmarks of same result by same user
+  index("bookmarks_user_result_idx").on(table.userId, table.resultId),
+]);
+
+export const bookmarkCollectionsRelations = relations(bookmarkCollections, ({ one, many }) => ({
+  user: one(users, {
+    fields: [bookmarkCollections.userId],
+    references: [users.id],
+  }),
+  bookmarks: many(bookmarks),
+}));
+
+export const bookmarksRelations = relations(bookmarks, ({ one }) => ({
+  user: one(users, {
+    fields: [bookmarks.userId],
+    references: [users.id],
+  }),
+  result: one(results, {
+    fields: [bookmarks.resultId],
+    references: [results.id],
+  }),
+  collection: one(bookmarkCollections, {
+    fields: [bookmarks.collectionId],
+    references: [bookmarkCollections.id],
+  }),
+}));
+
 // Type exports
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -851,3 +911,5 @@ export type Result = typeof results.$inferSelect;
 export type SavedSearch = typeof savedSearches.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
 export type UserDetectionKeyword = typeof userDetectionKeywords.$inferSelect;
+export type BookmarkCollection = typeof bookmarkCollections.$inferSelect;
+export type Bookmark = typeof bookmarks.$inferSelect;
