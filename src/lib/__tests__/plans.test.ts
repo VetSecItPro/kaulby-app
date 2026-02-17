@@ -88,10 +88,11 @@ describe("plans", () => {
       expect(limits.aiFeatures.comprehensiveAnalysis).toBe(false);
     });
 
-    it("pro plan has full AI analysis but no comprehensive", () => {
+    it("pro plan has full AI analysis and Ask but no comprehensive", () => {
       const limits = getPlanLimits("pro");
       expect(limits.aiFeatures.unlimitedAiAnalysis).toBe(true);
       expect(limits.aiFeatures.painPointCategories).toBe(true);
+      expect(limits.aiFeatures.askFeature).toBe(true);
       expect(limits.aiFeatures.comprehensiveAnalysis).toBe(false);
     });
 

@@ -1,8 +1,9 @@
 import { redirect, notFound } from "next/navigation";
-import { db, audiences, audienceMonitors, results, monitors } from "@/lib/db";
+import { db, audiences, audienceMonitors, results, monitors, users } from "@/lib/db";
 import { eq, and, inArray, desc, gte } from "drizzle-orm";
 import { AudienceDetail, type AudienceDetailStats } from "@/components/dashboard/audience-detail";
 import { getEffectiveUserId, isLocalDev } from "@/lib/dev-auth";
+import { getPlanLimits, type PlanKey } from "@/lib/plans";
 
 interface AudiencePageProps {
   params: Promise<{ id: string }>;
@@ -176,6 +177,16 @@ export default async function AudiencePage({ params }: AudiencePageProps) {
     (m) => !monitorIds.includes(m.id)
   );
 
+  // Check export access
+  const user = userId
+    ? await db.query.users.findFirst({
+        where: eq(users.id, userId),
+        columns: { subscriptionStatus: true },
+      })
+    : null;
+  const plan = (user?.subscriptionStatus || "free") as PlanKey;
+  const hasExportAccess = getPlanLimits(plan).exports.csv;
+
   return (
     <AudienceDetail
       audience={audience}
@@ -183,6 +194,7 @@ export default async function AudiencePage({ params }: AudiencePageProps) {
       results={recentResults}
       availableMonitors={availableMonitors}
       stats={stats}
+      hasExportAccess={hasExportAccess}
     />
   );
 }
