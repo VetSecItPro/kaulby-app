@@ -78,7 +78,7 @@ const nextConfig = {
           },
           {
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' https://clerk.kaulbyapp.com https://*.clerk.accounts.dev https://challenges.cloudflare.com https://us.i.posthog.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.clerk.com https://img.clerk.com; connect-src 'self' https://*.clerk.accounts.dev https://clerk.kaulbyapp.com https://us.i.posthog.com https://api.polar.sh; frame-src https://challenges.cloudflare.com https://*.clerk.accounts.dev; frame-ancestors 'none';",
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' https://clerk.kaulbyapp.com https://*.clerk.accounts.dev https://challenges.cloudflare.com https://us.i.posthog.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.clerk.com https://img.clerk.com; connect-src 'self' https://*.clerk.accounts.dev https://clerk.kaulbyapp.com https://us.i.posthog.com https://api.polar.sh; frame-src https://challenges.cloudflare.com https://*.clerk.accounts.dev; worker-src 'self' blob:; frame-ancestors 'none';",
           },
         ],
       },
