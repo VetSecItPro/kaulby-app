@@ -40,6 +40,7 @@ async function initPostHog() {
         capture_pageleave: true,
         persistence: "localStorage",
         autocapture: false,
+        advanced_disable_feature_flags: true,
       });
     }
   } catch {
