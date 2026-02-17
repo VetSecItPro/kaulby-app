@@ -5,6 +5,7 @@ import { MobileSettings } from "@/components/mobile/mobile-settings";
 import { TeamSettings } from "@/components/dashboard/team-settings";
 import { ApiKeysSettings } from "@/components/dashboard/api-keys-settings";
 import { IntegrationsSettings, DEFAULT_INTEGRATIONS } from "@/components/dashboard/integrations-settings";
+import { DetectionKeywordsSettings } from "@/components/dashboard/detection-keywords-settings";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -587,6 +588,9 @@ export function ResponsiveSettings({
           }}
         />
       </div>
+
+      {/* Detection Keywords - Pro+ */}
+      <DetectionKeywordsSettings subscriptionStatus={subscriptionStatus} />
 
       {/* Your Data */}
       <Card>

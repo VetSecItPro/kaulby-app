@@ -698,6 +698,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   webhooks: many(webhooks),
   apiKeys: many(apiKeys),
   notifications: many(notifications),
+  detectionKeywords: many(userDetectionKeywords),
 }));
 
 export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
@@ -816,6 +817,31 @@ export const notificationsRelations = relations(notifications, ({ one }) => ({
   monitor: one(monitors, { fields: [notifications.monitorId], references: [monitors.id] }),
 }));
 
+// User Detection Keywords - custom keyword overrides per conversation category
+// Users can customize which keywords trigger each detection category (Pro+)
+export const userDetectionKeywords = pgTable("user_detection_keywords", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  category: text("category").notNull(), // "pain_point" | "solution_request" | "advice_request" | "money_talk" | "hot_discussion"
+  keywords: text("keywords").array().notNull(), // User's custom keywords for this category
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("user_detection_keywords_user_id_idx").on(table.userId),
+  // Ensure one row per user+category
+  index("user_detection_keywords_user_category_idx").on(table.userId, table.category),
+]);
+
+export const userDetectionKeywordsRelations = relations(userDetectionKeywords, ({ one }) => ({
+  user: one(users, {
+    fields: [userDetectionKeywords.userId],
+    references: [users.id],
+  }),
+}));
+
 // Type exports
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -824,3 +850,4 @@ export type Monitor = typeof monitors.$inferSelect;
 export type Result = typeof results.$inferSelect;
 export type SavedSearch = typeof savedSearches.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
+export type UserDetectionKeyword = typeof userDetectionKeywords.$inferSelect;
