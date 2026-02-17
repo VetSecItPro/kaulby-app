@@ -19,6 +19,7 @@ import {
   Lightbulb,
   Compass,
   Sparkles,
+  Bookmark,
 } from "lucide-react";
 import type { WorkspaceRole } from "@/lib/permissions";
 
@@ -47,6 +48,11 @@ const sidebarLinks = [
     href: "/dashboard/results",
     icon: MessageSquare,
     tourId: "results",
+  },
+  {
+    title: "Bookmarks",
+    href: "/dashboard/bookmarks",
+    icon: Bookmark,
   },
   {
     title: "Analytics",
