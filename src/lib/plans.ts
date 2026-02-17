@@ -143,7 +143,7 @@ export const PLANS: Record<"free" | "pro" | "enterprise", PlanDefinition> = {
       aiFeatures: {
         sentiment: true,
         painPointCategories: true,
-        askFeature: false,
+        askFeature: true, // Pro users get Ask Q&A (rate-limited via token budget)
         unlimitedAiAnalysis: true,
         comprehensiveAnalysis: false, // Pro tier: uses Gemini 2.5 Flash (3 separate calls)
       },

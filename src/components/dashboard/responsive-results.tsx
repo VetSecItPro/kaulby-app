@@ -744,6 +744,7 @@ function DesktopResultsView(props: ViewProps) {
                   results={filteredResults}
                   hasUnlimitedAi={planInfo?.hasUnlimitedAi ?? true}
                   highlightKeywords={allKeywords}
+                  hasExportAccess={canExport}
                 />
 
                 {/* Hidden Results Banner (after visible results, before pagination) */}

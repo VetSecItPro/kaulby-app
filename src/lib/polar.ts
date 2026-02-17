@@ -183,7 +183,7 @@ export const POLAR_PLANS: Record<"free" | "pro" | "team", PolarPlanDefinition> =
       aiFeatures: {
         sentiment: true,
         painPointCategories: true,
-        askFeature: false,
+        askFeature: true, // Pro users get Ask Q&A (rate-limited via token budget)
         unlimitedAiAnalysis: true,
         comprehensiveAnalysis: false,
       },

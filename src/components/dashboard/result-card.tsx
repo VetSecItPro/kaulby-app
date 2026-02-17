@@ -42,6 +42,7 @@ import {
   toggleResultHidden,
 } from "@/app/(dashboard)/dashboard/results/actions";
 import { getPlatformBadgeColor, getPlatformDisplayName } from "@/lib/platform-utils";
+import { ExportDialog } from "./export-dialog";
 import { BlurredAiAnalysis } from "./upgrade-prompt";
 import { LeadScoreBadge } from "./lead-score-badge";
 import { calculateLeadScore, type LeadScoreFactors } from "@/lib/ai/lead-scoring";
@@ -378,6 +379,10 @@ interface ResultsFilterBarProps {
   onLeadScoreFilterChange?: (filter: LeadScoreFilter) => void;
   /** Counts for each lead score tier */
   leadScoreCounts?: { hot: number; warm: number; cool: number; cold: number };
+  /** Whether user has export access (Pro+) */
+  hasExportAccess?: boolean;
+  /** Optional monitor ID for scoped export */
+  exportMonitorId?: string;
 }
 
 // Category filter chips - GummySearch-style quick filtering
@@ -415,6 +420,8 @@ export const ResultsFilterBar = memo(function ResultsFilterBar({
   leadScoreFilter,
   onLeadScoreFilterChange,
   leadScoreCounts,
+  hasExportAccess,
+  exportMonitorId,
 }: ResultsFilterBarProps) {
   // Show match count header when filtering
   const showMatchCount = filteredCount !== undefined && filteredCount !== totalCount;
@@ -487,21 +494,31 @@ export const ResultsFilterBar = memo(function ResultsFilterBar({
           </Button>
         </div>
 
-        {unviewedCount > 0 && onMarkAllRead && (
-          <Button
-            size="sm"
-            onClick={onMarkAllRead}
-            disabled={isPending}
-            className="bg-teal-500 text-black hover:bg-teal-600"
-          >
-            {isPending ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Check className="h-4 w-4 mr-2" />
-            )}
-            Mark all as read
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {hasExportAccess !== undefined && (
+            <ExportDialog
+              hasExportAccess={hasExportAccess}
+              monitorId={exportMonitorId}
+              triggerLabel="Export"
+              compact
+            />
+          )}
+          {unviewedCount > 0 && onMarkAllRead && (
+            <Button
+              size="sm"
+              onClick={onMarkAllRead}
+              disabled={isPending}
+              className="bg-teal-500 text-black hover:bg-teal-600"
+            >
+              {isPending ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Check className="h-4 w-4 mr-2" />
+              )}
+              Mark all as read
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Category filter chips - collapsed on mobile to reduce cognitive load */}

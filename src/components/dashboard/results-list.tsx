@@ -33,9 +33,13 @@ interface ResultsListProps {
   hasUnlimitedAi?: boolean;
   /** Keywords to highlight in results */
   highlightKeywords?: string[];
+  /** Whether user has export access (Pro+) */
+  hasExportAccess?: boolean;
+  /** Optional monitor ID for scoped export */
+  exportMonitorId?: string;
 }
 
-export function ResultsList({ results, hasUnlimitedAi = true, highlightKeywords = [] }: ResultsListProps) {
+export function ResultsList({ results, hasUnlimitedAi = true, highlightKeywords = [], hasExportAccess, exportMonitorId }: ResultsListProps) {
   const [filter, setFilter] = useState<"all" | "unread" | "saved" | "hidden">("all");
   const [categoryFilter, setCategoryFilter] = useState<ConversationCategory | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -153,6 +157,8 @@ export function ResultsList({ results, hasUnlimitedAi = true, highlightKeywords 
         isPending={isPending}
         filteredCount={filteredResults.length}
         searchKeywords={highlightKeywords}
+        hasExportAccess={hasExportAccess}
+        exportMonitorId={exportMonitorId}
       />
 
       <div className="grid gap-4">
