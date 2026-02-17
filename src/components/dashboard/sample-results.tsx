@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,8 @@ import {
   ThumbsUp,
   Sparkles,
   ArrowRight,
-  Zap
+  Zap,
+  X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getPlatformDisplayName } from "@/lib/platform-utils";
@@ -62,7 +64,22 @@ interface SampleResultsPreviewProps {
   className?: string;
 }
 
+const DISMISSED_KEY = "kaulby-sample-results-dismissed";
+
 export function SampleResultsPreview({ className }: SampleResultsPreviewProps) {
+  const [dismissed, setDismissed] = useState(true); // Start hidden to avoid flash
+
+  useEffect(() => {
+    setDismissed(localStorage.getItem(DISMISSED_KEY) === "true");
+  }, []);
+
+  const handleDismiss = () => {
+    setDismissed(true);
+    localStorage.setItem(DISMISSED_KEY, "true");
+  };
+
+  if (dismissed) return null;
+
   return (
     <div className={cn("space-y-4", className)}>
       {/* Header */}
@@ -76,9 +93,20 @@ export function SampleResultsPreview({ className }: SampleResultsPreviewProps) {
             Here&apos;s what your dashboard will look like with real data
           </p>
         </div>
-        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
-          Demo Data
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+            Demo Data
+          </Badge>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-muted-foreground hover:text-foreground"
+            onClick={handleDismiss}
+            aria-label="Dismiss demo data"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Sample Results */}
