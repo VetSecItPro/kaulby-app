@@ -4,6 +4,7 @@ import { ReactNode, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { OnboardingProvider } from "./onboarding-provider";
 import { PageTransition } from "@/components/shared/motion";
+import { PostHogIdentify } from "@/components/providers/posthog-provider";
 import { useAutoTimezone } from "@/hooks/use-auto-timezone";
 
 interface DashboardClientWrapperProps {
@@ -46,6 +47,7 @@ export function DashboardClientWrapper({
 
   return (
     <OnboardingProvider isNewUser={isNewUser} userName={userName} userPlan={userPlan}>
+      <PostHogIdentify />
       <PageTransition>{children}</PageTransition>
     </OnboardingProvider>
   );

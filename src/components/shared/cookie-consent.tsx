@@ -35,12 +35,12 @@ async function initPostHog() {
     const posthog = (await import("posthog-js")).default;
     if (!posthog.__loaded) {
       posthog.init(key, {
-        api_host: host || "https://us.posthog.com",
+        api_host: host || "https://us.i.posthog.com",
+        ui_host: "https://us.posthog.com",
         capture_pageview: true,
         capture_pageleave: true,
         persistence: "localStorage",
         autocapture: false,
-        advanced_disable_feature_flags: true,
       });
     }
   } catch {
