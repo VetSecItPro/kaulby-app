@@ -1,10 +1,5 @@
 "use client";
 
-// TODO: FIX-321 (LOW) - Upgrade prompts should show current usage vs. limit
-// Example: "You've used 3/3 monitors" or "1/3 keywords remaining"
-// This helps users understand why they're hitting limits and makes upgrade more compelling.
-// Pass usage data as props to UpgradePromptDialog, ConversionUpgradeModal, and UpgradeCard.
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +17,13 @@ import { PLANS, PlanKey } from "@/lib/plans";
 import type { UpgradePrompt } from "@/lib/limits";
 import Link from "next/link";
 
+/** Optional usage data to show current vs limit context in upgrade prompts */
+export interface UsageInfo {
+  current: number;
+  limit: number;
+  label: string; // e.g., "monitors", "keywords"
+}
+
 interface UpgradePromptProps {
   isOpen: boolean;
   onClose: () => void;
@@ -30,6 +32,7 @@ interface UpgradePromptProps {
   currentPlan?: PlanKey;
   suggestedPlan: PlanKey;
   feature?: string;
+  usage?: UsageInfo;
 }
 
 export function UpgradePromptDialog({
@@ -38,6 +41,7 @@ export function UpgradePromptDialog({
   title,
   description,
   suggestedPlan,
+  usage,
 }: UpgradePromptProps) {
   const plan = PLANS[suggestedPlan];
 
@@ -55,6 +59,25 @@ export function UpgradePromptDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          {/* FIX-321: Usage vs limit display */}
+          {usage && (
+            <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-amber-800 dark:text-amber-200 font-medium">
+                  {usage.current}/{usage.limit} {usage.label} used
+                </span>
+                <span className="text-amber-600 dark:text-amber-400 text-xs">
+                  {usage.current >= usage.limit ? "Limit reached" : `${usage.limit - usage.current} remaining`}
+                </span>
+              </div>
+              <div className="mt-2 h-2 rounded-full bg-amber-200 dark:bg-amber-800 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-amber-500 transition-all"
+                  style={{ width: `${Math.min(100, (usage.current / usage.limit) * 100)}%` }}
+                />
+              </div>
+            </div>
+          )}
           <div className="rounded-lg border bg-muted/50 p-4">
             <div className="flex items-center justify-between mb-3">
               <span className="font-semibold">{plan.name} Plan</span>

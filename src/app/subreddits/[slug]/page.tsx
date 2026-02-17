@@ -1,10 +1,3 @@
-// TODO: FIX-325 (LOW) - Add breadcrumb navigation for deep SEO pages
-// This page and other programmatic SEO pages (e.g., /articles/[slug]) should include
-// breadcrumbs for better UX and SEO. Example structure:
-// Home > Subreddits > r/startups
-// Implement with JSON-LD BreadcrumbList schema + visual breadcrumb component
-// See: https://developers.google.com/search/docs/appearance/structured-data/breadcrumb
-
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { notFound } from "next/navigation";
@@ -343,8 +336,39 @@ export default async function SubredditPage({
 
   const relatedSubreddits = getRelatedSubreddits(normalizedSlug, meta.industry);
 
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: "https://kaulbyapp.com",
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Subreddits",
+        item: "https://kaulbyapp.com/subreddits",
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: `r/${normalizedSlug}`,
+        item: `https://kaulbyapp.com/subreddits/${normalizedSlug}`,
+      },
+    ],
+  };
+
   return (
     <div className="min-h-screen bg-background">
+      {/* Breadcrumb JSON-LD */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
+
       <MarketingHeader />
 
       {/* Hero Section */}

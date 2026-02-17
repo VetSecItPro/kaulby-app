@@ -83,7 +83,7 @@ const featureComparison = [
   { feature: "Data Export (CSV/JSON)", gummysearch: true, kaulby: true },
   { feature: "Audience Grouping", gummysearch: true, kaulby: true },
   { feature: "Team Collaboration", gummysearch: "Enterprise", kaulby: "Team Plan" },
-  { feature: "API Access", gummysearch: "Enterprise", kaulby: "Coming Soon" },
+  { feature: "API Access", gummysearch: "Enterprise", kaulby: "Team Plan" },
   { feature: "Active Development", gummysearch: false, kaulby: true },
 ];
 

@@ -9,19 +9,16 @@ const nextConfig = {
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048],
     imageSizes: [16, 32, 48, 64, 96, 128, 256],
     minimumCacheTTL: 31536000, // 1 year cache for optimized images
-    // FIX-217: TODO: Add remotePatterns for external image domains
-    // When adding user avatars, platform logos, or other external images, configure:
-    // remotePatterns: [
-    //   {
-    //     protocol: 'https',
-    //     hostname: 'img.clerk.com', // Clerk user avatars
-    //   },
-    //   {
-    //     protocol: 'https',
-    //     hostname: 'avatars.githubusercontent.com', // GitHub avatars
-    //   },
-    //   // Add other external image sources as needed
-    // ],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'img.clerk.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'avatars.githubusercontent.com',
+      },
+    ],
   },
 
   // Aggressive caching headers

@@ -44,13 +44,7 @@ export async function GET(request: NextRequest) {
       conditions.push(lt(activityLogs.createdAt, new Date(cursor)));
     }
 
-    // FIX-220: Fetch activity logs with user info
-    // TODO: Verify that the composite index on (workspaceId, createdAt DESC) exists
-    // and is being used efficiently. Check database query plan to ensure this query
-    // uses the index rather than doing a full table scan. Consider adding EXPLAIN
-    // output to logs during development to verify index usage.
-    // If index is missing, add: CREATE INDEX idx_activity_logs_workspace_created
-    // ON activity_logs(workspace_id, created_at DESC);
+    // FIX-220: Composite index activity_logs_workspace_created_idx covers this query
     const logs = await db.query.activityLogs.findMany({
       where: and(...conditions),
       orderBy: [desc(activityLogs.createdAt)],

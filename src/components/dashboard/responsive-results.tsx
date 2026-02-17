@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { MobileResults } from "@/components/mobile/mobile-results";
 import { ResultsList } from "./results-list";
 import { ResultsSidebar } from "./results-sidebar";
@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { HiddenResultsBanner, RefreshDelayBanner } from "./upgrade-prompt";
 import { EmptyState, ScanningState } from "./empty-states";
-import { Download, Lock, SlidersHorizontal, X, Loader2, ChevronDown } from "lucide-react";
+import { Download, Lock, SlidersHorizontal, X, Loader2 } from "lucide-react";
 import { SavedSearches } from "./saved-searches";
 import { SearchBuilder } from "./search-builder";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -140,6 +140,7 @@ function MobileResultsView({
   const [cursor, setCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(totalPages > 1);
   const [loadingMore, setLoadingMore] = useState(false);
+  const mobileLoadMoreRef = useRef<HTMLDivElement>(null);
 
   // Combine initial results with loaded results
   const allResults = useMemo(() => {
@@ -182,6 +183,24 @@ function MobileResultsView({
       setLoadingMore(false);
     }
   }, [loadingMore, hasMore, cursor, loadedResults, visibleResults]);
+
+  // IntersectionObserver for auto-loading more results (mobile)
+  useEffect(() => {
+    const sentinel = mobileLoadMoreRef.current;
+    if (!sentinel || !hasMore || loadingMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          handleLoadMore();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, loadingMore, handleLoadMore]);
 
   // Apply filters
   const filteredResults = useMemo(() => {
@@ -302,32 +321,19 @@ function MobileResultsView({
         planInfo={planInfo}
       />
 
-      {/* Load More Button */}
+      {/* Infinite scroll sentinel */}
+      <div ref={mobileLoadMoreRef} className="h-1" />
       {hasMore && (
-        <div className="flex justify-center pt-4 pb-8">
-          <Button
-            variant="outline"
-            onClick={handleLoadMore}
-            disabled={loadingMore}
-            className="gap-2"
-          >
-            {loadingMore ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Loading...
-              </>
-            ) : (
-              <>
-                <ChevronDown className="h-4 w-4" />
-                Load more
-              </>
-            )}
-          </Button>
+        <div className="flex items-center justify-center py-6 pb-8">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          <span className="ml-2 text-sm text-muted-foreground">
+            Loading more results...
+          </span>
         </div>
       )}
       {!hasMore && allResults.length > 0 && (
         <p className="text-center text-sm text-muted-foreground py-4">
-          You&apos;ve reached the end
+          No more results
         </p>
       )}
     </div>
@@ -353,6 +359,7 @@ function DesktopResultsView(props: ViewProps) {
   const [cursor, setCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(totalPages > 1);
   const [loadingMore, setLoadingMore] = useState(false);
+  const desktopLoadMoreRef = useRef<HTMLDivElement>(null);
 
   // Combine initial results with loaded results
   const allResults = useMemo(() => {
@@ -397,6 +404,24 @@ function DesktopResultsView(props: ViewProps) {
       setLoadingMore(false);
     }
   }, [loadingMore, hasMore, cursor, loadedResults, visibleResults]);
+
+  // IntersectionObserver for auto-loading more results (desktop)
+  useEffect(() => {
+    const sentinel = desktopLoadMoreRef.current;
+    if (!sentinel || !hasMore || loadingMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          handleLoadMore();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, loadingMore, handleLoadMore]);
 
   const canExport = planInfo?.plan === "pro" || planInfo?.plan === "enterprise";
 
@@ -729,32 +754,19 @@ function DesktopResultsView(props: ViewProps) {
                   />
                 )}
 
-                {/* Load More Button */}
+                {/* Infinite scroll sentinel */}
+                <div ref={desktopLoadMoreRef} className="h-1" />
                 {hasMore && (
-                  <div className="flex justify-center pt-4">
-                    <Button
-                      variant="outline"
-                      onClick={handleLoadMore}
-                      disabled={loadingMore}
-                      className="gap-2"
-                    >
-                      {loadingMore ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Loading...
-                        </>
-                      ) : (
-                        <>
-                          <ChevronDown className="h-4 w-4" />
-                          Load more results
-                        </>
-                      )}
-                    </Button>
+                  <div className="flex items-center justify-center py-6">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    <span className="ml-2 text-sm text-muted-foreground">
+                      Loading more results...
+                    </span>
                   </div>
                 )}
                 {!hasMore && allResults.length > 0 && (
                   <p className="text-center text-sm text-muted-foreground pt-4">
-                    You&apos;ve reached the end of your results
+                    No more results
                   </p>
                 )}
               </>

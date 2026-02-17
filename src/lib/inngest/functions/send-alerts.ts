@@ -175,7 +175,28 @@ export const sendAlert = inngest.createFunction(
       };
     }
 
-    // TODO: Implement in-app notifications
+    // In-app notifications
+    if (alert.channel === "in_app") {
+      await step.run("send-in-app", async () => {
+        const { notifications } = await import("@/lib/db/schema");
+        await pooledDb.insert(notifications).values(
+          matchingResults.slice(0, 10).map((r) => ({
+            userId: alert.monitor.userId,
+            title: `New match: ${r.title.slice(0, 100)}`,
+            message: r.aiSummary || r.content?.slice(0, 200) || r.title,
+            type: "alert" as const,
+            monitorId: alert.monitor.id,
+            resultId: r.id,
+          }))
+        );
+      });
+
+      return {
+        sent: true,
+        channel: alert.channel,
+        resultsCount: matchingResults.length,
+      };
+    }
 
     return {
       sent: true,

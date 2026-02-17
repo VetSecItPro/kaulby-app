@@ -163,6 +163,8 @@ export const activityLogs = pgTable("activity_logs", {
   index("activity_logs_workspace_id_idx").on(table.workspaceId),
   index("activity_logs_user_id_idx").on(table.userId),
   index("activity_logs_created_at_idx").on(table.createdAt),
+  // FIX-220: Composite index for workspace activity queries ordered by time
+  index("activity_logs_workspace_created_idx").on(table.workspaceId, table.createdAt),
 ]);
 
 // Users table - synced with Clerk
@@ -578,24 +580,6 @@ export const workspaceInvites = pgTable("workspace_invites", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// Author Profiles - track author influence scores (Phase 5)
-// Used to identify high-impact voices and influencers
-export const authorProfiles = pgTable("author_profiles", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  platform: platformEnum("platform").notNull(),
-  username: text("username").notNull(),
-  karma: integer("karma"), // Platform-specific reputation score
-  accountAgeDays: integer("account_age_days"),
-  avgEngagement: real("avg_engagement"), // Average upvotes/comments on posts
-  postCount: integer("post_count").default(0).notNull(),
-  influenceScore: integer("influence_score"), // 0-100 composite score
-  lastUpdatedAt: timestamp("last_updated_at").defaultNow().notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-}, (table) => [
-  index("author_profiles_platform_username_idx").on(table.platform, table.username),
-  index("author_profiles_influence_score_idx").on(table.influenceScore),
-]);
-
 // Community Growth - track community size over time (Phase 3)
 // Used for community discovery and growth rate calculations
 // DB: Consider UNIQUE on (platform, identifier, date) — FIX-109
@@ -658,6 +642,23 @@ export const emailEvents = pgTable("email_events", {
   index("email_events_dedup_idx").on(table.emailId, table.eventType),
 ]);
 
+// Notifications - in-app notification center
+export const notifications = pgTable("notifications", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  type: text("type").notNull(), // "alert" | "crisis" | "system"
+  monitorId: uuid("monitor_id").references(() => monitors.id, { onDelete: "set null" }),
+  resultId: uuid("result_id"),
+  isRead: boolean("is_read").default(false).notNull(),
+  readAt: timestamp("read_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("notifications_user_id_idx").on(table.userId),
+  index("notifications_user_read_idx").on(table.userId, table.isRead),
+]);
+
 // Relations
 export const workspacesRelations = relations(workspaces, ({ many }) => ({
   members: many(users),
@@ -696,6 +697,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   usage: many(usage),
   webhooks: many(webhooks),
   apiKeys: many(apiKeys),
+  notifications: many(notifications),
 }));
 
 export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
@@ -809,6 +811,11 @@ export const webhookDeliveriesRelations = relations(webhookDeliveries, ({ one })
   }),
 }));
 
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  user: one(users, { fields: [notifications.userId], references: [users.id] }),
+  monitor: one(monitors, { fields: [notifications.monitorId], references: [monitors.id] }),
+}));
+
 // Type exports
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -816,3 +823,4 @@ export type Audience = typeof audiences.$inferSelect;
 export type Monitor = typeof monitors.$inferSelect;
 export type Result = typeof results.$inferSelect;
 export type SavedSearch = typeof savedSearches.$inferSelect;
+export type Notification = typeof notifications.$inferSelect;

@@ -8,14 +8,30 @@ import { MarketingHeader } from "@/components/shared/marketing-header";
 import { MarketingFooter } from "@/components/shared/marketing-footer";
 import { WebPageSchema, FAQSchema } from "@/lib/seo/structured-data";
 
-// TODO (FIX-315): Add metadata for better SEO on /tools and /alternatives pages
 export const metadata: Metadata = {
-  title: "Social Listening Tools for Startups | Kaulby",
-  description: "Discover Kaulby's suite of AI-powered social listening tools. Reddit monitoring, brand monitoring, competitor tracking, and more across 17 platforms.",
+  title: "Free Community Monitoring Tools | Kaulby",
+  description: "Free tools for monitoring online communities, tracking brand mentions, and analyzing sentiment across Reddit, Hacker News, and 15+ platforms.",
+  keywords: [
+    "community monitoring tools",
+    "social listening tools",
+    "reddit monitoring",
+    "brand monitoring",
+    "competitor tracking",
+    "sentiment analysis",
+    "free social listening",
+    "startup tools",
+  ],
   openGraph: {
-    title: "Social Listening Tools for Startups",
-    description: "AI-powered social listening tools for monitoring Reddit, Hacker News, Product Hunt, and 9 more platforms.",
+    title: "Free Community Monitoring Tools | Kaulby",
+    description: "Free tools for monitoring online communities, tracking brand mentions, and analyzing sentiment across Reddit, Hacker News, and 15+ platforms.",
     url: "https://kaulbyapp.com/tools",
+    siteName: "Kaulby",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Free Community Monitoring Tools | Kaulby",
+    description: "Free tools for monitoring online communities, tracking brand mentions, and analyzing sentiment across Reddit, Hacker News, and 15+ platforms.",
   },
   alternates: {
     canonical: "https://kaulbyapp.com/tools",

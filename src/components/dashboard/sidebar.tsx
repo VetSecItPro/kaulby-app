@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
@@ -167,12 +167,21 @@ export function Sidebar({ isAdmin = false, subscriptionStatus = "free", hasActiv
     setMounted(true);
   }, []);
 
-  // TODO (FIX-318): Add debounce to hover prefetch to reduce unnecessary network requests
-  // Prefetch route on hover
+  // Debounced prefetch on hover to reduce unnecessary network requests
+  const prefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleMouseEnter = (href: string) => {
-    if (!prefetchedRoutes.has(href)) {
+    if (prefetchedRoutes.has(href)) return;
+    if (prefetchTimerRef.current) clearTimeout(prefetchTimerRef.current);
+    prefetchTimerRef.current = setTimeout(() => {
       router.prefetch(href);
       setPrefetchedRoutes(prev => new Set(prev).add(href));
+    }, 150);
+  };
+
+  const handleMouseLeave = () => {
+    if (prefetchTimerRef.current) {
+      clearTimeout(prefetchTimerRef.current);
+      prefetchTimerRef.current = null;
     }
   };
 
@@ -240,6 +249,7 @@ export function Sidebar({ isAdmin = false, subscriptionStatus = "free", hasActiv
                 href={link.href}
                 prefetch={false}
                 onMouseEnter={() => handleMouseEnter(link.href)}
+                onMouseLeave={handleMouseLeave}
                 data-tour={link.tourId}
                 className={cn(
                   "inline-flex w-fit items-center gap-2 rounded-full px-3 py-1.5 text-sm transition-colors",

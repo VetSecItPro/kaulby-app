@@ -178,7 +178,7 @@ export const PLANS: Record<"free" | "pro" | "enterprise", PlanDefinition> = {
       "Webhooks",
       "5 team seats (+$15/user)",
       "Priority support",
-      "API access (coming soon)",
+      "API access",
     ],
     limits: {
       monitors: 30,
