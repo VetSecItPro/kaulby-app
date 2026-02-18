@@ -14,8 +14,8 @@ import { HiddenResultsBanner, RefreshDelayBanner, BlurredAiAnalysis } from "@/co
 import { getEffectiveUserId, isLocalDev } from "@/lib/dev-auth";
 
 interface MonitorPageProps {
-  params: { id: string };
-  searchParams: { page?: string };
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ page?: string }>;
 }
 
 const RESULTS_PER_PAGE = 20;
@@ -30,15 +30,17 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
     notFound();
   }
 
+  const { id } = await params;
   const monitor = await db.query.monitors.findFirst({
-    where: and(eq(monitors.id, params.id), eq(monitors.userId, userId)),
+    where: and(eq(monitors.id, id), eq(monitors.userId, userId)),
   });
 
   if (!monitor) {
     notFound();
   }
 
-  const page = parseInt(searchParams.page || "1", 10);
+  const resolvedSearchParams = await searchParams;
+  const page = parseInt(resolvedSearchParams.page || "1", 10);
   const offset = (page - 1) * RESULTS_PER_PAGE;
 
   // Get user's plan and limits in parallel

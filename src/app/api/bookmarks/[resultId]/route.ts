@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { db, bookmarks } from "@/lib/db";
 import { eq, and } from "drizzle-orm";
+import { checkApiRateLimit } from "@/lib/rate-limit";
 
 interface RouteParams {
   params: Promise<{ resultId: string }>;
@@ -15,6 +16,11 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const rateLimit = await checkApiRateLimit(userId, "write");
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: { "Retry-After": String(rateLimit.retryAfter ?? 60) } });
   }
 
   const { resultId } = await params;

@@ -18,6 +18,7 @@
 
 import { cachedQuery, getRedditCacheTTL, CACHE_TTL } from "@/lib/cache";
 import { randomBytes } from "crypto";
+import { logger } from "@/lib/logger";
 
 interface RedditPost {
   id: string;
@@ -94,7 +95,7 @@ async function searchRedditSerper(
       snippet: string;
     }) => transformSerperResult(result, subreddit));
   } catch (error) {
-    console.error(`[Serper] Reddit search failed:`, error);
+    logger.error("[Serper] Reddit search failed", { error: error instanceof Error ? error.message : String(error) });
     throw error;
   }
 }
@@ -216,7 +217,7 @@ async function searchRedditApify(
       created_utc: new Date(item.createdAt).getTime() / 1000,
     }));
   } catch (error) {
-    console.error(`[Apify] Reddit search failed:`, error);
+    logger.error("[Apify] Reddit search failed", { error: error instanceof Error ? error.message : String(error) });
     throw error;
   }
 }
@@ -290,12 +291,12 @@ export async function searchRedditResilient(
       );
 
       if (cached) {
-        console.log(`[Reddit] CACHE HIT for r/${subreddit} (saved 1 API call)`);
+        logger.debug("[Reddit] Cache hit", { subreddit, provider: "serper" });
       }
 
       return { posts, source: "serper" };
     } catch (error) {
-      console.warn(`[Reddit] Serper failed, trying Apify:`, error);
+      logger.warn("[Reddit] Serper failed, trying Apify", { error: error instanceof Error ? error.message : String(error) });
     }
   }
 
@@ -311,18 +312,18 @@ export async function searchRedditResilient(
       );
 
       if (cached) {
-        console.log(`[Reddit] CACHE HIT (Apify) for r/${subreddit}`);
+        logger.debug("[Reddit] Cache hit", { subreddit, provider: "apify" });
       }
 
       return { posts, source: "apify" };
     } catch (error) {
-      console.warn(`[Reddit] Apify failed, falling back to public API:`, error);
+      logger.warn("[Reddit] Apify failed, falling back to public API", { error: error instanceof Error ? error.message : String(error) });
     }
   }
 
   // Last resort: Public JSON API (risky but works for now) - shorter cache
   try {
-    console.warn(`[Reddit] Using public JSON API for r/${subreddit} - NOT RECOMMENDED for production`);
+    logger.warn("[Reddit] Using public JSON API - NOT RECOMMENDED for production", { subreddit });
 
     const { data: posts, cached } = await cachedQuery<RedditPost[]>(
       "public:reddit",
@@ -332,7 +333,7 @@ export async function searchRedditResilient(
     );
 
     if (cached) {
-      console.log(`[Reddit] CACHE HIT (public) for r/${subreddit}`);
+      logger.debug("[Reddit] Cache hit", { subreddit, provider: "public" });
     }
 
     return {
@@ -341,7 +342,7 @@ export async function searchRedditResilient(
       error: "Using risky public API - configure SERPER_API_KEY for reliability"
     };
   } catch (error) {
-    console.error(`[Reddit] All providers failed for r/${subreddit}:`, error);
+    logger.error("[Reddit] All providers failed", { subreddit, error: error instanceof Error ? error.message : String(error) });
     return {
       posts: [],
       source: "public",

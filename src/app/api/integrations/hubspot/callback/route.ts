@@ -11,6 +11,8 @@ import {
   exchangeCodeForTokens,
   getAccountInfo,
 } from "@/lib/integrations/hubspot";
+import { encryptIntegrationData } from "@/lib/encryption";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,7 +24,7 @@ export async function GET(request: NextRequest) {
 
     // Handle error from HubSpot
     if (error) {
-      console.error("HubSpot OAuth error:", error, errorDescription);
+      logger.error("HubSpot OAuth error", { error, errorDescription });
       return NextResponse.redirect(
         new URL(
           `/dashboard/settings?tab=integrations&error=${encodeURIComponent(
@@ -96,20 +98,22 @@ export async function GET(request: NextRequest) {
     // Get account info
     const accountInfo = await getAccountInfo(tokens.accessToken);
 
-    // Store tokens and mark as connected
+    // Store encrypted tokens and mark as connected
+    const hubspotIntegration = encryptIntegrationData({
+      connected: true,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      expiresAt: tokens.expiresAt.toISOString(),
+      portalId: accountInfo.portalId,
+      connectedAt: new Date().toISOString(),
+    });
+
     await db
       .update(users)
       .set({
         integrations: {
           ...currentIntegrations,
-          hubspot: {
-            connected: true,
-            accessToken: tokens.accessToken,
-            refreshToken: tokens.refreshToken,
-            expiresAt: tokens.expiresAt.toISOString(),
-            portalId: accountInfo.portalId,
-            connectedAt: new Date().toISOString(),
-          },
+          hubspot: hubspotIntegration,
         },
       })
       .where(eq(users.id, userId));
@@ -121,7 +125,7 @@ export async function GET(request: NextRequest) {
       )
     );
   } catch (error) {
-    console.error("HubSpot callback error:", error);
+    logger.error("HubSpot callback error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.redirect(
       new URL(
         "/dashboard/settings?tab=integrations&error=Failed+to+connect+HubSpot.+Please+try+again.",
