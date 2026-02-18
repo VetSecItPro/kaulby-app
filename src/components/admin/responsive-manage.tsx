@@ -333,6 +333,26 @@ export function ResponsiveManage({
         </div>
       </Link>
 
+      {/* Unit Economics */}
+      <Link href="/manage/economics" className="block">
+        <Card className="transition-all hover:opacity-90 cursor-pointer border-green-500/30">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <DollarSign className="h-5 w-5 text-green-500" />
+                Unit Economics
+              </CardTitle>
+              <Badge variant="outline" className="text-green-500 border-green-500">
+                New
+              </Badge>
+            </div>
+            <CardDescription>
+              Revenue vs cost margin analysis, customer profitability
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </Link>
+
       {/* Cost Breakdown */}
       <Link href="/manage/costs" className="block">
         <div className="transition-all hover:opacity-90 cursor-pointer">

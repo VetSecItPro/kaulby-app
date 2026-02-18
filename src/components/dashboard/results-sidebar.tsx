@@ -134,9 +134,10 @@ export const ResultsSidebar = memo(function ResultsSidebar({
   }, [monitorId, dateFrom, dateTo]);
 
   // Group communities by platform
+  const communities = data?.communities;
   const communitiesByPlatform = useMemo(
     () =>
-      data?.communities.reduce(
+      communities?.reduce(
         (acc, c) => {
           if (!acc[c.platform]) {
             acc[c.platform] = [];
@@ -144,9 +145,9 @@ export const ResultsSidebar = memo(function ResultsSidebar({
           acc[c.platform].push(c);
           return acc;
         },
-        {} as Record<string, typeof data.communities>
+        {} as Record<string, typeof communities>
       ),
-    [data?.communities]
+    [communities]
   );
 
   if (isLoading) {

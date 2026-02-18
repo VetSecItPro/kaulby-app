@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { users, results, aiLogs, budgetAlerts, budgetAlertHistory } from "@/lib/db/schema";
+import { users, results, aiLogs, budgetAlerts, budgetAlertHistory, monitors } from "@/lib/db/schema";
 import { count, sum, desc, sql, gte, eq, and } from "drizzle-orm";
 import { BudgetAlerts } from "@/components/admin/budget-alerts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,17 +13,22 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import Link from "next/link";
-import { ArrowLeft, DollarSign, Users, TrendingUp, ChevronRight } from "lucide-react";
+import { ArrowLeft, DollarSign, Users, TrendingUp, ChevronRight, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CsvExport } from "./csv-export";
 
 export const dynamic = "force-dynamic";
 
-async function getDetailedCostData() {
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+async function getDetailedCostData(days: number = 30) {
+  const periodStart = new Date();
+  periodStart.setDate(periodStart.getDate() - days);
 
-  const sixtyDaysAgo = new Date();
-  sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+  const previousPeriodStart = new Date();
+  previousPeriodStart.setDate(previousPeriodStart.getDate() - days * 2);
+
+  // Start of current calendar month for forecast
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
   // Cost by plan - detailed
   const costByPlanQuery = await db
@@ -36,7 +41,7 @@ async function getDetailedCostData() {
     })
     .from(aiLogs)
     .innerJoin(users, eq(aiLogs.userId, users.id))
-    .where(gte(aiLogs.createdAt, thirtyDaysAgo))
+    .where(gte(aiLogs.createdAt, periodStart))
     .groupBy(users.subscriptionStatus);
 
   // Previous period for comparison
@@ -49,8 +54,8 @@ async function getDetailedCostData() {
     .innerJoin(users, eq(aiLogs.userId, users.id))
     .where(
       and(
-        gte(aiLogs.createdAt, sixtyDaysAgo),
-        sql`${aiLogs.createdAt} < ${thirtyDaysAgo}`
+        gte(aiLogs.createdAt, previousPeriodStart),
+        sql`${aiLogs.createdAt} < ${periodStart}`
       )
     )
     .groupBy(users.subscriptionStatus);
@@ -68,7 +73,7 @@ async function getDetailedCostData() {
     })
     .from(aiLogs)
     .innerJoin(users, eq(aiLogs.userId, users.id))
-    .where(gte(aiLogs.createdAt, thirtyDaysAgo))
+    .where(gte(aiLogs.createdAt, periodStart))
     .groupBy(aiLogs.userId, users.email, users.name, users.subscriptionStatus)
     .orderBy(desc(sum(aiLogs.costUsd)))
     .limit(20);
@@ -85,7 +90,7 @@ async function getDetailedCostData() {
       avgLatency: sql<number>`AVG(${aiLogs.latencyMs})`,
     })
     .from(aiLogs)
-    .where(gte(aiLogs.createdAt, thirtyDaysAgo))
+    .where(gte(aiLogs.createdAt, periodStart))
     .groupBy(aiLogs.model)
     .orderBy(desc(sum(aiLogs.costUsd)));
 
@@ -97,9 +102,56 @@ async function getDetailedCostData() {
       totalCalls: count(),
     })
     .from(aiLogs)
-    .where(gte(aiLogs.createdAt, thirtyDaysAgo))
+    .where(gte(aiLogs.createdAt, periodStart))
     .groupBy(sql`DATE(${aiLogs.createdAt})`)
     .orderBy(sql`DATE(${aiLogs.createdAt})`);
+
+  // Current month spend for forecast
+  const currentMonthSpendQuery = await db
+    .select({
+      totalCost: sum(aiLogs.costUsd),
+    })
+    .from(aiLogs)
+    .where(gte(aiLogs.createdAt, startOfMonth));
+
+  // Cost by monitor
+  const costByMonitorQuery = await db
+    .select({
+      monitorId: aiLogs.monitorId,
+      monitorName: monitors.name,
+      platform: aiLogs.platform,
+      totalCost: sum(aiLogs.costUsd),
+      totalCalls: count(),
+    })
+    .from(aiLogs)
+    .leftJoin(monitors, eq(aiLogs.monitorId, monitors.id))
+    .where(
+      and(
+        gte(aiLogs.createdAt, periodStart),
+        sql`${aiLogs.monitorId} IS NOT NULL`
+      )
+    )
+    .groupBy(aiLogs.monitorId, monitors.name, aiLogs.platform)
+    .orderBy(desc(sum(aiLogs.costUsd)))
+    .limit(20);
+
+  // Cost by analysis type
+  const costByAnalysisTypeQuery = await db
+    .select({
+      analysisType: aiLogs.analysisType,
+      totalCost: sum(aiLogs.costUsd),
+      totalCalls: count(),
+      cacheHits: sql<number>`COUNT(CASE WHEN ${aiLogs.cacheHit} = true THEN 1 END)`,
+    })
+    .from(aiLogs)
+    .where(
+      and(
+        gte(aiLogs.createdAt, periodStart),
+        sql`${aiLogs.analysisType} IS NOT NULL`
+      )
+    )
+    .groupBy(aiLogs.analysisType)
+    .orderBy(desc(sum(aiLogs.costUsd)));
 
   // Summary stats
   const [totalStats, resultsCount, paidUserStats] = await Promise.all([
@@ -111,8 +163,8 @@ async function getDetailedCostData() {
         totalTokens: sum(sql`${aiLogs.promptTokens} + ${aiLogs.completionTokens}`),
       })
       .from(aiLogs)
-      .where(gte(aiLogs.createdAt, thirtyDaysAgo)),
-    db.select({ count: count() }).from(results).where(gte(results.createdAt, thirtyDaysAgo)),
+      .where(gte(aiLogs.createdAt, periodStart)),
+    db.select({ count: count() }).from(results).where(gte(results.createdAt, periodStart)),
     db
       .select({
         totalCost: sum(aiLogs.costUsd),
@@ -122,11 +174,27 @@ async function getDetailedCostData() {
       .innerJoin(users, eq(aiLogs.userId, users.id))
       .where(
         and(
-          gte(aiLogs.createdAt, thirtyDaysAgo),
+          gte(aiLogs.createdAt, periodStart),
           sql`${users.subscriptionStatus} IN ('pro', 'enterprise')`
         )
       ),
   ]);
+
+  // Forecast calculations
+  const currentMonthSpend = Number(currentMonthSpendQuery[0]?.totalCost) || 0;
+  const daysWithData = dailyCostTrend.length;
+  const totalCostInPeriod = Number(totalStats[0]?.totalCost) || 0;
+  const dailyAvgCost = daysWithData > 0 ? totalCostInPeriod / daysWithData : 0;
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const dayOfMonth = now.getDate();
+  const daysRemaining = daysInMonth - dayOfMonth;
+  const projectedMonthEnd = currentMonthSpend + dailyAvgCost * daysRemaining;
+
+  // Total cost for analysis type percentage calculation
+  const analysisTypeTotalCost = costByAnalysisTypeQuery.reduce(
+    (acc, item) => acc + (Number(item.totalCost) || 0),
+    0
+  );
 
   return {
     costByPlan: costByPlanQuery.map((item) => ({
@@ -166,6 +234,29 @@ async function getDetailedCostData() {
       totalCost: Number(item.totalCost) || 0,
       totalCalls: Number(item.totalCalls) || 0,
     })),
+    costByMonitor: costByMonitorQuery.map((item) => ({
+      monitorId: item.monitorId || "",
+      monitorName: item.monitorName || "Deleted Monitor",
+      platform: item.platform || "unknown",
+      totalCost: Number(item.totalCost) || 0,
+      totalCalls: Number(item.totalCalls) || 0,
+    })),
+    costByAnalysisType: costByAnalysisTypeQuery.map((item) => ({
+      analysisType: item.analysisType || "unknown",
+      totalCost: Number(item.totalCost) || 0,
+      totalCalls: Number(item.totalCalls) || 0,
+      cacheHits: Number(item.cacheHits) || 0,
+      percentOfTotal:
+        analysisTypeTotalCost > 0
+          ? (Number(item.totalCost) / analysisTypeTotalCost) * 100
+          : 0,
+    })),
+    forecast: {
+      dailyAvgCost,
+      projectedMonthEnd,
+      daysRemaining,
+      currentMonthSpend,
+    },
     summary: {
       totalCost: Number(totalStats[0]?.totalCost) || 0,
       totalCalls: Number(totalStats[0]?.totalCalls) || 0,
@@ -245,11 +336,30 @@ function getPlanBadge(plan: string) {
   }
 }
 
-export default async function CostsPage() {
+const VALID_DAYS = [30, 60, 90] as const;
+type ValidDays = (typeof VALID_DAYS)[number];
+
+function parsedays(raw: string | undefined): ValidDays {
+  const parsed = Number(raw);
+  return (VALID_DAYS as readonly number[]).includes(parsed)
+    ? (parsed as ValidDays)
+    : 30;
+}
+
+export default async function CostsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ days?: string }>;
+}) {
+  const { days: rawDays } = await searchParams;
+  const days = parsedays(rawDays);
+
   const [data, alertsData] = await Promise.all([
-    getDetailedCostData(),
+    getDetailedCostData(days),
     getBudgetAlertsData(),
   ]);
+
+  const { forecast } = data;
 
   return (
     <div className="flex-1 flex-col space-y-6 p-6">
@@ -263,10 +373,23 @@ export default async function CostsPage() {
           </Link>
           <div>
             <h1 className="text-3xl font-bold tracking-tight">AI Cost Analysis</h1>
-            <p className="text-muted-foreground">Detailed breakdown of AI usage and costs (last 30 days)</p>
+            <p className="text-muted-foreground">
+              Detailed breakdown of AI usage and costs (last {days} days)
+            </p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          {/* Time range selector */}
+          <div className="flex gap-1">
+            {VALID_DAYS.map((d) => (
+              <Link key={d} href={`/manage/costs?days=${d}`}>
+                <Button variant={days === d ? "default" : "outline"} size="sm">
+                  {d}d
+                </Button>
+              </Link>
+            ))}
+          </div>
+          <CsvExport dailyTrend={data.dailyTrend} />
           <Link href="/manage/costs/services">
             <Button variant="outline" size="sm" className="gap-2">
               All Services <ChevronRight className="h-4 w-4" />
@@ -327,6 +450,50 @@ export default async function CostsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* 30-Day Cost Forecast */}
+      <Card className="border-blue-500/50">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-blue-400" />
+            <CardTitle className="text-lg">30-Day Cost Forecast</CardTitle>
+          </div>
+          <CardDescription>
+            Projected month-end spend based on current daily average
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="rounded-lg bg-muted/50 p-4">
+              <p className="text-sm text-muted-foreground">Daily Burn Rate</p>
+              <p className="mt-1 text-2xl font-bold text-blue-400">
+                {formatCurrency(forecast.dailyAvgCost)}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Average over last {days} days
+              </p>
+            </div>
+            <div className="rounded-lg bg-muted/50 p-4">
+              <p className="text-sm text-muted-foreground">Current Month Spend</p>
+              <p className="mt-1 text-2xl font-bold">
+                {formatCurrency(forecast.currentMonthSpend)}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Since start of month
+              </p>
+            </div>
+            <div className="rounded-lg bg-muted/50 p-4">
+              <p className="text-sm text-muted-foreground">Projected Month-End</p>
+              <p className="mt-1 text-2xl font-bold text-amber-500">
+                {formatCurrency(forecast.projectedMonthEnd)}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {forecast.daysRemaining} days remaining in month
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Cost by Model */}
       <Card>
@@ -389,7 +556,7 @@ export default async function CostsPage() {
                   <TableHead className="text-right">Tokens</TableHead>
                   <TableHead className="text-right">Avg/User</TableHead>
                   <TableHead className="text-right">Total Cost</TableHead>
-                  <TableHead className="text-right">vs Prev 30d</TableHead>
+                  <TableHead className="text-right">vs Prev {days}d</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -421,12 +588,115 @@ export default async function CostsPage() {
         </CardContent>
       </Card>
 
+      {/* Cost per Monitor */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Cost per Monitor</CardTitle>
+          <CardDescription>
+            AI spend attributed to each monitor (last {days} days, top 20)
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {data.costByMonitor.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Monitor</TableHead>
+                  <TableHead>Platform</TableHead>
+                  <TableHead className="text-right">AI Calls</TableHead>
+                  <TableHead className="text-right">Cost</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data.costByMonitor.map((item) => (
+                  <TableRow key={`${item.monitorId}-${item.platform}`}>
+                    <TableCell>
+                      <p className="font-medium">{item.monitorName}</p>
+                      <p className="text-xs text-muted-foreground font-mono">{item.monitorId}</p>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-xs">
+                        {item.platform}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">{formatNumber(item.totalCalls)}</TableCell>
+                    <TableCell className="text-right font-medium text-amber-500">
+                      {formatCurrency(item.totalCost)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="text-center text-muted-foreground py-8">No monitor cost data yet</div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Cost by Analysis Type */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Cost by Analysis Type</CardTitle>
+          <CardDescription>
+            AI spend broken down by feature / analysis operation (last {days} days)
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {data.costByAnalysisType.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Analysis Type</TableHead>
+                  <TableHead className="text-right">Calls</TableHead>
+                  <TableHead className="text-right">Cache Hits</TableHead>
+                  <TableHead className="text-right">Cache Rate</TableHead>
+                  <TableHead className="text-right">Cost</TableHead>
+                  <TableHead className="text-right">% of Total</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data.costByAnalysisType.map((item) => {
+                  const cacheRate =
+                    item.totalCalls > 0
+                      ? (item.cacheHits / item.totalCalls) * 100
+                      : 0;
+                  return (
+                    <TableRow key={item.analysisType}>
+                      <TableCell>
+                        <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                          {item.analysisType}
+                        </code>
+                      </TableCell>
+                      <TableCell className="text-right">{formatNumber(item.totalCalls)}</TableCell>
+                      <TableCell className="text-right">{formatNumber(item.cacheHits)}</TableCell>
+                      <TableCell className="text-right">
+                        <span className={cacheRate > 30 ? "text-green-500" : "text-muted-foreground"}>
+                          {cacheRate.toFixed(1)}%
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right font-medium text-amber-500">
+                        {formatCurrency(item.totalCost)}
+                      </TableCell>
+                      <TableCell className="text-right text-muted-foreground">
+                        {item.percentOfTotal.toFixed(1)}%
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="text-center text-muted-foreground py-8">No analysis type data yet</div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Top Users by Cost */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle className="text-lg">Top Users by AI Cost</CardTitle>
-            <CardDescription>Users with highest AI usage (last 30 days)</CardDescription>
+            <CardDescription>Users with highest AI usage (last {days} days)</CardDescription>
           </div>
           <Link href="/manage/costs/users">
             <Button variant="outline" size="sm" className="gap-2">
