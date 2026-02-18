@@ -135,7 +135,23 @@ export const analyzeContent = inngest.createFunction(
           .where(eq(results.id, resultId));
       });
 
-      // No AI cost for cached analysis!
+      // Log cache hit as $0-cost row for tracking efficiency
+      await step.run("log-cache-hit", async () => {
+        await pooledDb.insert(aiLogs).values({
+          userId,
+          model: "cache",
+          promptTokens: 0,
+          completionTokens: 0,
+          costUsd: 0,
+          latencyMs: 0,
+          monitorId: result.monitorId,
+          resultId,
+          analysisType: analysisTier === "team" ? "comprehensive" : "mixed",
+          cacheHit: true,
+          platform: result.platform,
+        });
+      });
+
       return {
         tier: analysisTier,
         cached: true,
@@ -285,6 +301,11 @@ export const analyzeContent = inngest.createFunction(
           costUsd: totalCost,
           latencyMs: totalLatency,
           traceId,
+          monitorId: result.monitorId,
+          resultId,
+          analysisType: "comprehensive",
+          cacheHit: false,
+          platform: result.platform,
         });
 
         await incrementAiCallsCount(userId, aiCallCount);
@@ -467,6 +488,11 @@ export const analyzeContent = inngest.createFunction(
         costUsd: totalCost,
         latencyMs: totalLatency,
         traceId,
+        monitorId: result.monitorId,
+        resultId,
+        analysisType: "mixed",
+        cacheHit: false,
+        platform: result.platform,
       });
 
       await incrementAiCallsCount(userId, aiCallCount);

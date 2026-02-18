@@ -128,24 +128,48 @@ async function getDetailedSystemHealth() {
       .orderBy(desc(sql`DATE(${aiLogs.createdAt})`)),
   ]);
 
-  // Summary stats
-  const [totalStats] = await db
-    .select({
-      totalCalls: count(),
-      totalCost: sum(aiLogs.costUsd),
-      totalTokens: sum(sql`${aiLogs.promptTokens} + ${aiLogs.completionTokens}`),
-      avgLatency: sql<number>`AVG(${aiLogs.latencyMs})`,
-    })
-    .from(aiLogs)
-    .where(gte(aiLogs.createdAt, twentyFourHoursAgo));
+  // Summary stats + cache efficiency
+  const [totalStats, cacheStats] = await Promise.all([
+    db
+      .select({
+        totalCalls: count(),
+        totalCost: sum(aiLogs.costUsd),
+        totalTokens: sum(sql`${aiLogs.promptTokens} + ${aiLogs.completionTokens}`),
+        avgLatency: sql<number>`AVG(${aiLogs.latencyMs})`,
+      })
+      .from(aiLogs)
+      .where(gte(aiLogs.createdAt, twentyFourHoursAgo)),
+
+    // Cache efficiency (last 7 days for meaningful sample)
+    db
+      .select({
+        totalLogs: count(),
+        cacheHits: sql<number>`COUNT(CASE WHEN ${aiLogs.cacheHit} = true THEN 1 END)`,
+        avgNonCachedCost: sql<number>`AVG(CASE WHEN ${aiLogs.cacheHit} = false OR ${aiLogs.cacheHit} IS NULL THEN ${aiLogs.costUsd} END)`,
+      })
+      .from(aiLogs)
+      .where(gte(aiLogs.createdAt, sevenDaysAgo)),
+  ]);
+
+  const totalLogs = Number(cacheStats[0]?.totalLogs) || 0;
+  const cacheHitCount = Number(cacheStats[0]?.cacheHits) || 0;
+  const cacheHitRate = totalLogs > 0 ? (cacheHitCount / totalLogs) * 100 : 0;
+  const avgNonCachedCost = Number(cacheStats[0]?.avgNonCachedCost) || 0;
+  const estimatedSavings = cacheHitCount * avgNonCachedCost;
 
   return {
     summary: {
-      totalCalls24h: Number(totalStats?.totalCalls) || 0,
-      totalCost24h: Number(totalStats?.totalCost) || 0,
-      totalTokens24h: Number(totalStats?.totalTokens) || 0,
-      avgLatency24h: Number(totalStats?.avgLatency) || 0,
+      totalCalls24h: Number(totalStats[0]?.totalCalls) || 0,
+      totalCost24h: Number(totalStats[0]?.totalCost) || 0,
+      totalTokens24h: Number(totalStats[0]?.totalTokens) || 0,
+      avgLatency24h: Number(totalStats[0]?.avgLatency) || 0,
       errorCount24h: errorAnalysis[0]?.count || 0,
+    },
+    cacheEfficiency: {
+      hitRate: cacheHitRate,
+      totalHits: cacheHitCount,
+      totalLogs,
+      estimatedSavings,
     },
     hourlyStats: hourlyStats.map((h) => ({
       hour: h.hour,
@@ -295,6 +319,54 @@ export default async function SystemHealthPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Cache Efficiency */}
+      <Card className="border-green-500/50">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Server className="h-5 w-5 text-green-500" />
+            Cache Efficiency (Last 7 Days)
+          </CardTitle>
+          <CardDescription>AI analysis cache performance and cost savings</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-4">
+            <div className="rounded-lg bg-muted/50 p-4">
+              <p className="text-sm text-muted-foreground">Cache Hit Rate</p>
+              <p className={`mt-1 text-2xl font-bold ${data.cacheEfficiency.hitRate > 30 ? "text-green-500" : "text-amber-500"}`}>
+                {data.cacheEfficiency.hitRate.toFixed(1)}%
+              </p>
+            </div>
+            <div className="rounded-lg bg-muted/50 p-4">
+              <p className="text-sm text-muted-foreground">Cache Hits</p>
+              <p className="mt-1 text-2xl font-bold">
+                {formatNumber(data.cacheEfficiency.totalHits)}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                of {formatNumber(data.cacheEfficiency.totalLogs)} total
+              </p>
+            </div>
+            <div className="rounded-lg bg-muted/50 p-4">
+              <p className="text-sm text-muted-foreground">Estimated Savings</p>
+              <p className="mt-1 text-2xl font-bold text-green-500">
+                {formatCurrency(data.cacheEfficiency.estimatedSavings, 2)}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Avoided AI calls
+              </p>
+            </div>
+            <div className="rounded-lg bg-muted/50 p-4">
+              <p className="text-sm text-muted-foreground">Effective Cost Reduction</p>
+              <p className="mt-1 text-2xl font-bold text-green-500">
+                {data.cacheEfficiency.totalLogs > 0
+                  ? `${((data.cacheEfficiency.totalHits / data.cacheEfficiency.totalLogs) * 100).toFixed(0)}%`
+                  : "N/A"}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">Of total AI requests</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Cost by Model - CRITICAL for understanding expense */}
       <Card className="border-amber-500/50">

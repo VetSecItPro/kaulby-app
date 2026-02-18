@@ -410,10 +410,19 @@ export const aiLogs = pgTable("ai_logs", {
   costUsd: real("cost_usd"),
   latencyMs: integer("latency_ms"),
   traceId: text("trace_id"), // Langfuse trace ID
+  // Cost attribution columns
+  monitorId: text("monitor_id"),
+  resultId: uuid("result_id"),
+  analysisType: text("analysis_type"), // "sentiment" | "pain_points" | "summary" | "comprehensive" | "categorization"
+  cacheHit: boolean("cache_hit").default(false),
+  platform: text("platform"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("ai_logs_user_id_idx").on(table.userId),
   index("ai_logs_created_at_idx").on(table.createdAt),
+  index("ai_logs_monitor_id_idx").on(table.monitorId),
+  index("ai_logs_analysis_type_idx").on(table.analysisType),
+  index("ai_logs_cache_hit_idx").on(table.cacheHit),
 ]);
 
 // Budget Alerts - admin cost monitoring and alerting
