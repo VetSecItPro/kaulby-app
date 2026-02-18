@@ -5,6 +5,7 @@ import { eq, and } from "drizzle-orm";
 import { getPlanLimits } from "@/lib/plans";
 import { getUserPlan } from "@/lib/limits";
 import { DETECTION_CATEGORIES, type DetectionCategory } from "@/lib/detection-defaults";
+import { checkApiRateLimit } from "@/lib/rate-limit";
 
 const VALID_CATEGORIES = DETECTION_CATEGORIES.map((c) => c.category);
 
@@ -17,6 +18,11 @@ export async function GET() {
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const rateLimit = await checkApiRateLimit(userId, "read");
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: { "Retry-After": String(rateLimit.retryAfter ?? 60) } });
   }
 
   // Check plan — Pro+ only
@@ -76,6 +82,11 @@ export async function PUT(request: NextRequest) {
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const rateLimit = await checkApiRateLimit(userId, "write");
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: { "Retry-After": String(rateLimit.retryAfter ?? 60) } });
   }
 
   const plan = await getUserPlan(userId);
@@ -142,6 +153,11 @@ export async function POST() {
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const rateLimit = await checkApiRateLimit(userId, "write");
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: { "Retry-After": String(rateLimit.retryAfter ?? 60) } });
   }
 
   const plan = await getUserPlan(userId);

@@ -8,6 +8,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { db, users } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import { exchangeCodeForTokens } from "@/lib/integrations/slack";
+import { encryptIntegrationData } from "@/lib/encryption";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,7 +20,7 @@ export async function GET(request: NextRequest) {
 
     // Handle error from Slack
     if (error) {
-      console.error("Slack OAuth error:", error);
+      logger.error("Slack OAuth error", { error });
       return NextResponse.redirect(
         new URL(
           `/dashboard/settings?tab=integrations&error=${encodeURIComponent(
@@ -89,22 +91,24 @@ export async function GET(request: NextRequest) {
     // Exchange code for tokens
     const tokens = await exchangeCodeForTokens(code);
 
-    // Store tokens and mark as connected
+    // Store encrypted tokens and mark as connected
+    const slackIntegration = encryptIntegrationData({
+      connected: true,
+      accessToken: tokens.accessToken,
+      teamId: tokens.teamId,
+      teamName: tokens.teamName,
+      webhookUrl: tokens.webhookUrl,
+      webhookChannel: tokens.webhookChannel,
+      webhookChannelId: tokens.webhookChannelId,
+      connectedAt: new Date().toISOString(),
+    });
+
     await db
       .update(users)
       .set({
         integrations: {
           ...currentIntegrations,
-          slack: {
-            connected: true,
-            accessToken: tokens.accessToken,
-            teamId: tokens.teamId,
-            teamName: tokens.teamName,
-            webhookUrl: tokens.webhookUrl,
-            webhookChannel: tokens.webhookChannel,
-            webhookChannelId: tokens.webhookChannelId,
-            connectedAt: new Date().toISOString(),
-          },
+          slack: slackIntegration,
         },
       })
       .where(eq(users.id, userId));
@@ -116,7 +120,7 @@ export async function GET(request: NextRequest) {
       )
     );
   } catch (error) {
-    console.error("Slack callback error:", error);
+    logger.error("Slack callback error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.redirect(
       new URL(
         "/dashboard/settings?tab=integrations&error=Failed+to+connect+Slack.+Please+try+again.",

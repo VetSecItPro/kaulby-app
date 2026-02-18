@@ -411,7 +411,7 @@ export const aiLogs = pgTable("ai_logs", {
   latencyMs: integer("latency_ms"),
   traceId: text("trace_id"), // Langfuse trace ID
   // Cost attribution columns
-  monitorId: text("monitor_id"),
+  monitorId: uuid("monitor_id"),
   resultId: uuid("result_id"),
   analysisType: text("analysis_type"), // "sentiment" | "pain_points" | "summary" | "comprehensive" | "categorization"
   cacheHit: boolean("cache_hit").default(false),

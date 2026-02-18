@@ -8,6 +8,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { db, users } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import { exchangeCodeForTokens } from "@/lib/integrations/discord";
+import { encryptIntegrationData } from "@/lib/encryption";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   try {
@@ -19,7 +21,7 @@ export async function GET(request: NextRequest) {
 
     // Handle error from Discord
     if (error) {
-      console.error("Discord OAuth error:", error);
+      logger.error("Discord OAuth error", { error });
       return NextResponse.redirect(
         new URL(
           `/dashboard/settings?tab=integrations&error=${encodeURIComponent(
@@ -90,21 +92,23 @@ export async function GET(request: NextRequest) {
     // Exchange code for tokens
     const tokens = await exchangeCodeForTokens(code);
 
-    // Store tokens and mark as connected
+    // Store encrypted tokens and mark as connected
+    const discordIntegration = encryptIntegrationData({
+      connected: true,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      expiresIn: tokens.expiresIn,
+      guildId: guildId || tokens.guildId,
+      guildName: tokens.guildName,
+      connectedAt: new Date().toISOString(),
+    });
+
     await db
       .update(users)
       .set({
         integrations: {
           ...currentIntegrations,
-          discord: {
-            connected: true,
-            accessToken: tokens.accessToken,
-            refreshToken: tokens.refreshToken,
-            expiresIn: tokens.expiresIn,
-            guildId: guildId || tokens.guildId,
-            guildName: tokens.guildName,
-            connectedAt: new Date().toISOString(),
-          },
+          discord: discordIntegration,
         },
       })
       .where(eq(users.id, userId));
@@ -116,7 +120,7 @@ export async function GET(request: NextRequest) {
       )
     );
   } catch (error) {
-    console.error("Discord callback error:", error);
+    logger.error("Discord callback error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.redirect(
       new URL(
         "/dashboard/settings?tab=integrations&error=Failed+to+connect+Discord.+Please+try+again.",

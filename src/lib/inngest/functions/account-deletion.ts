@@ -22,6 +22,7 @@ import {
   sendDeletionConfirmedEmail,
 } from "@/lib/email";
 import { cancelSubscription } from "@/lib/polar";
+import { logger } from "@/lib/logger";
 
 const DELETION_DELAY_DAYS = 7;
 
@@ -59,7 +60,7 @@ export const scheduledAccountDeletion = inngest.createFunction(
         name: userName,
         deletionDate,
       });
-      console.log(`[Account Deletion] Confirmation email sent to ${email}`);
+      logger.info("[Account Deletion] Confirmation email sent", { email });
     });
 
     // Step 2: Wait 6 days, then send 24-hour reminder
@@ -76,7 +77,7 @@ export const scheduledAccountDeletion = inngest.createFunction(
 
     if (!userBeforeReminder?.deletionRequestedAt) {
       // User cancelled deletion
-      console.log(`[Account Deletion] User ${userId} cancelled deletion before reminder`);
+      logger.info("[Account Deletion] User cancelled deletion before reminder", { userId });
       return { status: "cancelled", reason: "User cancelled before reminder" };
     }
 
@@ -86,7 +87,7 @@ export const scheduledAccountDeletion = inngest.createFunction(
         email,
         name: userName,
       });
-      console.log(`[Account Deletion] 24-hour reminder sent to ${email}`);
+      logger.info("[Account Deletion] 24-hour reminder sent", { email });
     });
 
     // Step 5: Wait final 24 hours
@@ -108,7 +109,7 @@ export const scheduledAccountDeletion = inngest.createFunction(
 
     if (!userBeforeDeletion?.deletionRequestedAt) {
       // User cancelled deletion
-      console.log(`[Account Deletion] User ${userId} cancelled deletion in final 24 hours`);
+      logger.info("[Account Deletion] User cancelled deletion in final 24 hours", { userId });
       return { status: "cancelled", reason: "User cancelled in final 24 hours" };
     }
 
@@ -121,12 +122,12 @@ export const scheduledAccountDeletion = inngest.createFunction(
             { immediate: true }
           );
           if (cancelled) {
-            console.log(`[Account Deletion] Polar subscription revoked for user ${userId}`);
+            logger.info("[Account Deletion] Polar subscription revoked", { userId });
           } else {
-            console.warn(`[Account Deletion] Could not revoke Polar subscription for user ${userId}`);
+            logger.warn("[Account Deletion] Could not revoke Polar subscription", { userId });
           }
         } catch (error) {
-          console.error(`[Account Deletion] Failed to cancel Polar subscription:`, error);
+          logger.error("[Account Deletion] Failed to cancel Polar subscription", { userId, error: error instanceof Error ? error.message : String(error) });
           // Don't fail the deletion if Polar cancellation fails
         }
       });
@@ -135,7 +136,7 @@ export const scheduledAccountDeletion = inngest.createFunction(
     // Step 8: Delete all user data from database (FIX-111: uses transaction for atomicity)
     await step.run("delete-user-data", async () => {
       await deleteAllUserData(userId);
-      console.log(`[Account Deletion] All data deleted for user ${userId}`);
+      logger.info("[Account Deletion] All data deleted", { userId });
     });
 
     // Step 9: Delete user from Clerk
@@ -143,9 +144,9 @@ export const scheduledAccountDeletion = inngest.createFunction(
       try {
         const clerk = await clerkClient();
         await clerk.users.deleteUser(userId);
-        console.log(`[Account Deletion] User ${userId} deleted from Clerk`);
+        logger.info("[Account Deletion] User deleted from Clerk", { userId });
       } catch (error) {
-        console.error(`[Account Deletion] Failed to delete from Clerk:`, error);
+        logger.error("[Account Deletion] Failed to delete from Clerk", { userId, error: error instanceof Error ? error.message : String(error) });
         // Log but don't fail - the user data is already deleted
       }
     });
@@ -156,7 +157,7 @@ export const scheduledAccountDeletion = inngest.createFunction(
         email,
         name: userName,
       });
-      console.log(`[Account Deletion] Final confirmation sent to ${email}`);
+      logger.info("[Account Deletion] Final confirmation sent", { email });
     });
 
     return {
@@ -179,7 +180,7 @@ export const scheduledAccountDeletion = inngest.createFunction(
  * to ensure complete data removal and provide an audit trail.
  */
 async function deleteAllUserData(userId: string): Promise<void> {
-  console.log(`[Account Deletion] Starting comprehensive data deletion for user ${userId}`);
+  logger.info("[Account Deletion] Starting comprehensive data deletion", { userId });
 
   // FIX-111: Wrap entire deletion in a transaction for atomicity
   await pooledDb.transaction(async (tx) => {
@@ -248,7 +249,7 @@ async function deleteAllUserData(userId: string): Promise<void> {
     await tx.delete(users).where(eq(users.id, userId));
   });
 
-  console.log(`[Account Deletion] All data deleted for user ${userId}`);
+  logger.info("[Account Deletion] All data deleted", { userId });
 }
 
 // Export all functions

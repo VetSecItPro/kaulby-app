@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { db, bookmarkCollections, bookmarks } from "@/lib/db";
 import { eq, and, count, desc } from "drizzle-orm";
+import { checkApiRateLimit } from "@/lib/rate-limit";
 
 /**
  * GET /api/bookmarks/collections
@@ -11,6 +12,11 @@ export async function GET() {
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const rateLimit = await checkApiRateLimit(userId, "read");
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: { "Retry-After": String(rateLimit.retryAfter ?? 60) } });
   }
 
   const collections = await db.query.bookmarkCollections.findMany({
@@ -54,6 +60,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const rateLimit = await checkApiRateLimit(userId, "write");
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: { "Retry-After": String(rateLimit.retryAfter ?? 60) } });
+  }
+
   const body = await request.json();
   const { name, color } = body as { name: string; color?: string };
 
@@ -95,6 +106,11 @@ export async function DELETE(request: NextRequest) {
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const rateLimit = await checkApiRateLimit(userId, "write");
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: { "Retry-After": String(rateLimit.retryAfter ?? 60) } });
   }
 
   const body = await request.json();

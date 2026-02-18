@@ -5,6 +5,7 @@
 
 import { db, users } from "@/lib/db";
 import { eq } from "drizzle-orm";
+import { logger } from "@/lib/logger";
 
 /**
  * Activate a day pass for a user (called from Polar webhook)
@@ -34,7 +35,7 @@ export async function activateDayPass(userId: string): Promise<{
     })
     .where(eq(users.id, userId));
 
-  console.log(`Day pass activated for user ${userId}, expires at ${expiresAt.toISOString()}`);
+  logger.info("Day pass activated", { userId, expiresAt: expiresAt.toISOString() });
 
   return {
     expiresAt,

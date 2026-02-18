@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, memo } from "react";
+import { useState, useEffect, memo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -267,11 +267,47 @@ export function IntegrationsSettings({
   onConnect,
   onDisconnect,
 }: IntegrationsSettingsProps) {
+  const [liveIntegrations, setLiveIntegrations] = useState(integrations);
+
+  // Fetch real connection status from the API
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchStatus() {
+      try {
+        const res = await fetch("/api/integrations/status");
+        if (!res.ok) return;
+        const data = await res.json();
+        const statusMap = data.integrations as Record<string, {
+          connected: boolean;
+          connectedAt?: string;
+          accountName?: string;
+        }>;
+        if (cancelled) return;
+        setLiveIntegrations((prev) =>
+          prev.map((i) => {
+            const live = statusMap[i.id];
+            if (!live) return i;
+            return {
+              ...i,
+              status: live.connected ? "connected" as const : i.status,
+              connectedAt: live.connectedAt || i.connectedAt,
+              accountName: live.accountName || i.accountName,
+            };
+          })
+        );
+      } catch {
+        // Silently fail — fall back to defaults
+      }
+    }
+    fetchStatus();
+    return () => { cancelled = true; };
+  }, []);
+
   // Group integrations by category
-  const crmIntegrations = integrations.filter((i) =>
+  const crmIntegrations = liveIntegrations.filter((i) =>
     ["hubspot"].includes(i.id)
   );
-  const otherIntegrations = integrations.filter((i) =>
+  const otherIntegrations = liveIntegrations.filter((i) =>
     !["hubspot"].includes(i.id)
   );
 

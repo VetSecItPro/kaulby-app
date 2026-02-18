@@ -1,4 +1,5 @@
 import { jsonCompletion } from "../openrouter";
+import { logger } from "@/lib/logger";
 
 interface SubredditSuggestion {
   name: string;
@@ -39,7 +40,7 @@ async function searchRedditSubreddits(query: string, limit: number = 25): Promis
     );
 
     if (!response.ok) {
-      console.error(`Reddit subreddit search failed: ${response.status}`);
+      logger.error("Reddit subreddit search failed", { status: response.status });
       return [];
     }
 
@@ -50,7 +51,7 @@ async function searchRedditSubreddits(query: string, limit: number = 25): Promis
       .filter(child => child.data.subscribers >= 1000)
       .map(child => child.data.display_name);
   } catch (error) {
-    console.error("Reddit subreddit search error:", error);
+    logger.error("Reddit subreddit search error", { error: error instanceof Error ? error.message : String(error) });
     return [];
   }
 }
@@ -72,10 +73,10 @@ export async function findRelevantSubreddits(
   const allSubreddits = new Set<string>();
 
   // Step 1: Use Reddit's native subreddit search for the company name
-  console.log(`[SubredditFinder] Searching Reddit for "${companyName}"...`);
+  logger.debug("[SubredditFinder] Searching Reddit", { companyName });
   const redditResults = await searchRedditSubreddits(companyName, 15);
   redditResults.forEach(s => allSubreddits.add(s));
-  console.log(`[SubredditFinder] Reddit returned: ${redditResults.join(", ") || "none"}`);
+  logger.debug("[SubredditFinder] Reddit results", { count: redditResults.length, subreddits: redditResults });
 
   // Step 2: Also search for each keyword
   for (const keyword of keywords.slice(0, 3)) { // Limit to avoid rate limiting
@@ -84,13 +85,13 @@ export async function findRelevantSubreddits(
   }
 
   // Step 3: Use AI to enhance with industry-specific and competitor subreddits
-  console.log(`[SubredditFinder] Enhancing with AI suggestions...`);
+  logger.debug("[SubredditFinder] Enhancing with AI suggestions");
   const aiSuggestions = await getAISuggestions(companyName, keywords, maxSubreddits);
   aiSuggestions.forEach(s => allSubreddits.add(s));
-  console.log(`[SubredditFinder] AI suggested: ${aiSuggestions.join(", ") || "none"}`);
+  logger.debug("[SubredditFinder] AI suggestions", { count: aiSuggestions.length, subreddits: aiSuggestions });
 
   const finalList = Array.from(allSubreddits).slice(0, maxSubreddits);
-  console.log(`[SubredditFinder] Final list: ${finalList.join(", ")}`);
+  logger.info("[SubredditFinder] Final subreddit list", { count: finalList.length, subreddits: finalList });
 
   return finalList;
 }
@@ -155,7 +156,7 @@ Only include subreddits where this company/topic would ACTUALLY be discussed.`;
 
     return [...highRelevance, ...mediumRelevance].slice(0, maxSubreddits);
   } catch (error) {
-    console.error("AI subreddit suggestion error:", error);
+    logger.error("AI subreddit suggestion error", { error: error instanceof Error ? error.message : String(error) });
     return [];
   }
 }
