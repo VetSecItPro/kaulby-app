@@ -36,6 +36,7 @@ import {
   Activity,
   BarChart3,
 } from "lucide-react";
+import { toast } from "sonner";
 import { ExportDialog } from "./export-dialog";
 import { getPlatformDisplayName, getPlatformBadgeColor, getPlatformBarColor } from "@/lib/platform-utils";
 import type { Audience, Monitor, Result } from "@/lib/db/schema";
@@ -219,6 +220,7 @@ export function AudienceDetail({
       }
     } catch (error) {
       console.error("Failed to add monitor:", error);
+      toast.error("Failed to add monitor");
     } finally {
       setIsAddingMonitor(false);
     }
@@ -238,6 +240,7 @@ export function AudienceDetail({
       }
     } catch (error) {
       console.error("Failed to remove monitor:", error);
+      toast.error("Failed to remove monitor");
     } finally {
       setIsRemoving(false);
       setRemoveMonitorId(null);

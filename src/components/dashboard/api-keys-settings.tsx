@@ -26,6 +26,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { toast } from "sonner";
 
 interface ApiKey {
   id: string;
@@ -108,6 +109,7 @@ export function ApiKeysSettings({ subscriptionStatus }: ApiKeysSettingsProps) {
       setKeyName("");
     } catch {
       setError("Failed to create API key");
+      toast.error("Failed to create API key");
     } finally {
       setCreating(false);
     }
@@ -125,6 +127,7 @@ export function ApiKeysSettings({ subscriptionStatus }: ApiKeysSettingsProps) {
       }
     } catch {
       console.error("Failed to revoke API key");
+      toast.error("Failed to revoke API key");
     }
   }
 

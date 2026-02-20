@@ -453,7 +453,7 @@ export async function canAccessFeature(
       break;
     case "askFeature":
       hasAccess = limits.aiFeatures.askFeature;
-      requiredPlan = "enterprise";
+      requiredPlan = "pro";
       break;
     case "emailAlerts":
       hasAccess = limits.alerts.email;

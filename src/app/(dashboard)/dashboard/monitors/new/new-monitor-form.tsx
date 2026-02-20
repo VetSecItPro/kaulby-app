@@ -10,12 +10,14 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, X, Loader2, Sparkles, Lock, AlertCircle, Clock, Wand2, Search } from "lucide-react";
+import { ArrowLeft, X, Loader2, Sparkles, Lock, AlertCircle, Clock, Wand2, Search, CheckCircle2, Zap, ChevronDown, ChevronUp } from "lucide-react";
+import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
 import Link from "next/link";
 import { SearchQueryInput } from "@/components/search-query-input";
 import type { PlanLimits } from "@/lib/plans";
 import { COMMON_TIMEZONES, WEEKDAYS } from "@/lib/monitor-schedule";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 // All 17 platforms with tier-based access
 // Pro tier (9 platforms): reddit, hackernews, indiehackers, producthunt, googlereviews, youtube, github, trustpilot, x
@@ -86,12 +88,87 @@ interface NewMonitorFormProps {
 
 type MonitorType = "keyword" | "ai_discovery";
 
+// Get default platforms for a user's plan
+function getDefaultPlatforms(userPlan: string): string[] {
+  if (userPlan === "enterprise") {
+    return ALL_PLATFORMS.map((p) => p.id);
+  }
+  if (userPlan === "pro") {
+    return ALL_PLATFORMS.filter((p) => p.tier === "free" || p.tier === "pro").map((p) => p.id);
+  }
+  return ["reddit"];
+}
+
 export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
   const formId = useId();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [name, setName] = useState("");
   const [companyName, setCompanyName] = useState("");
+  const [showFullForm, setShowFullForm] = useState(false);
+
+  // Quick Create state
+  const [quickBrandName, setQuickBrandName] = useState("");
+  const [quickIsLoading, setQuickIsLoading] = useState(false);
+
+  const quickKeywordSuggestions = useMemo(
+    () => generateKeywordSuggestions(quickBrandName),
+    [quickBrandName]
+  );
+  const [quickSelectedKeywords, setQuickSelectedKeywords] = useState<string[]>([]);
+
+  const toggleQuickKeyword = (keyword: string) => {
+    setQuickSelectedKeywords((prev) =>
+      prev.includes(keyword) ? prev.filter((k) => k !== keyword) : prev.length < limits.keywordsPerMonitor ? [...prev, keyword] : prev
+    );
+  };
+
+  const handleQuickCreate = async () => {
+    if (!quickBrandName.trim()) {
+      toast.error("Please enter a brand or company name");
+      return;
+    }
+
+    setQuickIsLoading(true);
+    try {
+      const platforms = getDefaultPlatforms(userPlan);
+      const response = await fetch("/api/monitors", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: `${quickBrandName.trim()} Monitor`,
+          companyName: quickBrandName.trim(),
+          monitorType: "keyword",
+          keywords: quickSelectedKeywords,
+          platforms,
+          platformUrls: {},
+          scheduleEnabled: false,
+          scheduleStartHour: 9,
+          scheduleEndHour: 17,
+          scheduleDays: WEEKDAYS,
+          scheduleTimezone: "America/New_York",
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to create monitor");
+      }
+
+      toast.success("Monitor created! We'll start scanning shortly.", {
+        icon: <CheckCircle2 className="h-4 w-4" />,
+      });
+      setTimeout(() => {
+        router.push("/dashboard/monitors");
+        router.refresh();
+      }, 1500);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Something went wrong";
+      toast.error(message);
+    } finally {
+      setQuickIsLoading(false);
+    }
+  };
   const [keywordInput, setKeywordInput] = useState("");
   const [keywords, setKeywords] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -206,10 +283,18 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
         throw new Error(data.error || "Failed to create monitor");
       }
 
-      router.push("/dashboard/monitors");
-      router.refresh();
+      toast.success("Monitor created! We'll start scanning shortly.", {
+        icon: <CheckCircle2 className="h-4 w-4" />,
+      });
+      // Give user a moment to see the success message
+      setTimeout(() => {
+        router.push("/dashboard/monitors");
+        router.refresh();
+      }, 1500);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      const message = err instanceof Error ? err.message : "Something went wrong";
+      setError(message);
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }
@@ -225,22 +310,110 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
   const upgradePlanName = getUpgradePlanName();
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3 sm:gap-4">
         <Link href="/dashboard/monitors">
-          <Button variant="ghost" size="icon">
+          <Button variant="ghost" size="icon" className="min-h-[44px] min-w-[44px]">
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">New Monitor</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">New Monitor</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
             Set up a new keyword monitor to track mentions.
           </p>
         </div>
       </div>
 
+      {/* Quick Create Section */}
+      <Card className="border-teal-500/30 bg-teal-500/5">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Zap className="h-5 w-5 text-teal-500" />
+            <CardTitle>Quick Create</CardTitle>
+          </div>
+          <CardDescription>
+            Enter your brand name and create a monitor in seconds with sensible defaults.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor={`${formId}-quick-brand`}>Brand / Company Name</Label>
+            <Input
+              id={`${formId}-quick-brand`}
+              placeholder="e.g., Acme Corp, High Rise Coffee"
+              value={quickBrandName}
+              onChange={(e) => {
+                setQuickBrandName(e.target.value);
+                setQuickSelectedKeywords([]);
+              }}
+              autoComplete="off"
+              className="dark-input placeholder:text-gray-400 hover:border-teal-500 focus:border-teal-500 min-h-[44px]"
+            />
+          </div>
+
+          {/* Auto-suggested keywords */}
+          {quickBrandName.trim() && quickKeywordSuggestions.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium text-muted-foreground">
+                  Suggested keywords (optional)
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {quickKeywordSuggestions.map((suggestion) => (
+                  <Badge
+                    key={suggestion}
+                    variant={quickSelectedKeywords.includes(suggestion) ? "default" : "outline"}
+                    className="cursor-pointer transition-colors hover:bg-primary hover:text-primary-foreground min-h-[36px] px-3 text-sm"
+                    onClick={() => toggleQuickKeyword(suggestion)}
+                  >
+                    {quickSelectedKeywords.includes(suggestion) ? "" : "+ "}
+                    {suggestion}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Quick create defaults info */}
+          <div className="text-xs text-muted-foreground space-y-1">
+            <p>
+              Defaults: {userPlan === "enterprise" ? "All 17 platforms" : userPlan === "pro" ? "9 Pro platforms" : "Reddit"} | Keyword mode | Scans on your plan&apos;s schedule
+            </p>
+          </div>
+
+          <Button
+            onClick={handleQuickCreate}
+            disabled={quickIsLoading || !quickBrandName.trim()}
+            className="bg-teal-500 text-black hover:bg-teal-600 w-full sm:w-auto min-h-[44px]"
+          >
+            {quickIsLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Zap className="mr-2 h-4 w-4" />
+            Create Monitor
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Divider with toggle to full form */}
+      <Collapsible open={showFullForm} onOpenChange={setShowFullForm}>
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="flex items-center gap-2 w-full justify-center py-3 min-h-[44px] text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {showFullForm ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
+            {showFullForm ? "Hide advanced options" : "Or customize everything below"}
+          </button>
+        </CollapsibleTrigger>
+
+        <CollapsibleContent>
       <form onSubmit={handleSubmit}>
         <Card>
           <CardHeader>
@@ -249,7 +422,7 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
               Configure what you want to track across platforms.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-6 sm:space-y-6">
             {/* Monitor Name */}
             <div className="space-y-2">
               <Label htmlFor={`${formId}-name`}>Monitor Name</Label>
@@ -259,7 +432,7 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 autoComplete="off"
-                className="dark-input placeholder:text-gray-400 hover:border-teal-500 focus:border-teal-500"
+                className="dark-input placeholder:text-gray-400 hover:border-teal-500 focus:border-teal-500 min-h-[44px]"
               />
               <p className="text-xs text-muted-foreground">
                 A friendly name to identify this monitor in your dashboard.
@@ -275,7 +448,7 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
                 autoComplete="off"
-                className="dark-input placeholder:text-gray-400 hover:border-teal-500 focus:border-teal-500"
+                className="dark-input placeholder:text-gray-400 hover:border-teal-500 focus:border-teal-500 min-h-[44px]"
               />
               <p className="text-xs text-muted-foreground">
                 The company or brand you want to monitor. We&apos;ll search for this name across selected platforms.
@@ -285,12 +458,12 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
             {/* Monitor Mode Selection (Pro/Team feature) */}
             <div className="space-y-3">
               <Label>Monitor Mode</Label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {/* Keyword Mode */}
                 <button
                   type="button"
                   onClick={() => setMonitorType("keyword")}
-                  className={`relative flex flex-col items-start p-4 rounded-lg border-2 transition-all ${
+                  className={`relative flex flex-col items-start p-4 min-h-[44px] rounded-lg border-2 transition-all ${
                     monitorType === "keyword"
                       ? "border-teal-500 bg-teal-500/5"
                       : "border-border hover:border-muted-foreground/50"
@@ -314,7 +487,7 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
                     }
                   }}
                   disabled={!isPaidUser}
-                  className={`relative flex flex-col items-start p-4 rounded-lg border-2 transition-all ${
+                  className={`relative flex flex-col items-start p-4 min-h-[44px] rounded-lg border-2 transition-all ${
                     monitorType === "ai_discovery"
                       ? "border-purple-500 bg-purple-500/5"
                       : !isPaidUser
@@ -399,13 +572,13 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
                   onKeyDown={handleKeyDown}
                   autoComplete="off"
                   disabled={isAtKeywordLimit}
-                  className="dark-input placeholder:text-gray-400 hover:border-teal-500 focus:border-teal-500 disabled:opacity-50"
+                  className="dark-input placeholder:text-gray-400 hover:border-teal-500 focus:border-teal-500 disabled:opacity-50 min-h-[44px]"
                 />
                 <Button
                   type="button"
                   onClick={addKeyword}
                   disabled={isAtKeywordLimit || !keywordInput.trim()}
-                  className="bg-teal-500 text-black hover:bg-teal-600 disabled:opacity-50"
+                  className="bg-teal-500 text-black hover:bg-teal-600 disabled:opacity-50 min-h-[44px] min-w-[44px]"
                 >
                   Add
                 </Button>
@@ -428,14 +601,14 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
               {keywords.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-2">
                   {keywords.map((keyword) => (
-                    <Badge key={keyword} variant="secondary" className="gap-1">
+                    <Badge key={keyword} variant="secondary" className="gap-1 min-h-[36px] px-3 text-sm">
                       {keyword}
                       <button
                         type="button"
                         onClick={() => removeKeyword(keyword)}
-                        className="ml-1 hover:text-destructive"
+                        className="ml-1 hover:text-destructive min-w-[24px] min-h-[24px] flex items-center justify-center"
                       >
-                        <X className="h-3 w-3" />
+                        <X className="h-3.5 w-3.5" />
                       </button>
                     </Badge>
                   ))}
@@ -457,7 +630,7 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
                         <Badge
                           key={suggestion}
                           variant="outline"
-                          className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
+                          className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors min-h-[36px] px-3 text-sm"
                           onClick={() => addSuggestedKeyword(suggestion)}
                         >
                           + {suggestion}
@@ -497,7 +670,7 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
                 </p>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {ALL_PLATFORMS.map((platform) => {
                   const isLocked = isPlatformLocked(platform.tier);
                   const isSelected = selectedPlatforms.includes(platform.id);
@@ -506,16 +679,17 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
                     <label
                       key={platform.id}
                       htmlFor={`${formId}-platform-${platform.id}`}
-                      className={`flex items-start space-x-3 rounded-lg border p-4 transition-colors ${
+                      className={`flex items-center space-x-3 rounded-lg border p-4 min-h-[56px] transition-colors ${
                         isLocked
                           ? "opacity-60 cursor-not-allowed bg-muted/30"
-                          : "cursor-pointer hover:bg-muted/50"
+                          : "cursor-pointer hover:bg-muted/50 active:bg-muted/70"
                       } ${isSelected ? "border-primary bg-primary/5" : ""}`}
                     >
                       <Checkbox
                         id={`${formId}-platform-${platform.id}`}
                         checked={isSelected}
                         disabled={isLocked}
+                        className="h-5 w-5"
                         onCheckedChange={(checked) => {
                           if (!isLocked && typeof checked === "boolean") {
                             if (checked && !isSelected) {
@@ -617,7 +791,7 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
                         value={String(scheduleStartHour)}
                         onValueChange={(v) => setScheduleStartHour(parseInt(v))}
                       >
-                        <SelectTrigger aria-label="Start time">
+                        <SelectTrigger aria-label="Start time" className="min-h-[44px]">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -635,7 +809,7 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
                         value={String(scheduleEndHour)}
                         onValueChange={(v) => setScheduleEndHour(parseInt(v))}
                       >
-                        <SelectTrigger aria-label="End time">
+                        <SelectTrigger aria-label="End time" className="min-h-[44px]">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -664,7 +838,7 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
                                 : [...prev, i].sort()
                             );
                           }}
-                          className={`px-3 py-1.5 text-sm rounded-md border transition-colors ${
+                          className={`px-3 py-2 min-h-[44px] min-w-[44px] text-sm rounded-md border transition-colors ${
                             scheduleDays.includes(i)
                               ? "bg-teal-500 text-black border-teal-500"
                               : "bg-background hover:bg-muted"
@@ -683,7 +857,7 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
                       value={scheduleTimezone}
                       onValueChange={setScheduleTimezone}
                     >
-                      <SelectTrigger aria-label="Timezone">
+                      <SelectTrigger aria-label="Timezone" className="min-h-[44px]">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -705,13 +879,13 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
             )}
 
             {/* Submit */}
-            <div className="flex gap-4">
-              <Button type="submit" disabled={isLoading} className="bg-teal-500 text-black hover:bg-teal-600">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+              <Button type="submit" disabled={isLoading} className="bg-teal-500 text-black hover:bg-teal-600 w-full sm:w-auto min-h-[44px]">
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Create Monitor
               </Button>
-              <Link href="/dashboard/monitors">
-                <Button type="button" variant="outline">
+              <Link href="/dashboard/monitors" className="w-full sm:w-auto">
+                <Button type="button" variant="outline" className="w-full sm:w-auto min-h-[44px]">
                   Cancel
                 </Button>
               </Link>
@@ -719,6 +893,8 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
           </CardContent>
         </Card>
       </form>
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
 }

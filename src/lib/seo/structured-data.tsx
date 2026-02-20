@@ -45,13 +45,8 @@ export function SoftwareApplicationSchema() {
       priceCurrency: "USD",
       offerCount: "3",
     },
-    aggregateRating: {
-      "@type": "AggregateRating",
-      ratingValue: "4.8",
-      ratingCount: "127",
-      bestRating: "5",
-      worstRating: "1",
-    },
+    // Note: aggregateRating removed — no real user reviews yet.
+    // Add back when genuine reviews are collected.
     description:
       "Monitor brand mentions across 17 platforms with AI-powered sentiment analysis. Track Reddit, Hacker News, Product Hunt, reviews, and more.",
     featureList: [

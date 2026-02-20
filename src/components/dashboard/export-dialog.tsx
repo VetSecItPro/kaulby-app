@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Download, Loader2, FileSpreadsheet, FileJson, Lock } from "lucide-react";
+import { toast } from "sonner";
 
 type ExportFormat = "csv" | "json" | "full";
 
@@ -88,7 +89,7 @@ export function ExportDialog({
       setOpen(false);
     } catch (error) {
       console.error("Export failed:", error);
-      // Could add toast notification here
+      toast.error("Failed to export data");
     } finally {
       setIsExporting(false);
     }

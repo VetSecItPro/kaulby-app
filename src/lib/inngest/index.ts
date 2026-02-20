@@ -33,6 +33,8 @@ export { checkBudgetAlerts } from "./functions/budget-alerts";
 export { collectCommunityStats, fetchSubredditStats, ALL_TRACKED_SUBREDDITS } from "./functions/community-stats";
 export { detectInactiveUsers, sendReengagement } from "./functions/reengagement";
 export { sendScheduledReports } from "./functions/send-scheduled-reports";
+// HubSpot CRM sync
+export { syncHubspotContacts } from "./functions/sync-hubspot-contacts";
 
 // All functions for the Inngest handler
 import { monitorReddit } from "./functions/monitor-reddit";
@@ -68,6 +70,8 @@ import { checkBudgetAlerts } from "./functions/budget-alerts";
 import { collectCommunityStats, fetchSubredditStats } from "./functions/community-stats";
 import { detectInactiveUsers, sendReengagement } from "./functions/reengagement";
 import { sendScheduledReports } from "./functions/send-scheduled-reports";
+// HubSpot CRM sync
+import { syncHubspotContacts } from "./functions/sync-hubspot-contacts";
 
 export const functions = [
   monitorReddit,
@@ -115,4 +119,6 @@ export const functions = [
   sendReengagement,
   // Scheduled reports
   sendScheduledReports,
+  // HubSpot CRM sync
+  syncHubspotContacts,
 ];

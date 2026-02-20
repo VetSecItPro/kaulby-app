@@ -16,9 +16,17 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   AlertCircle,
   Check,
   ExternalLink,
+  Hash,
   Loader2,
   Plug,
   Settings,
@@ -135,6 +143,9 @@ const IntegrationCard = memo(function IntegrationCard({
                 Connected to: <span className="font-medium">{integration.accountName}</span>
               </p>
             )}
+            {integration.id === "discord" && integration.status === "connected" && (
+              <DiscordChannelPicker />
+            )}
           </div>
           <div className="shrink-0">
             {integration.status === "disconnected" && (
@@ -199,6 +210,133 @@ const IntegrationCard = memo(function IntegrationCard({
         </div>
       </CardContent>
     </Card>
+  );
+});
+
+/**
+ * Discord Channel Picker
+ *
+ * Shown when Discord is connected. Fetches available text channels
+ * from the guild and lets the user pick one for alert delivery.
+ */
+const DiscordChannelPicker = memo(function DiscordChannelPicker() {
+  const [channels, setChannels] = useState<{ id: string; name: string }[]>([]);
+  const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchChannels() {
+      try {
+        const res = await fetch("/api/integrations/discord/channels");
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({ error: "Failed to load channels" }));
+          setError(data.error || "Failed to load channels");
+          return;
+        }
+        const data = await res.json();
+        if (cancelled) return;
+        setChannels(data.channels || []);
+        setSelectedChannelId(data.selectedChannelId || null);
+      } catch {
+        if (!cancelled) setError("Failed to load channels");
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    }
+    fetchChannels();
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleSave = async (channelId: string) => {
+    setIsSaving(true);
+    setSaved(false);
+    try {
+      const channel = channels.find((ch) => ch.id === channelId);
+      const res = await fetch("/api/integrations/discord/channels", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ channelId, channelName: channel?.name }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: "Failed to save" }));
+        setError(data.error || "Failed to save channel");
+        return;
+      }
+      setSelectedChannelId(channelId);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch {
+      setError("Failed to save channel");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground mt-3">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Loading channels...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-red-500 mt-3">
+        <AlertCircle className="h-4 w-4" />
+        {error}
+      </div>
+    );
+  }
+
+  if (channels.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground mt-3">
+        No text channels found. Make sure the Kaulby bot has access to your server channels.
+      </p>
+    );
+  }
+
+  return (
+    <div className="mt-3 space-y-2">
+      <Label className="text-sm flex items-center gap-1.5">
+        <Hash className="h-3.5 w-3.5" />
+        Alert Channel
+      </Label>
+      <div className="flex items-center gap-2">
+        <Select
+          value={selectedChannelId || ""}
+          onValueChange={(value) => handleSave(value)}
+          disabled={isSaving}
+        >
+          <SelectTrigger className="w-[220px]">
+            <SelectValue placeholder="Select a channel" />
+          </SelectTrigger>
+          <SelectContent>
+            {channels.map((ch) => (
+              <SelectItem key={ch.id} value={ch.id}>
+                # {ch.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {isSaving && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+        {saved && (
+          <span className="text-sm text-green-600 flex items-center gap-1">
+            <Check className="h-3.5 w-3.5" />
+            Saved
+          </span>
+        )}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Kaulby will post alert embeds to this channel when new mentions are detected.
+      </p>
+    </div>
   );
 });
 

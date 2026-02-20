@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { ShareOfVoice } from "./share-of-voice";
 import { ReportGenerator } from "./report-generator";
+import { EmptyState } from "./empty-states";
 
 interface AnalyticsData {
   volumeOverTime: { date: string; count: number }[];
@@ -187,15 +188,13 @@ export function AnalyticsCharts({ subscriptionStatus = "free" }: AnalyticsCharts
 
   if (!data || data.totals.mentions === 0) {
     return (
-      <Card className="border-dashed">
-        <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-          <BarChart3 className="h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">No data yet</h3>
-          <p className="text-muted-foreground max-w-md">
-            Analytics will appear here once your monitors start finding results.
-          </p>
-        </CardContent>
-      </Card>
+      <EmptyState
+        type="analytics"
+        title="Your analytics will appear here after your first scan"
+        description="Once your monitors start finding mentions, you'll see trends, sentiment breakdowns, and platform insights right here."
+        actionLabel="Create a Monitor"
+        actionHref="/dashboard/monitors/new"
+      />
     );
   }
 

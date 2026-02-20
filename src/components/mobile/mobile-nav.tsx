@@ -18,27 +18,32 @@ const navItems = [
     href: "/dashboard",
     icon: LayoutDashboard,
     exact: true,
+    tourId: "overview",
   },
   {
     title: "Monitors",
     href: "/dashboard/monitors",
     icon: Radio,
+    tourId: "monitors",
   },
   {
     title: "Add",
     href: "/dashboard/monitors/new",
     icon: Plus,
     isAction: true,
+    tourId: "create-monitor",
   },
   {
     title: "Results",
     href: "/dashboard/results",
     icon: MessageSquare,
+    tourId: "results",
   },
   {
     title: "Settings",
     href: "/dashboard/settings",
     icon: Settings,
+    tourId: "settings",
   },
 ];
 
@@ -59,6 +64,7 @@ export function MobileNav() {
               <Link
                 key={item.href}
                 href={item.href}
+                data-tour={item.tourId}
                 className="flex items-center justify-center"
               >
                 <motion.div
@@ -75,6 +81,7 @@ export function MobileNav() {
             <Link
               key={item.href}
               href={item.href}
+              data-tour={item.tourId}
               className="flex flex-col items-center justify-center flex-1 py-2"
             >
               <motion.div

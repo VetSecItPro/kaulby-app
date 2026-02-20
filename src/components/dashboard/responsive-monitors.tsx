@@ -147,7 +147,9 @@ function ScanButton({ monitorId, isActive, initialIsScanning, onScanComplete }: 
           setCooldownText(hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`);
           setIsScanning(false);
         } else {
-          setError(data.error || "Failed to start scan");
+          const errorMsg = data.error || "Failed to start scan";
+          setError(errorMsg);
+          toast.error("Failed to trigger scan. Please try again.");
           setIsScanning(false);
         }
         return;
@@ -156,6 +158,7 @@ function ScanButton({ monitorId, isActive, initialIsScanning, onScanComplete }: 
       // Scan started successfully - keep polling for completion
     } catch {
       setError("Network error");
+      toast.error("Failed to trigger scan. Please try again.");
       setIsScanning(false);
     }
   };

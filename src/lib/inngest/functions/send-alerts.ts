@@ -5,6 +5,9 @@ import { sendAlertEmail, sendDigestEmail, type WeeklyInsights } from "@/lib/emai
 import { getPlanLimits } from "@/lib/plans";
 import { generateWeeklyInsights } from "@/lib/ai";
 import { sendWebhookNotification, type NotificationResult } from "@/lib/notifications";
+import { sendDiscordBotMessage } from "@/lib/integrations/discord";
+import { decryptIntegrationData } from "@/lib/encryption";
+import { logger } from "@/lib/logger";
 
 // PERF-BUILDTIME-002: Cache Intl.DateTimeFormat instances by timezone+type
 const tzFormatterCache = new Map<string, Intl.DateTimeFormat>();
@@ -199,10 +202,64 @@ export const sendAlert = inngest.createFunction(
       };
     }
 
+    // Discord integration alert (bot token + channel ID)
+    // Runs in addition to any webhook-based alerts above. If the user has
+    // connected Discord via OAuth AND selected a channel, send rich embeds
+    // through the bot. Failures are logged but never crash the pipeline.
+    const discordIntegrationResult = await step.run("send-discord-integration", async () => {
+      try {
+        const user = alert.monitor.user;
+        if (!user) return { skipped: true, reason: "No user on monitor" };
+
+        const integrations = (user.integrations as Record<string, unknown>) || {};
+        const discordRaw = integrations.discord as Record<string, unknown> | undefined;
+
+        if (!discordRaw?.connected) {
+          return { skipped: true, reason: "Discord not connected" };
+        }
+
+        const discord = decryptIntegrationData(discordRaw);
+        const channelId = discord.channelId as string | undefined;
+
+        if (!channelId) {
+          return { skipped: true, reason: "No Discord channel configured" };
+        }
+
+        const result = await sendDiscordBotMessage(channelId, {
+          monitorName: alert.monitor.name,
+          results: matchingResults.map((r) => ({
+            title: r.title,
+            sourceUrl: r.sourceUrl,
+            platform: r.platform,
+            sentiment: r.sentiment,
+            aiSummary: r.aiSummary,
+          })),
+          dashboardUrl: `https://kaulbyapp.com/dashboard/monitors/${alert.monitor.id}`,
+        });
+
+        if (!result.success) {
+          logger.error("Discord integration alert failed", {
+            alertId,
+            channelId,
+            error: result.error,
+          });
+        }
+
+        return { sent: result.success, error: result.error };
+      } catch (error) {
+        logger.error("Discord integration alert error", {
+          alertId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        return { skipped: true, reason: "Unexpected error" };
+      }
+    });
+
     return {
       sent: true,
       channel: alert.channel,
       resultsCount: matchingResults.length,
+      discordIntegration: discordIntegrationResult,
     };
   }
 );

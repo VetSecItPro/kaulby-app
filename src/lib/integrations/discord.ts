@@ -98,6 +98,190 @@ export function isDiscordConfigured(): boolean {
   return !!(DISCORD_CLIENT_ID && DISCORD_CLIENT_SECRET && DISCORD_BOT_TOKEN);
 }
 
+/**
+ * Discord channel info returned from the API
+ */
+export interface DiscordChannel {
+  id: string;
+  name: string;
+  type: number; // 0 = text, 2 = voice, etc.
+}
+
+/**
+ * List text channels in a guild that the bot can see.
+ * Requires the bot to be a member of the guild (added via OAuth).
+ */
+export async function listGuildTextChannels(
+  guildId: string
+): Promise<{ channels: DiscordChannel[]; error?: string }> {
+  if (!DISCORD_BOT_TOKEN) {
+    return { channels: [], error: "DISCORD_BOT_TOKEN not configured" };
+  }
+
+  try {
+    const response = await fetch(
+      `https://discord.com/api/v10/guilds/${guildId}/channels`,
+      {
+        headers: {
+          Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const text = await response.text();
+      return {
+        channels: [],
+        error: `Failed to list channels: ${response.status} - ${text}`,
+      };
+    }
+
+    const allChannels: DiscordChannel[] = await response.json();
+
+    // Filter to text channels only (type 0) and sort alphabetically
+    const textChannels = allChannels
+      .filter((ch) => ch.type === 0)
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    return { channels: textChannels };
+  } catch (error) {
+    return {
+      channels: [],
+      error: error instanceof Error ? error.message : "Unknown error listing channels",
+    };
+  }
+}
+
+/**
+ * Build the Discord embed payload used by both webhook and bot message senders.
+ */
+function buildDiscordEmbedPayload(payload: {
+  monitorName: string;
+  results: Array<{
+    title: string;
+    sourceUrl: string;
+    platform: string;
+    sentiment: string | null;
+    aiSummary: string | null;
+  }>;
+  dashboardUrl: string;
+}): { content: string; embeds: Record<string, unknown>[] } {
+  const { monitorName, results, dashboardUrl } = payload;
+
+  const embeds = results.slice(0, 5).map((result) => {
+    const sentimentKey = (result.sentiment?.toLowerCase() ?? "neutral") as keyof typeof SENTIMENT_COLORS;
+    const color = SENTIMENT_COLORS[sentimentKey] ?? SENTIMENT_COLORS.neutral;
+
+    const fields: Array<{ name: string; value: string; inline: boolean }> = [
+      {
+        name: "Platform",
+        value: result.platform.charAt(0).toUpperCase() + result.platform.slice(1),
+        inline: true,
+      },
+    ];
+
+    if (result.sentiment) {
+      fields.push({
+        name: "Sentiment",
+        value: result.sentiment.charAt(0).toUpperCase() + result.sentiment.slice(1),
+        inline: true,
+      });
+    }
+
+    const embed: Record<string, unknown> = {
+      title: result.title.slice(0, 256),
+      url: result.sourceUrl,
+      color,
+      fields,
+    };
+
+    if (result.aiSummary) {
+      embed.description =
+        result.aiSummary.slice(0, 300) +
+        (result.aiSummary.length > 300 ? "..." : "");
+    }
+
+    return embed;
+  });
+
+  if (results.length > 5) {
+    embeds.push({
+      title: `+ ${results.length - 5} more mentions`,
+      url: dashboardUrl,
+      color: SENTIMENT_COLORS.neutral,
+      fields: [],
+      description: "View all mentions in the Kaulby dashboard.",
+    });
+  }
+
+  return {
+    content: `\u{1F4E1} **${monitorName}** \u2014 ${results.length} new mention${results.length !== 1 ? "s" : ""} detected!`,
+    embeds,
+  };
+}
+
+/**
+ * Send a formatted message to a Discord channel via bot token + channel ID.
+ * Uses the Discord REST API (POST /channels/{channelId}/messages).
+ */
+export async function sendDiscordBotMessage(
+  channelId: string,
+  payload: {
+    monitorName: string;
+    results: Array<{
+      title: string;
+      sourceUrl: string;
+      platform: string;
+      sentiment: string | null;
+      aiSummary: string | null;
+    }>;
+    dashboardUrl: string;
+  }
+): Promise<{ success: boolean; error?: string }> {
+  if (!DISCORD_BOT_TOKEN) {
+    return { success: false, error: "DISCORD_BOT_TOKEN not configured" };
+  }
+
+  if (!channelId) {
+    return { success: false, error: "Channel ID is required" };
+  }
+
+  if (!payload.results.length) {
+    return { success: false, error: "No results to send" };
+  }
+
+  const discordPayload = buildDiscordEmbedPayload(payload);
+
+  try {
+    const response = await fetch(
+      `https://discord.com/api/v10/channels/${channelId}/messages`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
+        },
+        body: JSON.stringify(discordPayload),
+      }
+    );
+
+    if (!response.ok) {
+      const text = await response.text();
+      return {
+        success: false,
+        error: `Discord bot message failed: ${response.status} - ${text}`,
+      };
+    }
+
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error sending Discord bot message",
+    };
+  }
+}
+
 // Sentiment color mapping (decimal integers for Discord embeds)
 const SENTIMENT_COLORS = {
   positive: 0x22c55e, // green
@@ -126,68 +310,15 @@ export async function sendDiscordMessage(
     dashboardUrl: string;
   }
 ): Promise<{ success: boolean; error?: string }> {
-  const { monitorName, results, dashboardUrl } = payload;
-
   if (!webhookUrl) {
     return { success: false, error: "Webhook URL is required" };
   }
 
-  if (!results.length) {
+  if (!payload.results.length) {
     return { success: false, error: "No results to send" };
   }
 
-  // Build embeds for up to 5 results (Discord allows max 10 embeds per message)
-  const embeds = results.slice(0, 5).map((result) => {
-    const sentimentKey = (result.sentiment?.toLowerCase() ?? "neutral") as keyof typeof SENTIMENT_COLORS;
-    const color = SENTIMENT_COLORS[sentimentKey] ?? SENTIMENT_COLORS.neutral;
-
-    const fields: Array<{ name: string; value: string; inline: boolean }> = [
-      {
-        name: "Platform",
-        value: result.platform.charAt(0).toUpperCase() + result.platform.slice(1),
-        inline: true,
-      },
-    ];
-
-    if (result.sentiment) {
-      fields.push({
-        name: "Sentiment",
-        value: result.sentiment.charAt(0).toUpperCase() + result.sentiment.slice(1),
-        inline: true,
-      });
-    }
-
-    const embed: Record<string, unknown> = {
-      title: result.title.slice(0, 256), // Discord title limit
-      url: result.sourceUrl,
-      color,
-      fields,
-    };
-
-    if (result.aiSummary) {
-      embed.description =
-        result.aiSummary.slice(0, 300) +
-        (result.aiSummary.length > 300 ? "..." : "");
-    }
-
-    return embed;
-  });
-
-  // If there are more results than shown, add a summary embed linking to the dashboard
-  if (results.length > 5) {
-    embeds.push({
-      title: `+ ${results.length - 5} more mentions`,
-      url: dashboardUrl,
-      color: SENTIMENT_COLORS.neutral,
-      fields: [],
-      description: "View all mentions in the Kaulby dashboard.",
-    });
-  }
-
-  const discordPayload = {
-    content: `📡 **${monitorName}** — ${results.length} new mention${results.length !== 1 ? "s" : ""} detected!`,
-    embeds,
-  };
+  const discordPayload = buildDiscordEmbedPayload(payload);
 
   try {
     const response = await fetch(webhookUrl, {

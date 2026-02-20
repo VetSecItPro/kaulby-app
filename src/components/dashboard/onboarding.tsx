@@ -37,6 +37,7 @@ import {
   Lock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface OnboardingWizardProps {
   isOpen: boolean;
@@ -213,9 +214,13 @@ export function OnboardingWizard({ isOpen, onClose, userName, userPlan = "free" 
         body: JSON.stringify({ completed: true }),
       });
 
-      onClose();
-      router.push("/dashboard/monitors");
-      router.refresh();
+      toast.success("Monitor created! We'll start scanning shortly.");
+      // Give user a moment to see the success message
+      setTimeout(() => {
+        onClose();
+        router.push("/dashboard/monitors");
+        router.refresh();
+      }, 1500);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {

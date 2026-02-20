@@ -9,6 +9,7 @@ interface IntegrationStatus {
   connected: boolean;
   connectedAt?: string;
   accountName?: string;
+  channelConfigured?: boolean;
 }
 
 /**
@@ -57,6 +58,11 @@ export async function GET() {
         (data.portalId ? `Portal ${data.portalId}` : undefined) || // HubSpot
         undefined,
     };
+
+    // For Discord, indicate whether a channel has been configured for alerts
+    if (provider === "discord" && status[provider].connected) {
+      status[provider].channelConfigured = !!(data.channelId);
+    }
 
     // If token is missing/corrupt, mark as disconnected
     if (!decrypted.accessToken && provider !== "slack") {

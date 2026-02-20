@@ -11,7 +11,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Check, Download, Trash2, Database, Clock, FileJson, FileSpreadsheet, Settings2, ShieldAlert, Loader2, Mail, FileText } from "lucide-react";
+import { Check, Download, Trash2, Database, Clock, FileJson, FileSpreadsheet, Settings2, ShieldAlert, Loader2, Mail, FileText, RotateCcw } from "lucide-react";
+import { useOnboarding } from "@/components/dashboard/onboarding-provider";
+import { useRouter } from "next/navigation";
 import { Switch } from "@/components/ui/switch";
 import {
   DropdownMenu,
@@ -118,6 +120,8 @@ export function ResponsiveSettings({
   reportDay: initialReportDay = 1,
 }: ResponsiveSettingsProps) {
   const planDisplayName = getPlanDisplayName(subscriptionStatus);
+  const { resetOnboarding } = useOnboarding();
+  const router = useRouter();
   const [isExporting, setIsExporting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [timezone, setTimezone] = useState(initialTimezone);
@@ -148,6 +152,7 @@ export function ResponsiveSettings({
       }
     } catch (error) {
       console.error("Failed to update timezone:", error);
+      toast.error("Failed to update timezone");
     } finally {
       setIsSavingTimezone(false);
     }
@@ -172,6 +177,7 @@ export function ResponsiveSettings({
       }
     } catch (error) {
       console.error("Failed to update email preferences:", error);
+      toast.error("Failed to update email preferences");
     } finally {
       setIsSavingEmailPrefs(false);
     }
@@ -196,6 +202,7 @@ export function ResponsiveSettings({
       }
     } catch (error) {
       console.error("Export failed:", error);
+      toast.error("Failed to export data");
     } finally {
       setIsExporting(false);
     }
@@ -217,6 +224,7 @@ export function ResponsiveSettings({
       }
     } catch (error) {
       console.error("Deletion request failed:", error);
+      toast.error("Failed to submit deletion request");
     } finally {
       setIsDeleting(false);
     }
@@ -394,6 +402,41 @@ export function ResponsiveSettings({
             <p className="text-xs text-muted-foreground">
               Digest emails will be sent at 9 AM in your timezone
             </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Help & Onboarding */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <RotateCcw className="h-5 w-5" />
+            Help & Onboarding
+          </CardTitle>
+          <CardDescription>
+            Revisit the getting started experience
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <p className="text-sm font-medium">Restart Onboarding</p>
+              <p className="text-xs text-muted-foreground">
+                Replay the onboarding wizard and product tour
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                resetOnboarding();
+                toast.success("Onboarding reset! Refreshing...");
+                setTimeout(() => router.refresh(), 500);
+              }}
+            >
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Restart
+            </Button>
           </div>
         </CardContent>
       </Card>

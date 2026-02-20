@@ -21,37 +21,37 @@ const tourSteps: Step[] = [
   },
   {
     target: '[data-tour="monitors"]',
-    placement: "right",
+    placement: "auto",
     title: "Your Monitors",
     content: "Monitors track keywords across platforms like Reddit, Hacker News, and more. Create your first monitor to start tracking mentions.",
   },
   {
     target: '[data-tour="create-monitor"]',
-    placement: "bottom",
+    placement: "auto",
     title: "Create a Monitor",
     content: "Click here to create your first monitor. Add keywords, select platforms, and start tracking in minutes.",
   },
   {
     target: '[data-tour="results"]',
-    placement: "right",
+    placement: "auto",
     title: "View Results",
     content: "All your mentions appear here. See sentiment analysis, pain points, and AI summaries for each result.",
   },
   {
     target: '[data-tour="analytics"]',
-    placement: "right",
+    placement: "auto",
     title: "Analytics Dashboard",
     content: "Track trends over time, see sentiment breakdowns, and identify which platforms drive the most mentions.",
   },
   {
     target: '[data-tour="insights"]',
-    placement: "right",
+    placement: "auto",
     title: "AI Insights",
     content: "Get AI-powered insights about your brand perception, common pain points, and actionable recommendations.",
   },
   {
     target: '[data-tour="settings"]',
-    placement: "right",
+    placement: "auto",
     title: "Settings & Alerts",
     content: "Configure email alerts, manage your subscription, and customize your experience.",
   },
@@ -111,24 +111,49 @@ export function OnboardingTour({ isNewUser = false, forceStart = false, onComple
   const [run, setRun] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [mounted, setMounted] = useState(false);
+  const [activeSteps, setActiveSteps] = useState<Step[]>(tourSteps);
+
+  // Filter steps to only include those with visible targets
+  const computeActiveSteps = useCallback(() => {
+    const visible = tourSteps.filter((step) => {
+      if (step.target === "body") return true;
+      const selector = step.target as string;
+      const elements = document.querySelectorAll(selector);
+      // Check if at least one matching element is visible
+      for (const el of elements) {
+        if (el instanceof HTMLElement && el.offsetParent !== null) {
+          return true;
+        }
+      }
+      return false;
+    });
+    setActiveSteps(visible);
+  }, []);
 
   // Check if tour should run
   useEffect(() => {
     setMounted(true);
 
     if (forceStart) {
-      setRun(true);
-      return;
+      // Delay to let DOM render, then compute visible steps
+      const timer = setTimeout(() => {
+        computeActiveSteps();
+        setRun(true);
+      }, 200);
+      return () => clearTimeout(timer);
     }
 
     // Check localStorage for completion
     const completed = localStorage.getItem(TOUR_STORAGE_KEY);
     if (!completed && isNewUser) {
       // Small delay to let the page render
-      const timer = setTimeout(() => setRun(true), 1000);
+      const timer = setTimeout(() => {
+        computeActiveSteps();
+        setRun(true);
+      }, 1000);
       return () => clearTimeout(timer);
     }
-  }, [isNewUser, forceStart]);
+  }, [isNewUser, forceStart, computeActiveSteps]);
 
   const handleCallback = useCallback((data: CallBackProps) => {
     const { status, type, index, action } = data;
@@ -152,7 +177,7 @@ export function OnboardingTour({ isNewUser = false, forceStart = false, onComple
 
     // Navigate to specific pages for certain steps
     if (type === "step:before") {
-      const stepTarget = tourSteps[index]?.target;
+      const stepTarget = activeSteps[index]?.target;
 
       // If we're on the monitors step and not on monitors page, navigate
       if (stepTarget === '[data-tour="create-monitor"]') {
@@ -162,13 +187,13 @@ export function OnboardingTour({ isNewUser = false, forceStart = false, onComple
         }
       }
     }
-  }, [router, onComplete]);
+  }, [router, onComplete, activeSteps]);
 
   if (!mounted) return null;
 
   return (
     <Joyride
-      steps={tourSteps}
+      steps={activeSteps}
       run={run}
       stepIndex={stepIndex}
       continuous

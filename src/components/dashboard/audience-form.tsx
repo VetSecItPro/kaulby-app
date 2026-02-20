@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { toast as sonnerToast } from "sonner";
 import { useToast } from "@/hooks/use-toast";
 import { AudienceTemplateGallery } from "./audience-template-gallery";
 import type { AudienceTemplate } from "@/lib/audience-templates";
@@ -83,6 +84,7 @@ export function AudienceForm({ audience }: AudienceFormProps) {
       }
     } catch (error) {
       console.error("Failed to save audience:", error);
+      sonnerToast.error("Failed to save audience");
       toast({ title: "Error", description: "Failed to save audience. Please try again.", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
