@@ -94,8 +94,10 @@ export default function RootLayout({
       <head>
         {/* Preconnect for performance */}
         <link rel="preconnect" href="https://fonts.googleapis.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://img.clerk.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://us.i.posthog.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://api.polar.sh" />
-        <link rel="dns-prefetch" href="https://img.clerk.com" />
+        <link rel="dns-prefetch" href="https://us-assets.i.posthog.com" />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} antialiased bg-background`}

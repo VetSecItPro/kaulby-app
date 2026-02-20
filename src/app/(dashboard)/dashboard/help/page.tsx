@@ -1,19 +1,5 @@
-"use client";
-
-import { useCallback, useState, useTransition } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Radio,
   Bell,
@@ -32,39 +18,20 @@ import {
   Shield,
   Lightbulb,
   FolderOpen,
-  BookOpen,
   Filter,
   Clock,
   AlertTriangle,
   CheckCircle,
-  XCircle,
   ArrowRight,
+  XCircle,
   ExternalLink,
   HelpCircle,
-  ChevronDown,
-  ChevronUp,
-  Send,
-  Loader2,
-  Play,
 } from "lucide-react";
-import { submitSupportTicket } from "./actions";
-import { useOnboarding } from "@/components/dashboard/onboarding-provider";
+import { HelpNav } from "@/components/dashboard/help/help-nav";
+import { FaqAccordion } from "@/components/dashboard/help/faq-accordion";
+import { TakeTourCard } from "@/components/dashboard/help/take-tour-card";
+import { SupportForm } from "@/components/dashboard/help/support-form";
 
-// Section navigation data
-const sections = [
-  { id: "faq", title: "Quick Answers", icon: HelpCircle },
-  { id: "getting-started", title: "Getting Started", icon: Zap },
-  { id: "monitors", title: "Monitors", icon: Radio },
-  { id: "platforms", title: "Platforms", icon: Globe },
-  { id: "results", title: "Results & Analysis", icon: Brain },
-  { id: "alerts", title: "Alerts & Notifications", icon: Bell },
-  { id: "api", title: "API Access", icon: Key, badge: "Team" },
-  { id: "billing", title: "Billing & Plans", icon: CreditCard },
-  { id: "team", title: "Team Management", icon: Users, badge: "Team" },
-  { id: "account", title: "Account & Settings", icon: Settings },
-  { id: "troubleshooting", title: "Troubleshooting", icon: Shield },
-  { id: "contact", title: "Contact Support", icon: Mail },
-];
 
 // FAQ data - common questions users ask
 const faqs = [
@@ -102,107 +69,7 @@ const faqs = [
   },
 ];
 
-// Component to replay the onboarding tour
-function TakeTourCard() {
-  const { startTour } = useOnboarding();
-
-  return (
-    <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-full bg-primary/10">
-              <Play className="h-4 w-4 text-primary" />
-            </div>
-            <div>
-              <p className="font-medium text-sm">Interactive Tour</p>
-              <p className="text-xs text-muted-foreground">
-                Take a guided tour of all features
-              </p>
-            </div>
-          </div>
-          <Button size="sm" variant="outline" onClick={startTour}>
-            Start Tour
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
 export default function HelpPage() {
-  // FAQ accordion state
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
-
-  // Support form state
-  const [isPending, startTransition] = useTransition();
-  const [formState, setFormState] = useState<{
-    category: string;
-    subject: string;
-    message: string;
-  }>({
-    category: "",
-    subject: "",
-    message: "",
-  });
-  const [submitStatus, setSubmitStatus] = useState<{
-    type: "success" | "error" | null;
-    message: string;
-  }>({ type: null, message: "" });
-
-  // Handle smooth scroll to section
-  // Note: Layout renders both mobile and desktop versions to DOM.
-  // We must find the VISIBLE element (non-zero height) to get correct position.
-  const scrollToSection = useCallback((e: React.MouseEvent<HTMLAnchorElement>, sectionId: string) => {
-    e.preventDefault();
-
-    // Find all elements with this ID and get the visible one
-    const allElements = document.querySelectorAll(`#${sectionId}`);
-    let element: HTMLElement | null = null;
-
-    for (let i = 0; i < allElements.length; i++) {
-      const el = allElements[i] as HTMLElement;
-      if (el.getBoundingClientRect().height > 0) {
-        element = el;
-        break;
-      }
-    }
-
-    if (!element) return;
-
-    // Scroll to the visible element with offset for header
-    const rect = element.getBoundingClientRect();
-    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-    const targetPosition = scrollTop + rect.top - 80;
-
-    window.scrollTo({
-      top: Math.max(0, targetPosition),
-      behavior: 'smooth'
-    });
-  }, []);
-
-  // Handle support form submission
-  const handleSubmitTicket = () => {
-    setSubmitStatus({ type: null, message: "" });
-
-    startTransition(async () => {
-      const result = await submitSupportTicket(formState);
-
-      if (result.success) {
-        setSubmitStatus({
-          type: "success",
-          message: "Your message has been sent! We'll get back to you within 24 hours.",
-        });
-        setFormState({ category: "", subject: "", message: "" });
-      } else {
-        setSubmitStatus({
-          type: "error",
-          message: result.error || "Something went wrong. Please try again.",
-        });
-      }
-    });
-  };
-
   return (
     <div className="space-y-12 max-w-4xl pb-20">
       {/* Header */}
@@ -214,40 +81,7 @@ export default function HelpPage() {
       </div>
 
       {/* Table of Contents */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BookOpen className="h-5 w-5 text-primary" />
-            Documentation
-          </CardTitle>
-          <CardDescription>
-            Click any section to jump directly to it
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {sections.map((section) => {
-              const Icon = section.icon;
-              return (
-                <a
-                  key={section.id}
-                  href={`#${section.id}`}
-                  onClick={(e) => scrollToSection(e, section.id)}
-                  className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted transition-colors group"
-                >
-                  <Icon className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                  <span className="text-sm group-hover:text-primary transition-colors">{section.title}</span>
-                  {section.badge && (
-                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                      {section.badge}
-                    </Badge>
-                  )}
-                </a>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
+      <HelpNav />
 
       {/* ==================== SECTION 0: QUICK ANSWERS (FAQ) ==================== */}
       <section id="faq" className="scroll-mt-20 space-y-6">
@@ -261,39 +95,7 @@ export default function HelpPage() {
           </div>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Frequently Asked Questions</CardTitle>
-            <CardDescription>
-              Click any question to expand the answer
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {faqs.map((faq, index) => (
-              <div
-                key={index}
-                className="border rounded-lg overflow-hidden"
-              >
-                <button
-                  onClick={() => setOpenFaq(openFaq === index ? null : index)}
-                  className="w-full flex items-center justify-between p-4 text-left hover:bg-muted/50 transition-colors"
-                >
-                  <span className="font-medium text-sm pr-4">{faq.question}</span>
-                  {openFaq === index ? (
-                    <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
-                  )}
-                </button>
-                {openFaq === index && (
-                  <div className="px-4 pb-4 text-sm text-muted-foreground border-t bg-muted/30">
-                    <p className="pt-3">{faq.answer}</p>
-                  </div>
-                )}
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+        <FaqAccordion faqs={faqs} />
       </section>
 
       {/* ==================== SECTION 1: GETTING STARTED ==================== */}
@@ -1907,113 +1709,7 @@ export default function HelpPage() {
           </div>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Send className="h-5 w-5" />
-              Submit a Support Ticket
-            </CardTitle>
-            <CardDescription>
-              Describe your issue and we&apos;ll get back to you within 24 hours. Team customers receive priority support.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {submitStatus.type === "success" ? (
-              <div className="p-6 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 text-center">
-                <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-4" />
-                <h3 className="font-semibold text-green-800 dark:text-green-200 mb-2">Message Sent!</h3>
-                <p className="text-sm text-green-700 dark:text-green-300 mb-4">
-                  {submitStatus.message}
-                </p>
-                <Button
-                  variant="outline"
-                  onClick={() => setSubmitStatus({ type: null, message: "" })}
-                >
-                  Submit Another Request
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="category">Category</Label>
-                  <Select
-                    value={formState.category}
-                    onValueChange={(value) => setFormState({ ...formState, category: value })}
-                  >
-                    <SelectTrigger id="category">
-                      <SelectValue placeholder="What can we help with?" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Technical Issue">Technical Issue</SelectItem>
-                      <SelectItem value="Billing Question">Billing Question</SelectItem>
-                      <SelectItem value="Feature Request">Feature Request</SelectItem>
-                      <SelectItem value="Account Help">Account Help</SelectItem>
-                      <SelectItem value="Platform/Integration">Platform / Integration</SelectItem>
-                      <SelectItem value="General Question">General Question</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="subject">Subject</Label>
-                  <Input
-                    id="subject"
-                    placeholder="Brief description of your issue"
-                    value={formState.subject}
-                    onChange={(e) => setFormState({ ...formState, subject: e.target.value })}
-                    maxLength={200}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="message">Message</Label>
-                  <Textarea
-                    id="message"
-                    placeholder="Please describe your issue in detail. Include any error messages, steps to reproduce, or relevant context that might help us assist you faster."
-                    className="min-h-[150px]"
-                    value={formState.message}
-                    onChange={(e) => setFormState({ ...formState, message: e.target.value })}
-                    maxLength={5000}
-                  />
-                  <p className="text-xs text-muted-foreground text-right">
-                    {formState.message.length}/5000
-                  </p>
-                </div>
-
-                {submitStatus.type === "error" && (
-                  <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
-                    <p className="text-sm text-red-800 dark:text-red-200">{submitStatus.message}</p>
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between pt-2">
-                  <p className="text-xs text-muted-foreground">
-                    Or email us directly at{" "}
-                    <a href="mailto:support@kaulbyapp.com" className="text-primary hover:underline">
-                      support@kaulbyapp.com
-                    </a>
-                  </p>
-                  <Button
-                    onClick={handleSubmitTicket}
-                    disabled={isPending || !formState.category || !formState.subject || !formState.message}
-                  >
-                    {isPending ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Sending...
-                      </>
-                    ) : (
-                      <>
-                        <Send className="h-4 w-4 mr-2" />
-                        Send Message
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <SupportForm />
 
         <Card>
           <CardHeader>

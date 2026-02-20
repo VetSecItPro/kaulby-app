@@ -12,6 +12,31 @@ interface MonitorSchedule {
   scheduleTimezone: string | null;
 }
 
+// PERF-BUILDTIME-001: Cache Intl.DateTimeFormat instances by timezone
+const hourFormatterCache = new Map<string, Intl.DateTimeFormat>();
+const dayFormatterCache = new Map<string, Intl.DateTimeFormat>();
+
+function getHourFormatter(timezone: string): Intl.DateTimeFormat {
+  if (!hourFormatterCache.has(timezone)) {
+    hourFormatterCache.set(timezone, new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      hour: "numeric",
+      hour12: false,
+    }));
+  }
+  return hourFormatterCache.get(timezone)!;
+}
+
+function getDayFormatter(timezone: string): Intl.DateTimeFormat {
+  if (!dayFormatterCache.has(timezone)) {
+    dayFormatterCache.set(timezone, new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      weekday: "short",
+    }));
+  }
+  return dayFormatterCache.get(timezone)!;
+}
+
 /**
  * Check if a monitor should be active based on its schedule
  * Returns true if:
@@ -31,15 +56,8 @@ export function isMonitorScheduleActive(monitor: MonitorSchedule): boolean {
 
   // Get current time in the monitor's timezone
   const now = new Date();
-  const formatter = new Intl.DateTimeFormat("en-US", {
-    timeZone: timezone,
-    hour: "numeric",
-    hour12: false,
-  });
-  const dayFormatter = new Intl.DateTimeFormat("en-US", {
-    timeZone: timezone,
-    weekday: "short",
-  });
+  const formatter = getHourFormatter(timezone);
+  const dayFormatter = getDayFormatter(timezone);
 
   const currentHour = parseInt(formatter.format(now), 10);
   const currentDayName = dayFormatter.format(now);

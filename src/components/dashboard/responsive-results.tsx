@@ -147,19 +147,35 @@ function MobileResultsView({
     return [...visibleResults, ...loadedResults];
   }, [visibleResults, loadedResults]);
 
+  // Refs for stable handleLoadMore (avoids IntersectionObserver reconnection)
+  const cursorRef = useRef(cursor);
+  const visibleResultsRef = useRef(visibleResults);
+  cursorRef.current = cursor;
+  visibleResultsRef.current = visibleResults;
+
   // Load more results
   const handleLoadMore = useCallback(async () => {
     if (loadingMore || !hasMore) return;
 
     setLoadingMore(true);
     try {
-      const lastResult = loadedResults.length > 0
-        ? loadedResults[loadedResults.length - 1]
-        : visibleResults[visibleResults.length - 1];
+      const cursorValue = cursorRef.current;
+      const visResults = visibleResultsRef.current;
 
-      const cursorParam = cursor || (lastResult?.postedAt
-        ? new Date(lastResult.postedAt).toISOString()
-        : null);
+      const cursorParam = cursorValue || (() => {
+        // Use functional access to get latest loadedResults
+        let lastPostedAt: string | null = null;
+        setLoadedResults((prev) => {
+          const lastResult = prev.length > 0
+            ? prev[prev.length - 1]
+            : visResults[visResults.length - 1];
+          lastPostedAt = lastResult?.postedAt
+            ? new Date(lastResult.postedAt).toISOString()
+            : null;
+          return prev;
+        });
+        return lastPostedAt;
+      })();
 
       const url = cursorParam
         ? `/api/results?cursor=${encodeURIComponent(cursorParam)}&limit=20`
@@ -173,7 +189,10 @@ function MobileResultsView({
           ...item,
           postedAt: item.postedAt ? new Date(item.postedAt as string) : null,
         }));
-        setLoadedResults((prev) => [...prev, ...newResults]);
+        setLoadedResults((prev) => {
+          const combined = [...prev, ...newResults];
+          return combined.length > 500 ? combined.slice(-500) : combined;
+        });
         setCursor(data.nextCursor);
         setHasMore(data.hasMore);
       }
@@ -182,7 +201,7 @@ function MobileResultsView({
     } finally {
       setLoadingMore(false);
     }
-  }, [loadingMore, hasMore, cursor, loadedResults, visibleResults]);
+  }, [loadingMore, hasMore]);
 
   // IntersectionObserver for auto-loading more results (mobile)
   useEffect(() => {
@@ -366,20 +385,35 @@ function DesktopResultsView(props: ViewProps) {
     return [...visibleResults, ...loadedResults];
   }, [visibleResults, loadedResults]);
 
+  // Refs for stable handleLoadMore (avoids IntersectionObserver reconnection)
+  const desktopCursorRef = useRef(cursor);
+  const desktopVisibleResultsRef = useRef(visibleResults);
+  desktopCursorRef.current = cursor;
+  desktopVisibleResultsRef.current = visibleResults;
+
   // Load more results
   const handleLoadMore = useCallback(async () => {
     if (loadingMore || !hasMore) return;
 
     setLoadingMore(true);
     try {
-      // Get cursor from last result
-      const lastResult = loadedResults.length > 0
-        ? loadedResults[loadedResults.length - 1]
-        : visibleResults[visibleResults.length - 1];
+      const cursorValue = desktopCursorRef.current;
+      const visResults = desktopVisibleResultsRef.current;
 
-      const cursorParam = cursor || (lastResult?.postedAt
-        ? new Date(lastResult.postedAt).toISOString()
-        : null);
+      // Get cursor from last result
+      const cursorParam = cursorValue || (() => {
+        let lastPostedAt: string | null = null;
+        setLoadedResults((prev) => {
+          const lastResult = prev.length > 0
+            ? prev[prev.length - 1]
+            : visResults[visResults.length - 1];
+          lastPostedAt = lastResult?.postedAt
+            ? new Date(lastResult.postedAt).toISOString()
+            : null;
+          return prev;
+        });
+        return lastPostedAt;
+      })();
 
       const url = cursorParam
         ? `/api/results?cursor=${encodeURIComponent(cursorParam)}&limit=20`
@@ -394,7 +428,10 @@ function DesktopResultsView(props: ViewProps) {
           ...item,
           postedAt: item.postedAt ? new Date(item.postedAt as string) : null,
         }));
-        setLoadedResults((prev) => [...prev, ...newResults]);
+        setLoadedResults((prev) => {
+          const combined = [...prev, ...newResults];
+          return combined.length > 500 ? combined.slice(-500) : combined;
+        });
         setCursor(data.nextCursor);
         setHasMore(data.hasMore);
       }
@@ -403,7 +440,7 @@ function DesktopResultsView(props: ViewProps) {
     } finally {
       setLoadingMore(false);
     }
-  }, [loadingMore, hasMore, cursor, loadedResults, visibleResults]);
+  }, [loadingMore, hasMore]);
 
   // IntersectionObserver for auto-loading more results (desktop)
   useEffect(() => {
@@ -526,13 +563,16 @@ function DesktopResultsView(props: ViewProps) {
       if (response.ok) {
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `kaulby-results-${new Date().toISOString().split("T")[0]}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        a.remove();
+        try {
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `kaulby-results-${new Date().toISOString().split("T")[0]}.csv`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+        } finally {
+          window.URL.revokeObjectURL(url);
+        }
       }
     } catch (error) {
       console.error("Export failed:", error);

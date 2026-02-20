@@ -29,53 +29,51 @@ export const dataRetention = inngest.createFunction(
       enterprise: new Date(now.getTime() - RETENTION_DAYS.enterprise * 24 * 60 * 60 * 1000),
     };
 
-    // Bulk delete for free-tier users (all old results, even saved)
+    // PERF-ASYNC-005: Run independent tier cleanups in parallel
     // SECURITY: Drizzle's sql`` template tag safely handles ${table.column} as column references, not raw string interpolation — FIX-115
-    const freeDeleted = await step.run("cleanup-free-tier", async () => {
-      const whereClause = and(
-        sql`${results.monitorId} IN (
-          SELECT ${monitors.id} FROM ${monitors}
-          INNER JOIN ${users} ON ${users.id} = ${monitors.userId}
-          WHERE COALESCE(${users.subscriptionStatus}, 'free') = 'free'
-        )`,
-        lt(results.createdAt, cutoffs.free)
-      );
-      const [{ value }] = await pooledDb.select({ value: count() }).from(results).where(whereClause);
-      if (value > 0) await pooledDb.delete(results).where(whereClause);
-      return value;
-    });
-
-    // Bulk delete for pro-tier users (preserve saved results)
-    const proDeleted = await step.run("cleanup-pro-tier", async () => {
-      const whereClause = and(
-        sql`${results.monitorId} IN (
-          SELECT ${monitors.id} FROM ${monitors}
-          INNER JOIN ${users} ON ${users.id} = ${monitors.userId}
-          WHERE ${users.subscriptionStatus} = 'pro'
-        )`,
-        lt(results.createdAt, cutoffs.pro),
-        eq(results.isSaved, false)
-      );
-      const [{ value }] = await pooledDb.select({ value: count() }).from(results).where(whereClause);
-      if (value > 0) await pooledDb.delete(results).where(whereClause);
-      return value;
-    });
-
-    // Bulk delete for enterprise-tier users (preserve saved results)
-    const enterpriseDeleted = await step.run("cleanup-enterprise-tier", async () => {
-      const whereClause = and(
-        sql`${results.monitorId} IN (
-          SELECT ${monitors.id} FROM ${monitors}
-          INNER JOIN ${users} ON ${users.id} = ${monitors.userId}
-          WHERE ${users.subscriptionStatus} = 'enterprise'
-        )`,
-        lt(results.createdAt, cutoffs.enterprise),
-        eq(results.isSaved, false)
-      );
-      const [{ value }] = await pooledDb.select({ value: count() }).from(results).where(whereClause);
-      if (value > 0) await pooledDb.delete(results).where(whereClause);
-      return value;
-    });
+    const [freeDeleted, proDeleted, enterpriseDeleted] = await Promise.all([
+      step.run("cleanup-free-tier", async () => {
+        const whereClause = and(
+          sql`${results.monitorId} IN (
+            SELECT ${monitors.id} FROM ${monitors}
+            INNER JOIN ${users} ON ${users.id} = ${monitors.userId}
+            WHERE COALESCE(${users.subscriptionStatus}, 'free') = 'free'
+          )`,
+          lt(results.createdAt, cutoffs.free)
+        );
+        const [{ value }] = await pooledDb.select({ value: count() }).from(results).where(whereClause);
+        if (value > 0) await pooledDb.delete(results).where(whereClause);
+        return value;
+      }),
+      step.run("cleanup-pro-tier", async () => {
+        const whereClause = and(
+          sql`${results.monitorId} IN (
+            SELECT ${monitors.id} FROM ${monitors}
+            INNER JOIN ${users} ON ${users.id} = ${monitors.userId}
+            WHERE ${users.subscriptionStatus} = 'pro'
+          )`,
+          lt(results.createdAt, cutoffs.pro),
+          eq(results.isSaved, false)
+        );
+        const [{ value }] = await pooledDb.select({ value: count() }).from(results).where(whereClause);
+        if (value > 0) await pooledDb.delete(results).where(whereClause);
+        return value;
+      }),
+      step.run("cleanup-enterprise-tier", async () => {
+        const whereClause = and(
+          sql`${results.monitorId} IN (
+            SELECT ${monitors.id} FROM ${monitors}
+            INNER JOIN ${users} ON ${users.id} = ${monitors.userId}
+            WHERE ${users.subscriptionStatus} = 'enterprise'
+          )`,
+          lt(results.createdAt, cutoffs.enterprise),
+          eq(results.isSaved, false)
+        );
+        const [{ value }] = await pooledDb.select({ value: count() }).from(results).where(whereClause);
+        if (value > 0) await pooledDb.delete(results).where(whereClause);
+        return value;
+      }),
+    ]);
 
     const totalDeleted = freeDeleted + proDeleted + enterpriseDeleted;
 

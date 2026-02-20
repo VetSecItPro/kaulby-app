@@ -1,4 +1,5 @@
 // PERF: Dynamic import settings tabs — FIX-204
+import { Suspense } from "react";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
@@ -35,7 +36,20 @@ async function getDataStats(userId: string) {
   };
 }
 
-export default async function SettingsPage() {
+function SettingsPageSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="animate-pulse h-8 w-48 bg-muted rounded" />
+      <div className="grid gap-6">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="animate-pulse h-48 bg-muted rounded-lg" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+async function SettingsContent() {
   const isDev = process.env.NODE_ENV === "development";
 
   let userId: string | null = null;
@@ -154,5 +168,13 @@ export default async function SettingsPage() {
       reportSchedule={reportSchedule}
       reportDay={reportDay}
     />
+  );
+}
+
+export default async function SettingsPage() {
+  return (
+    <Suspense fallback={<SettingsPageSkeleton />}>
+      <SettingsContent />
+    </Suspense>
   );
 }

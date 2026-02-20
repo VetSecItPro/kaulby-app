@@ -2,11 +2,13 @@ import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { monitors, results } from "@/lib/db/schema";
-import { eq, inArray, and, gte, lte } from "drizzle-orm";
+import { eq, inArray, and, gte, lte, count, desc, isNotNull, sql } from "drizzle-orm";
 import { checkApiRateLimit } from "@/lib/rate-limit";
 
 // Force dynamic rendering
 export const dynamic = "force-dynamic";
+
+// PERF-DB-003: SQL GROUP BY aggregations (was: 5000-row JS aggregation)
 
 /**
  * Results Aggregations API
@@ -17,6 +19,9 @@ export const dynamic = "force-dynamic";
  * - Conversation category counts
  * - Sentiment counts
  * - Engagement histogram buckets
+ *
+ * All aggregations use SQL GROUP BY for efficiency instead of
+ * fetching thousands of rows and aggregating in JavaScript.
  */
 
 interface PlatformCount {
@@ -101,6 +106,16 @@ function extractCommunity(platform: string, sourceUrl: string): string {
   }
 }
 
+/** Map SQL engagement bucket names to display labels with min/max ranges */
+const engagementBucketMeta: Record<string, { label: string; min: number; max: number }> = {
+  none: { label: "0", min: 0, max: 0 },
+  low: { label: "1-5", min: 1, max: 5 },
+  "medium-low": { label: "6-10", min: 6, max: 10 },
+  medium: { label: "11-50", min: 11, max: 50 },
+  high: { label: "51-100", min: 51, max: 100 },
+  viral: { label: "100+", min: 101, max: Infinity },
+};
+
 export async function GET(request: NextRequest) {
   try {
     const { userId } = await auth();
@@ -167,36 +182,124 @@ export async function GET(request: NextRequest) {
 
     const whereCondition = and(...conditions);
 
-    // PERF: Bounded aggregation query — FIX-206
-    // Fetch all results for aggregation
-    // Note: For large datasets, this could be optimized with SQL GROUP BY queries
-    const userResults = await db.query.results.findMany({
-      where: whereCondition,
-      limit: 5000,
-      columns: {
-        platform: true,
-        sourceUrl: true,
-        conversationCategory: true,
-        sentiment: true,
-        engagementScore: true,
-      },
-    });
+    // PERF-DB-003: Run all aggregation queries in parallel using SQL GROUP BY
+    const engagementCaseExpr = sql`CASE
+      WHEN ${results.engagementScore} IS NULL OR ${results.engagementScore} = 0 THEN 'none'
+      WHEN ${results.engagementScore} <= 5 THEN 'low'
+      WHEN ${results.engagementScore} <= 10 THEN 'medium-low'
+      WHEN ${results.engagementScore} <= 50 THEN 'medium'
+      WHEN ${results.engagementScore} <= 100 THEN 'high'
+      ELSE 'viral'
+    END`;
 
-    const total = userResults.length;
+    const [
+      totalResult,
+      platformCounts,
+      categoryCounts,
+      sentimentCounts,
+      engagementRows,
+      communityResults,
+    ] = await Promise.all([
+      // 1. Total count
+      db
+        .select({ total: count() })
+        .from(results)
+        .where(whereCondition),
 
-    // Platform counts
-    const platformMap = new Map<string, number>();
-    userResults.forEach((r) => {
-      const current = platformMap.get(r.platform) || 0;
-      platformMap.set(r.platform, current + 1);
-    });
-    const platforms: PlatformCount[] = Array.from(platformMap.entries())
-      .map(([platform, count]) => ({ platform, count }))
+      // 2. Platform counts via GROUP BY
+      db
+        .select({
+          platform: results.platform,
+          count: count(),
+        })
+        .from(results)
+        .where(whereCondition)
+        .groupBy(results.platform)
+        .orderBy(desc(count())),
+
+      // 3. Category counts via GROUP BY
+      db
+        .select({
+          category: results.conversationCategory,
+          count: count(),
+        })
+        .from(results)
+        .where(and(whereCondition, isNotNull(results.conversationCategory)))
+        .groupBy(results.conversationCategory)
+        .orderBy(desc(count())),
+
+      // 4. Sentiment counts via GROUP BY
+      db
+        .select({
+          sentiment: results.sentiment,
+          count: count(),
+        })
+        .from(results)
+        .where(and(whereCondition, isNotNull(results.sentiment)))
+        .groupBy(results.sentiment),
+
+      // 5. Engagement buckets via CASE WHEN + GROUP BY
+      db
+        .select({
+          bucket: engagementCaseExpr,
+          count: count(),
+        })
+        .from(results)
+        .where(whereCondition)
+        .groupBy(engagementCaseExpr),
+
+      // 6. Community extraction — limited fetch (Option B: JS aggregation on smaller dataset)
+      db.query.results.findMany({
+        where: whereCondition,
+        limit: 500,
+        columns: {
+          platform: true,
+          sourceUrl: true,
+        },
+      }),
+    ]);
+
+    const total = totalResult[0]?.total ?? 0;
+
+    // Format platform counts
+    const platforms: PlatformCount[] = platformCounts.map((r) => ({
+      platform: r.platform,
+      count: Number(r.count),
+    }));
+
+    // Format category counts
+    const categories: CategoryCount[] = categoryCounts
+      .filter((r) => r.category !== null)
+      .map((r) => ({
+        category: r.category!,
+        count: Number(r.count),
+      }));
+
+    // Format sentiment counts
+    const sentiments: SentimentCount[] = sentimentCounts
+      .filter((r) => r.sentiment !== null)
+      .map((r) => ({
+        sentiment: r.sentiment!,
+        count: Number(r.count),
+      }))
       .sort((a, b) => b.count - a.count);
 
-    // Community counts
+    // Format engagement buckets — ensure all buckets are present in order
+    const engagementMap = new Map(
+      engagementRows.map((r) => [r.bucket, Number(r.count)])
+    );
+    const engagementBuckets: EngagementBucket[] = Object.entries(engagementBucketMeta).map(
+      ([key, meta]) => ({
+        label: meta.label,
+        min: meta.min,
+        max: meta.max,
+        count: engagementMap.get(key) ?? 0,
+      })
+    );
+
+    // Aggregate communities in JS (URL parsing requires regex)
     const communityMap = new Map<string, { platform: string; count: number }>();
-    userResults.forEach((r) => {
+    communityResults.forEach((r) => {
       const community = extractCommunity(r.platform, r.sourceUrl);
       const key = `${r.platform}:${community}`;
       const current = communityMap.get(key) || { platform: r.platform, count: 0 };
@@ -209,50 +312,6 @@ export async function GET(request: NextRequest) {
         count: value.count,
       }))
       .sort((a, b) => b.count - a.count);
-
-    // Category counts
-    const categoryMap = new Map<string, number>();
-    userResults.forEach((r) => {
-      if (r.conversationCategory) {
-        const current = categoryMap.get(r.conversationCategory) || 0;
-        categoryMap.set(r.conversationCategory, current + 1);
-      }
-    });
-    const categories: CategoryCount[] = Array.from(categoryMap.entries())
-      .map(([category, count]) => ({ category, count }))
-      .sort((a, b) => b.count - a.count);
-
-    // Sentiment counts
-    const sentimentMap = new Map<string, number>();
-    userResults.forEach((r) => {
-      if (r.sentiment) {
-        const current = sentimentMap.get(r.sentiment) || 0;
-        sentimentMap.set(r.sentiment, current + 1);
-      }
-    });
-    const sentiments: SentimentCount[] = Array.from(sentimentMap.entries())
-      .map(([sentiment, count]) => ({ sentiment, count }))
-      .sort((a, b) => b.count - a.count);
-
-    // Engagement histogram buckets (GummySearch-style)
-    const engagementBuckets: EngagementBucket[] = [
-      { label: "0", min: 0, max: 0, count: 0 },
-      { label: "1-5", min: 1, max: 5, count: 0 },
-      { label: "6-10", min: 6, max: 10, count: 0 },
-      { label: "11-50", min: 11, max: 50, count: 0 },
-      { label: "51-100", min: 51, max: 100, count: 0 },
-      { label: "100+", min: 101, max: Infinity, count: 0 },
-    ];
-
-    userResults.forEach((r) => {
-      const score = r.engagementScore ?? 0;
-      for (const bucket of engagementBuckets) {
-        if (score >= bucket.min && score <= bucket.max) {
-          bucket.count++;
-          break;
-        }
-      }
-    });
 
     return NextResponse.json({
       total,

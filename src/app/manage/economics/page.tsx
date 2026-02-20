@@ -145,17 +145,24 @@ async function getUnitEconomicsData() {
   };
 }
 
+// PERF-BUILDTIME-004: Cache Intl formatters at module level
+const currencyFormatters = new Map<number, Intl.NumberFormat>();
+const numberFormatter = new Intl.NumberFormat("en-US");
+
 function formatCurrency(value: number, decimals = 2) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  }).format(value);
+  if (!currencyFormatters.has(decimals)) {
+    currencyFormatters.set(decimals, new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    }));
+  }
+  return currencyFormatters.get(decimals)!.format(value);
 }
 
 function formatNumber(value: number) {
-  return new Intl.NumberFormat("en-US").format(value);
+  return numberFormatter.format(value);
 }
 
 function getPlanBadge(plan: string | null) {

@@ -94,6 +94,7 @@ const nextConfig = {
       'framer-motion',
       'recharts',
       '@icons-pack/react-simple-icons',
+      'posthog-js',
     ],
   },
 
