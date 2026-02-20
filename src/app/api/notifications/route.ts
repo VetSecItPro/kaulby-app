@@ -31,7 +31,9 @@ export async function GET() {
       limit: 50,
     });
 
-    return NextResponse.json({ notifications: userNotifications });
+    const response = NextResponse.json({ notifications: userNotifications });
+    response.headers.set("Cache-Control", "private, no-store");
+    return response;
   } catch (error) {
     console.error("Failed to fetch notifications:", error);
     return NextResponse.json(

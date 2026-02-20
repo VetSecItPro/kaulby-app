@@ -40,7 +40,9 @@ export async function GET(request: NextRequest) {
     orderBy: [desc(bookmarks.createdAt)],
   });
 
-  return NextResponse.json({ bookmarks: userBookmarks });
+  const response = NextResponse.json({ bookmarks: userBookmarks });
+  response.headers.set("Cache-Control", "private, no-cache, must-revalidate");
+  return response;
 }
 
 /**
@@ -69,11 +71,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "resultId is required" }, { status: 400 });
   }
 
-  // Verify result exists and belongs to user's monitors
-  const result = await db.query.results.findFirst({
-    where: eq(results.id, resultId),
-    with: { monitor: { columns: { userId: true } } },
-  });
+  // Verify result exists and check for duplicate in parallel (independent queries)
+  const [result, existing] = await Promise.all([
+    db.query.results.findFirst({
+      where: eq(results.id, resultId),
+      with: { monitor: { columns: { userId: true } } },
+    }),
+    db.query.bookmarks.findFirst({
+      where: and(eq(bookmarks.userId, userId), eq(bookmarks.resultId, resultId)),
+    }),
+  ]);
 
   if (!result || result.monitor.userId !== userId) {
     return NextResponse.json({ error: "Result not found" }, { status: 404 });
@@ -91,11 +98,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Collection not found" }, { status: 404 });
     }
   }
-
-  // Check for duplicate
-  const existing = await db.query.bookmarks.findFirst({
-    where: and(eq(bookmarks.userId, userId), eq(bookmarks.resultId, resultId)),
-  });
 
   if (existing) {
     // Update existing bookmark (move to different collection or update note)

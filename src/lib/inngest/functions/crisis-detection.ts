@@ -59,9 +59,11 @@ export const detectCrisis = inngest.createFunction(
 
     const crisisAlerts: CrisisAlert[] = [];
 
-    // Process each user
-    for (const user of teamUsers) {
-      await step.run(`check-user-${user.id}`, async () => {
+    // Process users in parallel batches of 10
+    const USER_BATCH_SIZE = 10;
+    for (let i = 0; i < teamUsers.length; i += USER_BATCH_SIZE) {
+      const batch = teamUsers.slice(i, i + USER_BATCH_SIZE);
+      await Promise.all(batch.map(user => step.run(`check-user-${user.id}`, async () => {
         // Get user's active monitors
         const userMonitors = await pooledDb.query.monitors.findMany({
           where: and(
@@ -136,10 +138,25 @@ export const detectCrisis = inngest.createFunction(
           },
         });
 
+        // PERF-ALGO-001: Build lookup maps to avoid O(n²) nested .find()/.filter()
+        const currentSentimentByMonitor = new Map(
+          currentSentiment.map(s => [s.monitorId, s])
+        );
+        const previousSentimentByMonitor = new Map(
+          previousSentiment.map(s => [s.monitorId, s])
+        );
+        const viralByMonitor = new Map<string, typeof viralNegative>();
+        for (const viral of viralNegative) {
+          if (!viralByMonitor.has(viral.monitorId)) {
+            viralByMonitor.set(viral.monitorId, []);
+          }
+          viralByMonitor.get(viral.monitorId)!.push(viral);
+        }
+
         // Analyze each monitor
         for (const monitor of userMonitors) {
-          const current = currentSentiment.find((s) => s.monitorId === monitor.id);
-          const previous = previousSentiment.find((s) => s.monitorId === monitor.id);
+          const current = currentSentimentByMonitor.get(monitor.id);
+          const previous = previousSentimentByMonitor.get(monitor.id);
 
           const currentNegative = Number(current?.negative || 0);
           const previousNegative = Number(previous?.negative || 0);
@@ -149,9 +166,7 @@ export const detectCrisis = inngest.createFunction(
             const percentageIncrease = ((currentNegative - previousNegative) / previousNegative) * 100;
 
             if (percentageIncrease >= 50) {
-              const monitorViralNegative = viralNegative.filter(
-                (r) => r.monitorId === monitor.id
-              );
+              const monitorViralNegative = viralByMonitor.get(monitor.id) || [];
 
               crisisAlerts.push({
                 userId: user.id,
@@ -176,7 +191,7 @@ export const detectCrisis = inngest.createFunction(
           }
 
           // Check for viral negative posts
-          const monitorViral = viralNegative.filter((r) => r.monitorId === monitor.id);
+          const monitorViral = viralByMonitor.get(monitor.id) || [];
           if (monitorViral.length > 0) {
             const highestEngagement = monitorViral[0];
             crisisAlerts.push({
@@ -200,7 +215,7 @@ export const detectCrisis = inngest.createFunction(
             });
           }
         }
-      });
+      })));
     }
 
     // Send alerts
@@ -216,10 +231,10 @@ export const detectCrisis = inngest.createFunction(
 
       const userIds = Object.keys(alertsByUser);
 
-      // Send email notifications grouped by user
-      for (const userId of userIds) {
+      // Send email notifications grouped by user (parallel)
+      await Promise.all(userIds.map(userId => {
         const userAlerts = alertsByUser[userId];
-        await step.run(`send-crisis-email-${userId}`, async () => {
+        return step.run(`send-crisis-email-${userId}`, async () => {
           const user = teamUsers.find((u) => u.id === userId);
           if (!user?.email) {
             console.warn(`No email found for user ${userId}, skipping crisis email`);
@@ -260,12 +275,12 @@ export const detectCrisis = inngest.createFunction(
             console.error(`Failed to send crisis email to user ${userId}:`, error);
           }
         });
-      }
+      }));
 
-      // Send webhook notifications (Slack/Discord) for each user's monitors
-      for (const userId of userIds) {
+      // Send webhook notifications (Slack/Discord) for each user's monitors (parallel)
+      await Promise.all(userIds.map(userId => {
         const userAlerts = alertsByUser[userId];
-        await step.run(`send-crisis-webhooks-${userId}`, async () => {
+        return step.run(`send-crisis-webhooks-${userId}`, async () => {
           // Get all active Slack/webhook alerts for this user's monitors
           const monitorIdSet: Record<string, boolean> = {};
           userAlerts.forEach((a: CrisisAlert) => { monitorIdSet[a.monitorId] = true; });
@@ -330,7 +345,7 @@ export const detectCrisis = inngest.createFunction(
             }
           }
         });
-      }
+      }));
 
       console.log(`Crisis alerts processed: ${crisisAlerts.length} alerts for ${userIds.length} users`);
     }

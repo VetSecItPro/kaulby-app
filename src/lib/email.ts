@@ -140,35 +140,9 @@ export interface WeeklyInsights {
   recommendations: string[];
 }
 
-// Send digest email
-export async function sendDigestEmail(params: {
-  to: string;
-  userName: string;
-  userId?: string;
-  frequency: "daily" | "weekly" | "monthly";
-  monitors: Array<{
-    name: string;
-    resultsCount: number;
-    topResults: Array<{
-      title: string;
-      url: string;
-      platform: string;
-      sentiment?: string | null;
-      summary?: string | null;
-      category?: string | null;
-    }>;
-  }>;
-  aiInsights?: WeeklyInsights;
-  platformBreakdown?: Array<{ platform: string; count: number }>;
-  categoryBreakdown?: Array<{ category: string; count: number }>;
-}) {
-  const emailId = crypto.randomUUID();
-  const userId = params.userId || "unknown";
-  // Build AI insights section if available
-  let aiInsightsHtml = "";
-  if (params.aiInsights) {
-    const insights = params.aiInsights;
-    aiInsightsHtml = `
+// PERF-DX-002: Extracted from sendDigestEmail — AI insights HTML section
+function buildInsightsHtml(insights: WeeklyInsights): string {
+  return `
       <tr>
         <td style="padding: 24px;">
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: linear-gradient(135deg, rgba(94, 234, 212, 0.1) 0%, rgba(212, 165, 116, 0.1) 100%); border: 1px solid ${COLORS.cardBorder}; border-radius: 12px;">
@@ -211,9 +185,26 @@ export async function sendDigestEmail(params: {
         </td>
       </tr>
     `;
-  }
+}
 
-  const monitorsHtml = params.monitors
+// PERF-DX-002: Extracted from sendDigestEmail — monitor results HTML section
+function buildMonitorsHtml(
+  monitors: Array<{
+    name: string;
+    resultsCount: number;
+    topResults: Array<{
+      title: string;
+      url: string;
+      platform: string;
+      sentiment?: string | null;
+      summary?: string | null;
+      category?: string | null;
+    }>;
+  }>,
+  emailId: string,
+  userId: string
+): string {
+  return monitors
     .map(
       (m) => `
       <tr>
@@ -254,35 +245,39 @@ export async function sendDigestEmail(params: {
     `
     )
     .join("");
+}
 
-  const totalResults = params.monitors.reduce((sum, m) => sum + m.resultsCount, 0);
+// PERF-DX-002: Extracted from sendDigestEmail — platform/category breakdown HTML section
+function buildBreakdownHtml(
+  platformBreakdown?: Array<{ platform: string; count: number }>,
+  categoryBreakdown?: Array<{ category: string; count: number }>
+): string {
+  if ((!platformBreakdown || platformBreakdown.length === 0) &&
+      (!categoryBreakdown || categoryBreakdown.length === 0)) {
+    return "";
+  }
 
-  // Build platform/category breakdown section if available
-  let breakdownHtml = "";
-  if ((params.platformBreakdown && params.platformBreakdown.length > 0) ||
-      (params.categoryBreakdown && params.categoryBreakdown.length > 0)) {
+  const platformChips = platformBreakdown
+    ?.sort((a, b) => b.count - a.count)
+    .slice(0, 5)
+    .map(p => `<span style="display: inline-block; padding: 4px 10px; background: ${COLORS.bg}; border: 1px solid ${COLORS.cardBorder}; border-radius: 16px; font-size: 12px; color: ${COLORS.textMuted}; margin: 3px;">${escapeHtml(p.platform.charAt(0).toUpperCase() + p.platform.slice(1))} <strong style="color: ${COLORS.text};">${p.count}</strong></span>`)
+    .join("") || "";
 
-    const platformChips = params.platformBreakdown
-      ?.sort((a, b) => b.count - a.count)
-      .slice(0, 5)
-      .map(p => `<span style="display: inline-block; padding: 4px 10px; background: ${COLORS.bg}; border: 1px solid ${COLORS.cardBorder}; border-radius: 16px; font-size: 12px; color: ${COLORS.textMuted}; margin: 3px;">${escapeHtml(p.platform.charAt(0).toUpperCase() + p.platform.slice(1))} <strong style="color: ${COLORS.text};">${p.count}</strong></span>`)
-      .join("") || "";
+  const categoryEmojis: Record<string, string> = {
+    solution_request: "🎯",
+    money_talk: "💰",
+    pain_point: "😤",
+    advice_request: "❓",
+    hot_discussion: "🔥",
+  };
 
-    const categoryEmojis: Record<string, string> = {
-      solution_request: "🎯",
-      money_talk: "💰",
-      pain_point: "😤",
-      advice_request: "❓",
-      hot_discussion: "🔥",
-    };
+  const categoryChips = categoryBreakdown
+    ?.sort((a, b) => b.count - a.count)
+    .slice(0, 5)
+    .map(c => `<span style="display: inline-block; padding: 4px 10px; background: ${COLORS.bg}; border: 1px solid ${COLORS.cardBorder}; border-radius: 16px; font-size: 12px; color: ${COLORS.textMuted}; margin: 3px;">${categoryEmojis[c.category] || "📌"} ${escapeHtml(c.category.replace(/_/g, " "))} <strong style="color: ${COLORS.text};">${c.count}</strong></span>`)
+    .join("") || "";
 
-    const categoryChips = params.categoryBreakdown
-      ?.sort((a, b) => b.count - a.count)
-      .slice(0, 5)
-      .map(c => `<span style="display: inline-block; padding: 4px 10px; background: ${COLORS.bg}; border: 1px solid ${COLORS.cardBorder}; border-radius: 16px; font-size: 12px; color: ${COLORS.textMuted}; margin: 3px;">${categoryEmojis[c.category] || "📌"} ${escapeHtml(c.category.replace(/_/g, " "))} <strong style="color: ${COLORS.text};">${c.count}</strong></span>`)
-      .join("") || "";
-
-    breakdownHtml = `
+  return `
       <tr>
         <td style="padding: 0 24px 24px;">
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: ${COLORS.card}; border: 1px solid ${COLORS.cardBorder}; border-radius: 12px;">
@@ -306,7 +301,37 @@ export async function sendDigestEmail(params: {
         </td>
       </tr>
     `;
-  }
+}
+
+// Send digest email
+export async function sendDigestEmail(params: {
+  to: string;
+  userName: string;
+  userId?: string;
+  frequency: "daily" | "weekly" | "monthly";
+  monitors: Array<{
+    name: string;
+    resultsCount: number;
+    topResults: Array<{
+      title: string;
+      url: string;
+      platform: string;
+      sentiment?: string | null;
+      summary?: string | null;
+      category?: string | null;
+    }>;
+  }>;
+  aiInsights?: WeeklyInsights;
+  platformBreakdown?: Array<{ platform: string; count: number }>;
+  categoryBreakdown?: Array<{ category: string; count: number }>;
+}) {
+  const emailId = crypto.randomUUID();
+  const userId = params.userId || "unknown";
+
+  const aiInsightsHtml = params.aiInsights ? buildInsightsHtml(params.aiInsights) : "";
+  const monitorsHtml = buildMonitorsHtml(params.monitors, emailId, userId);
+  const breakdownHtml = buildBreakdownHtml(params.platformBreakdown, params.categoryBreakdown);
+  const totalResults = params.monitors.reduce((sum, m) => sum + m.resultsCount, 0);
 
   await getResend().emails.send({
     from: FROM_EMAIL,

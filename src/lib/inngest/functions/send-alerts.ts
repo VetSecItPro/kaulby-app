@@ -6,17 +6,26 @@ import { getPlanLimits } from "@/lib/plans";
 import { generateWeeklyInsights } from "@/lib/ai";
 import { sendWebhookNotification, type NotificationResult } from "@/lib/notifications";
 
+// PERF-BUILDTIME-002: Cache Intl.DateTimeFormat instances by timezone+type
+const tzFormatterCache = new Map<string, Intl.DateTimeFormat>();
+
+function getCachedFormatter(timezone: string, type: "hour" | "weekday" | "day"): Intl.DateTimeFormat {
+  const key = `${timezone}:${type}`;
+  if (!tzFormatterCache.has(key)) {
+    const options: Intl.DateTimeFormatOptions = { timeZone: timezone };
+    if (type === "hour") { options.hour = "numeric"; options.hour12 = false; }
+    else if (type === "weekday") { options.weekday = "short"; }
+    else if (type === "day") { options.day = "numeric"; }
+    tzFormatterCache.set(key, new Intl.DateTimeFormat("en-US", options));
+  }
+  return tzFormatterCache.get(key)!;
+}
+
 // Get current hour in a timezone (handles DST automatically)
 function getCurrentHourInTimezone(timezone: string): number {
   try {
-    const formatter = new Intl.DateTimeFormat("en-US", {
-      timeZone: timezone,
-      hour: "numeric",
-      hour12: false,
-    });
-    return parseInt(formatter.format(new Date()), 10);
+    return parseInt(getCachedFormatter(timezone, "hour").format(new Date()), 10);
   } catch {
-    // Invalid timezone, default to UTC
     return new Date().getUTCHours();
   }
 }
@@ -24,11 +33,7 @@ function getCurrentHourInTimezone(timezone: string): number {
 // Get current day of week in a timezone (0 = Sunday, 1 = Monday, etc.)
 function getCurrentDayInTimezone(timezone: string): number {
   try {
-    const formatter = new Intl.DateTimeFormat("en-US", {
-      timeZone: timezone,
-      weekday: "short",
-    });
-    const day = formatter.format(new Date());
+    const day = getCachedFormatter(timezone, "weekday").format(new Date());
     const days: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
     return days[day] ?? 0;
   } catch {
@@ -39,11 +44,7 @@ function getCurrentDayInTimezone(timezone: string): number {
 // Get current day of month in a timezone (1-31)
 function getCurrentDayOfMonthInTimezone(timezone: string): number {
   try {
-    const formatter = new Intl.DateTimeFormat("en-US", {
-      timeZone: timezone,
-      day: "numeric",
-    });
-    return parseInt(formatter.format(new Date()), 10);
+    return parseInt(getCachedFormatter(timezone, "day").format(new Date()), 10);
   } catch {
     return new Date().getUTCDate();
   }
@@ -459,11 +460,9 @@ export const sendDailyDigest = inngest.createFunction(
       };
     }
 
-    const digestResults = [];
-    for (const timezone of timezonesAt9AM) {
-      const result = await sendDigestForTimezone(timezone, DIGEST_CONFIGS.daily, step as unknown as DigestStep);
-      digestResults.push(result);
-    }
+    const digestResults = await Promise.all(
+      timezonesAt9AM.map(tz => sendDigestForTimezone(tz, DIGEST_CONFIGS.daily, step as unknown as DigestStep))
+    );
 
     return {
       message: "Daily digest completed",
@@ -520,11 +519,9 @@ export const sendWeeklyDigest = inngest.createFunction(
       };
     }
 
-    const digestResults = [];
-    for (const timezone of timezonesAt9AMOnMonday) {
-      const result = await sendDigestForTimezone(timezone, DIGEST_CONFIGS.weekly, step as unknown as DigestStep);
-      digestResults.push(result);
-    }
+    const digestResults = await Promise.all(
+      timezonesAt9AMOnMonday.map(tz => sendDigestForTimezone(tz, DIGEST_CONFIGS.weekly, step as unknown as DigestStep))
+    );
 
     return {
       message: "Weekly digest completed",
@@ -581,11 +578,9 @@ export const sendMonthlyDigest = inngest.createFunction(
       };
     }
 
-    const digestResults = [];
-    for (const timezone of timezonesAt9AMOn1st) {
-      const result = await sendDigestForTimezone(timezone, DIGEST_CONFIGS.monthly, step as unknown as DigestStep);
-      digestResults.push(result);
-    }
+    const digestResults = await Promise.all(
+      timezonesAt9AMOn1st.map(tz => sendDigestForTimezone(tz, DIGEST_CONFIGS.monthly, step as unknown as DigestStep))
+    );
 
     return {
       message: "Monthly digest completed",

@@ -43,6 +43,21 @@ interface CostBreakdownProps {
   costPerResult: number;
 }
 
+// PERF-BUILDTIME-003: Move Intl.NumberFormat to module level
+const currencyFormatter4 = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 4,
+  maximumFractionDigits: 4,
+});
+
+const currencyFormatter2 = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
 export function CostBreakdown({
   costByPlan,
   topUsersByCost,
@@ -51,23 +66,8 @@ export function CostBreakdown({
   avgCostPerPaidUser,
   costPerResult,
 }: CostBreakdownProps) {
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 4,
-      maximumFractionDigits: 4,
-    }).format(value);
-  };
-
-  const formatCurrencyShort = (value: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
-  };
+  const formatCurrency = (value: number) => currencyFormatter4.format(value);
+  const formatCurrencyShort = (value: number) => currencyFormatter2.format(value);
 
   const getPlanBadge = (plan: string) => {
     switch (plan) {

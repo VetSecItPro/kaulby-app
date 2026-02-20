@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
 
   const searchParams = request.nextUrl.searchParams;
   const page = parseInt(searchParams.get("page") || "1");
-  const limit = parseInt(searchParams.get("limit") || "50");
+  const limit = Math.min(parseInt(searchParams.get("limit") || "50"), 100);
   const level = searchParams.get("level"); // error, warning, fatal
   const source = searchParams.get("source"); // api, inngest, ai, webhook, auth
   const resolved = searchParams.get("resolved"); // true, false

@@ -204,7 +204,7 @@ export async function GET(request: Request) {
       platformBreakdown,
       totals,
     });
-    response.headers.set("Cache-Control", "private, max-age=30, stale-while-revalidate=60");
+    response.headers.set("Cache-Control", "private, max-age=300, stale-while-revalidate=900");
     return response;
   } catch (error) {
     console.error("Analytics error:", error);

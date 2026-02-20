@@ -275,6 +275,7 @@ export function AIChat({
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -284,11 +285,26 @@ export function AIChat({
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
+  // Clean up copy timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const handleCopy = useCallback((text: string, messageId?: string) => {
     navigator.clipboard.writeText(text);
     if (messageId) {
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+      }
       setCopiedMessageId(messageId);
-      setTimeout(() => setCopiedMessageId(null), 2000);
+      copyTimeoutRef.current = setTimeout(() => {
+        setCopiedMessageId(null);
+        copyTimeoutRef.current = null;
+      }, 2000);
     }
   }, []);
 
@@ -311,7 +327,10 @@ export function AIChat({
       timestamp: new Date(),
     };
 
-    setMessages((prev) => [...prev, userMessage, assistantMessage]);
+    setMessages((prev) => {
+      const updated = [...prev, userMessage, assistantMessage];
+      return updated.length > 50 ? updated.slice(-50) : updated;
+    });
     setInput("");
     setIsLoading(true);
 

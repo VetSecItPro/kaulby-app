@@ -10,7 +10,6 @@ import { db, monitors, results } from "@/lib/db";
 import { eq, and, gte, inArray, desc, sql } from "drizzle-orm";
 import { getUserPlan } from "@/lib/limits";
 import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
-import { jsPDF } from "jspdf";
 
 // FIX-212: Add maxDuration for long-running report generation
 export const maxDuration = 60;
@@ -219,8 +218,8 @@ export async function POST(req: Request) {
       });
     }
 
-    // Generate real PDF using jsPDF
-    const pdfBuffer = generatePdfReport(title, branding, reportData, enabledSections, days);
+    // Generate real PDF using jsPDF (dynamically imported)
+    const pdfBuffer = await generatePdfReport(title, branding, reportData, enabledSections, days);
 
     return new NextResponse(new Uint8Array(pdfBuffer), {
       headers: {
@@ -473,13 +472,15 @@ function generateHtmlReport(
   `.trim();
 }
 
-function generatePdfReport(
+// PERF-BUNDLE-002: Dynamic import jsPDF only when PDF format is requested
+async function generatePdfReport(
   title: string,
   branding: ReportConfig["branding"],
   data: ReportData,
   enabledSections: Set<string>,
   days: number
-): Buffer {
+): Promise<Buffer> {
+  const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 20;

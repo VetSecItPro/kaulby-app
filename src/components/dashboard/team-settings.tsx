@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -186,6 +186,15 @@ export function TeamSettings({ subscriptionStatus }: TeamSettingsProps) {
 
     fetchData();
   }, [isEnterprise, fetchActivityLogs]);
+
+  // PERF-STATE-001: Memoize formatted activity logs to avoid re-running formatters on every render
+  const formattedActivityLogs = useMemo(() => {
+    return activityLogs.map((log) => ({
+      ...log,
+      formattedAction: formatActivityAction(log.action, log.targetName),
+      formattedTime: formatRelativeTime(log.createdAt),
+    }));
+  }, [activityLogs]);
 
   // Only show for Enterprise users
   if (!isEnterprise) {
@@ -713,13 +722,13 @@ export function TeamSettings({ subscriptionStatus }: TeamSettingsProps) {
             <Activity className="h-4 w-4" />
             Activity Log
           </h4>
-          {activityLogs.length === 0 && !loadingActivity ? (
+          {formattedActivityLogs.length === 0 && !loadingActivity ? (
             <p className="text-sm text-muted-foreground text-center py-4">
               No activity yet. Actions will appear here.
             </p>
           ) : (
             <div className="space-y-2">
-              {activityLogs.map((log) => (
+              {formattedActivityLogs.map((log) => (
                 <div
                   key={log.id}
                   className="flex items-start gap-3 p-3 rounded-lg border bg-card text-sm"
@@ -733,11 +742,11 @@ export function TeamSettings({ subscriptionStatus }: TeamSettingsProps) {
                         {log.user.name || log.user.email}
                       </span>{" "}
                       <span className="text-muted-foreground">
-                        {formatActivityAction(log.action, log.targetName)}
+                        {log.formattedAction}
                       </span>
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {formatRelativeTime(log.createdAt)}
+                      {log.formattedTime}
                     </p>
                   </div>
                 </div>

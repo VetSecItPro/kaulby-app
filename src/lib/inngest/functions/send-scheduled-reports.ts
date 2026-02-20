@@ -9,7 +9,6 @@ import { inngest } from "../client";
 import { pooledDb, users, monitors, results } from "@/lib/db";
 import { eq, and, gte, inArray, sql, desc } from "drizzle-orm";
 import { Resend } from "resend";
-import { jsPDF } from "jspdf";
 
 // Lazy init to avoid build-time errors when RESEND_API_KEY is not set
 let resend: Resend | null = null;
@@ -76,18 +75,12 @@ export const sendScheduledReports = inngest.createFunction(
 
     logger.info(`Found ${eligibleUsers.length} users with scheduled reports`);
 
-    let sentCount = 0;
-    let skippedCount = 0;
-
-    for (const user of eligibleUsers) {
-      // Check if today is the right day for this user
+    // Pre-filter users who should receive reports today
+    const usersToSend = eligibleUsers.filter(user => {
       const isWeekly = user.reportSchedule === "weekly" && dayOfWeek === (user.reportDay || 1);
       const isMonthly = user.reportSchedule === "monthly" && dayOfMonth === (user.reportDay || 1);
 
-      if (!isWeekly && !isMonthly) {
-        skippedCount++;
-        continue;
-      }
+      if (!isWeekly && !isMonthly) return false;
 
       // Prevent duplicate sends (check if already sent today)
       if (user.reportLastSentAt) {
@@ -98,13 +91,21 @@ export const sendScheduledReports = inngest.createFunction(
           lastSentDate.getDate() === now.getDate()
         ) {
           logger.info(`Skipping ${user.email} - already sent today`);
-          skippedCount++;
-          continue;
+          return false;
         }
       }
 
-      // Generate and send report
-      await step.run(`send-report-${user.id}`, async () => {
+      return true;
+    });
+
+    const skippedCount = eligibleUsers.length - usersToSend.length;
+    let sentCount = 0;
+
+    // Send reports in parallel batches of 5 to respect email rate limits
+    const BATCH_SIZE = 5;
+    for (let i = 0; i < usersToSend.length; i += BATCH_SIZE) {
+      const batch = usersToSend.slice(i, i + BATCH_SIZE);
+      await Promise.all(batch.map(user => step.run(`send-report-${user.id}`, async () => {
         try {
           const days = user.reportSchedule === "weekly" ? 7 : 30;
           const reportData = await generateReportData(user.id, days);
@@ -121,7 +122,7 @@ export const sendScheduledReports = inngest.createFunction(
             user.reportSchedule || "weekly"
           );
 
-          const pdfBuffer = generateReportPdf(
+          const pdfBuffer = await generateReportPdf(
             user.name || "there",
             reportData,
             days,
@@ -155,7 +156,7 @@ export const sendScheduledReports = inngest.createFunction(
         } catch (error) {
           logger.error(`Failed to send report to ${user.email}:`, error);
         }
-      });
+      })));
     }
 
     return {
@@ -387,230 +388,269 @@ function generateReportEmail(
   `.trim();
 }
 
-function generateReportPdf(
-  userName: string,
-  data: ReportData,
-  days: number,
-  schedule: string
-): Buffer {
-  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const margin = 20;
-  const contentWidth = pageWidth - margin * 2;
-  let y = margin;
+// PERF-DX-001: Extracted from generateReportPdf
+// Helper type for PDF generation context
+interface PdfContext {
+  doc: InstanceType<typeof import("jspdf").jsPDF>;
+  pageWidth: number;
+  margin: number;
+  contentWidth: number;
+  y: number; // current y position, mutated by helpers
+}
 
+// PERF-DX-001: Extracted from generateReportPdf — page break check
+function checkPageBreak(ctx: PdfContext, neededHeight: number): void {
+  if (ctx.y + neededHeight > 270) {
+    ctx.doc.addPage();
+    ctx.y = 20;
+  }
+}
+
+// PERF-DX-001: Extracted from generateReportPdf — dark header with title and date
+function drawHeader(ctx: PdfContext, days: number, schedule: string): void {
   const periodLabel = schedule === "weekly" ? "Weekly" : "Monthly";
+  ctx.doc.setFillColor(15, 23, 42); // slate-900
+  ctx.doc.rect(0, 0, ctx.pageWidth, 40, "F");
+  ctx.doc.setTextColor(20, 184, 166); // teal-500
+  ctx.doc.setFontSize(22);
+  ctx.doc.setFont("helvetica", "bold");
+  ctx.doc.text(`Kaulby ${periodLabel} Report`, ctx.margin, 18);
+  ctx.doc.setTextColor(148, 163, 184); // slate-400
+  ctx.doc.setFontSize(11);
+  ctx.doc.setFont("helvetica", "normal");
+  ctx.doc.text(
+    `Last ${days} days of community monitoring — Generated ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}`,
+    ctx.margin,
+    28
+  );
+  ctx.y = 50;
+}
+
+// PERF-DX-001: Extracted from generateReportPdf — user greeting and intro text
+function drawGreeting(ctx: PdfContext, userName: string, schedule: string): void {
+  ctx.doc.setTextColor(55, 65, 81); // gray-700
+  ctx.doc.setFontSize(12);
+  ctx.doc.text(`Hi ${userName},`, ctx.margin, ctx.y);
+  ctx.y += 6;
+  ctx.doc.setFontSize(10);
+  ctx.doc.text(
+    `Here's your community monitoring summary for the past ${schedule === "weekly" ? "week" : "month"}.`,
+    ctx.margin,
+    ctx.y
+  );
+  ctx.y += 14;
+}
+
+// PERF-DX-001: Extracted from generateReportPdf — 2-column summary stat cards
+function drawSummaryStats(ctx: PdfContext, data: ReportData): void {
   const positivePercent =
     data.totals.mentions > 0
       ? Math.round((data.totals.positive / data.totals.mentions) * 100)
       : 0;
 
-  // Header
-  doc.setFillColor(15, 23, 42); // slate-900
-  doc.rect(0, 0, pageWidth, 40, "F");
-  doc.setTextColor(20, 184, 166); // teal-500
-  doc.setFontSize(22);
-  doc.setFont("helvetica", "bold");
-  doc.text(`Kaulby ${periodLabel} Report`, margin, 18);
-  doc.setTextColor(148, 163, 184); // slate-400
-  doc.setFontSize(11);
-  doc.setFont("helvetica", "normal");
-  doc.text(
-    `Last ${days} days of community monitoring — Generated ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}`,
-    margin,
-    28
-  );
-  y = 50;
+  ctx.doc.setFillColor(248, 250, 252); // slate-50
+  ctx.doc.roundedRect(ctx.margin, ctx.y, ctx.contentWidth / 2 - 4, 30, 3, 3, "F");
+  ctx.doc.roundedRect(ctx.margin + ctx.contentWidth / 2 + 4, ctx.y, ctx.contentWidth / 2 - 4, 30, 3, 3, "F");
 
-  // Greeting
-  doc.setTextColor(55, 65, 81); // gray-700
-  doc.setFontSize(12);
-  doc.text(`Hi ${userName},`, margin, y);
-  y += 6;
-  doc.setFontSize(10);
-  doc.text(
-    `Here's your community monitoring summary for the past ${schedule === "weekly" ? "week" : "month"}.`,
-    margin,
-    y
-  );
-  y += 14;
-
-  // Summary Stats
-  doc.setFillColor(248, 250, 252); // slate-50
-  doc.roundedRect(margin, y, contentWidth / 2 - 4, 30, 3, 3, "F");
-  doc.roundedRect(margin + contentWidth / 2 + 4, y, contentWidth / 2 - 4, 30, 3, 3, "F");
-
-  doc.setTextColor(15, 23, 42);
-  doc.setFontSize(24);
-  doc.setFont("helvetica", "bold");
-  doc.text(
+  ctx.doc.setTextColor(15, 23, 42);
+  ctx.doc.setFontSize(24);
+  ctx.doc.setFont("helvetica", "bold");
+  ctx.doc.text(
     data.totals.mentions.toLocaleString(),
-    margin + contentWidth / 4 - 2,
-    y + 14,
+    ctx.margin + ctx.contentWidth / 4 - 2,
+    ctx.y + 14,
     { align: "center" }
   );
-  doc.setTextColor(100, 116, 139);
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "normal");
-  doc.text("Total Mentions", margin + contentWidth / 4 - 2, y + 22, {
+  ctx.doc.setTextColor(100, 116, 139);
+  ctx.doc.setFontSize(9);
+  ctx.doc.setFont("helvetica", "normal");
+  ctx.doc.text("Total Mentions", ctx.margin + ctx.contentWidth / 4 - 2, ctx.y + 22, {
     align: "center",
   });
 
-  doc.setTextColor(22, 163, 74); // green-600
-  doc.setFontSize(24);
-  doc.setFont("helvetica", "bold");
-  doc.text(
+  ctx.doc.setTextColor(22, 163, 74); // green-600
+  ctx.doc.setFontSize(24);
+  ctx.doc.setFont("helvetica", "bold");
+  ctx.doc.text(
     `${positivePercent}%`,
-    margin + (contentWidth * 3) / 4 + 2,
-    y + 14,
+    ctx.margin + (ctx.contentWidth * 3) / 4 + 2,
+    ctx.y + 14,
     { align: "center" }
   );
-  doc.setTextColor(100, 116, 139);
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "normal");
-  doc.text(
+  ctx.doc.setTextColor(100, 116, 139);
+  ctx.doc.setFontSize(9);
+  ctx.doc.setFont("helvetica", "normal");
+  ctx.doc.text(
     "Positive Sentiment",
-    margin + (contentWidth * 3) / 4 + 2,
-    y + 22,
+    ctx.margin + (ctx.contentWidth * 3) / 4 + 2,
+    ctx.y + 22,
     { align: "center" }
   );
-  y += 38;
+  ctx.y += 38;
+}
 
-  // Sentiment Breakdown
-  doc.setTextColor(15, 23, 42);
-  doc.setFontSize(13);
-  doc.setFont("helvetica", "bold");
-  doc.text("Sentiment Breakdown", margin, y);
-  y += 8;
+// PERF-DX-001: Extracted from generateReportPdf — horizontal bar chart with counts
+function drawSentimentBreakdown(ctx: PdfContext, data: ReportData): void {
+  ctx.doc.setTextColor(15, 23, 42);
+  ctx.doc.setFontSize(13);
+  ctx.doc.setFont("helvetica", "bold");
+  ctx.doc.text("Sentiment Breakdown", ctx.margin, ctx.y);
+  ctx.y += 8;
 
-  const barY = y;
+  const barY = ctx.y;
   const total = data.totals.positive + data.totals.neutral + data.totals.negative || 1;
-  const posW = (data.totals.positive / total) * contentWidth;
-  const neuW = (data.totals.neutral / total) * contentWidth;
-  const negW = (data.totals.negative / total) * contentWidth;
+  const posW = (data.totals.positive / total) * ctx.contentWidth;
+  const neuW = (data.totals.neutral / total) * ctx.contentWidth;
+  const negW = (data.totals.negative / total) * ctx.contentWidth;
 
-  doc.setFillColor(34, 197, 94); // green
-  doc.rect(margin, barY, posW, 8, "F");
-  doc.setFillColor(148, 163, 184); // gray
-  doc.rect(margin + posW, barY, neuW, 8, "F");
-  doc.setFillColor(239, 68, 68); // red
-  doc.rect(margin + posW + neuW, barY, negW, 8, "F");
-  y += 12;
+  ctx.doc.setFillColor(34, 197, 94); // green
+  ctx.doc.rect(ctx.margin, barY, posW, 8, "F");
+  ctx.doc.setFillColor(148, 163, 184); // gray
+  ctx.doc.rect(ctx.margin + posW, barY, neuW, 8, "F");
+  ctx.doc.setFillColor(239, 68, 68); // red
+  ctx.doc.rect(ctx.margin + posW + neuW, barY, negW, 8, "F");
+  ctx.y += 12;
 
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(34, 197, 94);
-  doc.text(`Positive: ${data.totals.positive}`, margin, y);
-  doc.setTextColor(100, 116, 139);
-  doc.text(`Neutral: ${data.totals.neutral}`, margin + 50, y);
-  doc.setTextColor(239, 68, 68);
-  doc.text(`Negative: ${data.totals.negative}`, margin + 95, y);
-  y += 14;
+  ctx.doc.setFontSize(9);
+  ctx.doc.setFont("helvetica", "normal");
+  ctx.doc.setTextColor(34, 197, 94);
+  ctx.doc.text(`Positive: ${data.totals.positive}`, ctx.margin, ctx.y);
+  ctx.doc.setTextColor(100, 116, 139);
+  ctx.doc.text(`Neutral: ${data.totals.neutral}`, ctx.margin + 50, ctx.y);
+  ctx.doc.setTextColor(239, 68, 68);
+  ctx.doc.text(`Negative: ${data.totals.negative}`, ctx.margin + 95, ctx.y);
+  ctx.y += 14;
+}
 
-  // Top Platforms
-  if (data.platforms.length > 0) {
-    doc.setTextColor(15, 23, 42);
-    doc.setFontSize(13);
-    doc.setFont("helvetica", "bold");
-    doc.text("Top Platforms", margin, y);
-    y += 8;
+// PERF-DX-001: Extracted from generateReportPdf — bar chart of top 5 platforms
+function drawTopPlatforms(ctx: PdfContext, data: ReportData): void {
+  if (data.platforms.length === 0) return;
 
-    const maxMentions = Math.max(...data.platforms.map((p) => p.mentions));
-    for (const p of data.platforms.slice(0, 5)) {
-      const barWidth = (p.mentions / maxMentions) * (contentWidth - 70);
-      doc.setFillColor(20, 184, 166);
-      doc.rect(margin, y, barWidth, 6, "F");
-      doc.setTextColor(55, 65, 81);
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "normal");
-      const platformName = p.platform.charAt(0).toUpperCase() + p.platform.slice(1);
-      doc.text(platformName, margin + barWidth + 4, y + 5);
-      doc.setTextColor(20, 184, 166);
-      doc.text(`${p.mentions}`, pageWidth - margin, y + 5, {
-        align: "right",
-      });
-      y += 10;
-    }
-    y += 6;
+  ctx.doc.setTextColor(15, 23, 42);
+  ctx.doc.setFontSize(13);
+  ctx.doc.setFont("helvetica", "bold");
+  ctx.doc.text("Top Platforms", ctx.margin, ctx.y);
+  ctx.y += 8;
+
+  const maxMentions = Math.max(...data.platforms.map((p) => p.mentions));
+  for (const p of data.platforms.slice(0, 5)) {
+    const barWidth = (p.mentions / maxMentions) * (ctx.contentWidth - 70);
+    ctx.doc.setFillColor(20, 184, 166);
+    ctx.doc.rect(ctx.margin, ctx.y, barWidth, 6, "F");
+    ctx.doc.setTextColor(55, 65, 81);
+    ctx.doc.setFontSize(9);
+    ctx.doc.setFont("helvetica", "normal");
+    const platformName = p.platform.charAt(0).toUpperCase() + p.platform.slice(1);
+    ctx.doc.text(platformName, ctx.margin + barWidth + 4, ctx.y + 5);
+    ctx.doc.setTextColor(20, 184, 166);
+    ctx.doc.text(`${p.mentions}`, ctx.pageWidth - ctx.margin, ctx.y + 5, {
+      align: "right",
+    });
+    ctx.y += 10;
   }
+  ctx.y += 6;
+}
 
-  // Categories
-  if (data.categories.length > 0) {
-    doc.setTextColor(15, 23, 42);
-    doc.setFontSize(13);
-    doc.setFont("helvetica", "bold");
-    doc.text("Top Categories", margin, y);
-    y += 8;
+// PERF-DX-001: Extracted from generateReportPdf — bulleted list of top 6 categories
+function drawCategories(ctx: PdfContext, data: ReportData): void {
+  if (data.categories.length === 0) return;
 
-    for (const c of data.categories.slice(0, 6)) {
-      doc.setTextColor(55, 65, 81);
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "normal");
-      const catLabel = c.category.replace(/_/g, " ");
-      doc.text(`• ${catLabel}`, margin + 2, y);
-      doc.setTextColor(20, 184, 166);
-      doc.text(`${c.count}`, pageWidth - margin, y, { align: "right" });
-      y += 6;
-    }
-    y += 8;
+  ctx.doc.setTextColor(15, 23, 42);
+  ctx.doc.setFontSize(13);
+  ctx.doc.setFont("helvetica", "bold");
+  ctx.doc.text("Top Categories", ctx.margin, ctx.y);
+  ctx.y += 8;
+
+  for (const c of data.categories.slice(0, 6)) {
+    ctx.doc.setTextColor(55, 65, 81);
+    ctx.doc.setFontSize(9);
+    ctx.doc.setFont("helvetica", "normal");
+    const catLabel = c.category.replace(/_/g, " ");
+    ctx.doc.text(`• ${catLabel}`, ctx.margin + 2, ctx.y);
+    ctx.doc.setTextColor(20, 184, 166);
+    ctx.doc.text(`${c.count}`, ctx.pageWidth - ctx.margin, ctx.y, { align: "right" });
+    ctx.y += 6;
   }
+  ctx.y += 8;
+}
 
-  // Top Posts
-  if (data.topPosts.length > 0) {
-    // Check if we need a new page
-    if (y > 240) {
-      doc.addPage();
-      y = margin;
-    }
+// PERF-DX-001: Extracted from generateReportPdf — top 5 engaging posts with pagination
+function drawTopPosts(ctx: PdfContext, data: ReportData): void {
+  if (data.topPosts.length === 0) return;
 
-    doc.setTextColor(15, 23, 42);
-    doc.setFontSize(13);
-    doc.setFont("helvetica", "bold");
-    doc.text("Top Engaging Posts", margin, y);
-    y += 8;
+  checkPageBreak(ctx, 30);
 
-    for (const p of data.topPosts.slice(0, 5)) {
-      if (y > 270) {
-        doc.addPage();
-        y = margin;
-      }
+  ctx.doc.setTextColor(15, 23, 42);
+  ctx.doc.setFontSize(13);
+  ctx.doc.setFont("helvetica", "bold");
+  ctx.doc.text("Top Engaging Posts", ctx.margin, ctx.y);
+  ctx.y += 8;
 
-      const title = p.title.length > 90 ? p.title.slice(0, 87) + "..." : p.title;
-      doc.setTextColor(15, 23, 42);
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "bold");
-      doc.text(title, margin + 2, y, { maxWidth: contentWidth - 4 });
-      y += 5;
-      doc.setTextColor(100, 116, 139);
-      doc.setFontSize(8);
-      doc.setFont("helvetica", "normal");
-      const platformName = p.platform.charAt(0).toUpperCase() + p.platform.slice(1);
-      doc.text(`${platformName} · ${p.sentiment}`, margin + 2, y);
-      y += 4;
-      doc.setTextColor(20, 184, 166);
-      doc.setFontSize(7);
-      const urlDisplay = p.url.length > 80 ? p.url.slice(0, 77) + "..." : p.url;
-      doc.text(urlDisplay, margin + 2, y);
-      y += 8;
-    }
+  for (const p of data.topPosts.slice(0, 5)) {
+    checkPageBreak(ctx, 0);
+
+    const title = p.title.length > 90 ? p.title.slice(0, 87) + "..." : p.title;
+    ctx.doc.setTextColor(15, 23, 42);
+    ctx.doc.setFontSize(10);
+    ctx.doc.setFont("helvetica", "bold");
+    ctx.doc.text(title, ctx.margin + 2, ctx.y, { maxWidth: ctx.contentWidth - 4 });
+    ctx.y += 5;
+    ctx.doc.setTextColor(100, 116, 139);
+    ctx.doc.setFontSize(8);
+    ctx.doc.setFont("helvetica", "normal");
+    const platformName = p.platform.charAt(0).toUpperCase() + p.platform.slice(1);
+    ctx.doc.text(`${platformName} · ${p.sentiment}`, ctx.margin + 2, ctx.y);
+    ctx.y += 4;
+    ctx.doc.setTextColor(20, 184, 166);
+    ctx.doc.setFontSize(7);
+    const urlDisplay = p.url.length > 80 ? p.url.slice(0, 77) + "..." : p.url;
+    ctx.doc.text(urlDisplay, ctx.margin + 2, ctx.y);
+    ctx.y += 8;
   }
+}
 
-  // Footer
-  const footerY = doc.internal.pageSize.getHeight() - 12;
-  doc.setDrawColor(226, 232, 240);
-  doc.line(margin, footerY - 4, pageWidth - margin, footerY - 4);
-  doc.setTextColor(148, 163, 184);
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "normal");
-  doc.text("Generated by Kaulby · kaulbyapp.com", margin, footerY);
-  doc.text(
-    `Page ${doc.getNumberOfPages()}`,
-    pageWidth - margin,
+// PERF-DX-001: Extracted from generateReportPdf — branding and page numbers
+function drawFooter(ctx: PdfContext): void {
+  const footerY = ctx.doc.internal.pageSize.getHeight() - 12;
+  ctx.doc.setDrawColor(226, 232, 240);
+  ctx.doc.line(ctx.margin, footerY - 4, ctx.pageWidth - ctx.margin, footerY - 4);
+  ctx.doc.setTextColor(148, 163, 184);
+  ctx.doc.setFontSize(8);
+  ctx.doc.setFont("helvetica", "normal");
+  ctx.doc.text("Generated by Kaulby · kaulbyapp.com", ctx.margin, footerY);
+  ctx.doc.text(
+    `Page ${ctx.doc.getNumberOfPages()}`,
+    ctx.pageWidth - ctx.margin,
     footerY,
     { align: "right" }
   );
+}
 
-  // Return as Buffer
-  const arrayBuffer = doc.output("arraybuffer");
-  return Buffer.from(arrayBuffer);
+// PERF-BUNDLE-002: Dynamic import jsPDF only when generating PDFs
+async function generateReportPdf(
+  userName: string,
+  data: ReportData,
+  days: number,
+  schedule: string
+): Promise<Buffer> {
+  const { jsPDF } = await import("jspdf");
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const ctx: PdfContext = {
+    doc,
+    pageWidth: doc.internal.pageSize.getWidth(),
+    margin: 20,
+    contentWidth: doc.internal.pageSize.getWidth() - 40,
+    y: 20,
+  };
+
+  drawHeader(ctx, days, schedule);
+  drawGreeting(ctx, userName, schedule);
+  drawSummaryStats(ctx, data);
+  drawSentimentBreakdown(ctx, data);
+  drawTopPlatforms(ctx, data);
+  drawCategories(ctx, data);
+  drawTopPosts(ctx, data);
+  drawFooter(ctx);
+
+  return Buffer.from(doc.output("arraybuffer"));
 }

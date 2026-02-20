@@ -1,4 +1,5 @@
 // PERF: Lazy-load filters to reduce 224kB bundle — FIX-201
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { monitors, results } from "@/lib/db/schema";
@@ -14,7 +15,24 @@ interface ResultsPageProps {
 
 const RESULTS_PER_PAGE = 50;
 
-export default async function ResultsPage({ searchParams }: ResultsPageProps) {
+function ResultsPageSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="animate-pulse h-8 w-48 bg-muted rounded" />
+        <div className="animate-pulse h-10 w-32 bg-muted rounded" />
+      </div>
+      <div className="animate-pulse h-12 bg-muted rounded-lg" />
+      <div className="grid gap-4">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="animate-pulse h-32 bg-muted rounded-lg" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+async function ResultsContent({ searchParams }: ResultsPageProps) {
   const userId = await getEffectiveUserId();
 
   if (!userId) {
@@ -109,5 +127,13 @@ export default async function ResultsPage({ searchParams }: ResultsPageProps) {
         nextRefreshAt: refreshInfo?.nextRefreshAt || null,
       }}
     />
+  );
+}
+
+export default async function ResultsPage({ searchParams }: ResultsPageProps) {
+  return (
+    <Suspense fallback={<ResultsPageSkeleton />}>
+      <ResultsContent searchParams={searchParams} />
+    </Suspense>
   );
 }

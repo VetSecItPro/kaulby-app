@@ -217,6 +217,7 @@ export default function PricingPage() {
                 width={32}
                 height={32}
                 className="object-cover w-full h-full"
+                priority
               />
             </div>
             <span className="text-2xl font-bold gradient-text">Kaulby</span>
