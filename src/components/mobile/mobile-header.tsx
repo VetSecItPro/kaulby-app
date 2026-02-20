@@ -20,12 +20,12 @@ import type { WorkspaceRole } from "@/lib/permissions";
 
 // Navigation items not in the bottom nav
 const menuItems = [
-  { title: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
-  { title: "Insights", href: "/dashboard/insights", icon: Lightbulb },
-  { title: "Discover", href: "/dashboard/discover", icon: Compass },
-  { title: "Ask Kaulby AI", href: "/dashboard/ask", icon: Sparkles },
-  { title: "Audiences", href: "/dashboard/audiences", icon: Users },
-  { title: "Help", href: "/dashboard/help", icon: HelpCircle },
+  { title: "Analytics", href: "/dashboard/analytics", icon: BarChart3, tourId: "analytics" },
+  { title: "Insights", href: "/dashboard/insights", icon: Lightbulb, tourId: "insights" },
+  { title: "Discover", href: "/dashboard/discover", icon: Compass, tourId: "discover" },
+  { title: "Ask Kaulby AI", href: "/dashboard/ask", icon: Sparkles, tourId: "ask-ai" },
+  { title: "Audiences", href: "/dashboard/audiences", icon: Users, tourId: "audiences" },
+  { title: "Help", href: "/dashboard/help", icon: HelpCircle, tourId: "help" },
 ];
 
 interface MobileHeaderProps {
@@ -95,16 +95,19 @@ const NavLink = memo(function NavLink({
   icon: Icon,
   title,
   isActive,
+  tourId,
 }: {
   href: string;
   icon: typeof BarChart3;
   title: string;
   isActive: boolean;
+  tourId?: string;
 }) {
   return (
     <SheetClose asChild>
       <Link
         href={href}
+        data-tour={tourId}
         className={cn(
           "flex items-center gap-3 px-4 py-3 rounded-xl transition-colors",
           isActive
@@ -217,6 +220,7 @@ export const MobileHeader = memo(function MobileHeader({
                     icon={item.icon}
                     title={item.title}
                     isActive={isActive}
+                    tourId={item.tourId}
                   />
                 );
               })}

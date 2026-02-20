@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, memo } from "react";
+import { useState, useEffect, useCallback, memo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,14 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
   FileText,
   Download,
   Loader2,
@@ -34,7 +42,12 @@ import {
   Eye,
   Upload,
   Palette,
+  Calendar,
+  Clock,
+  RefreshCw,
+  Settings2,
 } from "lucide-react";
+import { toast } from "sonner";
 
 interface ReportSection {
   id: string;
@@ -243,6 +256,7 @@ export function ReportGenerator({
       setIsOpen(false);
     } catch (error) {
       console.error("Failed to generate report:", error);
+      toast.error("Failed to generate report");
     } finally {
       setIsGenerating(false);
     }
@@ -504,3 +518,330 @@ export const ReportHistory = memo(function ReportHistory({
     </Card>
   );
 });
+
+/**
+ * Report Management Component
+ *
+ * Shows report scheduling controls, recent report history with regeneration,
+ * and upcoming schedule information. Team-tier only.
+ */
+
+interface ReportScheduleInfo {
+  reportSchedule: string; // 'off' | 'weekly' | 'monthly'
+  reportDay: number;
+  reportLastSentAt: string | null;
+}
+
+interface ReportManagementProps {
+  /** Whether user has Team tier */
+  isTeam: boolean;
+  /** Current schedule info from user profile */
+  scheduleInfo?: ReportScheduleInfo;
+  /** Previously generated report configs for quick regeneration */
+  recentConfigs?: Array<{
+    id: string;
+    title: string;
+    dateRange: string;
+    format: string;
+    generatedAt: string;
+  }>;
+  /** Callback to generate a report with a specific config */
+  onGenerate?: (config: ReportConfig) => Promise<string>;
+}
+
+const DAY_NAMES = ["", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+function getNextScheduledDate(schedule: string, day: number): string {
+  if (schedule === "off") return "";
+
+  const now = new Date();
+  const nextDate = new Date(now);
+
+  if (schedule === "weekly") {
+    // day is 1-7 (Mon-Sun), JS getDay() is 0-6 (Sun-Sat)
+    const targetDay = day === 7 ? 0 : day; // Convert to JS day
+    const currentDay = now.getDay();
+    let daysUntil = targetDay - currentDay;
+    if (daysUntil <= 0) daysUntil += 7;
+    nextDate.setDate(now.getDate() + daysUntil);
+  } else if (schedule === "monthly") {
+    // day is the day of month (1 or 15)
+    if (now.getDate() >= day) {
+      nextDate.setMonth(now.getMonth() + 1);
+    }
+    nextDate.setDate(day);
+  }
+
+  return nextDate.toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+export function ReportManagement({
+  isTeam,
+  scheduleInfo,
+  recentConfigs = [],
+  onGenerate,
+}: ReportManagementProps) {
+  const [schedule, setSchedule] = useState(scheduleInfo?.reportSchedule ?? "off");
+  const [reportDay, setReportDay] = useState(scheduleInfo?.reportDay ?? 1);
+  const [isSaving, setIsSaving] = useState(false);
+  const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
+
+  // Sync state with props
+  useEffect(() => {
+    if (scheduleInfo) {
+      setSchedule(scheduleInfo.reportSchedule);
+      setReportDay(scheduleInfo.reportDay);
+    }
+  }, [scheduleInfo]);
+
+  const handleScheduleChange = useCallback(async (newSchedule: string, newDay?: number) => {
+    setIsSaving(true);
+    const updates: Record<string, unknown> = { reportSchedule: newSchedule };
+    if (newDay !== undefined) {
+      updates.reportDay = newDay;
+    }
+
+    try {
+      const response = await fetch("/api/user/email-preferences", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      });
+
+      if (response.ok) {
+        setSchedule(newSchedule);
+        if (newDay !== undefined) setReportDay(newDay);
+        toast.success(
+          newSchedule === "off"
+            ? "Report scheduling disabled"
+            : `Reports scheduled ${newSchedule}`
+        );
+      } else {
+        toast.error("Failed to update schedule");
+      }
+    } catch (err) {
+      console.error("Failed to update report schedule:", err);
+      toast.error("Failed to update schedule");
+    } finally {
+      setIsSaving(false);
+    }
+  }, []);
+
+  const handleRegenerate = async (configEntry: typeof recentConfigs[number]) => {
+    if (!onGenerate) return;
+
+    setRegeneratingId(configEntry.id);
+    try {
+      const regenerateConfig: ReportConfig = {
+        title: configEntry.title,
+        dateRange: (configEntry.dateRange as ReportConfig["dateRange"]) || "30d",
+        sections: DEFAULT_SECTIONS,
+        branding: {
+          primaryColor: "#6366f1",
+          companyName: "",
+        },
+        format: (configEntry.format as "pdf" | "html") || "pdf",
+      };
+
+      const url = await onGenerate(regenerateConfig);
+      window.open(url, "_blank");
+      toast.success("Report regenerated");
+    } catch (error) {
+      console.error("Failed to regenerate report:", error);
+      toast.error("Failed to regenerate report");
+    } finally {
+      setRegeneratingId(null);
+    }
+  };
+
+  if (!isTeam) {
+    return null;
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Settings2 className="h-5 w-5" />
+              Report Management
+            </CardTitle>
+            <CardDescription>
+              Schedule automated reports and view report history
+            </CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Schedule Section */}
+        <div className="space-y-4 p-4 rounded-lg border bg-muted/30">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <h3 className="font-medium">Scheduled Reports</h3>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="report-mgmt-schedule" className="text-sm">
+                Frequency
+              </Label>
+              <Select
+                value={schedule}
+                onValueChange={(value) => handleScheduleChange(value)}
+                disabled={isSaving}
+              >
+                <SelectTrigger id="report-mgmt-schedule">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="off">Off</SelectItem>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {schedule !== "off" && (
+              <div className="space-y-2">
+                <Label htmlFor="report-mgmt-day" className="text-sm">
+                  {schedule === "weekly" ? "Day of Week" : "Day of Month"}
+                </Label>
+                <Select
+                  value={reportDay.toString()}
+                  onValueChange={(value) => handleScheduleChange(schedule, parseInt(value))}
+                  disabled={isSaving}
+                >
+                  <SelectTrigger id="report-mgmt-day">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {schedule === "weekly" ? (
+                      <>
+                        <SelectItem value="1">Monday</SelectItem>
+                        <SelectItem value="2">Tuesday</SelectItem>
+                        <SelectItem value="3">Wednesday</SelectItem>
+                        <SelectItem value="4">Thursday</SelectItem>
+                        <SelectItem value="5">Friday</SelectItem>
+                        <SelectItem value="6">Saturday</SelectItem>
+                        <SelectItem value="7">Sunday</SelectItem>
+                      </>
+                    ) : (
+                      <>
+                        <SelectItem value="1">1st</SelectItem>
+                        <SelectItem value="15">15th</SelectItem>
+                      </>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+
+          {schedule !== "off" && (
+            <div className="flex items-center gap-4 text-xs text-muted-foreground pt-2 border-t">
+              <div className="flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                <span>Sent at 6 AM UTC every {schedule === "weekly" ? DAY_NAMES[reportDay] || "Monday" : `${reportDay === 1 ? "1st" : "15th"} of the month`}</span>
+              </div>
+              <Badge variant="outline" className="text-[10px]">
+                Next: {getNextScheduledDate(schedule, reportDay)}
+              </Badge>
+            </div>
+          )}
+
+          {scheduleInfo?.reportLastSentAt && (
+            <p className="text-xs text-muted-foreground">
+              Last report sent: {new Date(scheduleInfo.reportLastSentAt).toLocaleDateString(undefined, {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+              })}
+            </p>
+          )}
+        </div>
+
+        {/* Recent Reports / Quick Regenerate */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <FileText className="h-4 w-4 text-muted-foreground" />
+            <h3 className="font-medium">Recent Reports</h3>
+          </div>
+
+          {recentConfigs.length === 0 ? (
+            <div className="rounded-lg border border-dashed p-6 text-center">
+              <FileText className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
+              <p className="text-sm text-muted-foreground">No reports generated yet</p>
+              <p className="text-xs text-muted-foreground/70 mt-1">
+                Use the &quot;Generate Report&quot; button above to create your first branded analytics report.
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-lg border overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Report</TableHead>
+                    <TableHead className="hidden sm:table-cell">Range</TableHead>
+                    <TableHead className="hidden sm:table-cell">Format</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {recentConfigs.map((config) => (
+                    <TableRow key={config.id}>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium text-sm">{config.title}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(config.generatedAt).toLocaleDateString(undefined, {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })}
+                          </p>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        <Badge variant="outline" className="text-xs">
+                          {config.dateRange === "7d" ? "7 days" : config.dateRange === "30d" ? "30 days" : config.dateRange === "90d" ? "90 days" : config.dateRange}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        <span className="text-xs text-muted-foreground uppercase">
+                          {config.format}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-1"
+                          onClick={() => handleRegenerate(config)}
+                          disabled={regeneratingId === config.id}
+                        >
+                          {regeneratingId === config.id ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <RefreshCw className="h-3 w-3" />
+                          )}
+                          <span className="hidden sm:inline">Regenerate</span>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

@@ -16,6 +16,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Plus, Users } from "lucide-react";
+import { toast } from "sonner";
 import { AudienceCard, NewAudienceCard, type AudienceStats } from "./audience-card";
 import { SuggestedCommunities } from "./suggested-communities";
 import type { Audience } from "@/lib/db/schema";
@@ -52,6 +53,7 @@ export function AudiencesList({ audiences, suggestions = [] }: AudiencesListProp
       }
     } catch (error) {
       console.error("Failed to delete audience:", error);
+      toast.error("Failed to delete audience");
     } finally {
       setIsDeleting(false);
       setDeleteId(null);

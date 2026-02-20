@@ -34,6 +34,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
+import { toast } from "sonner";
 import { permissions, getAssignableRoles, getRoleDescription, type WorkspaceRole } from "@/lib/permissions";
 
 interface Member {
@@ -274,6 +275,7 @@ export function TeamSettings({ subscriptionStatus }: TeamSettingsProps) {
       }
     } catch {
       console.error("Failed to revoke invite");
+      toast.error("Failed to revoke invite");
     }
   }
 
@@ -293,6 +295,7 @@ export function TeamSettings({ subscriptionStatus }: TeamSettingsProps) {
       }
     } catch {
       console.error("Failed to remove member");
+      toast.error("Failed to remove member");
     }
   }
 
@@ -319,6 +322,7 @@ export function TeamSettings({ subscriptionStatus }: TeamSettingsProps) {
       }
     } catch {
       console.error("Failed to change role");
+      toast.error("Failed to change role");
     } finally {
       setChangingRole(null);
     }
@@ -352,6 +356,7 @@ export function TeamSettings({ subscriptionStatus }: TeamSettingsProps) {
       }
     } catch {
       console.error("Failed to reassign monitor");
+      toast.error("Failed to reassign monitor");
     } finally {
       setReassigning(null);
     }
