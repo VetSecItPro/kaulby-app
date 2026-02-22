@@ -88,3 +88,8 @@ ARCHITECTURE.md
 # EXCEPTIONS: Public-facing files
 \!README.md
 \!.github/pull_request_template.md
+.test-reports/
+.test-ship-state.json
+.test-ship-history.json
+.test-ship-quarantine.json
+.test-audit.json
