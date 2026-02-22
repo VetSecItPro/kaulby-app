@@ -127,11 +127,11 @@ describe("logger", () => {
 
     it("redacts tokens", async () => {
       const logger = await loadLogger();
-      logger.info("API call", { token: "sk_live_1234567890" });
+      logger.info("API call", { token: "tok_abc1234567890" });
       expect(consoleLogSpy).toHaveBeenCalledWith(
         expect.anything(),
         expect.anything(),
-        expect.objectContaining({ token: "sk_***" })
+        expect.objectContaining({ token: "tok***" })
       );
     });
 
