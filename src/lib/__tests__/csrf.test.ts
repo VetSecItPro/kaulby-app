@@ -1,7 +1,23 @@
 import { describe, it, expect, vi } from "vitest";
+import type { NextRequest } from "next/server";
 
 // We can't easily construct real NextRequest/NextResponse objects in unit tests,
 // so we'll test the functions that are testable: verifyCsrfToken, hasCsrfCookie, getCsrfToken
+
+/** Helper to create a mock NextRequest with cookies and headers */
+function makeMockRequest(opts: {
+  cookieValue?: { value: string } | undefined;
+  headerValue?: string | null;
+}): NextRequest {
+  return {
+    cookies: {
+      get: vi.fn().mockReturnValue(opts.cookieValue),
+    },
+    headers: {
+      get: vi.fn().mockReturnValue(opts.headerValue ?? null),
+    },
+  } as unknown as NextRequest;
+}
 
 describe("csrf", () => {
   describe("verifyCsrfToken", () => {
@@ -9,14 +25,10 @@ describe("csrf", () => {
       const { verifyCsrfToken } = await import("../csrf");
       const token = "test-csrf-token-12345";
 
-      const mockRequest = {
-        cookies: {
-          get: vi.fn().mockReturnValue({ value: token }),
-        },
-        headers: {
-          get: vi.fn().mockReturnValue(token),
-        },
-      } as any;
+      const mockRequest = makeMockRequest({
+        cookieValue: { value: token },
+        headerValue: token,
+      });
 
       expect(verifyCsrfToken(mockRequest)).toBe(true);
     });
@@ -24,14 +36,10 @@ describe("csrf", () => {
     it("returns false when cookie and header do not match", async () => {
       const { verifyCsrfToken } = await import("../csrf");
 
-      const mockRequest = {
-        cookies: {
-          get: vi.fn().mockReturnValue({ value: "token-a" }),
-        },
-        headers: {
-          get: vi.fn().mockReturnValue("token-b"),
-        },
-      } as any;
+      const mockRequest = makeMockRequest({
+        cookieValue: { value: "token-a" },
+        headerValue: "token-b",
+      });
 
       expect(verifyCsrfToken(mockRequest)).toBe(false);
     });
@@ -39,14 +47,10 @@ describe("csrf", () => {
     it("returns false when cookie is missing", async () => {
       const { verifyCsrfToken } = await import("../csrf");
 
-      const mockRequest = {
-        cookies: {
-          get: vi.fn().mockReturnValue(undefined),
-        },
-        headers: {
-          get: vi.fn().mockReturnValue("some-token"),
-        },
-      } as any;
+      const mockRequest = makeMockRequest({
+        cookieValue: undefined,
+        headerValue: "some-token",
+      });
 
       expect(verifyCsrfToken(mockRequest)).toBe(false);
     });
@@ -54,14 +58,10 @@ describe("csrf", () => {
     it("returns false when header is missing", async () => {
       const { verifyCsrfToken } = await import("../csrf");
 
-      const mockRequest = {
-        cookies: {
-          get: vi.fn().mockReturnValue({ value: "some-token" }),
-        },
-        headers: {
-          get: vi.fn().mockReturnValue(null),
-        },
-      } as any;
+      const mockRequest = makeMockRequest({
+        cookieValue: { value: "some-token" },
+        headerValue: null,
+      });
 
       expect(verifyCsrfToken(mockRequest)).toBe(false);
     });
@@ -69,14 +69,10 @@ describe("csrf", () => {
     it("returns false when both cookie and header are missing", async () => {
       const { verifyCsrfToken } = await import("../csrf");
 
-      const mockRequest = {
-        cookies: {
-          get: vi.fn().mockReturnValue(undefined),
-        },
-        headers: {
-          get: vi.fn().mockReturnValue(null),
-        },
-      } as any;
+      const mockRequest = makeMockRequest({
+        cookieValue: undefined,
+        headerValue: null,
+      });
 
       expect(verifyCsrfToken(mockRequest)).toBe(false);
     });
@@ -84,14 +80,10 @@ describe("csrf", () => {
     it("returns false when tokens have different lengths", async () => {
       const { verifyCsrfToken } = await import("../csrf");
 
-      const mockRequest = {
-        cookies: {
-          get: vi.fn().mockReturnValue({ value: "short" }),
-        },
-        headers: {
-          get: vi.fn().mockReturnValue("much-longer-token"),
-        },
-      } as any;
+      const mockRequest = makeMockRequest({
+        cookieValue: { value: "short" },
+        headerValue: "much-longer-token",
+      });
 
       expect(verifyCsrfToken(mockRequest)).toBe(false);
     });
@@ -101,11 +93,9 @@ describe("csrf", () => {
     it("returns true when CSRF cookie is present", async () => {
       const { hasCsrfCookie } = await import("../csrf");
 
-      const mockRequest = {
-        cookies: {
-          get: vi.fn().mockReturnValue({ value: "some-token" }),
-        },
-      } as any;
+      const mockRequest = makeMockRequest({
+        cookieValue: { value: "some-token" },
+      });
 
       expect(hasCsrfCookie(mockRequest)).toBe(true);
     });
@@ -113,11 +103,9 @@ describe("csrf", () => {
     it("returns false when CSRF cookie is absent", async () => {
       const { hasCsrfCookie } = await import("../csrf");
 
-      const mockRequest = {
-        cookies: {
-          get: vi.fn().mockReturnValue(undefined),
-        },
-      } as any;
+      const mockRequest = makeMockRequest({
+        cookieValue: undefined,
+      });
 
       expect(hasCsrfCookie(mockRequest)).toBe(false);
     });
@@ -125,11 +113,9 @@ describe("csrf", () => {
     it("returns false when CSRF cookie has empty value", async () => {
       const { hasCsrfCookie } = await import("../csrf");
 
-      const mockRequest = {
-        cookies: {
-          get: vi.fn().mockReturnValue({ value: "" }),
-        },
-      } as any;
+      const mockRequest = makeMockRequest({
+        cookieValue: { value: "" },
+      });
 
       expect(hasCsrfCookie(mockRequest)).toBe(false);
     });

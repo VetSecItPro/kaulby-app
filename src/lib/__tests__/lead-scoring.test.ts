@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import { calculateLeadScore } from "../ai/lead-scoring";
-import type { LeadScoreInput } from "../ai/lead-scoring";
 
 describe("calculateLeadScore", () => {
   describe("intent scoring", () => {

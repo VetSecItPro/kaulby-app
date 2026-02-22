@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { NextRequest } from "next/server";
 
 // Mock the database module
@@ -69,14 +69,14 @@ describe("api-auth", () => {
         expiresAt: null,
         dailyRequestResetAt: null,
         dailyRequestCount: 0,
-      } as any);
+      } as Record<string, unknown>);
 
       // Mock finding the user
       vi.mocked(db.query.users.findFirst).mockResolvedValueOnce({
         id: "user-1",
         subscriptionStatus: "enterprise",
         isBanned: false,
-      } as any);
+      } as Record<string, unknown>);
 
       const request = new NextRequest("http://localhost/api/test", {
         method: "GET",
@@ -102,13 +102,13 @@ describe("api-auth", () => {
         expiresAt: null,
         dailyRequestResetAt: null,
         dailyRequestCount: 0,
-      } as any);
+      } as Record<string, unknown>);
 
       vi.mocked(db.query.users.findFirst).mockResolvedValueOnce({
         id: "user-1",
         subscriptionStatus: "enterprise",
         isBanned: false,
-      } as any);
+      } as Record<string, unknown>);
 
       const request = new NextRequest("http://localhost/api/test", {
         method: "GET",
@@ -145,7 +145,9 @@ describe("api-auth", () => {
     it("returns 401 when API key not found in database", async () => {
       const { db } = await import("@/lib/db");
 
-      vi.mocked(db.query.apiKeys.findFirst).mockResolvedValueOnce(undefined as any);
+      vi.mocked(db.query.apiKeys.findFirst).mockResolvedValueOnce(
+        undefined as unknown as Record<string, unknown>
+      );
 
       const request = new NextRequest("http://localhost/api/test", {
         method: "GET",
@@ -170,13 +172,13 @@ describe("api-auth", () => {
         userId: "user-1",
         expiresAt: null,
         dailyRequestResetAt: null,
-      } as any);
+      } as Record<string, unknown>);
 
       vi.mocked(db.query.users.findFirst).mockResolvedValueOnce({
         id: "user-1",
         subscriptionStatus: "enterprise",
         isBanned: true,
-      } as any);
+      } as Record<string, unknown>);
 
       const request = new NextRequest("http://localhost/api/test", {
         method: "GET",
@@ -201,13 +203,13 @@ describe("api-auth", () => {
         userId: "user-1",
         expiresAt: null,
         dailyRequestResetAt: null,
-      } as any);
+      } as Record<string, unknown>);
 
       vi.mocked(db.query.users.findFirst).mockResolvedValueOnce({
         id: "user-1",
         subscriptionStatus: "pro",
         isBanned: false,
-      } as any);
+      } as Record<string, unknown>);
 
       const request = new NextRequest("http://localhost/api/test", {
         method: "GET",

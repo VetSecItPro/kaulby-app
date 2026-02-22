@@ -14,7 +14,7 @@
 
 import { inngest } from "../client";
 import { pooledDb, users, results, monitors } from "@/lib/db";
-import { eq, and, gt, inArray, isNull, sql } from "drizzle-orm";
+import { eq, and, gt, inArray, sql } from "drizzle-orm";
 import {
   upsertContact,
   resultToHubSpotContact,
