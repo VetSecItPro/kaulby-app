@@ -69,14 +69,14 @@ describe("api-auth", () => {
         expiresAt: null,
         dailyRequestResetAt: null,
         dailyRequestCount: 0,
-      } as Record<string, unknown>);
+      } as never);
 
       // Mock finding the user
       vi.mocked(db.query.users.findFirst).mockResolvedValueOnce({
         id: "user-1",
         subscriptionStatus: "enterprise",
         isBanned: false,
-      } as Record<string, unknown>);
+      } as never);
 
       const request = new NextRequest("http://localhost/api/test", {
         method: "GET",
@@ -102,13 +102,13 @@ describe("api-auth", () => {
         expiresAt: null,
         dailyRequestResetAt: null,
         dailyRequestCount: 0,
-      } as Record<string, unknown>);
+      } as never);
 
       vi.mocked(db.query.users.findFirst).mockResolvedValueOnce({
         id: "user-1",
         subscriptionStatus: "enterprise",
         isBanned: false,
-      } as Record<string, unknown>);
+      } as never);
 
       const request = new NextRequest("http://localhost/api/test", {
         method: "GET",
@@ -146,7 +146,7 @@ describe("api-auth", () => {
       const { db } = await import("@/lib/db");
 
       vi.mocked(db.query.apiKeys.findFirst).mockResolvedValueOnce(
-        undefined as unknown as Record<string, unknown>
+        undefined as unknown as never
       );
 
       const request = new NextRequest("http://localhost/api/test", {
@@ -172,13 +172,13 @@ describe("api-auth", () => {
         userId: "user-1",
         expiresAt: null,
         dailyRequestResetAt: null,
-      } as Record<string, unknown>);
+      } as never);
 
       vi.mocked(db.query.users.findFirst).mockResolvedValueOnce({
         id: "user-1",
         subscriptionStatus: "enterprise",
         isBanned: true,
-      } as Record<string, unknown>);
+      } as never);
 
       const request = new NextRequest("http://localhost/api/test", {
         method: "GET",
@@ -203,13 +203,13 @@ describe("api-auth", () => {
         userId: "user-1",
         expiresAt: null,
         dailyRequestResetAt: null,
-      } as Record<string, unknown>);
+      } as never);
 
       vi.mocked(db.query.users.findFirst).mockResolvedValueOnce({
         id: "user-1",
         subscriptionStatus: "pro",
         isBanned: false,
-      } as Record<string, unknown>);
+      } as never);
 
       const request = new NextRequest("http://localhost/api/test", {
         method: "GET",

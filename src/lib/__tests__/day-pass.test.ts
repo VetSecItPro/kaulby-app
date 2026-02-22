@@ -42,7 +42,7 @@ describe("day-pass", () => {
       const { db } = await import("@/lib/db");
       vi.mocked(db.query.users.findFirst).mockResolvedValueOnce({
         dayPassPurchaseCount: 0,
-      } as Record<string, unknown>);
+      } as never);
 
       const before = Date.now();
       const result = await activateDayPass("user-1");
@@ -59,7 +59,7 @@ describe("day-pass", () => {
       const { db } = await import("@/lib/db");
       vi.mocked(db.query.users.findFirst).mockResolvedValueOnce({
         dayPassPurchaseCount: 3,
-      } as Record<string, unknown>);
+      } as never);
 
       const result = await activateDayPass("user-1");
       expect(result.purchaseCount).toBe(4);
@@ -69,7 +69,7 @@ describe("day-pass", () => {
       const { db } = await import("@/lib/db");
       vi.mocked(db.query.users.findFirst).mockResolvedValueOnce({
         dayPassPurchaseCount: null,
-      } as Record<string, unknown>);
+      } as never);
 
       const result = await activateDayPass("user-1");
       expect(result.purchaseCount).toBe(1);
@@ -83,7 +83,7 @@ describe("day-pass", () => {
 
       vi.mocked(db.query.users.findFirst).mockResolvedValueOnce({
         dayPassExpiresAt: futureDate,
-      } as Record<string, unknown>);
+      } as never);
 
       const result = await checkDayPassStatus("user-1");
       expect(result.active).toBe(true);
@@ -99,7 +99,7 @@ describe("day-pass", () => {
 
       vi.mocked(db.query.users.findFirst).mockResolvedValueOnce({
         dayPassExpiresAt: pastDate,
-      } as Record<string, unknown>);
+      } as never);
 
       const result = await checkDayPassStatus("user-1");
       expect(result.active).toBe(false);
@@ -112,7 +112,7 @@ describe("day-pass", () => {
       const { db } = await import("@/lib/db");
       vi.mocked(db.query.users.findFirst).mockResolvedValueOnce({
         dayPassExpiresAt: null,
-      } as Record<string, unknown>);
+      } as never);
 
       const result = await checkDayPassStatus("user-1");
       expect(result.active).toBe(false);
@@ -124,7 +124,7 @@ describe("day-pass", () => {
     it("returns inactive when user not found", async () => {
       const { db } = await import("@/lib/db");
       vi.mocked(db.query.users.findFirst).mockResolvedValueOnce(
-        undefined as unknown as Record<string, unknown>
+        undefined as unknown as never
       );
 
       const result = await checkDayPassStatus("nonexistent");
@@ -138,7 +138,7 @@ describe("day-pass", () => {
 
       vi.mocked(db.query.users.findFirst).mockResolvedValueOnce({
         dayPassExpiresAt: futureDate,
-      } as Record<string, unknown>);
+      } as never);
 
       const result = await checkDayPassStatus("user-1");
       expect(result.active).toBe(true);
@@ -156,7 +156,7 @@ describe("day-pass", () => {
       vi.mocked(db.query.users.findFirst).mockResolvedValueOnce({
         dayPassPurchaseCount: 5,
         lastDayPassPurchasedAt: lastPurchased,
-      } as Record<string, unknown>);
+      } as never);
 
       const result = await getDayPassHistory("user-1");
       expect(result.totalPurchases).toBe(5);
@@ -168,7 +168,7 @@ describe("day-pass", () => {
       vi.mocked(db.query.users.findFirst).mockResolvedValueOnce({
         dayPassPurchaseCount: null,
         lastDayPassPurchasedAt: null,
-      } as Record<string, unknown>);
+      } as never);
 
       const result = await getDayPassHistory("user-1");
       expect(result.totalPurchases).toBe(0);
@@ -178,7 +178,7 @@ describe("day-pass", () => {
     it("returns zero purchases when user not found", async () => {
       const { db } = await import("@/lib/db");
       vi.mocked(db.query.users.findFirst).mockResolvedValueOnce(
-        undefined as unknown as Record<string, unknown>
+        undefined as unknown as never
       );
 
       const result = await getDayPassHistory("nonexistent");
