@@ -14,6 +14,7 @@ vi.mock("resend", () => {
 // Mock the security module
 vi.mock("@/lib/security/sanitize", () => ({
   escapeHtml: (s: string) => s.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/&/g, "&amp;"),
+  sanitizeForLog: (s: string) => s || "",
 }));
 
 import {
@@ -254,11 +255,8 @@ describe("Email Module", () => {
   });
 
   describe("upsertContact", () => {
-    it("is a no-op that logs", async () => {
-      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-      await upsertContact({ email: "test@test.com" });
-      expect(logSpy).toHaveBeenCalledWith("Contact upsert:", "test@test.com");
-      logSpy.mockRestore();
+    it("is a no-op that completes without error", async () => {
+      await expect(upsertContact({ email: "test@test.com" })).resolves.toBeUndefined();
     });
   });
 });

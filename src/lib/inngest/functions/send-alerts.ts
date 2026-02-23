@@ -15,6 +15,11 @@ const tzFormatterCache = new Map<string, Intl.DateTimeFormat>();
 function getCachedFormatter(timezone: string, type: "hour" | "weekday" | "day"): Intl.DateTimeFormat {
   const key = `${timezone}:${type}`;
   if (!tzFormatterCache.has(key)) {
+    // PERF-MEM-001: Limit cache to 200 entries to prevent unbounded growth
+    if (tzFormatterCache.size >= 200) {
+      const firstKey = tzFormatterCache.keys().next().value;
+      if (firstKey !== undefined) tzFormatterCache.delete(firstKey);
+    }
     const options: Intl.DateTimeFormatOptions = { timeZone: timezone };
     if (type === "hour") { options.hour = "numeric"; options.hour12 = false; }
     else if (type === "weekday") { options.weekday = "short"; }
@@ -280,6 +285,73 @@ const DIGEST_CONFIGS: Record<string, DigestConfig> = {
   monthly: { frequency: "monthly", lookbackDays: 30, topResultsLimit: 15, includeCategories: true, includeAiInsights: true, checkPlanAccess: false },
 };
 
+/** Group results by monitor, platform, and category */
+function groupResults(userResults: ResultWithMonitor[], includeCategories: boolean) {
+  const resultsByMonitor = new Map<string, ResultWithMonitor[]>();
+  const resultsByPlatform = new Map<string, ResultWithMonitor[]>();
+  const resultsByCategory = new Map<string, ResultWithMonitor[]>();
+
+  for (const result of userResults) {
+    const existingMonitor = resultsByMonitor.get(result.monitorId) || [];
+    existingMonitor.push(result);
+    resultsByMonitor.set(result.monitorId, existingMonitor);
+
+    const existingPlatform = resultsByPlatform.get(result.platform) || [];
+    existingPlatform.push(result);
+    resultsByPlatform.set(result.platform, existingPlatform);
+
+    if (includeCategories) {
+      const category = result.conversationCategory || "general";
+      const existingCategory = resultsByCategory.get(category) || [];
+      existingCategory.push(result);
+      resultsByCategory.set(category, existingCategory);
+    }
+  }
+
+  return { resultsByMonitor, resultsByPlatform, resultsByCategory };
+}
+
+/** Build digest email data from grouped results */
+function buildDigestData(
+  user: UserWithMonitors,
+  resultsByMonitor: Map<string, ResultWithMonitor[]>,
+  resultsByPlatform: Map<string, ResultWithMonitor[]>,
+  resultsByCategory: Map<string, ResultWithMonitor[]>,
+  config: DigestConfig
+) {
+  const monitorsData = user.monitors
+    .filter((m) => resultsByMonitor.has(m.id))
+    .map((m) => {
+      const monitorResults = resultsByMonitor.get(m.id) || [];
+      return {
+        name: m.name,
+        resultsCount: monitorResults.length,
+        topResults: monitorResults.slice(0, config.topResultsLimit).map((r) => ({
+          title: r.title,
+          url: r.sourceUrl,
+          platform: r.platform,
+          sentiment: r.sentiment,
+          summary: r.aiSummary,
+          category: r.conversationCategory,
+        })),
+      };
+    });
+
+  const platformBreakdown = Array.from(resultsByPlatform.entries()).map(([platform, platformResults]) => ({
+    platform,
+    count: platformResults.length,
+  }));
+
+  const categoryBreakdown = config.includeCategories
+    ? Array.from(resultsByCategory.entries()).map(([category, categoryResults]) => ({
+        category,
+        count: categoryResults.length,
+      }))
+    : undefined;
+
+  return { monitorsData, platformBreakdown, categoryBreakdown };
+}
+
 // Shared digest logic for all frequencies (daily/weekly/monthly)
 async function sendDigestForTimezone(
   timezone: string,
@@ -355,25 +427,10 @@ async function sendDigestForTimezone(
     }
 
     // Group results by monitor and platform
-    const resultsByMonitor = new Map<string, ResultWithMonitor[]>();
-    const resultsByPlatform = new Map<string, ResultWithMonitor[]>();
-    const resultsByCategory = new Map<string, ResultWithMonitor[]>();
-    for (const result of userResults) {
-      const existingMonitor = resultsByMonitor.get(result.monitorId) || [];
-      existingMonitor.push(result);
-      resultsByMonitor.set(result.monitorId, existingMonitor);
-
-      const existingPlatform = resultsByPlatform.get(result.platform) || [];
-      existingPlatform.push(result);
-      resultsByPlatform.set(result.platform, existingPlatform);
-
-      if (config.includeCategories) {
-        const category = result.conversationCategory || "general";
-        const existingCategory = resultsByCategory.get(category) || [];
-        existingCategory.push(result);
-        resultsByCategory.set(category, existingCategory);
-      }
-    }
+    const { resultsByMonitor, resultsByPlatform, resultsByCategory } = groupResults(
+      userResults,
+      config.includeCategories
+    );
 
     // Generate AI insights for Pro+ users (weekly/monthly only)
     let aiInsights: WeeklyInsights | undefined;
@@ -407,35 +464,13 @@ async function sendDigestForTimezone(
     }
 
     await step.run(`send-digest-${user.id}`, async () => {
-      const monitorsData = user.monitors
-        .filter((m) => resultsByMonitor.has(m.id))
-        .map((m) => {
-          const monitorResults = resultsByMonitor.get(m.id) || [];
-          return {
-            name: m.name,
-            resultsCount: monitorResults.length,
-            topResults: monitorResults.slice(0, config.topResultsLimit).map((r) => ({
-              title: r.title,
-              url: r.sourceUrl,
-              platform: r.platform,
-              sentiment: r.sentiment,
-              summary: r.aiSummary,
-              category: r.conversationCategory,
-            })),
-          };
-        });
-
-      const platformBreakdown = Array.from(resultsByPlatform.entries()).map(([platform, platformResults]) => ({
-        platform,
-        count: platformResults.length,
-      }));
-
-      const categoryBreakdown = config.includeCategories
-        ? Array.from(resultsByCategory.entries()).map(([category, categoryResults]) => ({
-            category,
-            count: categoryResults.length,
-          }))
-        : undefined;
+      const { monitorsData, platformBreakdown, categoryBreakdown } = buildDigestData(
+        user,
+        resultsByMonitor,
+        resultsByPlatform,
+        resultsByCategory,
+        config
+      );
 
       await sendDigestEmail({
         to: user.email,

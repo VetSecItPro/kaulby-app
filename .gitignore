@@ -93,3 +93,4 @@ ARCHITECTURE.md
 .test-ship-history.json
 .test-ship-quarantine.json
 .test-audit.json
+.perf-reports/

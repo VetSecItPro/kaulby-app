@@ -7,6 +7,8 @@ import { getUserPlan } from "@/lib/limits";
 import { getPlanLimits, type PlanKey } from "@/lib/plans";
 import { jsonCompletion, MODELS } from "@/lib/ai/openrouter";
 import { checkApiRateLimit } from "@/lib/rate-limit";
+import { cachedQuery, CACHE_TTL } from "@/lib/cache";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -81,7 +83,7 @@ Rules:
 - Identify pain points, feature requests, and sentiment trends`;
 
   try {
-    console.log(`[Insights AI] Calling AI with ${limitedResults.length} results`);
+    logger.info("Insights AI: Calling AI for topic extraction", { resultCount: limitedResults.length });
     const response = await jsonCompletion<{ topics: Array<{
       topic: string;
       description: string;
@@ -93,7 +95,7 @@ Rules:
       model: MODELS.primary, // Gemini Flash - very cheap
     });
 
-    console.log(`[Insights AI] Got ${response.data.topics?.length || 0} topics from AI`);
+    logger.info("Insights AI: Received topics from AI", { topicCount: response.data.topics?.length || 0 });
 
     // Map result indices back to actual IDs
     return response.data.topics.map(t => ({
@@ -103,7 +105,7 @@ Rules:
         .map(idx => limitedResults[idx - 1].id),
     }));
   } catch (error) {
-    console.error("[Insights AI] AI topic extraction failed:", error);
+    logger.error("Insights AI: Topic extraction failed", { error: error instanceof Error ? error.message : String(error) });
     return [];
   }
 }
@@ -504,24 +506,32 @@ export async function GET(request: Request) {
     const monitorNameMap = new Map(userMonitors.map((m) => [m.id, m.name]));
 
     // FIX-210: Add limit to prevent unbounded query
-    const rawResults = await db.query.results.findMany({
-      where: and(
-        inArray(results.monitorId, monitorIds),
-        gte(results.createdAt, startDate)
-      ),
-      columns: {
-        id: true,
-        title: true,
-        content: true,
-        platform: true,
-        sentiment: true,
-        sourceUrl: true,
-        createdAt: true,
-        monitorId: true,
+    // PERF-CACHE-001: Cache the results query for 2 minutes (statistical data is cacheable)
+    const { data: rawResults } = await cachedQuery(
+      "insights:results",
+      { userId, range, monitorIds },
+      async () => {
+        return await db.query.results.findMany({
+          where: and(
+            inArray(results.monitorId, monitorIds),
+            gte(results.createdAt, startDate)
+          ),
+          columns: {
+            id: true,
+            title: true,
+            content: true,
+            platform: true,
+            sentiment: true,
+            sourceUrl: true,
+            createdAt: true,
+            monitorId: true,
+          },
+          orderBy: desc(results.createdAt),
+          limit: 100, // PERF: Reduced from 1000 — AI analysis uses top 50, 2x buffer for stats
+        });
       },
-      orderBy: desc(results.createdAt),
-      limit: 100, // PERF: Reduced from 1000 — AI analysis uses top 50, 2x buffer for stats
-    });
+      CACHE_TTL.RESULTS
+    );
 
     // Enrich results with monitor names
     const userResults = rawResults.map((r) => ({
@@ -561,7 +571,10 @@ export async function GET(request: Request) {
     const totalKeywordTopics = topics.length + singlePlatformTopics.length;
 
     if (thresholds.useAiFallback && totalKeywordTopics < 3 && userResults.length >= 3) {
-      console.log(`[Insights] Using AI fallback for user - found ${totalKeywordTopics} keyword topics from ${userResults.length} results`);
+      logger.info("Insights: Using AI fallback for sparse data", {
+        keywordTopics: totalKeywordTopics,
+        resultCount: userResults.length
+      });
       const aiExtractedTopics = await extractTopicsWithAI(userResults);
       aiTopics = convertAITopicsToCluster(aiExtractedTopics, userResults);
     }
@@ -598,7 +611,7 @@ export async function GET(request: Request) {
     response.headers.set("Cache-Control", "private, max-age=30, stale-while-revalidate=60");
     return response;
   } catch (error) {
-    console.error("Insights error:", error);
+    logger.error("Insights error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to fetch insights" },
       { status: 500 }

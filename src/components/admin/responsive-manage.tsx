@@ -11,20 +11,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import Link from "next/link";
-import dynamic from "next/dynamic";
-
-const AdminCharts = dynamic(
-  () => import("./admin-charts").then((mod) => mod.AdminCharts),
-  {
-    loading: () => (
-      <div className="grid gap-6 md:grid-cols-2">
-        <div className="h-[300px] animate-pulse rounded-lg bg-muted" />
-        <div className="h-[300px] animate-pulse rounded-lg bg-muted" />
-      </div>
-    ),
-    ssr: false,
-  }
-);
+import { AdminCharts } from "./admin-charts-lazy";
 import { RecentActivity } from "./recent-activity";
 import { AiCostsTable } from "./ai-costs-table";
 import { BusinessMetrics } from "./business-metrics";
