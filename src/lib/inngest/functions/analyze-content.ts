@@ -16,6 +16,7 @@ import { incrementAiCallsCount, getUserPlan } from "@/lib/limits";
 import { getPlanLimits } from "@/lib/plans";
 import { cache } from "@/lib/cache";
 import { matchDetectionKeywords } from "@/lib/detection-matcher";
+import { logger } from "@/lib/logger";
 import crypto from "crypto";
 
 /**
@@ -112,7 +113,7 @@ export const analyzeContent = inngest.createFunction(
     });
 
     if (cachedAnalysis) {
-      console.log(`[AI Analysis] CACHE HIT for ${analysisTier} tier (key: ${cacheKey.slice(-8)})`);
+      logger.debug("[AI Analysis] CACHE HIT", { tier: analysisTier, cacheKey: cacheKey.slice(-8) });
 
       // Apply cached analysis to this result
       await step.run("apply-cached-analysis", async () => {
@@ -161,7 +162,7 @@ export const analyzeContent = inngest.createFunction(
       };
     }
 
-    console.log(`[AI Analysis] CACHE MISS for ${analysisTier} tier (key: ${cacheKey.slice(-8)}) - running AI`);
+    logger.debug("[AI Analysis] CACHE MISS - running AI", { tier: analysisTier, cacheKey: cacheKey.slice(-8) });
 
     // Create Langfuse trace
     const trace = createTrace({
@@ -282,7 +283,7 @@ export const analyzeContent = inngest.createFunction(
           }),
         };
         await cache.set(cacheKey, cacheData, AI_ANALYSIS_CACHE_TTL);
-        console.log(`[AI Analysis] Cached TEAM tier analysis (key: ${cacheKey.slice(-8)})`);
+        logger.debug("[AI Analysis] Cached TEAM tier analysis", { cacheKey: cacheKey.slice(-8) });
       });
 
       // Log AI usage for Team tier (comprehensive + optional categorization)
@@ -450,7 +451,7 @@ export const analyzeContent = inngest.createFunction(
         }),
       };
       await cache.set(cacheKey, cacheData, AI_ANALYSIS_CACHE_TTL);
-      console.log(`[AI Analysis] Cached PRO tier analysis (key: ${cacheKey.slice(-8)})`);
+      logger.debug("[AI Analysis] Cached PRO tier analysis", { cacheKey: cacheKey.slice(-8) });
     });
 
     // Log AI usage (3 or 4 calls depending on keyword match)

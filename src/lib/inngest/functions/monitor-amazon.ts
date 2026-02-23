@@ -1,4 +1,5 @@
 import { inngest } from "../client";
+import { logger } from "@/lib/logger";
 import { fetchAmazonReviews, isApifyConfigured, type AmazonReviewItem } from "@/lib/apify";
 import {
   getActiveMonitors,
@@ -72,7 +73,7 @@ export const monitorAmazon = inngest.createFunction(
         try {
           return await fetchAmazonReviews(productUrl!, 30);
         } catch (error) {
-          console.error(`Error fetching Amazon reviews for ${productUrl}:`, error);
+          logger.error("[Amazon] Error fetching reviews", { productUrl, error: error instanceof Error ? error.message : String(error) });
           return [] as AmazonReviewItem[];
         }
       });

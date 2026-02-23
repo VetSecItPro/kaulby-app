@@ -1,4 +1,5 @@
 import { inngest } from "../client";
+import { logger } from "@/lib/logger";
 import {
   getActiveMonitors,
   prefetchPlans,
@@ -45,7 +46,7 @@ async function getProductHuntAccessToken(): Promise<string | null> {
   const clientSecret = process.env.PRODUCTHUNT_API_SECRET;
 
   if (!clientId || !clientSecret) {
-    console.error("[ProductHunt] Missing API credentials (need both API_KEY and API_SECRET)");
+    logger.error("[ProductHunt] Missing API credentials (need both API_KEY and API_SECRET)");
     return null;
   }
 
@@ -70,7 +71,7 @@ async function getProductHuntAccessToken(): Promise<string | null> {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`[ProductHunt] OAuth token request failed: ${response.status} - ${errorText}`);
+      logger.error("[ProductHunt] OAuth token request failed", { status: response.status, errorText });
       return null;
     }
 
@@ -79,10 +80,10 @@ async function getProductHuntAccessToken(): Promise<string | null> {
     // Token typically expires in 2 weeks, but we'll refresh every run anyway
     tokenExpiresAt = Date.now() + (data.expires_in ? data.expires_in * 1000 : 86400000);
 
-    console.log("[ProductHunt] Successfully obtained access token");
+    logger.info("[ProductHunt] Successfully obtained access token");
     return cachedAccessToken;
   } catch (error) {
-    console.error("[ProductHunt] Error getting access token:", error);
+    logger.error("[ProductHunt] Error getting access token", { error: error instanceof Error ? error.message : String(error) });
     return null;
   }
 }
@@ -150,14 +151,14 @@ export const monitorProductHunt = inngest.createFunction(
         });
 
         if (!response.ok) {
-          console.error(`Failed to fetch Product Hunt: ${response.status}`);
+          logger.error("[ProductHunt] Failed to fetch", { status: response.status });
           return [];
         }
 
         const data: PHResponse = await response.json();
         return data.data?.posts?.edges?.map((e) => e.node) || [];
       } catch (error) {
-        console.error("Error fetching Product Hunt:", error);
+        logger.error("[ProductHunt] Error fetching", { error: error instanceof Error ? error.message : String(error) });
         return [];
       }
     });

@@ -1,4 +1,5 @@
 import { inngest } from "../client";
+import { logger } from "@/lib/logger";
 import { fetchTrustpilotReviews, isApifyConfigured, type TrustpilotReviewItem } from "@/lib/apify";
 import {
   getActiveMonitors,
@@ -70,7 +71,7 @@ export const monitorTrustpilot = inngest.createFunction(
         try {
           return await fetchTrustpilotReviews(companyUrl!, 20);
         } catch (error) {
-          console.error(`Error fetching Trustpilot reviews for ${companyUrl}:`, error);
+          logger.error("[Trustpilot] Error fetching reviews", { companyUrl, error: error instanceof Error ? error.message : String(error) });
           return [] as TrustpilotReviewItem[];
         }
       });

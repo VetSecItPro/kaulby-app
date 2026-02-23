@@ -9,6 +9,7 @@
  */
 
 import { inngest } from "../client";
+import { logger } from "@/lib/logger";
 import { pooledDb } from "@/lib/db";
 import { monitors } from "@/lib/db/schema";
 import { eq, and, lt } from "drizzle-orm";
@@ -46,10 +47,7 @@ export const resetStuckScans = inngest.createFunction(
     });
 
     if (result.length > 0) {
-      console.log(
-        `[reset-stuck-scans] Reset ${result.length} stuck monitors:`,
-        result.map((m) => m.name).join(", ")
-      );
+      logger.info("[reset-stuck-scans] Reset stuck monitors", { count: result.length, monitors: result.map((m) => m.name) });
     }
 
     return {

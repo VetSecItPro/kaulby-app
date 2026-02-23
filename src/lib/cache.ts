@@ -13,6 +13,7 @@
 
 import crypto from "crypto";
 import { Redis } from "@upstash/redis";
+import { logger } from "@/lib/logger";
 
 // ============================================================================
 // TYPES
@@ -110,7 +111,7 @@ class RedisCache implements CacheBackend {
       this.stats.misses++;
       return null;
     } catch (error) {
-      console.error("[Redis Cache] Get error:", error);
+      logger.error("[Redis Cache] Get error", { error: error instanceof Error ? error.message : String(error) });
       this.stats.misses++;
       return null;
     }
@@ -122,7 +123,7 @@ class RedisCache implements CacheBackend {
       const ttlSeconds = Math.ceil(ttlMs / 1000);
       await this.redis.set(key, data, { ex: ttlSeconds });
     } catch (error) {
-      console.error("[Redis Cache] Set error:", error);
+      logger.error("[Redis Cache] Set error", { error: error instanceof Error ? error.message : String(error) });
     }
   }
 
@@ -131,7 +132,7 @@ class RedisCache implements CacheBackend {
       const exists = await this.redis.exists(key);
       return exists === 1;
     } catch (error) {
-      console.error("[Redis Cache] Exists error:", error);
+      logger.error("[Redis Cache] Exists error", { error: error instanceof Error ? error.message : String(error) });
       return false;
     }
   }
@@ -141,7 +142,7 @@ class RedisCache implements CacheBackend {
       const deleted = await this.redis.del(key);
       return deleted === 1;
     } catch (error) {
-      console.error("[Redis Cache] Delete error:", error);
+      logger.error("[Redis Cache] Delete error", { error: error instanceof Error ? error.message : String(error) });
       return false;
     }
   }
@@ -324,10 +325,10 @@ class UnifiedCache {
     this.memoryCache = new MemoryCache(10000);
 
     if (hasRedisConfig) {
-      console.log("[Cache] Using Upstash Redis backend");
+      logger.info("[Cache] Using Upstash Redis backend");
       this.backend = new RedisCache();
     } else {
-      console.log("[Cache] Using in-memory backend (set UPSTASH_REDIS_* for Redis)");
+      logger.info("[Cache] Using in-memory backend (set UPSTASH_REDIS_* for Redis)");
       this.backend = this.memoryCache;
     }
   }
@@ -420,12 +421,12 @@ export async function cachedQuery<T>(
   // Try to get from cache
   const cached = await globalCache.get<T>(cacheKey);
   if (cached !== null) {
-    console.log(`[Cache] HIT: ${prefix} (key: ${cacheKey.slice(-8)})`);
+    logger.debug("[Cache] HIT", { prefix, cacheKey: cacheKey.slice(-8) });
     return { data: cached, cached: true, cacheKey };
   }
 
   // Fetch fresh data
-  console.log(`[Cache] MISS: ${prefix} (key: ${cacheKey.slice(-8)})`);
+  logger.debug("[Cache] MISS", { prefix, cacheKey: cacheKey.slice(-8) });
   const data = await fetchFn();
 
   // Store in cache

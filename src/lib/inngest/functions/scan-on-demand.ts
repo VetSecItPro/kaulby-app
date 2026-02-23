@@ -18,6 +18,7 @@ import {
 import { findRelevantSubredditsCached } from "@/lib/ai";
 import { searchRedditResilient } from "@/lib/reddit";
 import { searchX } from "./monitor-x";
+import { logger } from "@/lib/logger";
 
 /**
  * Scan a single monitor on-demand when user clicks "Scan Now"
@@ -286,7 +287,7 @@ async function contentMatchesMonitor(
 
   // For AI Discovery monitors, use semantic matching
   if (!monitor.discoveryPrompt) {
-    console.warn(`[AI Discovery] Monitor ${monitor.id} has no discovery prompt`);
+    logger.warn("[AI Discovery] Monitor has no discovery prompt", { monitorId: monitor.id });
     return { isMatch: false };
   }
 
@@ -311,7 +312,7 @@ async function contentMatchesMonitor(
 
     return { isMatch: false };
   } catch (error) {
-    console.error(`[AI Discovery] Error checking match for monitor ${monitor.id}:`, error);
+    logger.error("[AI Discovery] Error checking match", { monitorId: monitor.id, error: error instanceof Error ? error.message : String(error) });
     return { isMatch: false };
   }
 }
@@ -338,15 +339,15 @@ async function scanRedditForMonitor(monitor: MonitorData): Promise<number> {
   // If no audience defined, use AI to find relevant subreddits
   if (subreddits.length === 0 && monitor.companyName) {
     try {
-      console.log(`[Reddit] Using AI to find subreddits for "${monitor.companyName}"`);
+      logger.info("[Reddit] Using AI to find subreddits", { companyName: monitor.companyName });
       subreddits = await findRelevantSubredditsCached(
         monitor.companyName,
         monitor.keywords,
         10
       );
-      console.log(`[Reddit] AI suggested subreddits: ${subreddits.join(", ")}`);
+      logger.info("[Reddit] AI suggested subreddits", { subreddits });
     } catch (error) {
-      console.error("[Reddit] AI subreddit finder failed:", error);
+      logger.error("[Reddit] AI subreddit finder failed", { error: error instanceof Error ? error.message : String(error) });
     }
   }
 
@@ -361,10 +362,10 @@ async function scanRedditForMonitor(monitor: MonitorData): Promise<number> {
       const searchResult = await searchRedditResilient(subreddit, monitor.keywords, 50);
 
       if (searchResult.error) {
-        console.warn(`[Reddit] Search warning for r/${subreddit}: ${searchResult.error}`);
+        logger.warn("[Reddit] Search warning", { subreddit, error: searchResult.error });
       }
 
-      console.log(`[Reddit] Using ${searchResult.source} for r/${subreddit}, found ${searchResult.posts.length} posts`);
+      logger.info("[Reddit] Search complete", { source: searchResult.source, subreddit, postCount: searchResult.posts.length });
 
       // 1. Run content matching to determine which items to save
       interface MatchedRedditPost {
@@ -445,7 +446,7 @@ async function scanRedditForMonitor(monitor: MonitorData): Promise<number> {
         }
       }
     } catch (error) {
-      console.error(`Error scanning r/${subreddit}:`, error);
+      logger.error("[Reddit] Error scanning subreddit", { subreddit, error: error instanceof Error ? error.message : String(error) });
     }
   }
 
@@ -551,7 +552,7 @@ async function scanHackerNewsForMonitor(monitor: MonitorData): Promise<number> {
       }
     }
   } catch (error) {
-    console.error("Error scanning HN:", error);
+    logger.error("[HN] Error scanning", { error: error instanceof Error ? error.message : String(error) });
   }
 
   return count;
@@ -620,7 +621,7 @@ async function scanGoogleReviewsForMonitor(monitor: MonitorData): Promise<number
         }
       }
     } catch (error) {
-      console.error(`Error scanning Google Reviews for "${term}":`, error);
+      logger.error("[GoogleReviews] Error scanning", { term, error: error instanceof Error ? error.message : String(error) });
     }
   }
 
@@ -689,7 +690,7 @@ async function scanTrustpilotForMonitor(monitor: MonitorData): Promise<number> {
         }
       }
     } catch (error) {
-      console.error(`Error scanning Trustpilot for "${term}":`, error);
+      logger.error("[Trustpilot] Error scanning", { term, error: error instanceof Error ? error.message : String(error) });
     }
   }
 
@@ -754,7 +755,7 @@ async function scanAppStoreForMonitor(monitor: MonitorData): Promise<number> {
         }
       }
     } catch (error) {
-      console.error(`Error scanning App Store for "${appId}":`, error);
+      logger.error("[AppStore] Error scanning", { appId, error: error instanceof Error ? error.message : String(error) });
     }
   }
 
@@ -820,7 +821,7 @@ async function scanPlayStoreForMonitor(monitor: MonitorData): Promise<number> {
         }
       }
     } catch (error) {
-      console.error(`Error scanning Play Store for "${appId}":`, error);
+      logger.error("[PlayStore] Error scanning", { appId, error: error instanceof Error ? error.message : String(error) });
     }
   }
 
@@ -890,7 +891,7 @@ async function scanQuoraForMonitor(monitor: MonitorData): Promise<number> {
         }
       }
     } catch (error) {
-      console.error(`Error scanning Quora for "${term}":`, error);
+      logger.error("[Quora] Error scanning", { term, error: error instanceof Error ? error.message : String(error) });
     }
   }
 
@@ -906,7 +907,7 @@ async function getProductHuntAccessToken(): Promise<string | null> {
   const clientSecret = process.env.PRODUCTHUNT_API_SECRET;
 
   if (!clientId || !clientSecret) {
-    console.error("[ProductHunt] Missing API credentials (need both API_KEY and API_SECRET)");
+    logger.error("[ProductHunt] Missing API credentials (need both API_KEY and API_SECRET)");
     return null;
   }
 
@@ -931,7 +932,7 @@ async function getProductHuntAccessToken(): Promise<string | null> {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`[ProductHunt] OAuth token request failed: ${response.status} - ${errorText}`);
+      logger.error("[ProductHunt] OAuth token request failed", { status: response.status, errorText });
       return null;
     }
 
@@ -939,10 +940,10 @@ async function getProductHuntAccessToken(): Promise<string | null> {
     phAccessToken = data.access_token;
     phTokenExpiresAt = Date.now() + (data.expires_in ? data.expires_in * 1000 : 86400000);
 
-    console.log("[ProductHunt] Successfully obtained access token for on-demand scan");
+    logger.info("[ProductHunt] Successfully obtained access token for on-demand scan");
     return phAccessToken;
   } catch (error) {
-    console.error("[ProductHunt] Error getting access token:", error);
+    logger.error("[ProductHunt] Error getting access token", { error: error instanceof Error ? error.message : String(error) });
     return null;
   }
 }
@@ -951,7 +952,7 @@ async function scanProductHuntForMonitor(monitor: MonitorData): Promise<number> 
   // Get OAuth access token
   const accessToken = await getProductHuntAccessToken();
   if (!accessToken) {
-    console.log("[ProductHunt] OAuth authentication failed, skipping on-demand scan");
+    logger.info("[ProductHunt] OAuth authentication failed, skipping on-demand scan");
     return 0;
   }
 
@@ -989,7 +990,7 @@ async function scanProductHuntForMonitor(monitor: MonitorData): Promise<number> 
     });
 
     if (!response.ok) {
-      console.error(`[ProductHunt] Failed to fetch: ${response.status}`);
+      logger.error("[ProductHunt] Failed to fetch", { status: response.status });
       return 0;
     }
 
@@ -1073,7 +1074,7 @@ async function scanProductHuntForMonitor(monitor: MonitorData): Promise<number> 
       }
     }
   } catch (error) {
-    console.error("[ProductHunt] Error in on-demand scan:", error);
+    logger.error("[ProductHunt] Error in on-demand scan", { error: error instanceof Error ? error.message : String(error) });
   }
 
   return count;
@@ -1097,7 +1098,7 @@ async function scanYouTubeForMonitor(monitor: MonitorData): Promise<number> {
   );
 
   if (videoUrls.length === 0) {
-    console.log("[YouTube] No video URLs found in keywords, skipping");
+    logger.debug("[YouTube] No video URLs found in keywords, skipping");
     return 0;
   }
 
@@ -1155,7 +1156,7 @@ async function scanYouTubeForMonitor(monitor: MonitorData): Promise<number> {
         }
       }
     } catch (error) {
-      console.error(`[YouTube] Error scanning "${videoUrl}":`, error);
+      logger.error("[YouTube] Error scanning", { videoUrl, error: error instanceof Error ? error.message : String(error) });
     }
   }
 
@@ -1174,7 +1175,7 @@ async function scanG2ForMonitor(monitor: MonitorData): Promise<number> {
   const productUrls = monitor.keywords.filter(k => k.includes("g2.com"));
 
   if (productUrls.length === 0) {
-    console.log("[G2] No G2 product URLs found in keywords, skipping");
+    logger.debug("[G2] No G2 product URLs found in keywords, skipping");
     return 0;
   }
 
@@ -1241,7 +1242,7 @@ async function scanG2ForMonitor(monitor: MonitorData): Promise<number> {
         }
       }
     } catch (error) {
-      console.error(`[G2] Error scanning "${productUrl}":`, error);
+      logger.error("[G2] Error scanning", { productUrl, error: error instanceof Error ? error.message : String(error) });
     }
   }
 
@@ -1260,7 +1261,7 @@ async function scanYelpForMonitor(monitor: MonitorData): Promise<number> {
   const businessUrls = monitor.keywords.filter(k => k.includes("yelp.com"));
 
   if (businessUrls.length === 0) {
-    console.log("[Yelp] No Yelp business URLs found in keywords, skipping");
+    logger.debug("[Yelp] No Yelp business URLs found in keywords, skipping");
     return 0;
   }
 
@@ -1319,7 +1320,7 @@ async function scanYelpForMonitor(monitor: MonitorData): Promise<number> {
         }
       }
     } catch (error) {
-      console.error(`[Yelp] Error scanning "${businessUrl}":`, error);
+      logger.error("[Yelp] Error scanning", { businessUrl, error: error instanceof Error ? error.message : String(error) });
     }
   }
 
@@ -1340,7 +1341,7 @@ async function scanAmazonReviewsForMonitor(monitor: MonitorData): Promise<number
   );
 
   if (productUrls.length === 0) {
-    console.log("[Amazon] No Amazon product URLs/ASINs found in keywords, skipping");
+    logger.debug("[Amazon] No Amazon product URLs/ASINs found in keywords, skipping");
     return 0;
   }
 
@@ -1400,7 +1401,7 @@ async function scanAmazonReviewsForMonitor(monitor: MonitorData): Promise<number
         }
       }
     } catch (error) {
-      console.error(`[Amazon] Error scanning "${productUrl}":`, error);
+      logger.error("[Amazon] Error scanning", { productUrl, error: error instanceof Error ? error.message : String(error) });
     }
   }
 
@@ -1517,7 +1518,7 @@ async function scanGitHubForMonitor(monitor: MonitorData): Promise<number> {
       await new Promise(resolve => setTimeout(resolve, 100));
     }
   } catch (error) {
-    console.error("[GitHub] Error scanning:", error);
+    logger.error("[GitHub] Error scanning", { error: error instanceof Error ? error.message : String(error) });
   }
 
   return count;
@@ -1651,7 +1652,7 @@ async function scanHashnodeForMonitor(monitor: MonitorData): Promise<number> {
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
   } catch (error) {
-    console.error("[Hashnode] Error scanning:", error);
+    logger.error("[Hashnode] Error scanning", { error: error instanceof Error ? error.message : String(error) });
   }
 
   return count;
@@ -1767,7 +1768,7 @@ async function scanIndieHackersForMonitor(monitor: MonitorData): Promise<number>
       }
     }
   } catch (error) {
-    console.error("[IndieHackers] Error scanning:", error);
+    logger.error("[IndieHackers] Error scanning", { error: error instanceof Error ? error.message : String(error) });
   }
 
   return count;
@@ -1898,7 +1899,7 @@ async function scanDevToForMonitor(monitor: MonitorData): Promise<number> {
       await new Promise(resolve => setTimeout(resolve, 2000));
     }
   } catch (error) {
-    console.error("[Dev.to] Error scanning:", error);
+    logger.error("[Dev.to] Error scanning", { error: error instanceof Error ? error.message : String(error) });
   }
 
   return count;
@@ -1915,7 +1916,7 @@ async function scanXForMonitor(monitor: MonitorData): Promise<number> {
     const searchResult = await searchX(monitor.keywords, 50);
 
     if (searchResult.error) {
-      console.warn(`[X] Search warning for monitor ${monitor.id}: ${searchResult.error}`);
+      logger.warn("[X] Search warning", { monitorId: monitor.id, error: searchResult.error });
       if (searchResult.posts.length === 0) return 0;
     }
 
@@ -1988,7 +1989,7 @@ async function scanXForMonitor(monitor: MonitorData): Promise<number> {
       }
     }
   } catch (error) {
-    console.error("[X] Error scanning:", error);
+    logger.error("[X] Error scanning", { error: error instanceof Error ? error.message : String(error) });
   }
 
   return count;

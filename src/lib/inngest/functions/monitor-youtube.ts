@@ -1,4 +1,5 @@
 import { inngest } from "../client";
+import { logger } from "@/lib/logger";
 import { fetchYouTubeComments, isApifyConfigured, type YouTubeCommentItem } from "@/lib/apify";
 import {
   getActiveMonitors,
@@ -72,7 +73,7 @@ export const monitorYouTube = inngest.createFunction(
         try {
           return await fetchYouTubeComments(videoUrl!, 50);
         } catch (error) {
-          console.error(`Error fetching YouTube comments for ${videoUrl}:`, error);
+          logger.error("[YouTube] Error fetching comments", { videoUrl, error: error instanceof Error ? error.message : String(error) });
           return [] as YouTubeCommentItem[];
         }
       });

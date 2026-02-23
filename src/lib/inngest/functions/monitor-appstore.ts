@@ -1,4 +1,5 @@
 import { inngest } from "../client";
+import { logger } from "@/lib/logger";
 import { fetchAppStoreReviews, isApifyConfigured, type AppStoreReviewItem } from "@/lib/apify";
 import {
   getActiveMonitors,
@@ -68,7 +69,7 @@ export const monitorAppStore = inngest.createFunction(
         try {
           return await fetchAppStoreReviews(appUrl!, 20);
         } catch (error) {
-          console.error(`Error fetching App Store reviews for ${appUrl}:`, error);
+          logger.error("[AppStore] Error fetching reviews", { appUrl, error: error instanceof Error ? error.message : String(error) });
           return [] as AppStoreReviewItem[];
         }
       });

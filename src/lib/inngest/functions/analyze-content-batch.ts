@@ -1,4 +1,5 @@
 import { inngest } from "../client";
+import { logger } from "@/lib/logger";
 import { pooledDb } from "@/lib/db";
 import { results, monitors, aiLogs } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
@@ -73,7 +74,7 @@ export const analyzeContentBatch = inngest.createFunction(
       return selectRepresentativeSample(sampleableItems, adaptiveConfig);
     });
 
-    console.log(`[BatchAnalysis] Adaptive sampling: ${sample.length}/${totalCount} items (${((sample.length / totalCount) * 100).toFixed(1)}% coverage)`);
+    logger.info("[BatchAnalysis] Adaptive sampling", { sampleSize: sample.length, totalCount, coverage: `${((sample.length / totalCount) * 100).toFixed(1)}%` });
 
     // Get full result data for the sample
     const sampleResults = await step.run("get-sample-results", async () => {

@@ -1,4 +1,5 @@
 import { inngest } from "../client";
+import { logger } from "@/lib/logger";
 import { contentMatchesMonitor } from "@/lib/content-matcher";
 import { searchMultipleKeywords, getStoryUrl, type HNAlgoliaStory } from "@/lib/hackernews";
 import {
@@ -58,7 +59,7 @@ export const monitorHackerNews = inngest.createFunction(
         try {
           return await searchMultipleKeywords(searchKeywords, 24);
         } catch (error) {
-          console.error(`[HN Algolia] Search failed for monitor ${monitor.id}:`, error);
+          logger.error("[HN Algolia] Search failed", { monitorId: monitor.id, error: error instanceof Error ? error.message : String(error) });
           return [];
         }
       });

@@ -1,4 +1,5 @@
 import { inngest } from "../client";
+import { logger } from "@/lib/logger";
 import { fetchYelpReviews, isApifyConfigured, type YelpReviewItem } from "@/lib/apify";
 import {
   getActiveMonitors,
@@ -70,7 +71,7 @@ export const monitorYelp = inngest.createFunction(
         try {
           return await fetchYelpReviews(businessUrl!, 30);
         } catch (error) {
-          console.error(`Error fetching Yelp reviews for ${businessUrl}:`, error);
+          logger.error("[Yelp] Error fetching reviews", { businessUrl, error: error instanceof Error ? error.message : String(error) });
           return [] as YelpReviewItem[];
         }
       });
