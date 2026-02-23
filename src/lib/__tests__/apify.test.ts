@@ -754,6 +754,8 @@ describe("apify", () => {
     });
 
     it("throws when actor run times out", async () => {
+      vi.useFakeTimers();
+
       // Mock start call
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -767,27 +769,29 @@ describe("apify", () => {
           }),
       });
 
-      // Mock all subsequent status polling calls to return RUNNING
-      // The timeout is 120000ms, and polling happens every 2000ms
-      // So we need ~60 RUNNING responses to trigger timeout
-      for (let i = 0; i < 65; i++) {
-        mockFetch.mockResolvedValueOnce({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              data: {
-                id: "run_123",
-                status: "RUNNING",
-                defaultDatasetId: "dataset_123",
-              },
-            }),
-        });
-      }
+      // Mock status polling calls — all return RUNNING so the loop never exits early
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            data: {
+              id: "run_123",
+              status: "RUNNING",
+              defaultDatasetId: "dataset_123",
+            },
+          }),
+      });
 
-      // This will timeout after polling many times
-      await expect(
-        fetchGoogleReviews("ChIJtest", 50)
-      ).rejects.toThrow("Actor run timed out");
-    }, 130000); // Increase timeout for this test to allow it to actually timeout
+      // Start the function (it will begin polling and hit setTimeout)
+      const promise = fetchGoogleReviews("ChIJtest", 50);
+
+      // Advance past the 120s timeout — fake timers handle both
+      // Date.now() and setTimeout so the polling loop runs to completion instantly
+      await vi.advanceTimersByTimeAsync(130000);
+
+      await expect(promise).rejects.toThrow("Actor run timed out");
+
+      vi.useRealTimers();
+    });
   });
 });
