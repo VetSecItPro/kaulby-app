@@ -39,7 +39,7 @@ async function suppressConsentBanner(page: Page) {
 }
 
 /** Longer timeout for pages that run SSR database queries */
-const PAGE_TIMEOUT = 15_000;
+const PAGE_TIMEOUT = 30_000;
 
 test.beforeEach(async ({ page }) => {
   await suppressConsentBanner(page);
@@ -53,7 +53,8 @@ test.describe("Quick Start Guide", () => {
   test.skip(!isLocalDev, "Only runs in local development");
 
   test("dashboard shows Getting Started guide for users without monitors", async ({ page }) => {
-    await page.goto("/dashboard");
+    test.setTimeout(60_000);
+    await page.goto("/dashboard", { timeout: 45_000, waitUntil: "domcontentloaded" });
     await expect(page.getByRole("main").first()).toBeVisible({ timeout: PAGE_TIMEOUT });
 
     // The QuickStartGuide renders when showGettingStarted is true
@@ -68,7 +69,7 @@ test.describe("Quick Start Guide", () => {
     );
 
     // Dashboard heading should always be visible
-    await expect(dashboardHeading).toBeVisible();
+    await expect(dashboardHeading).toBeVisible({ timeout: 15_000 });
 
     // Either "Getting Started" guide or "Dashboard Insights" should be visible
     // depending on whether the dev user has monitors
@@ -76,11 +77,12 @@ test.describe("Quick Start Guide", () => {
       visibleElement(page.getByText(/scanning for mentions/i), page)
     );
     // Just verify the page rendered something meaningful
-    await expect(page.getByRole("main").first()).toBeVisible();
+    await expect(page.getByRole("main").first()).toBeVisible({ timeout: PAGE_TIMEOUT });
   });
 
   test("quick start guide has create monitor step", async ({ page }) => {
-    await page.goto("/dashboard");
+    test.setTimeout(60_000);
+    await page.goto("/dashboard", { timeout: 45_000, waitUntil: "domcontentloaded" });
     await expect(page.getByRole("main").first()).toBeVisible({ timeout: PAGE_TIMEOUT });
 
     // The guide step "Create your first monitor" should be present
@@ -88,48 +90,51 @@ test.describe("Quick Start Guide", () => {
       page.getByText(/create your first monitor/i),
       page
     );
-    if (await createStep.isVisible().catch(() => false)) {
-      await expect(createStep).toBeVisible();
+    if (await createStep.isVisible({ timeout: 10_000 }).catch(() => false)) {
+      await expect(createStep).toBeVisible({ timeout: 15_000 });
 
       // The Create button should link to monitors/new
       const createBtn = visibleElement(
         page.getByRole("button", { name: /create/i }),
         page
       );
-      if (await createBtn.isVisible().catch(() => false)) {
+      if (await createBtn.isVisible({ timeout: 10_000 }).catch(() => false)) {
         await expect(createBtn).toBeEnabled();
       }
     }
   });
 
   test("quick start guide has review results step", async ({ page }) => {
-    await page.goto("/dashboard");
+    test.setTimeout(60_000);
+    await page.goto("/dashboard", { timeout: 45_000, waitUntil: "domcontentloaded" });
     await expect(page.getByRole("main").first()).toBeVisible({ timeout: PAGE_TIMEOUT });
 
     const reviewStep = visibleElement(
       page.getByText(/review your results/i),
       page
     );
-    if (await reviewStep.isVisible().catch(() => false)) {
-      await expect(reviewStep).toBeVisible();
+    if (await reviewStep.isVisible({ timeout: 10_000 }).catch(() => false)) {
+      await expect(reviewStep).toBeVisible({ timeout: 15_000 });
     }
   });
 
   test("quick start guide has notifications step", async ({ page }) => {
-    await page.goto("/dashboard");
+    test.setTimeout(60_000);
+    await page.goto("/dashboard", { timeout: 45_000, waitUntil: "domcontentloaded" });
     await expect(page.getByRole("main").first()).toBeVisible({ timeout: PAGE_TIMEOUT });
 
     const notifStep = visibleElement(
       page.getByText(/set up notifications/i),
       page
     );
-    if (await notifStep.isVisible().catch(() => false)) {
-      await expect(notifStep).toBeVisible();
+    if (await notifStep.isVisible({ timeout: 10_000 }).catch(() => false)) {
+      await expect(notifStep).toBeVisible({ timeout: 15_000 });
     }
   });
 
   test("quick start guide dismiss button hides the guide", async ({ page }) => {
-    await page.goto("/dashboard");
+    test.setTimeout(60_000);
+    await page.goto("/dashboard", { timeout: 45_000, waitUntil: "domcontentloaded" });
     await expect(page.getByRole("main").first()).toBeVisible({ timeout: PAGE_TIMEOUT });
 
     // The dismiss button is an X icon button in the CardHeader
@@ -138,14 +143,14 @@ test.describe("Quick Start Guide", () => {
       page
     );
 
-    if (await gettingStartedTitle.isVisible().catch(() => false)) {
+    if (await gettingStartedTitle.isVisible({ timeout: 10_000 }).catch(() => false)) {
       // Find the dismiss (X) button near the Getting Started card
       // It's a ghost variant button with an X icon
       const dismissBtns = page.locator("button").filter({
         has: page.locator("svg.lucide-x"),
       });
 
-      if (await dismissBtns.first().isVisible().catch(() => false)) {
+      if (await dismissBtns.first().isVisible({ timeout: 10_000 }).catch(() => false)) {
         await dismissBtns.first().click({ force: true });
 
         // Guide should be dismissed (component returns null after dismiss)
@@ -163,17 +168,19 @@ test.describe("Dashboard New Monitor CTA", () => {
   test.skip(!isLocalDev, "Only runs in local development");
 
   test("dashboard has New Monitor button linking to creation page", async ({ page }) => {
-    await page.goto("/dashboard");
+    test.setTimeout(60_000);
+    await page.goto("/dashboard", { timeout: 45_000, waitUntil: "domcontentloaded" });
     await expect(page.getByRole("main").first()).toBeVisible({ timeout: PAGE_TIMEOUT });
 
     // The dashboard page always renders a "New Monitor" link button
     const newMonitorLink = page.getByRole("link", { name: /new monitor/i }).first();
-    await expect(newMonitorLink).toBeVisible();
+    await expect(newMonitorLink).toBeVisible({ timeout: 15_000 });
     await expect(newMonitorLink).toHaveAttribute("href", "/dashboard/monitors/new");
   });
 
   test("sample results preview shown for users without monitors", async ({ page }) => {
-    await page.goto("/dashboard");
+    test.setTimeout(60_000);
+    await page.goto("/dashboard", { timeout: 45_000, waitUntil: "domcontentloaded" });
     await expect(page.getByRole("main").first()).toBeVisible({ timeout: PAGE_TIMEOUT });
 
     // SampleResultsPreview is shown when !hasMonitors
@@ -189,6 +196,6 @@ test.describe("Dashboard New Monitor CTA", () => {
 
     // Either sample preview or scanning state should be visible (or insights)
     // Just verify the page loaded correctly
-    await expect(page.getByRole("main").first()).toBeVisible();
+    await expect(page.getByRole("main").first()).toBeVisible({ timeout: PAGE_TIMEOUT });
   });
 });

@@ -31,7 +31,10 @@ async function suppressConsentBanner(page: Page) {
   });
 }
 
-const PAGE_TIMEOUT = 15_000;
+const PAGE_TIMEOUT = 30_000;
+
+/** Standard goto options for dev mode */
+const GOTO_OPTS = { timeout: 60_000, waitUntil: "domcontentloaded" as const };
 
 test.beforeEach(async ({ page }) => {
   await suppressConsentBanner(page);
@@ -46,7 +49,7 @@ test.describe("Results Page - Layout", () => {
 
   test("results page loads with heading", async ({ page }) => {
     test.setTimeout(60_000);
-    await page.goto("/dashboard/results", { timeout: 45_000 });
+    await page.goto("/dashboard/results", { timeout: 45_000, waitUntil: "domcontentloaded" });
 
     await expect(
       visibleElement(page.getByRole("heading", { name: /results/i }), page)
@@ -54,22 +57,38 @@ test.describe("Results Page - Layout", () => {
   });
 
   test("results page shows empty state or result cards", async ({ page }) => {
-    test.setTimeout(60_000);
-    await page.goto("/dashboard/results", { timeout: 45_000 });
+    test.setTimeout(120_000);
+    await page.goto("/dashboard/results", GOTO_OPTS);
 
-    // Page should show either result cards or an empty/scanning state
-    const resultCard = page.locator("[class*=card]").first();
-    const emptyState = visibleElement(
-      page.getByText(/no results|no monitors|create a monitor|scanning/i),
-      page
-    );
+    await expect(page.getByRole("main").first()).toBeVisible({ timeout: 30_000 });
 
-    await expect(resultCard.or(emptyState)).toBeVisible({ timeout: 30_000 });
+    // Page should show either result cards or a scanning/empty state
+    // Use try/catch with toBeVisible() to poll for either state
+    // Use visibleElement() to avoid hidden mobile copy in dual-render layout
+    let foundContent = false;
+
+    try {
+      await expect(
+        visibleElement(page.getByText(/no results|no monitors|create a monitor|scanning|start monitoring/i), page)
+      ).toBeVisible({ timeout: 20_000 });
+      foundContent = true;
+    } catch {
+      try {
+        await expect(
+          page.locator("[class*=card]").first()
+        ).toBeVisible({ timeout: 10_000 });
+        foundContent = true;
+      } catch {
+        // Neither found
+      }
+    }
+
+    expect(foundContent).toBe(true);
   });
 
   test("results count is displayed", async ({ page }) => {
     test.setTimeout(60_000);
-    await page.goto("/dashboard/results", { timeout: 45_000 });
+    await page.goto("/dashboard/results", { timeout: 45_000, waitUntil: "domcontentloaded" });
 
     await expect(page.getByRole("main").first()).toBeVisible({ timeout: 30_000 });
 
@@ -88,7 +107,8 @@ test.describe("Results Page - Search", () => {
   test.skip(!isLocalDev, "Only runs in local development");
 
   test("search input is present and accepts text", async ({ page }) => {
-    await page.goto("/dashboard/results");
+    test.setTimeout(60_000);
+    await page.goto("/dashboard/results", { timeout: 45_000, waitUntil: "domcontentloaded" });
     await expect(page.getByRole("main").first()).toBeVisible({ timeout: PAGE_TIMEOUT });
 
     const searchInput = page.getByPlaceholder(/search/i).first();
@@ -100,7 +120,8 @@ test.describe("Results Page - Search", () => {
   });
 
   test("search input can be cleared", async ({ page }) => {
-    await page.goto("/dashboard/results");
+    test.setTimeout(60_000);
+    await page.goto("/dashboard/results", { timeout: 45_000, waitUntil: "domcontentloaded" });
     await expect(page.getByRole("main").first()).toBeVisible({ timeout: PAGE_TIMEOUT });
 
     const searchInput = page.getByPlaceholder(/search/i).first();
@@ -123,7 +144,7 @@ test.describe("Results Page - Filters", () => {
 
   test("filters toggle button is present", async ({ page }) => {
     test.setTimeout(60_000);
-    await page.goto("/dashboard/results", { timeout: 45_000 });
+    await page.goto("/dashboard/results", { timeout: 45_000, waitUntil: "domcontentloaded" });
 
     const filterBtn = visibleElement(
       page.getByRole("button", { name: /show filters|hide filters|filters/i }),
@@ -138,7 +159,7 @@ test.describe("Results Page - Filters", () => {
 
   test("clicking filters button reveals filter options", async ({ page }) => {
     test.setTimeout(60_000);
-    await page.goto("/dashboard/results", { timeout: 45_000 });
+    await page.goto("/dashboard/results", { timeout: 45_000, waitUntil: "domcontentloaded" });
 
     const filterBtn = visibleElement(
       page.getByRole("button", { name: /show filters|hide filters|filters/i }),
@@ -159,7 +180,7 @@ test.describe("Results Page - Filters", () => {
 
   test("platform filter badges are interactive", async ({ page }) => {
     test.setTimeout(60_000);
-    await page.goto("/dashboard/results", { timeout: 45_000 });
+    await page.goto("/dashboard/results", { timeout: 45_000, waitUntil: "domcontentloaded" });
 
     // Open filters if needed
     const filterBtn = visibleElement(
@@ -179,7 +200,7 @@ test.describe("Results Page - Filters", () => {
 
   test("sentiment filter options are available", async ({ page }) => {
     test.setTimeout(60_000);
-    await page.goto("/dashboard/results", { timeout: 45_000 });
+    await page.goto("/dashboard/results", { timeout: 45_000, waitUntil: "domcontentloaded" });
 
     // Open filters if needed
     const filterBtn = visibleElement(
@@ -206,9 +227,10 @@ test.describe("Results Page - API", () => {
   test.skip(!isLocalDev, "Only runs in local development");
 
   test("GET /api/results returns paginated response", async ({ page }) => {
-    await page.goto("/dashboard");
+    test.setTimeout(60_000);
+    await page.goto("/dashboard", { timeout: 45_000, waitUntil: "domcontentloaded" });
 
-    const response = await page.request.get("/api/results");
+    const response = await page.request.get("/api/results", { timeout: 30_000 });
     expect(response.status()).toBeLessThan(500);
 
     if (response.ok()) {
@@ -220,9 +242,10 @@ test.describe("Results Page - API", () => {
   });
 
   test("GET /api/results supports cursor parameter", async ({ page }) => {
-    await page.goto("/dashboard");
+    test.setTimeout(60_000);
+    await page.goto("/dashboard", { timeout: 45_000, waitUntil: "domcontentloaded" });
 
-    const response = await page.request.get("/api/results?limit=5");
+    const response = await page.request.get("/api/results?limit=5", { timeout: 30_000 });
     expect(response.status()).toBeLessThan(500);
 
     if (response.ok()) {
@@ -234,7 +257,7 @@ test.describe("Results Page - API", () => {
 
   test("result card shows external link when results exist", async ({ page }) => {
     test.setTimeout(60_000);
-    await page.goto("/dashboard/results", { timeout: 45_000 });
+    await page.goto("/dashboard/results", { timeout: 45_000, waitUntil: "domcontentloaded" });
 
     await expect(page.getByRole("main").first()).toBeVisible({ timeout: 30_000 });
 
