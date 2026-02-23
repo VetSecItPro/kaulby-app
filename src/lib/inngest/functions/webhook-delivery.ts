@@ -114,34 +114,28 @@ export const sendWebhookEvent = inngest.createFunction(
       return { success: true, deliveries: 0 };
     }
 
-    // Create delivery records for each webhook
-    const deliveryIds: string[] = [];
-
-    for (const webhook of userWebhooks) {
-      const deliveryId = await step.run(`create-delivery-${webhook.id}`, async () => {
-        const payload: WebhookPayload = {
+    // Create delivery records for each webhook (batched for performance)
+    const deliveryIds = await step.run("create-deliveries", async () => {
+      const values = userWebhooks.map(webhook => ({
+        webhookId: webhook.id,
+        eventType,
+        payload: {
           eventType,
           data,
           timestamp: new Date().toISOString(),
-        };
+        },
+        status: "pending" as const,
+        attemptCount: 0,
+        maxAttempts: 5,
+      }));
 
-        const [delivery] = await pooledDb
-          .insert(webhookDeliveries)
-          .values({
-            webhookId: webhook.id,
-            eventType,
-            payload,
-            status: "pending",
-            attemptCount: 0,
-            maxAttempts: 5,
-          })
-          .returning({ id: webhookDeliveries.id });
+      const deliveries = await pooledDb
+        .insert(webhookDeliveries)
+        .values(values)
+        .returning({ id: webhookDeliveries.id });
 
-        return delivery.id;
-      });
-
-      deliveryIds.push(deliveryId);
-    }
+      return deliveries.map(d => d.id);
+    });
 
     // Trigger processing for each delivery
     for (const deliveryId of deliveryIds) {

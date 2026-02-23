@@ -19,6 +19,138 @@ import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-
 
 export const dynamic = "force-dynamic";
 
+const validMonitorTypes = ["keyword", "ai_discovery"];
+
+/** Validate and sanitize monitor creation input */
+function validateMonitorInput(body: Record<string, unknown>) {
+  const { name, companyName, keywords, monitorType, discoveryPrompt, platforms } = body;
+
+  // Validate input
+  if (!name || typeof name !== "string") {
+    return { error: "Name is required", status: 400 };
+  }
+
+  if (!companyName || typeof companyName !== "string") {
+    return { error: "Company/brand name is required", status: 400 };
+  }
+
+  // Validate monitor type (defaults to "keyword" for backwards compatibility)
+  const sanitizedMonitorType = (typeof monitorType === "string" && validMonitorTypes.includes(monitorType)) ? (monitorType as "keyword" | "ai_discovery") : "keyword";
+
+  // Validate AI Discovery mode requirements
+  if (sanitizedMonitorType === "ai_discovery") {
+    if (!discoveryPrompt || typeof discoveryPrompt !== "string" || !discoveryPrompt.trim()) {
+      return {
+        error: "Discovery prompt is required for AI Discovery mode",
+        status: 400,
+      };
+    }
+  }
+
+  // Sanitize discovery prompt if provided (max 1000 chars for detailed prompts)
+  const sanitizedDiscoveryPrompt = discoveryPrompt && typeof discoveryPrompt === "string"
+    ? discoveryPrompt.trim().slice(0, 1000)
+    : null;
+
+  // Keywords are now optional - sanitize if provided
+  const sanitizedKeywords = Array.isArray(keywords)
+    ? keywords
+        .map((k: string) => (typeof k === "string" ? sanitizeMonitorInput(k) : ""))
+        .filter((k) => isValidKeyword(k))
+    : [];
+
+  if (!platforms || !Array.isArray(platforms) || platforms.length === 0) {
+    return { error: "At least one platform is required", status: 400 };
+  }
+
+  // Validate platforms against canonical list from plans.ts
+  const invalidPlatforms = platforms.filter((p: string) => !ALL_PLATFORMS.includes(p as Platform));
+  if (invalidPlatforms.length > 0) {
+    return { error: `Invalid platforms: ${invalidPlatforms.join(", ")}`, status: 400 };
+  }
+
+  return {
+    sanitizedData: {
+      sanitizedMonitorType,
+      sanitizedDiscoveryPrompt,
+      sanitizedKeywords,
+    },
+  };
+}
+
+/** Check plan limits for monitor creation */
+async function checkMonitorLimits(
+  userId: string,
+  plan: "free" | "pro" | "enterprise",
+  keywords: string[],
+  platforms: string[]
+) {
+  // Check monitor limit
+  const monitorCheck = await canCreateMonitor(userId);
+  if (!monitorCheck.allowed) {
+    const prompt = getUpgradePrompt(plan, "monitors");
+    return {
+      error: monitorCheck.message,
+      upgradePrompt: prompt,
+      status: 403 as const,
+      current: monitorCheck.current,
+      limit: monitorCheck.limit,
+    };
+  }
+
+  // Check keywords limit (only if keywords provided)
+  if (keywords.length > 0) {
+    const keywordCheck = checkKeywordsLimit(keywords, plan);
+    if (!keywordCheck.allowed) {
+      const prompt = getUpgradePrompt(plan, "keywords");
+      return {
+        error: keywordCheck.message,
+        upgradePrompt: prompt,
+        status: 403 as const,
+        current: keywordCheck.current,
+        limit: keywordCheck.limit,
+      };
+    }
+  }
+
+  // Filter platforms to only allowed ones for user's plan
+  const allowedPlatforms = await filterAllowedPlatforms(userId, platforms as Platform[]);
+
+  if (allowedPlatforms.length === 0) {
+    const prompt = getUpgradePrompt(plan, "platform", { platformName: platforms[0] });
+    return {
+      error: `Your plan doesn't have access to ${platforms.join(", ")}. ${prompt.description}`,
+      upgradePrompt: prompt,
+      status: 403 as const,
+    };
+  }
+
+  // Warn if some platforms were filtered out
+  const filteredOut = platforms.filter((p: string) => !allowedPlatforms.includes(p as Platform));
+
+  return { allowedPlatforms, filteredOut };
+}
+
+/** Sanitize platform URLs */
+function sanitizePlatformUrls(platformUrls: Record<string, unknown>): Record<string, string> {
+  const sanitizedPlatformUrls: Record<string, string> = {};
+  if (platformUrls && typeof platformUrls === "object") {
+    for (const [platform, url] of Object.entries(platformUrls)) {
+      if (typeof url === "string" && url.trim()) {
+        // Basic URL validation - allow Google Maps URLs, Trustpilot, App Store, Play Store, and Place IDs
+        const trimmedUrl = url.trim();
+        if (
+          trimmedUrl.startsWith("https://") ||
+          trimmedUrl.startsWith("ChI") // Google Place ID
+        ) {
+          sanitizedPlatformUrls[platform] = trimmedUrl.slice(0, 500); // Max 500 chars
+        }
+      }
+    }
+  }
+  return sanitizedPlatformUrls;
+}
+
 // In development, ensure user exists in database
 async function ensureDevUserExists(userId: string): Promise<void> {
   if (!checkIsLocalDev()) return;
@@ -58,106 +190,34 @@ export async function POST(request: Request) {
     await ensureDevUserExists(userId);
 
     const body = await parseJsonBody(request, 51200); // 50KB limit for monitor creation
-    const { name, companyName, keywords, searchQuery, platforms, platformUrls,
-      scheduleEnabled, scheduleStartHour, scheduleEndHour, scheduleDays, scheduleTimezone,
-      monitorType, discoveryPrompt } = body;
+    const { name, companyName, searchQuery, platforms, platformUrls,
+      scheduleEnabled, scheduleStartHour, scheduleEndHour, scheduleDays, scheduleTimezone } = body;
 
     // Validate input
-    if (!name || typeof name !== "string") {
-      return NextResponse.json({ error: "Name is required" }, { status: 400 });
+    const validationResult = validateMonitorInput(body);
+    if ("error" in validationResult) {
+      return NextResponse.json({ error: validationResult.error }, { status: validationResult.status });
     }
-
-    if (!companyName || typeof companyName !== "string") {
-      return NextResponse.json({ error: "Company/brand name is required" }, { status: 400 });
-    }
-
-    // Validate monitor type (defaults to "keyword" for backwards compatibility)
-    const validMonitorTypes = ["keyword", "ai_discovery"];
-    const sanitizedMonitorType = validMonitorTypes.includes(monitorType) ? monitorType : "keyword";
-
-    // Validate AI Discovery mode requirements
-    if (sanitizedMonitorType === "ai_discovery") {
-      if (!discoveryPrompt || typeof discoveryPrompt !== "string" || !discoveryPrompt.trim()) {
-        return NextResponse.json(
-          { error: "Discovery prompt is required for AI Discovery mode" },
-          { status: 400 }
-        );
-      }
-    }
-
-    // Sanitize discovery prompt if provided (max 1000 chars for detailed prompts)
-    const sanitizedDiscoveryPrompt = discoveryPrompt && typeof discoveryPrompt === "string"
-      ? discoveryPrompt.trim().slice(0, 1000)
-      : null;
-
-    // Keywords are now optional - sanitize if provided
-    const sanitizedKeywords = Array.isArray(keywords)
-      ? keywords
-          .map((k: string) => (typeof k === "string" ? sanitizeMonitorInput(k) : ""))
-          .filter((k) => isValidKeyword(k))
-      : [];
-
-    if (!platforms || !Array.isArray(platforms) || platforms.length === 0) {
-      return NextResponse.json({ error: "At least one platform is required" }, { status: 400 });
-    }
-
-    // Validate platforms against canonical list from plans.ts
-    const invalidPlatforms = platforms.filter((p: string) => !ALL_PLATFORMS.includes(p as Platform));
-    if (invalidPlatforms.length > 0) {
-      return NextResponse.json({ error: `Invalid platforms: ${invalidPlatforms.join(", ")}` }, { status: 400 });
-    }
+    const { sanitizedMonitorType, sanitizedDiscoveryPrompt, sanitizedKeywords } = validationResult.sanitizedData;
 
     // Get user's plan
     const plan = await getUserPlan(userId);
 
-    // Check monitor limit
-    const monitorCheck = await canCreateMonitor(userId);
-    if (!monitorCheck.allowed) {
-      const prompt = getUpgradePrompt(plan, "monitors");
+    // Check monitor limits
+    const limitsCheck = await checkMonitorLimits(userId, plan, sanitizedKeywords, platforms);
+    if ("error" in limitsCheck) {
+      const { error, upgradePrompt, status, current, limit } = limitsCheck;
       return NextResponse.json(
         {
-          error: monitorCheck.message,
-          upgradePrompt: prompt,
-          current: monitorCheck.current,
-          limit: monitorCheck.limit,
+          error,
+          upgradePrompt,
+          ...(current !== undefined && { current }),
+          ...(limit !== undefined && { limit }),
         },
-        { status: 403 }
+        { status }
       );
     }
-
-    // Check keywords limit (only if keywords provided)
-    if (sanitizedKeywords.length > 0) {
-      const keywordCheck = checkKeywordsLimit(sanitizedKeywords, plan);
-      if (!keywordCheck.allowed) {
-        const prompt = getUpgradePrompt(plan, "keywords");
-        return NextResponse.json(
-          {
-            error: keywordCheck.message,
-            upgradePrompt: prompt,
-            current: keywordCheck.current,
-            limit: keywordCheck.limit,
-          },
-          { status: 403 }
-        );
-      }
-    }
-
-    // Filter platforms to only allowed ones for user's plan
-    const allowedPlatforms = await filterAllowedPlatforms(userId, platforms as Platform[]);
-
-    if (allowedPlatforms.length === 0) {
-      const prompt = getUpgradePrompt(plan, "platform", { platformName: platforms[0] });
-      return NextResponse.json(
-        {
-          error: `Your plan doesn't have access to ${platforms.join(", ")}. ${prompt.description}`,
-          upgradePrompt: prompt,
-        },
-        { status: 403 }
-      );
-    }
-
-    // Warn if some platforms were filtered out
-    const filteredOut = platforms.filter((p: string) => !allowedPlatforms.includes(p as Platform));
+    const { allowedPlatforms, filteredOut } = limitsCheck;
 
     // Sanitize search query if provided (Pro feature)
     const sanitizedSearchQuery = searchQuery && typeof searchQuery === "string"
@@ -165,21 +225,7 @@ export async function POST(request: Request) {
       : undefined;
 
     // Sanitize platform URLs if provided
-    const sanitizedPlatformUrls: Record<string, string> = {};
-    if (platformUrls && typeof platformUrls === "object") {
-      for (const [platform, url] of Object.entries(platformUrls)) {
-        if (typeof url === "string" && url.trim()) {
-          // Basic URL validation - allow Google Maps URLs, Trustpilot, App Store, Play Store, and Place IDs
-          const trimmedUrl = url.trim();
-          if (
-            trimmedUrl.startsWith("https://") ||
-            trimmedUrl.startsWith("ChI") // Google Place ID
-          ) {
-            sanitizedPlatformUrls[platform] = trimmedUrl.slice(0, 500); // Max 500 chars
-          }
-        }
-      }
-    }
+    const sanitizedPlatformUrls = sanitizePlatformUrls(platformUrls);
 
     // Create monitor with allowed platforms only
     const [newMonitor] = await db
@@ -239,7 +285,8 @@ export async function POST(request: Request) {
     if (error instanceof BodyTooLargeError) {
       return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
     }
-    console.error("Error creating monitor:", error);
+    const { logger } = await import("@/lib/logger");
+    logger.error("Error creating monitor", { error: error instanceof Error ? error.message : String(error) });
     logError({ source: "api", message: "Failed to create monitor", error, endpoint: "POST /api/monitors" });
     return NextResponse.json({ error: "Failed to create monitor" }, { status: 500 });
   }

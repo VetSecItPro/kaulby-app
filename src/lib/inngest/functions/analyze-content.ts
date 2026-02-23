@@ -34,6 +34,171 @@ function generateContentHash(content: string, tier: "pro" | "team"): string {
 // Cache TTL for AI analysis - 24 hours (content analysis doesn't change)
 const AI_ANALYSIS_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
+/** Run Pro-tier AI analysis (sentiment + summary) */
+async function runProAnalysis(
+  contentToAnalyze: string,
+  result: {
+    id: string;
+    platform: string;
+    metadata: unknown;
+  },
+  userId: string,
+  keywordMatch: { category: string; confidence: number; matchedKeyword: string } | null
+) {
+  const metadata = result.metadata as Record<string, unknown> | null;
+
+  // Run AI analyses in parallel — skip categorization if keyword matched
+  const [sentimentResult, painPointResult, summaryResult, categoryResult] = await Promise.all([
+    analyzeSentiment(contentToAnalyze),
+    analyzePainPoints(contentToAnalyze),
+    summarizeContent(contentToAnalyze),
+    keywordMatch
+      ? Promise.resolve(null) // Skip AI categorization — keyword match found
+      : categorizeConversation(contentToAnalyze, {
+          upvotes: (metadata?.upvotes as number) || (metadata?.score as number) || undefined,
+          commentCount: (metadata?.commentCount as number) || (metadata?.numComments as number) || undefined,
+        }),
+  ]);
+
+  // Resolve conversation category: keyword match takes precedence over AI
+  const resolvedCategory = keywordMatch
+    ? { category: keywordMatch.category, confidence: keywordMatch.confidence }
+    : categoryResult
+      ? { category: categoryResult.result.category, confidence: categoryResult.result.confidence }
+      : { category: "advice_request" as const, confidence: 0.3 };
+
+  const aiCallCount = categoryResult ? 4 : 3;
+  const totalCost =
+    sentimentResult.meta.cost +
+    painPointResult.meta.cost +
+    summaryResult.meta.cost +
+    (categoryResult?.meta.cost || 0);
+
+  const totalLatency =
+    sentimentResult.meta.latencyMs +
+    painPointResult.meta.latencyMs +
+    summaryResult.meta.latencyMs +
+    (categoryResult?.meta.latencyMs || 0);
+
+  const totalPromptTokens =
+    sentimentResult.meta.promptTokens +
+    painPointResult.meta.promptTokens +
+    summaryResult.meta.promptTokens +
+    (categoryResult?.meta.promptTokens || 0);
+
+  const totalCompletionTokens =
+    sentimentResult.meta.completionTokens +
+    painPointResult.meta.completionTokens +
+    summaryResult.meta.completionTokens +
+    (categoryResult?.meta.completionTokens || 0);
+
+  return {
+    sentiment: sentimentResult.result,
+    painPoint: painPointResult.result,
+    summary: summaryResult.result,
+    conversationCategory: categoryResult?.result || {
+      category: resolvedCategory.category,
+      confidence: resolvedCategory.confidence,
+      source: "keyword_match",
+      matchedKeyword: keywordMatch?.matchedKeyword,
+    },
+    resolvedCategory,
+    aiCallCount,
+    totalCost,
+    totalLatency,
+    totalPromptTokens,
+    totalCompletionTokens,
+    model: sentimentResult.meta.model,
+    keywordMatchUsed: !!keywordMatch,
+  };
+}
+
+/** Run Team-tier comprehensive analysis */
+async function runTeamAnalysis(
+  contentToAnalyze: string,
+  result: {
+    platform: string;
+    metadata: unknown;
+  },
+  monitor: { keywords: string[]; name: string } | null,
+  keywordMatch: { category: string; confidence: number; matchedKeyword: string } | null
+) {
+  const metadata = result.metadata as Record<string, unknown> | null;
+
+  const context: ComprehensiveAnalysisContext = {
+    platform: result.platform,
+    keywords: monitor?.keywords || [],
+    monitorName: monitor?.name || "Unknown Monitor",
+    businessName: undefined,
+    subreddit: (metadata?.subreddit as string) || undefined,
+  };
+
+  // Run comprehensive analysis and optionally conversation categorization in parallel
+  const [comprehensiveResult, categoryResult] = await Promise.all([
+    analyzeComprehensive(contentToAnalyze, context),
+    keywordMatch
+      ? Promise.resolve(null)
+      : categorizeConversation(contentToAnalyze, {
+          upvotes: (metadata?.upvotes as number) || (metadata?.score as number) || undefined,
+          commentCount: (metadata?.commentCount as number) || (metadata?.numComments as number) || undefined,
+        }),
+  ]);
+
+  const analysis = comprehensiveResult.result;
+  const category = keywordMatch
+    ? { category: keywordMatch.category, confidence: keywordMatch.confidence, signals: [keywordMatch.matchedKeyword], reasoning: "keyword_match" }
+    : categoryResult!.result;
+
+  const aiCallCount = categoryResult ? 2 : 1;
+  const totalCost = comprehensiveResult.meta.cost + (categoryResult?.meta.cost || 0);
+  const totalPromptTokens = comprehensiveResult.meta.promptTokens + (categoryResult?.meta.promptTokens || 0);
+  const totalCompletionTokens = comprehensiveResult.meta.completionTokens + (categoryResult?.meta.completionTokens || 0);
+  const totalLatency = comprehensiveResult.meta.latencyMs + (categoryResult?.meta.latencyMs || 0);
+
+  return {
+    analysis,
+    category,
+    aiCallCount,
+    totalCost,
+    totalPromptTokens,
+    totalCompletionTokens,
+    totalLatency,
+    model: comprehensiveResult.meta.model,
+    keywordMatchUsed: !!keywordMatch,
+  };
+}
+
+/** Log AI call to aiLogs table */
+async function logAiCall(params: {
+  userId: string;
+  model: string;
+  promptTokens: number;
+  completionTokens: number;
+  costUsd: number;
+  latencyMs: number;
+  traceId: string;
+  monitorId: string;
+  resultId: string;
+  analysisType: string;
+  cacheHit: boolean;
+  platform: string;
+}) {
+  await pooledDb.insert(aiLogs).values({
+    userId: params.userId,
+    model: params.model,
+    promptTokens: params.promptTokens,
+    completionTokens: params.completionTokens,
+    costUsd: params.costUsd,
+    latencyMs: params.latencyMs,
+    traceId: params.traceId,
+    monitorId: params.monitorId,
+    resultId: params.resultId,
+    analysisType: params.analysisType,
+    cacheHit: params.cacheHit,
+    platform: params.platform,
+  });
+}
+
 // Analyze content with AI
 export const analyzeContent = inngest.createFunction(
   {
@@ -190,42 +355,18 @@ export const analyzeContent = inngest.createFunction(
         });
       });
 
-      // Type assertion for metadata which stores platform-specific fields
-      const metadata = result.metadata as Record<string, unknown> | null;
-
-      const context: ComprehensiveAnalysisContext = {
-        platform: result.platform,
-        keywords: monitor?.keywords || [],
-        monitorName: monitor?.name || "Unknown Monitor",
-        businessName: undefined, // Can be added to user profile later
-        subreddit: (metadata?.subreddit as string) || undefined,
-      };
-
       // Check custom detection keywords BEFORE AI call (cost optimization)
       const teamKeywordMatch = await step.run("check-detection-keywords-team", async () => {
         return matchDetectionKeywords(contentToAnalyze, userId);
       });
 
-      // Run comprehensive analysis and optionally conversation categorization in parallel
-      const [comprehensiveResult, teamCategoryResult] = await Promise.all([
-        step.run("analyze-comprehensive", async () => {
-          return analyzeComprehensive(contentToAnalyze, context);
-        }),
-        teamKeywordMatch
-          ? Promise.resolve(null)
-          : step.run("categorize-conversation-team", async () => {
-              const metadata = result.metadata as Record<string, unknown> | null;
-              return categorizeConversation(contentToAnalyze, {
-                upvotes: (metadata?.upvotes as number) || (metadata?.score as number) || undefined,
-                commentCount: (metadata?.commentCount as number) || (metadata?.numComments as number) || undefined,
-              });
-            }),
-      ]);
+      // Run comprehensive analysis
+      const teamAnalysisResult = await step.run("run-team-analysis", async () => {
+        return runTeamAnalysis(contentToAnalyze, result, monitor, teamKeywordMatch);
+      });
 
-      const analysis = comprehensiveResult.result;
-      const category = teamKeywordMatch
-        ? { category: teamKeywordMatch.category, confidence: teamKeywordMatch.confidence, signals: [teamKeywordMatch.matchedKeyword], reasoning: "keyword_match" }
-        : teamCategoryResult!.result;
+      const analysis = teamAnalysisResult.analysis;
+      const category = teamAnalysisResult.category;
 
       // Update result with comprehensive AI analysis
       await step.run("update-result-team", async () => {
@@ -234,8 +375,8 @@ export const analyzeContent = inngest.createFunction(
           .set({
             sentiment: analysis.sentiment.label,
             sentimentScore: analysis.sentiment.score,
-            painPointCategory: analysis.classification.category,
-            conversationCategory: category.category,
+            painPointCategory: analysis.classification.category as typeof painPointCategoryEnum.enumValues[number],
+            conversationCategory: category.category as typeof conversationCategoryEnum.enumValues[number],
             conversationCategoryConfidence: category.confidence,
             aiSummary: analysis.executiveSummary,
             // Store full analysis as JSON metadata
@@ -288,19 +429,13 @@ export const analyzeContent = inngest.createFunction(
 
       // Log AI usage for Team tier (comprehensive + optional categorization)
       await step.run("log-ai-usage-team", async () => {
-        const aiCallCount = teamCategoryResult ? 2 : 1;
-        const totalCost = comprehensiveResult.meta.cost + (teamCategoryResult?.meta.cost || 0);
-        const totalPromptTokens = comprehensiveResult.meta.promptTokens + (teamCategoryResult?.meta.promptTokens || 0);
-        const totalCompletionTokens = comprehensiveResult.meta.completionTokens + (teamCategoryResult?.meta.completionTokens || 0);
-        const totalLatency = comprehensiveResult.meta.latencyMs + (teamCategoryResult?.meta.latencyMs || 0);
-
-        await pooledDb.insert(aiLogs).values({
+        await logAiCall({
           userId,
-          model: comprehensiveResult.meta.model,
-          promptTokens: totalPromptTokens,
-          completionTokens: totalCompletionTokens,
-          costUsd: totalCost,
-          latencyMs: totalLatency,
+          model: teamAnalysisResult.model,
+          promptTokens: teamAnalysisResult.totalPromptTokens,
+          completionTokens: teamAnalysisResult.totalCompletionTokens,
+          costUsd: teamAnalysisResult.totalCost,
+          latencyMs: teamAnalysisResult.totalLatency,
           traceId,
           monitorId: result.monitorId,
           resultId,
@@ -309,7 +444,7 @@ export const analyzeContent = inngest.createFunction(
           platform: result.platform,
         });
 
-        await incrementAiCallsCount(userId, aiCallCount);
+        await incrementAiCallsCount(userId, teamAnalysisResult.aiCallCount);
       });
 
       await step.run("flush-langfuse", async () => {
@@ -318,7 +453,6 @@ export const analyzeContent = inngest.createFunction(
 
       // Trigger webhooks for enterprise users
       await step.run("trigger-webhooks-team", async () => {
-        const analysis = comprehensiveResult.result;
         const webhookMetadata = result.metadata as Record<string, unknown> | null;
         await inngest.send({
           name: "webhook/send",
@@ -348,11 +482,11 @@ export const analyzeContent = inngest.createFunction(
 
       return {
         tier: "team",
-        analysis: comprehensiveResult.result,
+        analysis: teamAnalysisResult.analysis,
         conversationCategory: category,
-        keywordMatchUsed: !!teamKeywordMatch,
-        totalCost: comprehensiveResult.meta.cost + (teamCategoryResult?.meta.cost || 0),
-        model: comprehensiveResult.meta.model,
+        keywordMatchUsed: teamAnalysisResult.keywordMatchUsed,
+        totalCost: teamAnalysisResult.totalCost,
+        model: teamAnalysisResult.model,
       };
     }
 
@@ -361,65 +495,36 @@ export const analyzeContent = inngest.createFunction(
     // All tiers now use Flash for maximum cost efficiency
     // =========================================================================
 
-    // Type assertion for metadata
-    const metadata = result.metadata as Record<string, unknown> | null;
-
     // Check custom detection keywords BEFORE AI call (cost optimization)
     const keywordMatch = await step.run("check-detection-keywords", async () => {
       return matchDetectionKeywords(contentToAnalyze, userId);
     });
 
-    // Run AI analyses in parallel — skip categorization if keyword matched
-    const [sentimentResult, painPointResult, summaryResult, categoryResult] = await Promise.all([
-      step.run("analyze-sentiment", async () => {
-        return analyzeSentiment(contentToAnalyze);
-      }),
-      step.run("analyze-pain-points", async () => {
-        return analyzePainPoints(contentToAnalyze);
-      }),
-      step.run("summarize-content", async () => {
-        return summarizeContent(contentToAnalyze);
-      }),
-      keywordMatch
-        ? Promise.resolve(null) // Skip AI categorization — keyword match found
-        : step.run("categorize-conversation", async () => {
-            return categorizeConversation(contentToAnalyze, {
-              upvotes: (metadata?.upvotes as number) || (metadata?.score as number) || undefined,
-              commentCount: (metadata?.commentCount as number) || (metadata?.numComments as number) || undefined,
-            });
-          }),
-    ]);
+    // Run Pro analysis
+    const proAnalysisResult = await step.run("run-pro-analysis", async () => {
+      return runProAnalysis(contentToAnalyze, result, userId, keywordMatch);
+    });
 
-    // Resolve conversation category: keyword match takes precedence over AI
-    const resolvedCategory = keywordMatch
-      ? { category: keywordMatch.category, confidence: keywordMatch.confidence }
-      : categoryResult
-        ? { category: categoryResult.result.category, confidence: categoryResult.result.confidence }
-        : { category: "advice_request" as const, confidence: 0.3 };
+    const resolvedCategory = proAnalysisResult.resolvedCategory;
 
     // Update result with AI analysis
     await step.run("update-result", async () => {
       await pooledDb
         .update(results)
         .set({
-          sentiment: sentimentResult.result.sentiment,
-          sentimentScore: sentimentResult.result.score,
-          painPointCategory: painPointResult.result.category,
-          conversationCategory: resolvedCategory.category,
+          sentiment: proAnalysisResult.sentiment.sentiment,
+          sentimentScore: proAnalysisResult.sentiment.score,
+          painPointCategory: proAnalysisResult.painPoint.category as typeof painPointCategoryEnum.enumValues[number],
+          conversationCategory: resolvedCategory.category as typeof conversationCategoryEnum.enumValues[number],
           conversationCategoryConfidence: resolvedCategory.confidence,
-          aiSummary: summaryResult.result.summary,
+          aiSummary: proAnalysisResult.summary.summary,
           // Store Pro tier analysis as JSON metadata
           aiAnalysis: JSON.stringify({
             tier: "pro",
-            sentiment: sentimentResult.result,
-            painPoint: painPointResult.result,
-            summary: summaryResult.result,
-            conversationCategory: categoryResult?.result || {
-              category: resolvedCategory.category,
-              confidence: resolvedCategory.confidence,
-              source: "keyword_match",
-              matchedKeyword: keywordMatch?.matchedKeyword,
-            },
+            sentiment: proAnalysisResult.sentiment,
+            painPoint: proAnalysisResult.painPoint,
+            summary: proAnalysisResult.summary,
+            conversationCategory: proAnalysisResult.conversationCategory,
             analyzedAt: new Date().toISOString(),
           }),
         })
@@ -430,23 +535,18 @@ export const analyzeContent = inngest.createFunction(
     await step.run("cache-pro-analysis", async () => {
       const cacheData = {
         tier: "pro",
-        sentiment: sentimentResult.result.sentiment,
-        sentimentScore: sentimentResult.result.score,
-        painPointCategory: painPointResult.result.category,
+        sentiment: proAnalysisResult.sentiment.sentiment,
+        sentimentScore: proAnalysisResult.sentiment.score,
+        painPointCategory: proAnalysisResult.painPoint.category,
         conversationCategory: resolvedCategory.category,
         conversationCategoryConfidence: resolvedCategory.confidence,
-        aiSummary: summaryResult.result.summary,
+        aiSummary: proAnalysisResult.summary.summary,
         aiAnalysis: JSON.stringify({
           tier: "pro",
-          sentiment: sentimentResult.result,
-          painPoint: painPointResult.result,
-          summary: summaryResult.result,
-          conversationCategory: categoryResult?.result || {
-            category: resolvedCategory.category,
-            confidence: resolvedCategory.confidence,
-            source: "keyword_match",
-            matchedKeyword: keywordMatch?.matchedKeyword,
-          },
+          sentiment: proAnalysisResult.sentiment,
+          painPoint: proAnalysisResult.painPoint,
+          summary: proAnalysisResult.summary,
+          conversationCategory: proAnalysisResult.conversationCategory,
           analyzedAt: new Date().toISOString(),
         }),
       };
@@ -456,38 +556,13 @@ export const analyzeContent = inngest.createFunction(
 
     // Log AI usage (3 or 4 calls depending on keyword match)
     await step.run("log-ai-usage", async () => {
-      const aiCallCount = categoryResult ? 4 : 3;
-      const totalCost =
-        sentimentResult.meta.cost +
-        painPointResult.meta.cost +
-        summaryResult.meta.cost +
-        (categoryResult?.meta.cost || 0);
-
-      const totalLatency =
-        sentimentResult.meta.latencyMs +
-        painPointResult.meta.latencyMs +
-        summaryResult.meta.latencyMs +
-        (categoryResult?.meta.latencyMs || 0);
-
-      const totalPromptTokens =
-        sentimentResult.meta.promptTokens +
-        painPointResult.meta.promptTokens +
-        summaryResult.meta.promptTokens +
-        (categoryResult?.meta.promptTokens || 0);
-
-      const totalCompletionTokens =
-        sentimentResult.meta.completionTokens +
-        painPointResult.meta.completionTokens +
-        summaryResult.meta.completionTokens +
-        (categoryResult?.meta.completionTokens || 0);
-
-      await pooledDb.insert(aiLogs).values({
+      await logAiCall({
         userId,
-        model: sentimentResult.meta.model,
-        promptTokens: totalPromptTokens,
-        completionTokens: totalCompletionTokens,
-        costUsd: totalCost,
-        latencyMs: totalLatency,
+        model: proAnalysisResult.model,
+        promptTokens: proAnalysisResult.totalPromptTokens,
+        completionTokens: proAnalysisResult.totalCompletionTokens,
+        costUsd: proAnalysisResult.totalCost,
+        latencyMs: proAnalysisResult.totalLatency,
         traceId,
         monitorId: result.monitorId,
         resultId,
@@ -496,7 +571,7 @@ export const analyzeContent = inngest.createFunction(
         platform: result.platform,
       });
 
-      await incrementAiCallsCount(userId, aiCallCount);
+      await incrementAiCallsCount(userId, proAnalysisResult.aiCallCount);
     });
 
     // Flush Langfuse events
@@ -511,6 +586,8 @@ export const analyzeContent = inngest.createFunction(
         where: eq(monitors.id, result.monitorId),
         columns: { name: true },
       });
+
+      const metadata = result.metadata as Record<string, unknown> | null;
 
       await inngest.send({
         name: "webhook/send",
@@ -527,9 +604,9 @@ export const analyzeContent = inngest.createFunction(
               platform: result.platform,
               author: result.author,
               postedAt: result.postedAt,
-              sentiment: sentimentResult.result.sentiment,
+              sentiment: proAnalysisResult.sentiment.sentiment,
               conversationCategory: resolvedCategory.category,
-              aiSummary: summaryResult.result.summary,
+              aiSummary: proAnalysisResult.summary.summary,
               engagement: (metadata?.upvotes as number) || (metadata?.score as number) || undefined,
               commentCount: (metadata?.commentCount as number) || (metadata?.numComments as number) || undefined,
             },
@@ -540,16 +617,12 @@ export const analyzeContent = inngest.createFunction(
 
     return {
       tier: "pro",
-      sentiment: sentimentResult.result,
-      painPoint: painPointResult.result,
-      summary: summaryResult.result,
+      sentiment: proAnalysisResult.sentiment,
+      painPoint: proAnalysisResult.painPoint,
+      summary: proAnalysisResult.summary,
       conversationCategory: resolvedCategory,
-      keywordMatchUsed: !!keywordMatch,
-      totalCost:
-        sentimentResult.meta.cost +
-        painPointResult.meta.cost +
-        summaryResult.meta.cost +
-        (categoryResult?.meta.cost || 0),
+      keywordMatchUsed: proAnalysisResult.keywordMatchUsed,
+      totalCost: proAnalysisResult.totalCost,
     };
   }
 );

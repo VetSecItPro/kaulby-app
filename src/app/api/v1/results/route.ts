@@ -75,35 +75,35 @@ export async function GET(request: NextRequest) {
         conditions.push(lte(results.createdAt, new Date(toDate)));
       }
 
-      // Query results
-      const resultsList = await db
-        .select({
-          id: results.id,
-          monitorId: results.monitorId,
-          platform: results.platform,
-          sourceUrl: results.sourceUrl,
-          title: results.title,
-          content: results.content,
-          author: results.author,
-          postedAt: results.postedAt,
-          sentiment: results.sentiment,
-          sentimentScore: results.sentimentScore,
-          painPointCategory: results.painPointCategory,
-          conversationCategory: results.conversationCategory,
-          aiSummary: results.aiSummary,
-          createdAt: results.createdAt,
-        })
-        .from(results)
-        .where(and(...conditions))
-        .orderBy(desc(results.createdAt))
-        .limit(limit)
-        .offset(offset);
-
-      // Get total count
-      const [totalResult] = await db
-        .select({ count: count() })
-        .from(results)
-        .where(and(...conditions));
+      // Query results and count in parallel
+      const [resultsList, [totalResult]] = await Promise.all([
+        db
+          .select({
+            id: results.id,
+            monitorId: results.monitorId,
+            platform: results.platform,
+            sourceUrl: results.sourceUrl,
+            title: results.title,
+            content: results.content,
+            author: results.author,
+            postedAt: results.postedAt,
+            sentiment: results.sentiment,
+            sentimentScore: results.sentimentScore,
+            painPointCategory: results.painPointCategory,
+            conversationCategory: results.conversationCategory,
+            aiSummary: results.aiSummary,
+            createdAt: results.createdAt,
+          })
+          .from(results)
+          .where(and(...conditions))
+          .orderBy(desc(results.createdAt))
+          .limit(limit)
+          .offset(offset),
+        db
+          .select({ count: count() })
+          .from(results)
+          .where(and(...conditions)),
+      ]);
 
       return NextResponse.json({
         results: resultsList,
@@ -114,7 +114,8 @@ export async function GET(request: NextRequest) {
         },
       });
     } catch (error) {
-      console.error("API v1 results error:", error);
+      const { logger } = await import("@/lib/logger");
+      logger.error("API v1 results error", { error: error instanceof Error ? error.message : String(error) });
       return NextResponse.json(
         { error: "Failed to fetch results" },
         { status: 500 }

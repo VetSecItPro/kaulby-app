@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, memo } from "react";
+import Image from "next/image";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -184,8 +185,7 @@ const ReportPreview = memo(function ReportPreview({
           </p>
         </div>
         {config.branding.logoUrl ? (
-          /* eslint-disable-next-line @next/next/no-img-element */
-          <img src={config.branding.logoUrl} alt="Logo" className="h-8" />
+          <Image src={config.branding.logoUrl} alt="Logo" height={32} width={80} className="h-8 w-auto" />
         ) : (
           <div className="h-8 w-20 bg-muted rounded flex items-center justify-center text-xs text-muted-foreground">
             Logo

@@ -1,4 +1,38 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+
+// Mock dependencies that server-cache imports
+vi.mock("next/cache", () => ({
+  unstable_cache: (fn: (...args: unknown[]) => unknown) => fn,
+}));
+
+vi.mock("@/lib/db", () => ({
+  db: {
+    select: vi.fn().mockReturnThis(),
+    from: vi.fn().mockReturnThis(),
+    where: vi.fn().mockReturnThis(),
+    query: {
+      monitors: { findMany: vi.fn().mockResolvedValue([]) },
+      results: { findMany: vi.fn().mockResolvedValue([]) },
+    },
+  },
+}));
+
+vi.mock("@/lib/db/schema", () => ({
+  monitors: {},
+  results: {},
+  users: {},
+}));
+
+vi.mock("drizzle-orm", () => ({
+  eq: vi.fn(),
+  and: vi.fn(),
+  count: vi.fn(),
+  sql: vi.fn(),
+}));
+
+vi.mock("@/lib/limits", () => ({
+  getUserPlan: vi.fn().mockResolvedValue({ plan: "free" }),
+}));
 
 // Note: server-cache uses Next.js unstable_cache which is difficult to test in isolation
 // We verify the module structure and exports
