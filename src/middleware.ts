@@ -58,8 +58,28 @@ async function getClerkHandler() {
   return clerkHandler;
 }
 
+// Bot blocking — return 403 before any serverless work (saves Clerk invocations too)
+const BLOCKED_BOTS = [
+  'GPTBot', 'ChatGPT-User', 'CCBot', 'ClaudeBot', 'anthropic-ai',
+  'PerplexityBot', 'Bytespider', 'meta-externalagent', 'FacebookBot',
+  'facebookexternalhit', 'AhrefsBot', 'SemrushBot', 'MJ12bot', 'DotBot',
+  'PetalBot', 'Amazonbot', 'YouBot', 'Applebot-Extended', 'cohere-ai',
+  'Google-Extended',
+];
+
+function isBlockedBot(ua: string): boolean {
+  const lower = ua.toLowerCase();
+  return BLOCKED_BOTS.some((bot) => lower.includes(bot.toLowerCase()));
+}
+
 // Main middleware - checks if Clerk is configured at runtime
 export default async function middleware(request: NextRequest) {
+  // Block aggressive bots before any processing
+  const userAgent = request.headers.get('user-agent') ?? '';
+  if (userAgent && isBlockedBot(userAgent)) {
+    return new NextResponse('Forbidden', { status: 403 });
+  }
+
   const pathname = request.nextUrl.pathname;
 
   // CRITICAL: Skip Clerk entirely for webhook routes - they use their own auth
