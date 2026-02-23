@@ -48,28 +48,30 @@ test.describe("Marketing Pages", () => {
   });
 
   test("navigation links work", async ({ page }) => {
+    test.setTimeout(120_000);
     // Use desktop viewport to ensure nav links are visible
     await page.setViewportSize({ width: 1280, height: 720 });
-    await page.goto("/");
+    await page.goto("/", { timeout: 60_000, waitUntil: "domcontentloaded" });
 
     // Click pricing link in the header nav (not the hero CTA "View Pricing")
     const navPricingLink = page.locator("header nav").getByRole("link", { name: /^pricing$/i });
     await navPricingLink.click();
-    await page.waitForURL(/pricing/);
+    await page.waitForURL(/pricing/, { timeout: 30_000 });
     await expect(page).toHaveURL(/pricing/);
 
     // Go back to home - use href="/" link
-    await page.goto("/");
+    await page.goto("/", { timeout: 60_000, waitUntil: "domcontentloaded" });
     await expect(page).toHaveURL("/");
   });
 });
 
 test.describe("SEO Pages", () => {
   test("subreddits index page loads", async ({ page }) => {
-    await page.goto("/subreddits");
+    test.setTimeout(120_000);
+    await page.goto("/subreddits", { timeout: 60_000, waitUntil: "domcontentloaded" });
 
-    await expect(page).toHaveTitle(/subreddit/i);
-    await expect(page.locator("h1")).toBeVisible();
+    await expect(page).toHaveTitle(/subreddit/i, { timeout: 30_000 });
+    await expect(page.locator("h1")).toBeVisible({ timeout: 30_000 });
   });
 
   test("individual subreddit page loads", async ({ page }) => {

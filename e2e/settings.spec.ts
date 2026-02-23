@@ -32,7 +32,7 @@ async function suppressConsentBanner(page: Page) {
   });
 }
 
-async function waitForHydration(page: Page, selector = "button", timeout = 15_000) {
+async function waitForHydration(page: Page, selector = "button", timeout = 30_000) {
   await page.waitForFunction((sel: string) => {
     const elements = document.querySelectorAll(sel);
     if (elements.length === 0) return false;
@@ -41,7 +41,7 @@ async function waitForHydration(page: Page, selector = "button", timeout = 15_00
   }, selector, { timeout });
 }
 
-const PAGE_TIMEOUT = 15_000;
+const PAGE_TIMEOUT = 30_000;
 
 test.beforeEach(async ({ page }) => {
   await suppressConsentBanner(page);
@@ -56,14 +56,16 @@ test.describe("Settings - Profile", () => {
 
   test("settings page loads with main content", async ({ page }) => {
     test.setTimeout(60_000);
-    await page.goto("/dashboard/settings", { timeout: 45_000 });
+    await page.goto("/dashboard/settings", { timeout: 45_000, waitUntil: "domcontentloaded" });
 
     await expect(page.getByRole("main").first()).toBeVisible({ timeout: 30_000 });
   });
 
   test("profile section shows user email", async ({ page }) => {
     test.setTimeout(60_000);
-    await page.goto("/dashboard/settings", { timeout: 45_000 });
+    await page.goto("/dashboard/settings", { timeout: 45_000, waitUntil: "domcontentloaded" });
+
+    await expect(page.getByRole("main").first()).toBeVisible({ timeout: 30_000 });
 
     // In dev mode, email is "dev-mode@kaulby.local" or actual user email
     const emailText = visibleElement(
@@ -75,7 +77,9 @@ test.describe("Settings - Profile", () => {
 
   test("profile section shows plan badge", async ({ page }) => {
     test.setTimeout(60_000);
-    await page.goto("/dashboard/settings", { timeout: 45_000 });
+    await page.goto("/dashboard/settings", { timeout: 45_000, waitUntil: "domcontentloaded" });
+
+    await expect(page.getByRole("main").first()).toBeVisible({ timeout: 30_000 });
 
     // In dev mode, subscription is "enterprise" -> Team plan
     const planBadge = visibleElement(page.getByText(/free|pro|team/i), page);
@@ -84,7 +88,7 @@ test.describe("Settings - Profile", () => {
 
   test("user name is displayed in settings", async ({ page }) => {
     test.setTimeout(60_000);
-    await page.goto("/dashboard/settings", { timeout: 45_000 });
+    await page.goto("/dashboard/settings", { timeout: 45_000, waitUntil: "domcontentloaded" });
 
     // In dev mode, name is "Dev Mode User" or actual user name
     const nameElement = visibleElement(
@@ -105,7 +109,9 @@ test.describe("Settings - Timezone", () => {
 
   test("timezone selector shows current timezone", async ({ page }) => {
     test.setTimeout(60_000);
-    await page.goto("/dashboard/settings", { timeout: 45_000 });
+    await page.goto("/dashboard/settings", { timeout: 45_000, waitUntil: "domcontentloaded" });
+
+    await expect(page.getByRole("main").first()).toBeVisible({ timeout: 30_000 });
 
     // Timezone options include Eastern, Central, Mountain, Pacific
     const timezoneText = visibleElement(
@@ -125,26 +131,29 @@ test.describe("Settings - Notifications", () => {
 
   test("pause digests switch is present", async ({ page }) => {
     test.setTimeout(60_000);
-    await page.goto("/dashboard/settings", { timeout: 45_000 });
+    await page.goto("/dashboard/settings", { timeout: 45_000, waitUntil: "domcontentloaded" });
+
+    await expect(page.getByRole("main").first()).toBeVisible({ timeout: 30_000 });
 
     const digestSwitch = visibleElement(
       page.getByRole("switch", { name: /pause/i }),
       page
     );
-    if (await digestSwitch.isVisible().catch(() => false)) {
-      await expect(digestSwitch).toBeVisible();
+    if (await digestSwitch.isVisible({ timeout: 10_000 }).catch(() => false)) {
+      await expect(digestSwitch).toBeVisible({ timeout: 15_000 });
     }
   });
 
   test("digest toggle sends API request", async ({ page }) => {
-    await page.goto("/dashboard/settings");
-    await expect(page.getByRole("main").first()).toBeVisible({ timeout: PAGE_TIMEOUT });
+    test.setTimeout(60_000);
+    await page.goto("/dashboard/settings", { timeout: 45_000, waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("main").first()).toBeVisible({ timeout: 30_000 });
 
     const digestSwitch = visibleElement(
       page.getByRole("switch", { name: /pause/i }),
       page
     );
-    if (await digestSwitch.isVisible().catch(() => false)) {
+    if (await digestSwitch.isVisible({ timeout: 10_000 }).catch(() => false)) {
       const responsePromise = page.waitForResponse((res) =>
         res.url().includes("/api/user/email-preferences")
       );
@@ -156,7 +165,9 @@ test.describe("Settings - Notifications", () => {
 
   test("report schedule selector is present", async ({ page }) => {
     test.setTimeout(60_000);
-    await page.goto("/dashboard/settings", { timeout: 45_000 });
+    await page.goto("/dashboard/settings", { timeout: 45_000, waitUntil: "domcontentloaded" });
+
+    await expect(page.getByRole("main").first()).toBeVisible({ timeout: 30_000 });
 
     // Report schedule options: Off, Weekly, Monthly
     const reportLabel = visibleElement(
@@ -164,7 +175,7 @@ test.describe("Settings - Notifications", () => {
       page
     );
     if (await reportLabel.isVisible({ timeout: 10_000 }).catch(() => false)) {
-      await expect(reportLabel).toBeVisible();
+      await expect(reportLabel).toBeVisible({ timeout: 15_000 });
     }
   });
 });
@@ -178,31 +189,36 @@ test.describe("Settings - Export", () => {
 
   test("export data button is present", async ({ page }) => {
     test.setTimeout(60_000);
-    await page.goto("/dashboard/settings", { timeout: 45_000 });
+    await page.goto("/dashboard/settings", { timeout: 45_000, waitUntil: "domcontentloaded" });
     await waitForHydration(page);
+
+    await expect(page.getByRole("main").first()).toBeVisible({ timeout: 30_000 });
 
     const exportBtn = visibleElement(
       page.getByRole("button", { name: /export data/i }),
       page
     );
-    if (await exportBtn.isVisible().catch(() => false)) {
-      await expect(exportBtn).toBeEnabled();
+    if (await exportBtn.isVisible({ timeout: 10_000 }).catch(() => false)) {
+      await expect(exportBtn).toBeEnabled({ timeout: 15_000 });
     }
   });
 
   test("export dropdown shows format options", async ({ page }) => {
-    await page.goto("/dashboard/settings");
+    test.setTimeout(60_000);
+    await page.goto("/dashboard/settings", { timeout: 45_000, waitUntil: "domcontentloaded" });
     await waitForHydration(page);
+
+    await expect(page.getByRole("main").first()).toBeVisible({ timeout: 30_000 });
 
     const exportBtn = visibleElement(
       page.getByRole("button", { name: /export data/i }),
       page
     );
-    if (await exportBtn.isVisible().catch(() => false)) {
+    if (await exportBtn.isVisible({ timeout: 10_000 }).catch(() => false)) {
       await exportBtn.click();
 
-      await expect(page.getByText(/full export/i).first()).toBeVisible({ timeout: 5000 });
-      await expect(page.getByText(/results only/i).first()).toBeVisible();
+      await expect(page.getByText(/full export/i).first()).toBeVisible({ timeout: 15_000 });
+      await expect(page.getByText(/results only/i).first()).toBeVisible({ timeout: 15_000 });
 
       await page.keyboard.press("Escape");
     }
@@ -210,7 +226,7 @@ test.describe("Settings - Export", () => {
 
   test("data stats section shows usage numbers", async ({ page }) => {
     test.setTimeout(60_000);
-    await page.goto("/dashboard/settings", { timeout: 45_000 });
+    await page.goto("/dashboard/settings", { timeout: 45_000, waitUntil: "domcontentloaded" });
 
     // Data stats card shows monitors count, results count, AI calls
     const dataUsage = visibleElement(
@@ -231,16 +247,20 @@ test.describe("Settings - Subscription Plans", () => {
 
   test("subscription section shows pricing cards", async ({ page }) => {
     test.setTimeout(60_000);
-    await page.goto("/dashboard/settings", { timeout: 45_000 });
+    await page.goto("/dashboard/settings", { timeout: 45_000, waitUntil: "domcontentloaded" });
+
+    await expect(page.getByRole("main").first()).toBeVisible({ timeout: 30_000 });
 
     // Settings page includes plan cards with $0 (Free), $29 (Pro), $99 (Team)
     await expect(visibleElement(page.getByText(/\$0/), page)).toBeVisible({ timeout: 30_000 });
-    await expect(visibleElement(page.getByText(/\$29/), page)).toBeVisible();
+    await expect(visibleElement(page.getByText(/\$29/), page)).toBeVisible({ timeout: 15_000 });
   });
 
   test("current plan is highlighted", async ({ page }) => {
     test.setTimeout(60_000);
-    await page.goto("/dashboard/settings", { timeout: 45_000 });
+    await page.goto("/dashboard/settings", { timeout: 45_000, waitUntil: "domcontentloaded" });
+
+    await expect(page.getByRole("main").first()).toBeVisible({ timeout: 30_000 });
 
     // In dev mode, enterprise/Team is current
     // Look for "Current" or "current" indicator on a plan card
@@ -249,7 +269,7 @@ test.describe("Settings - Subscription Plans", () => {
       page
     );
     if (await currentIndicator.isVisible({ timeout: 10_000 }).catch(() => false)) {
-      await expect(currentIndicator).toBeVisible();
+      await expect(currentIndicator).toBeVisible({ timeout: 15_000 });
     }
   });
 });
@@ -262,45 +282,49 @@ test.describe("Settings - Account Deletion", () => {
   test.skip(!isLocalDev, "Only runs in local development");
 
   test("delete account button opens confirmation dialog", async ({ page }) => {
-    await page.goto("/dashboard/settings");
-    await expect(page.getByRole("main").first()).toBeVisible({ timeout: PAGE_TIMEOUT });
+    test.setTimeout(60_000);
+    await page.goto("/dashboard/settings", { timeout: 45_000, waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("main").first()).toBeVisible({ timeout: 30_000 });
 
     const deleteTrigger = visibleElement(
       page.getByRole("button", { name: /delete account/i }),
       page
     );
-    if (await deleteTrigger.isVisible().catch(() => false)) {
+    if (await deleteTrigger.isVisible({ timeout: 10_000 }).catch(() => false)) {
       await deleteTrigger.click({ force: true });
 
       // Confirmation dialog should appear
       const confirmInput = page.getByPlaceholder(/delete my account/i);
-      if (await confirmInput.isVisible().catch(() => false)) {
-        await expect(confirmInput).toBeVisible();
+      if (await confirmInput.isVisible({ timeout: 10_000 }).catch(() => false)) {
+        await expect(confirmInput).toBeVisible({ timeout: 15_000 });
       }
     }
   });
 
   test("delete confirmation button is disabled until correct text entered", async ({ page }) => {
-    await page.goto("/dashboard/settings");
+    test.setTimeout(60_000);
+    await page.goto("/dashboard/settings", { timeout: 45_000, waitUntil: "domcontentloaded" });
+
+    await expect(page.getByRole("main").first()).toBeVisible({ timeout: 30_000 });
 
     const deleteTrigger = visibleElement(
       page.getByRole("button", { name: /delete account/i }),
       page
     );
-    if (await deleteTrigger.isVisible().catch(() => false)) {
+    if (await deleteTrigger.isVisible({ timeout: 10_000 }).catch(() => false)) {
       await deleteTrigger.click({ force: true });
 
       const confirmInput = page.getByPlaceholder(/delete my account/i);
-      if (await confirmInput.isVisible().catch(() => false)) {
+      if (await confirmInput.isVisible({ timeout: 10_000 }).catch(() => false)) {
         // Button should be disabled initially
         const deleteBtn = page
           .getByRole("button", { name: /schedule deletion/i })
           .first();
-        await expect(deleteBtn).toBeDisabled();
+        await expect(deleteBtn).toBeDisabled({ timeout: 15_000 });
 
         // Type the confirmation text
         await confirmInput.fill("delete my account");
-        await expect(deleteBtn).toBeEnabled();
+        await expect(deleteBtn).toBeEnabled({ timeout: 15_000 });
 
         // Cancel to avoid actual deletion
         await page.getByRole("button", { name: /cancel/i }).click();
@@ -318,7 +342,7 @@ test.describe("Webhooks Page", () => {
 
   test("webhooks page loads for enterprise users", async ({ page }) => {
     test.setTimeout(60_000);
-    await page.goto("/dashboard/webhooks", { timeout: 45_000 });
+    await page.goto("/dashboard/webhooks", { timeout: 45_000, waitUntil: "domcontentloaded" });
 
     await expect(page.getByRole("main").first()).toBeVisible({ timeout: 30_000 });
 

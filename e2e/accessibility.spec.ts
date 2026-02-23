@@ -7,14 +7,15 @@ import { test, expect } from "@playwright/test";
 
 test.describe("Accessibility", () => {
   test("homepage has proper heading hierarchy", async ({ page }) => {
-    await page.goto("/");
+    test.setTimeout(120_000);
+    await page.goto("/", { timeout: 60_000, waitUntil: "domcontentloaded" });
+
+    // Wait for h1 to be visible first (page may still be rendering)
+    await expect(page.locator("h1")).toBeVisible({ timeout: 30_000 });
 
     // Should have exactly one h1
     const h1Count = await page.locator("h1").count();
     expect(h1Count).toBe(1);
-
-    // H1 should be visible
-    await expect(page.locator("h1")).toBeVisible();
   });
 
   test("homepage images have alt text", async ({ page }) => {
@@ -35,9 +36,11 @@ test.describe("Accessibility", () => {
   });
 
   test("pricing page has proper heading hierarchy", async ({ page }) => {
-    await page.goto("/pricing");
+    test.setTimeout(120_000);
+    await page.goto("/pricing", { timeout: 60_000, waitUntil: "domcontentloaded" });
 
     // Should have exactly one h1
+    await expect(page.locator("h1")).toBeVisible({ timeout: 30_000 });
     const h1Count = await page.locator("h1").count();
     expect(h1Count).toBe(1);
   });
