@@ -1,3 +1,5 @@
+import { logger } from "@/lib/logger";
+
 // Polar SDK - dynamically imported to prevent build errors when not installed
 // Install with: pnpm add @polar-sh/sdk
 type PolarClient = {
@@ -47,7 +49,7 @@ export async function getPolarClient(): Promise<PolarClient | null> {
     }) as unknown as PolarClient;
     return _polarClient;
   } catch {
-    console.warn("@polar-sh/sdk not installed. Run: pnpm add @polar-sh/sdk");
+    logger.warn("@polar-sh/sdk not installed. Run: pnpm add @polar-sh/sdk");
     return null;
   }
 }
@@ -298,7 +300,7 @@ export async function cancelSubscription(
 ): Promise<boolean> {
   const client = await getPolarClient();
   if (!client) {
-    console.error("Polar client not initialized");
+    logger.error("Polar client not initialized");
     return false;
   }
 
@@ -311,7 +313,7 @@ export async function cancelSubscription(
     });
     return true;
   } catch (error) {
-    console.error("Failed to cancel Polar subscription:", error);
+    logger.error("Failed to cancel Polar subscription", { error: error instanceof Error ? error.message : String(error) });
     return false;
   }
 }

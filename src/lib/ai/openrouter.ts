@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { logger } from "@/lib/logger";
 import { observeOpenAI } from "langfuse";
 import { langfuse } from "./langfuse";
 
@@ -128,7 +129,7 @@ export async function completion(params: {
   } catch (error) {
     // If primary fails, try fallback
     if (model === MODELS.primary) {
-      console.warn(`Primary model ${model} failed, trying fallback...`);
+      logger.warn("Primary model failed, trying fallback", { model });
       return completion({
         ...params,
         model: MODELS.fallback,

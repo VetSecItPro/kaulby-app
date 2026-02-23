@@ -1,4 +1,5 @@
 import { inngest } from "../client";
+import { logger } from "@/lib/logger";
 import { fetchGoogleReviews, isApifyConfigured, type GoogleReviewItem } from "@/lib/apify";
 import {
   getActiveMonitors,
@@ -77,7 +78,7 @@ export const monitorGoogleReviews = inngest.createFunction(
         try {
           return await fetchGoogleReviews(businessUrl!, 20);
         } catch (error) {
-          console.error(`Error fetching Google Reviews for ${businessUrl}:`, error);
+          logger.error("[GoogleReviews] Error fetching reviews", { businessUrl, error: error instanceof Error ? error.message : String(error) });
           return [] as GoogleReviewItem[];
         }
       });

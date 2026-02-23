@@ -1,4 +1,5 @@
 import { inngest } from "../client";
+import { logger } from "@/lib/logger";
 import { contentMatchesMonitor } from "@/lib/content-matcher";
 import {
   getActiveMonitors,
@@ -104,7 +105,7 @@ async function searchHashnode(keywords: string[], maxResults: number = 50): Prom
           }
         }
       } else {
-        console.warn(`[Hashnode] Search failed for "${keyword}": ${response.status}`);
+        logger.warn("[Hashnode] Search failed", { keyword, status: response.status });
 
         // Fallback: Try the feed API
         const feedQuery = `
@@ -171,7 +172,7 @@ async function searchHashnode(keywords: string[], maxResults: number = 50): Prom
 
     return articles.slice(0, maxResults);
   } catch (error) {
-    console.error("[Hashnode] Search failed:", error);
+    logger.error("[Hashnode] Search failed", { error: error instanceof Error ? error.message : String(error) });
     return [];
   }
 }
@@ -210,7 +211,7 @@ export const monitorHashnode = inngest.createFunction(
         return searchHashnode(monitor.keywords, 50);
       });
 
-      console.log(`[Hashnode] Found ${articles.length} articles for monitor ${monitor.id}`);
+      logger.info("[Hashnode] Found articles", { articleCount: articles.length, monitorId: monitor.id });
 
       // Check each article for matches
       const matchingArticles = articles.filter((article) => {

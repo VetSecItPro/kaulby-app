@@ -172,7 +172,10 @@ export function createSafeRegExp(
 
   // Double-check it's safe
   if (!isSafeRegexPattern(escaped)) {
-    console.warn("[Security] Rejected potentially dangerous regex pattern");
+    // Note: Cannot import logger statically due to circular dependency (logger imports sanitizeForLog)
+    // Use dynamic import to break the cycle
+    import("@/lib/logger").then(({ logger: log }) => log.warn("[Security] Rejected potentially dangerous regex pattern")).catch(() => {});
+
     return null;
   }
 

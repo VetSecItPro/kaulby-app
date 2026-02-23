@@ -1,4 +1,5 @@
 import { PostHog } from "posthog-node";
+import { logger } from "@/lib/logger";
 
 const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
 const POSTHOG_HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST;
@@ -8,10 +9,7 @@ const isPostHogConfigured = (): boolean => {
   if (!POSTHOG_KEY) return false;
   // PostHog Project API keys must start with 'phc_'
   if (!POSTHOG_KEY.startsWith("phc_")) {
-    console.warn(
-      "[PostHog Server] Invalid API key format. Project API keys start with 'phc_'. " +
-      "Go to PostHog → Settings → Project API Key."
-    );
+    logger.warn("[PostHog Server] Invalid API key format. Project API keys start with 'phc_'. Go to PostHog -> Settings -> Project API Key.");
     return false;
   }
   return true;
@@ -31,7 +29,7 @@ function getPostHog(): PostHog | null {
         flushInterval: 0,
       });
     } catch (error) {
-      console.warn("[PostHog Server] Failed to initialize:", error);
+      logger.warn("[PostHog Server] Failed to initialize", { error: error instanceof Error ? error.message : String(error) });
       return null;
     }
   }

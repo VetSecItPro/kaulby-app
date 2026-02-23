@@ -1,4 +1,5 @@
 import { inngest } from "../client";
+import { logger } from "@/lib/logger";
 import { contentMatchesMonitor } from "@/lib/content-matcher";
 import {
   getActiveMonitors,
@@ -129,7 +130,7 @@ export async function searchX(
         posts = JSON.parse(jsonMatch[0]);
       }
     } catch {
-      console.warn("[X] Failed to parse Grok response as JSON");
+      logger.warn("[X] Failed to parse Grok response as JSON");
       posts = [];
     }
 
@@ -161,7 +162,7 @@ export async function searchX(
 
     return { posts };
   } catch (error) {
-    console.error("[X] Search failed:", error);
+    logger.error("[X] Search failed", { error: error instanceof Error ? error.message : String(error) });
     return {
       posts: [],
       error: error instanceof Error ? error.message : "Unknown error",
@@ -209,9 +210,7 @@ export const monitorX = inngest.createFunction(
       );
 
       if (searchResult.error) {
-        console.warn(
-          `[X] Search warning for monitor ${monitor.id}: ${searchResult.error}`
-        );
+        logger.warn("[X] Search warning", { monitorId: monitor.id, error: searchResult.error });
         if (searchResult.posts.length === 0) continue;
       }
 

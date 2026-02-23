@@ -1,4 +1,5 @@
 import { inngest } from "../client";
+import { logger } from "@/lib/logger";
 import { pooledDb } from "@/lib/db";
 import { budgetAlerts, budgetAlertHistory, aiLogs } from "@/lib/db/schema";
 import { eq, gte, and, sum, sql } from "drizzle-orm";
@@ -181,7 +182,7 @@ Review costs at: ${process.env.NEXT_PUBLIC_APP_URL || "https://kaulbyapp.com"}/m
         text: message,
       });
     } catch (error) {
-      console.error("Failed to send budget alert email:", error);
+      logger.error("Failed to send budget alert email", { error: error instanceof Error ? error.message : String(error) });
     }
   }
 
@@ -247,7 +248,7 @@ Review costs at: ${process.env.NEXT_PUBLIC_APP_URL || "https://kaulbyapp.com"}/m
         }),
       });
     } catch (error) {
-      console.error("Failed to send budget alert to Slack:", error);
+      logger.error("Failed to send budget alert to Slack", { error: error instanceof Error ? error.message : String(error) });
     }
   }
 }

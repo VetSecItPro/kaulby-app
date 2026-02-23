@@ -1,4 +1,5 @@
 import { inngest } from "../client";
+import { logger } from "@/lib/logger";
 import { fetchQuoraAnswers, isApifyConfigured, type QuoraAnswerItem } from "@/lib/apify";
 import {
   getActiveMonitors,
@@ -64,7 +65,7 @@ export const monitorQuora = inngest.createFunction(
           try {
             return await fetchQuoraAnswers(keyword, 15);
           } catch (error) {
-            console.error(`Error fetching Quora answers for "${keyword}":`, error);
+            logger.error("[Quora] Error fetching answers", { keyword, error: error instanceof Error ? error.message : String(error) });
             return [] as QuoraAnswerItem[];
           }
         });

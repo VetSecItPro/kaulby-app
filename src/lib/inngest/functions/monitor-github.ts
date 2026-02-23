@@ -1,4 +1,5 @@
 import { inngest } from "../client";
+import { logger } from "@/lib/logger";
 import { pooledDb } from "@/lib/db";
 import { results } from "@/lib/db/schema";
 import { inArray } from "drizzle-orm";
@@ -86,7 +87,7 @@ async function searchGitHub(keywords: string[], maxResults: number = 50): Promis
           }
         }
       } else {
-        console.warn(`[GitHub] Issue search failed for "${keyword}": ${issueResponse.status}`);
+        logger.warn("[GitHub] Issue search failed", { keyword, status: issueResponse.status });
       }
 
       // Rate limit: wait 100ms between requests
@@ -137,7 +138,7 @@ async function searchGitHub(keywords: string[], maxResults: number = 50): Promis
             }
           }
         } catch (error) {
-          console.warn(`[GitHub] Discussion search failed for "${keyword}":`, error);
+          logger.warn("[GitHub] Discussion search failed", { keyword, error: error instanceof Error ? error.message : String(error) });
         }
 
         await new Promise(resolve => setTimeout(resolve, 100));
@@ -146,7 +147,7 @@ async function searchGitHub(keywords: string[], maxResults: number = 50): Promis
 
     return { issues, discussions, source: "api" };
   } catch (error) {
-    console.error("[GitHub] Search failed:", error);
+    logger.error("[GitHub] Search failed", { error: error instanceof Error ? error.message : String(error) });
     return { issues: [], discussions: [], source: "api" };
   }
 }
@@ -188,7 +189,7 @@ export const monitorGitHub = inngest.createFunction(
         return searchGitHub(monitor.keywords, 50);
       });
 
-      console.log(`[GitHub] Found ${searchResult.issues.length} issues and ${searchResult.discussions.length} discussions`);
+      logger.info("[GitHub] Found results", { issueCount: searchResult.issues.length, discussionCount: searchResult.discussions.length });
 
       // Filter matching issues
       const matchingIssues = searchResult.issues.filter(issue => {

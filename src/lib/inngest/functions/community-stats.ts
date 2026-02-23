@@ -11,6 +11,7 @@
  */
 
 import { inngest } from "../client";
+import { logger } from "@/lib/logger";
 import { pooledDb } from "@/lib/db";
 import { communityGrowth } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
@@ -43,7 +44,7 @@ async function fetchSubredditInfo(subreddit: string): Promise<SubredditStats | n
 
     if (!response.ok) {
       if (response.status === 404) {
-        console.log(`[CommunityStats] Subreddit r/${subreddit} not found`);
+        logger.info("[CommunityStats] Subreddit not found", { subreddit });
         return null;
       }
       throw new Error(`Reddit API error: ${response.status}`);
@@ -60,7 +61,7 @@ async function fetchSubredditInfo(subreddit: string): Promise<SubredditStats | n
       created: info.created_utc || 0,
     };
   } catch (error) {
-    console.error(`[CommunityStats] Error fetching r/${subreddit}:`, error);
+    logger.error("[CommunityStats] Error fetching subreddit", { subreddit, error: error instanceof Error ? error.message : String(error) });
     return null;
   }
 }
@@ -164,7 +165,7 @@ async function storeStats(
       engagementRate,
     });
   } catch (error) {
-    console.error(`[CommunityStats] Error storing stats for r/${subreddit}:`, error);
+    logger.error("[CommunityStats] Error storing stats", { subreddit, error: error instanceof Error ? error.message : String(error) });
   }
 }
 
@@ -220,9 +221,9 @@ export const collectCommunityStats = inngest.createFunction(
           await storeStats(subreddit, info.subscribers, postsPerDay, engagementRate);
           results.push({ subreddit, success: true });
 
-          console.log(`[CommunityStats] Processed r/${subreddit}: ${info.subscribers.toLocaleString()} members, ${postsPerDay} posts/day`);
+          logger.info("[CommunityStats] Processed subreddit", { subreddit, subscribers: info.subscribers, postsPerDay });
         } catch (error) {
-          console.error(`[CommunityStats] Failed to process r/${subreddit}:`, error);
+          logger.error("[CommunityStats] Failed to process subreddit", { subreddit, error: error instanceof Error ? error.message : String(error) });
           results.push({ subreddit, success: false });
         }
       }

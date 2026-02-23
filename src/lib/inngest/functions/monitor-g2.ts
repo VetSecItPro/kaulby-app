@@ -1,4 +1,5 @@
 import { inngest } from "../client";
+import { logger } from "@/lib/logger";
 import { fetchG2Reviews, isApifyConfigured, type G2ReviewItem } from "@/lib/apify";
 import {
   getActiveMonitors,
@@ -70,7 +71,7 @@ export const monitorG2 = inngest.createFunction(
         try {
           return await fetchG2Reviews(productUrl!, 30);
         } catch (error) {
-          console.error(`Error fetching G2 reviews for ${productUrl}:`, error);
+          logger.error("[G2] Error fetching reviews", { productUrl, error: error instanceof Error ? error.message : String(error) });
           return [] as G2ReviewItem[];
         }
       });

@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { logger } from "@/lib/logger";
 import {
   type DigestMention,
   type DailyDigestData,
@@ -66,7 +67,7 @@ export async function upsertContact(params: {
 }) {
   // Resend doesn't have contact management like Loops
   // This is a no-op but kept for API compatibility
-  console.log("Contact upsert:", params.email);
+  logger.info("Contact upsert", { email: params.email });
 }
 
 // Send welcome email

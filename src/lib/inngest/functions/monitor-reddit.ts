@@ -1,4 +1,5 @@
 import { inngest } from "../client";
+import { logger } from "@/lib/logger";
 import { pooledDb } from "@/lib/db";
 import { monitors } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -67,18 +68,18 @@ export const monitorReddit = inngest.createFunction(
         // Use AI to find relevant subreddits based on company name
         if (monitor.companyName) {
           try {
-            console.log(`[Reddit] Using AI to find subreddits for "${monitor.companyName}"`);
+            logger.info("[Reddit] Using AI to find subreddits", { companyName: monitor.companyName });
             const aiSubreddits = await findRelevantSubredditsCached(
               monitor.companyName,
               monitor.keywords,
               10
             );
             if (aiSubreddits.length > 0) {
-              console.log(`[Reddit] AI suggested: ${aiSubreddits.join(", ")}`);
+              logger.info("[Reddit] AI suggested subreddits", { subreddits: aiSubreddits });
               return aiSubreddits;
             }
           } catch (error) {
-            console.error("[Reddit] AI subreddit finder failed:", error);
+            logger.error("[Reddit] AI subreddit finder failed", { error: error instanceof Error ? error.message : String(error) });
           }
         }
 
@@ -93,10 +94,10 @@ export const monitorReddit = inngest.createFunction(
         });
 
         if (searchResult.error) {
-          console.warn(`[Reddit] Search warning for r/${subreddit}: ${searchResult.error}`);
+          logger.warn("[Reddit] Search warning", { subreddit, error: searchResult.error });
         }
 
-        console.log(`[Reddit] Using ${searchResult.source} for r/${subreddit}, found ${searchResult.posts.length} posts`);
+        logger.info("[Reddit] Search complete", { source: searchResult.source, subreddit, postCount: searchResult.posts.length });
 
         // Check each post for matches using content matcher
         // Supports: company name, keywords, and advanced boolean search

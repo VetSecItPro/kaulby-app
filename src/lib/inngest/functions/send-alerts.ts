@@ -167,7 +167,7 @@ export const sendAlert = inngest.createFunction(
       });
 
       if (!webhookResult.success) {
-        console.error(`Webhook notification failed for alert ${alertId}: ${webhookResult.error}`);
+        logger.error("Webhook notification failed", { alertId, error: webhookResult.error });
       }
 
       return {
@@ -401,7 +401,7 @@ async function sendDigestForTimezone(
             ),
           };
         } catch (error) {
-          console.error(`Failed to generate AI insights for user ${user.id}:`, error);
+          logger.error("Failed to generate AI insights", { userId: user.id, error: error instanceof Error ? error.message : String(error) });
         }
       }
     }

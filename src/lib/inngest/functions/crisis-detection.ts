@@ -1,4 +1,5 @@
 import { inngest } from "../client";
+import { logger } from "@/lib/logger";
 import { pooledDb, users, monitors, results, alerts } from "@/lib/db";
 import { eq, and, gte, inArray, sql, desc } from "drizzle-orm";
 import { sendAlertEmail } from "@/lib/email";
@@ -237,7 +238,7 @@ export const detectCrisis = inngest.createFunction(
         return step.run(`send-crisis-email-${userId}`, async () => {
           const user = teamUsers.find((u) => u.id === userId);
           if (!user?.email) {
-            console.warn(`No email found for user ${userId}, skipping crisis email`);
+            logger.warn("No email found for user, skipping crisis email", { userId });
             return;
           }
 
@@ -272,7 +273,7 @@ export const detectCrisis = inngest.createFunction(
               results: emailResults,
             });
           } catch (error) {
-            console.error(`Failed to send crisis email to user ${userId}:`, error);
+            logger.error("Failed to send crisis email", { userId, error: error instanceof Error ? error.message : String(error) });
           }
         });
       }));
@@ -338,16 +339,16 @@ export const detectCrisis = inngest.createFunction(
               });
 
               if (!result.success) {
-                console.error(`Crisis webhook failed for ${result.type}: ${result.error}`);
+                logger.error("Crisis webhook failed", { type: result.type, error: result.error });
               }
             } catch (error) {
-              console.error(`Failed to send crisis webhook to ${webhookAlert.destination}:`, error);
+              logger.error("Failed to send crisis webhook", { destination: webhookAlert.destination, error: error instanceof Error ? error.message : String(error) });
             }
           }
         });
       }));
 
-      console.log(`Crisis alerts processed: ${crisisAlerts.length} alerts for ${userIds.length} users`);
+      logger.info("Crisis alerts processed", { alertCount: crisisAlerts.length, userCount: userIds.length });
     }
 
     return {

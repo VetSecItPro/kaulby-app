@@ -1,4 +1,5 @@
 import { inngest } from "../client";
+import { logger } from "@/lib/logger";
 import { contentMatchesMonitor } from "@/lib/content-matcher";
 import {
   getActiveMonitors,
@@ -41,7 +42,7 @@ async function fetchIndieHackersPosts(keywords: string[], maxPosts: number = 50)
 
     if (!response.ok) {
       // Fallback to scraping approach if feed doesn't exist
-      console.log("[IndieHackers] Feed not available, using fallback scraping");
+      logger.info("[IndieHackers] Feed not available, using fallback scraping");
       return await scrapeIndieHackers(keywords, maxPosts);
     }
 
@@ -67,7 +68,7 @@ async function fetchIndieHackersPosts(keywords: string[], maxPosts: number = 50)
 
     return posts;
   } catch (error) {
-    console.error("[IndieHackers] Error fetching posts:", error);
+    logger.error("[IndieHackers] Error fetching posts", { error: error instanceof Error ? error.message : String(error) });
     return await scrapeIndieHackers(keywords, maxPosts);
   }
 }
@@ -87,7 +88,7 @@ async function scrapeIndieHackers(keywords: string[], maxPosts: number): Promise
     });
 
     if (!response.ok) {
-      console.error("[IndieHackers] Failed to fetch homepage");
+      logger.error("[IndieHackers] Failed to fetch homepage");
       return [];
     }
 
@@ -117,7 +118,7 @@ async function scrapeIndieHackers(keywords: string[], maxPosts: number): Promise
           });
         }
       } catch {
-        console.warn("[IndieHackers] Failed to parse __NEXT_DATA__");
+        logger.warn("[IndieHackers] Failed to parse __NEXT_DATA__");
       }
     }
 
@@ -142,7 +143,7 @@ async function scrapeIndieHackers(keywords: string[], maxPosts: number): Promise
 
     return posts;
   } catch (error) {
-    console.error("[IndieHackers] Scraping failed:", error);
+    logger.error("[IndieHackers] Scraping failed", { error: error instanceof Error ? error.message : String(error) });
     return [];
   }
 }
@@ -181,7 +182,7 @@ export const monitorIndieHackers = inngest.createFunction(
         return fetchIndieHackersPosts(monitor.keywords, 100);
       });
 
-      console.log(`[IndieHackers] Fetched ${posts.length} posts for monitor ${monitor.id}`);
+      logger.info("[IndieHackers] Fetched posts", { postCount: posts.length, monitorId: monitor.id });
 
       // Check each post for matches using content matcher
       const matchingPosts = posts.filter((post) => {

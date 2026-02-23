@@ -1,4 +1,5 @@
 import { inngest } from "../client";
+import { logger } from "@/lib/logger";
 import { contentMatchesMonitor } from "@/lib/content-matcher";
 import {
   getActiveMonitors,
@@ -62,7 +63,7 @@ async function searchDevTo(keywords: string[], maxResults: number = 50): Promise
           }
         }
       } else {
-        console.warn(`[Dev.to] Search failed for tag "${keyword}": ${response.status}`);
+        logger.warn("[Dev.to] Search failed for tag", { keyword, status: response.status });
       }
 
       // Also search by query string
@@ -98,7 +99,7 @@ async function searchDevTo(keywords: string[], maxResults: number = 50): Promise
 
     return articles.slice(0, maxResults);
   } catch (error) {
-    console.error("[Dev.to] Search failed:", error);
+    logger.error("[Dev.to] Search failed", { error: error instanceof Error ? error.message : String(error) });
     return [];
   }
 }
@@ -137,7 +138,7 @@ export const monitorDevTo = inngest.createFunction(
         return searchDevTo(monitor.keywords, 50);
       });
 
-      console.log(`[Dev.to] Found ${articles.length} articles for monitor ${monitor.id}`);
+      logger.info("[Dev.to] Found articles", { articleCount: articles.length, monitorId: monitor.id });
 
       // Check each article for matches
       const matchingArticles = articles.filter((article) => {
