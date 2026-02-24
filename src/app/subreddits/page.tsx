@@ -31,6 +31,9 @@ export const metadata: Metadata = {
     type: "website",
     url: "https://kaulbyapp.com/subreddits",
   },
+  alternates: {
+    canonical: "https://kaulbyapp.com/subreddits",
+  },
 };
 
 // Categorize subreddits for display

@@ -6,6 +6,14 @@ export const revalidate = 86400;
 export const metadata: Metadata = {
   title: "Terms of Service | Kaulby",
   description: "Terms and conditions for using Kaulby's community monitoring service.",
+  openGraph: {
+    title: "Terms of Service | Kaulby",
+    description: "Terms and conditions for using Kaulby's community monitoring service.",
+    url: "https://kaulbyapp.com/terms",
+  },
+  alternates: {
+    canonical: "https://kaulbyapp.com/terms",
+  },
 };
 
 export default function TermsPage() {

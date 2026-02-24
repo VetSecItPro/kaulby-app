@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { users, monitors, communities, usage } from "@/lib/db/schema";
-import { eq, and, count, gte } from "drizzle-orm";
+import { eq, and, count, gte, sql } from "drizzle-orm";
 import { PLANS, PlanKey, Platform, getPlanLimits } from "@/lib/plans";
 import { currentUser } from "@clerk/nextjs/server";
 import { getCachedUserPlan } from "@/lib/server-cache";
@@ -541,14 +541,14 @@ async function getOrCreateUsageRecord(userId: string) {
  */
 export async function incrementResultsCount(
   userId: string,
-  count: number = 1
+  incrementBy: number = 1
 ): Promise<void> {
   const usageRecord = await getOrCreateUsageRecord(userId);
 
   await db
     .update(usage)
     .set({
-      resultsCount: usageRecord.resultsCount + count,
+      resultsCount: sql`${usage.resultsCount} + ${incrementBy}`,
     })
     .where(eq(usage.id, usageRecord.id));
 }
@@ -558,14 +558,14 @@ export async function incrementResultsCount(
  */
 export async function incrementAiCallsCount(
   userId: string,
-  count: number = 1
+  incrementBy: number = 1
 ): Promise<void> {
   const usageRecord = await getOrCreateUsageRecord(userId);
 
   await db
     .update(usage)
     .set({
-      aiCallsCount: usageRecord.aiCallsCount + count,
+      aiCallsCount: sql`${usage.aiCallsCount} + ${incrementBy}`,
     })
     .where(eq(usage.id, usageRecord.id));
 }

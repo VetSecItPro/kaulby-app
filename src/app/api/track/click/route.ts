@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
 
   // Validate uid format to prevent data poisoning
   if (userId && !isValidUuid(userId)) {
-    return NextResponse.redirect(targetUrl);
+    return NextResponse.redirect(new URL(targetUrl, request.url));
   }
 
   // Track the click event asynchronously
@@ -63,6 +63,6 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Redirect to the target URL
-  return NextResponse.redirect(targetUrl);
+  // Redirect to the target URL (new URL() handles both absolute and relative paths)
+  return NextResponse.redirect(new URL(targetUrl, request.url));
 }

@@ -6,6 +6,14 @@ export const revalidate = 86400;
 export const metadata: Metadata = {
   title: "Cookie Policy | Kaulby",
   description: "How Kaulby uses cookies and similar technologies to provide, improve, and protect our service.",
+  openGraph: {
+    title: "Cookie Policy | Kaulby",
+    description: "How Kaulby uses cookies and similar technologies to provide, improve, and protect our service.",
+    url: "https://kaulbyapp.com/cookies",
+  },
+  alternates: {
+    canonical: "https://kaulbyapp.com/cookies",
+  },
 };
 
 export default function CookiePolicyPage() {

@@ -47,7 +47,7 @@ export async function generateMetadata({
       siteName: "Kaulby",
       images: [
         {
-          url: "https://kaulbyapp.com/og-image.png",
+          url: "https://kaulbyapp.com/opengraph-image",
           width: 1200,
           height: 630,
           alt: article.title,
@@ -58,7 +58,7 @@ export async function generateMetadata({
       card: "summary_large_image",
       title: article.title,
       description: article.description,
-      images: ["https://kaulbyapp.com/og-image.png"],
+      images: ["https://kaulbyapp.com/opengraph-image"],
     },
     alternates: {
       canonical: url,

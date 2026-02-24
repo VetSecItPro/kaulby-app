@@ -43,17 +43,6 @@ vi.mock("drizzle-orm", () => ({
 
 import { GET } from "@/app/api/dashboard/insights/route";
 
-import { NextRequest } from "next/server";
-
-function makeRequest(method: string, url: string, body?: unknown): NextRequest {
-  const init: { method: string; body?: string; headers?: Record<string, string> } = { method };
-  if (body) {
-    init.body = JSON.stringify(body);
-    init.headers = { "Content-Type": "application/json" };
-  }
-  return new NextRequest(`http://localhost${url}`, init);
-}
-
 beforeEach(() => {
   vi.clearAllMocks();
   mockCheckApiRateLimit.mockResolvedValue({ allowed: true });

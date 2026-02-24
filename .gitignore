@@ -3,6 +3,7 @@
 # Planning & audit files (local-only, never commit)
 TODO.md
 *.audit.md
+.db/
 *.plan.md
 .*-reports/
 

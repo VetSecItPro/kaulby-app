@@ -9,6 +9,7 @@ import {
   real,
   jsonb,
   index,
+  uniqueIndex,
   primaryKey,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
@@ -547,7 +548,11 @@ export const webhookDeliveries = pgTable("webhook_deliveries", {
   nextRetryAt: timestamp("next_retry_at"), // When to retry (null if not scheduled)
   completedAt: timestamp("completed_at"), // When delivery was successful or gave up
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("webhook_deliveries_webhook_id_idx").on(table.webhookId),
+  index("webhook_deliveries_status_retry_idx").on(table.status, table.nextRetryAt),
+  index("webhook_deliveries_status_created_idx").on(table.status, table.createdAt),
+]);
 
 // API Keys - for Team tier API access
 export const apiKeys = pgTable("api_keys", {
@@ -587,7 +592,10 @@ export const workspaceInvites = pgTable("workspace_invites", {
   expiresAt: timestamp("expires_at").notNull(), // Invite expires after 7 days
   acceptedAt: timestamp("accepted_at"), // When the invite was accepted
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("workspace_invites_workspace_id_idx").on(table.workspaceId),
+  index("workspace_invites_workspace_status_idx").on(table.workspaceId, table.status),
+]);
 
 // Community Growth - track community size over time (Phase 3)
 // Used for community discovery and growth rate calculations
@@ -659,7 +667,8 @@ export const notifications = pgTable("notifications", {
   message: text("message").notNull(),
   type: text("type").notNull(), // "alert" | "crisis" | "system"
   monitorId: uuid("monitor_id").references(() => monitors.id, { onDelete: "set null" }),
-  resultId: uuid("result_id"),
+  // DB: FK with SET NULL so notifications survive result deletion — FIX-INT-002
+  resultId: uuid("result_id").references(() => results.id, { onDelete: "set null" }),
   isRead: boolean("is_read").default(false).notNull(),
   readAt: timestamp("read_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -842,8 +851,8 @@ export const userDetectionKeywords = pgTable("user_detection_keywords", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
   index("user_detection_keywords_user_id_idx").on(table.userId),
-  // Ensure one row per user+category
-  index("user_detection_keywords_user_category_idx").on(table.userId, table.category),
+  // DB: UNIQUE enforces one row per user+category at DB level — FIX-IDX-001
+  uniqueIndex("user_detection_keywords_user_category_idx").on(table.userId, table.category),
 ]);
 
 export const userDetectionKeywordsRelations = relations(userDetectionKeywords, ({ one }) => ({
@@ -884,8 +893,8 @@ export const bookmarks = pgTable("bookmarks", {
   index("bookmarks_user_id_idx").on(table.userId),
   index("bookmarks_collection_id_idx").on(table.collectionId),
   index("bookmarks_result_id_idx").on(table.resultId),
-  // Prevent duplicate bookmarks of same result by same user
-  index("bookmarks_user_result_idx").on(table.userId, table.resultId),
+  // DB: UNIQUE prevents duplicate bookmarks of same result by same user — FIX-IDX-002
+  uniqueIndex("bookmarks_user_result_idx").on(table.userId, table.resultId),
 ]);
 
 export const bookmarkCollectionsRelations = relations(bookmarkCollections, ({ one, many }) => ({

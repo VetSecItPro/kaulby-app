@@ -6,6 +6,14 @@ export const revalidate = 86400;
 export const metadata: Metadata = {
   title: "Privacy Policy | Kaulby",
   description: "How Kaulby collects, uses, and protects your personal information.",
+  openGraph: {
+    title: "Privacy Policy | Kaulby",
+    description: "How Kaulby collects, uses, and protects your personal information.",
+    url: "https://kaulbyapp.com/privacy",
+  },
+  alternates: {
+    canonical: "https://kaulbyapp.com/privacy",
+  },
 };
 
 export default function PrivacyPage() {

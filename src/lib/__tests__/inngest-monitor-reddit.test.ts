@@ -134,12 +134,6 @@ describe("inngest monitor-reddit", () => {
 
   describe("subreddit selection", () => {
     it("uses audience communities when audienceId is present", async () => {
-      const monitor = {
-        id: "m1",
-        audienceId: "aud1",
-        keywords: ["test"],
-      };
-
       mockFindFirst.mockResolvedValueOnce({
         communities: [
           { platform: "reddit", identifier: "programming" },
@@ -191,8 +185,6 @@ describe("inngest monitor-reddit", () => {
     });
 
     it("uses generic subreddits when no audience or companyName", async () => {
-      const monitor = { id: "m1", keywords: ["test"] };
-      // No audienceId, no companyName
       const defaultSubreddits = ["AskReddit", "smallbusiness", "Entrepreneur", "business"];
       expect(defaultSubreddits).toHaveLength(4);
     });

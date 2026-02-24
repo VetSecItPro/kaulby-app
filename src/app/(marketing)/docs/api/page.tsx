@@ -5,6 +5,14 @@ export const revalidate = 86400; // Revalidate every day
 export const metadata: Metadata = {
   title: "API Documentation | Kaulby",
   description: "Programmatic access to your Kaulby monitors and results. Build integrations, automate workflows, and analyze data with our REST API.",
+  openGraph: {
+    title: "API Documentation | Kaulby",
+    description: "Programmatic access to your Kaulby monitors and results. Build integrations, automate workflows, and analyze data with our REST API.",
+    url: "https://kaulbyapp.com/docs/api",
+  },
+  alternates: {
+    canonical: "https://kaulbyapp.com/docs/api",
+  },
 };
 
 export default function ApiDocsPage() {

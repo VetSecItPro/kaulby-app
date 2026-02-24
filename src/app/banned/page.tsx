@@ -6,8 +6,15 @@ import { eq } from "drizzle-orm";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Ban, Mail } from "lucide-react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { SignOutButton } from "@clerk/nextjs";
+
+export const metadata: Metadata = {
+  title: "Account Suspended | Kaulby",
+  description: "Your Kaulby account has been suspended.",
+  robots: { index: false, follow: false },
+};
 
 export default async function BannedPage() {
   const { userId } = await auth();
