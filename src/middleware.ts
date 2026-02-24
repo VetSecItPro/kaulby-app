@@ -50,6 +50,7 @@ async function getClerkHandler() {
       "/banned", // Banned user page
       "/robots.txt", // Search engine crawling directives
       "/sitemap.xml", // Search engine sitemap
+      "/opengraph-image", // Dynamic OG image (must be public for social crawlers)
       // Test endpoints only in verified local development (not Vercel preview/prod)
       ...(isLocalDev ? ["/api/test-emails(.*)", "/api/test-single-email(.*)"] : []),
     ]);
