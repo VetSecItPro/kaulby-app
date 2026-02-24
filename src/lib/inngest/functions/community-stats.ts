@@ -14,7 +14,7 @@ import { inngest } from "../client";
 import { logger } from "@/lib/logger";
 import { pooledDb } from "@/lib/db";
 import { communityGrowth } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, gte, lt } from "drizzle-orm";
 import {
   PRIORITY_SUBREDDITS,
   EXTENDED_SUBREDDITS,
@@ -157,6 +157,26 @@ async function storeStats(
   engagementRate: number
 ): Promise<void> {
   try {
+    // Prevent duplicate rows on same day (retries, manual triggers) — FIX-IDX-003
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const tomorrowStart = new Date(todayStart);
+    tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+
+    const existing = await pooledDb.query.communityGrowth.findFirst({
+      where: and(
+        eq(communityGrowth.platform, "reddit"),
+        eq(communityGrowth.identifier, `r/${subreddit}`),
+        gte(communityGrowth.recordedAt, todayStart),
+        lt(communityGrowth.recordedAt, tomorrowStart)
+      ),
+      columns: { id: true },
+    });
+
+    if (existing) {
+      return; // Already recorded today
+    }
+
     await pooledDb.insert(communityGrowth).values({
       platform: "reddit",
       identifier: `r/${subreddit}`,

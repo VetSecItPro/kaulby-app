@@ -31,6 +31,8 @@ async function getClerkHandler() {
       "/pricing",
       "/privacy",
       "/terms",
+      "/cookies", // Cookie policy page
+      "/docs/api(.*)", // Public API documentation
       "/install", // PWA installation instructions
       "/gummysearch", // GummySearch migration landing page
       "/subreddits(.*)", // Programmatic SEO - subreddit landing pages
@@ -43,8 +45,11 @@ async function getClerkHandler() {
       "/api/inngest(.*)",
       "/api/polar(.*)", // Polar checkout routes (auth handled in route)
       "/api/v1(.*)", // API v1 routes use API key auth, not Clerk
+      "/api/track(.*)", // Email tracking pixels/clicks (public by design)
       "/invite(.*)", // Public invite acceptance page
       "/banned", // Banned user page
+      "/robots.txt", // Search engine crawling directives
+      "/sitemap.xml", // Search engine sitemap
       // Test endpoints only in verified local development (not Vercel preview/prod)
       ...(isLocalDev ? ["/api/test-emails(.*)", "/api/test-single-email(.*)"] : []),
     ]);

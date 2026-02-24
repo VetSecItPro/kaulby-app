@@ -64,19 +64,19 @@ export const metadata: Metadata = {
     siteName: "Kaulby",
     images: [
       {
-        url: "/icon-512.png",
-        width: 512,
-        height: 512,
-        alt: "Kaulby Logo",
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "Kaulby - AI-Powered Community Monitoring",
       },
     ],
     type: "website",
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "Kaulby - AI-Powered Community Monitoring",
     description: "Track discussions across Reddit, Hacker News, and online communities.",
-    images: ["/icon-512.png"],
+    images: ["/opengraph-image"],
   },
   manifest: "/manifest.json",
   alternates: {

@@ -82,7 +82,7 @@ describe("inngest monitor-github", () => {
     });
 
     await mockStep.run("save-results", async () => {
-      const existing = await mockFindMany();
+      await mockFindMany();
       const inserted = await mockInsert({}).values([{}, {}]).returning();
       return inserted;
     });

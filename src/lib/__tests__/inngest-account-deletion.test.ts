@@ -140,7 +140,7 @@ describe("inngest/account-deletion", () => {
       mockStep.run("cancel-polar-subscription", async () => {
         try {
           await mockCancelSubscription("sub_123", { immediate: true });
-        } catch (error) {
+        } catch {
           // Don't fail
         }
       })
@@ -188,7 +188,7 @@ describe("inngest/account-deletion", () => {
       mockStep.run("delete-from-clerk", async () => {
         try {
           await mockClerkDeleteUser("user_123");
-        } catch (error) {
+        } catch {
           // Log but don't fail
         }
       })

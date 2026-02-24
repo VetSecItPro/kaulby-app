@@ -9,7 +9,6 @@ const {
   mockDbQuery,
   mockDbInsertValues,
   mockDbInsert,
-  mockDbUpdateWhere,
   mockDbUpdateSet,
   mockDbUpdate,
 } = vi.hoisted(() => {

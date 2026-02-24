@@ -11,6 +11,10 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Install Kaulby | Add to Home Screen",
     description: "Install Kaulby on your device for faster access, offline support, and a native app experience.",
+    url: "https://kaulbyapp.com/install",
+  },
+  alternates: {
+    canonical: "https://kaulbyapp.com/install",
   },
 };
 
