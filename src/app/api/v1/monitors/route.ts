@@ -5,6 +5,14 @@ import { monitors } from "@/lib/db/schema";
 import { eq, desc, count } from "drizzle-orm";
 import { Platform, ALL_PLATFORMS } from "@/lib/plans";
 import { sanitizeMonitorInput, isValidKeyword } from "@/lib/security";
+import { checkApiRateLimit } from "@/lib/rate-limit";
+import { z } from "zod";
+
+const createMonitorV1Schema = z.object({
+  name: z.string().min(1).max(200),
+  keywords: z.array(z.string().max(200)).min(1, "At least one keyword is required"),
+  platforms: z.array(z.string()).min(1, "At least one platform is required"),
+});
 
 export const dynamic = "force-dynamic";
 
@@ -83,30 +91,27 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   return withApiAuth(request, async (userId) => {
     try {
-      const body = await request.json();
-      const { name, keywords, platforms: platformsList } = body;
+      // SECURITY: Rate limit API key-authenticated writes
+      const rateLimit = await checkApiRateLimit(userId, "write");
+      if (!rateLimit.allowed) {
+        return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: { "Retry-After": String(rateLimit.retryAfter ?? 60) } });
+      }
 
-      // Validation
-      if (!name || typeof name !== "string") {
+      let body: unknown;
+      try {
+        body = await request.json();
+      } catch {
+        return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+      }
+
+      const parsed = createMonitorV1Schema.safeParse(body);
+      if (!parsed.success) {
         return NextResponse.json(
-          { error: "Name is required" },
+          { error: "Invalid input", details: parsed.error.flatten() },
           { status: 400 }
         );
       }
-
-      if (!Array.isArray(keywords) || keywords.length === 0) {
-        return NextResponse.json(
-          { error: "At least one keyword is required" },
-          { status: 400 }
-        );
-      }
-
-      if (!Array.isArray(platformsList) || platformsList.length === 0) {
-        return NextResponse.json(
-          { error: "At least one platform is required" },
-          { status: 400 }
-        );
-      }
+      const { name, keywords, platforms: platformsList } = parsed.data;
 
       // Validate platforms against canonical list from plans.ts
       const invalidPlatforms = platformsList.filter(p => !ALL_PLATFORMS.includes(p as Platform));
@@ -144,7 +149,7 @@ export async function POST(request: NextRequest) {
           userId,
           name: sanitizedName,
           keywords: sanitizedKeywords,
-          platforms: platformsList,
+          platforms: platformsList as Platform[],
           isActive: true,
         })
         .returning();

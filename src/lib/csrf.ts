@@ -64,7 +64,8 @@ export function verifyCsrfToken(request: NextRequest): boolean {
     return false;
   }
 
-  // Constant-time comparison to prevent timing attacks
+  // SECURITY: Constant-time comparison to prevent timing attacks
+  // Uses manual XOR because Edge Runtime lacks crypto.timingSafeEqual
   if (cookieToken.length !== headerToken.length) {
     return false;
   }

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "crypto";
 import { db, users } from "@/lib/db";
-import { eq, sql } from "drizzle-orm";
+import { webhookEvents } from "@/lib/db/schema";
+import { eq, and, sql } from "drizzle-orm";
 import { getPlanFromProductId, PolarPlanKey } from "@/lib/polar";
 
 // PERF: Webhook processing may take longer than default 10s — FIX-016
@@ -9,6 +10,7 @@ export const maxDuration = 60;
 import { upsertContact, sendSubscriptionEmail } from "@/lib/email";
 import { captureEvent } from "@/lib/posthog";
 import { activateDayPass } from "@/lib/day-pass";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -102,6 +104,22 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    // SECURITY (SEC-INTEG-008): Idempotency guard — skip duplicate webhook events
+    const eventId = (event.data?.id as string) || `${event.type}-${Date.now()}`;
+    try {
+      await db.insert(webhookEvents).values({
+        eventId,
+        eventType: event.type,
+        provider: "polar",
+      });
+    } catch (dupError: unknown) {
+      // Unique constraint violation = duplicate event — return 200 to stop retries
+      if (dupError instanceof Error && dupError.message?.includes("unique")) {
+        return NextResponse.json({ received: true, duplicate: true });
+      }
+      throw dupError;
+    }
+
     const eventData = event.data;
 
     switch (event.type) {
@@ -248,19 +266,11 @@ export async function POST(request: NextRequest) {
             .where(eq(users.id, user.id));
         }
 
-        // Update contact info
-        await upsertContact({
-          email: user.email,
-          userId: user.id,
-          subscriptionStatus: subscriptionStatus,
-        });
-
-        // Send confirmation email
-        await sendSubscriptionEmail({
-          email: user.email,
-          name: user.name || undefined,
-          plan: plan === "team" ? "Team" : plan.charAt(0).toUpperCase() + plan.slice(1),
-        });
+        // SECURITY (SEC-INTEG-013): Non-blocking side effects — don't let email failure cause 500
+        Promise.all([
+          upsertContact({ email: user.email, userId: user.id, subscriptionStatus: subscriptionStatus }),
+          sendSubscriptionEmail({ email: user.email, name: user.name || undefined, plan: plan === "team" ? "Team" : plan.charAt(0).toUpperCase() + plan.slice(1) }),
+        ]).catch((err) => logger.error("Subscription side effects failed", { error: err }));
 
         // Track in PostHog
         captureEvent({
@@ -318,10 +328,43 @@ export async function POST(request: NextRequest) {
         break;
       }
 
-      case "subscription.canceled":
+      case "subscription.canceled": {
+        // SECURITY (SEC-LOGIC-007): Honor remaining billing period on voluntary cancellation
+        // The user paid for the full period — don't strip access immediately
+        const canceledCustomerId = eventData.customerId as string;
+        const canceledPeriodEnd = eventData.currentPeriodEnd as string | undefined;
+
+        await db
+          .update(users)
+          .set({
+            // Keep current tier until period end; Polar will send subscription.revoked when it actually expires
+            currentPeriodEnd: canceledPeriodEnd ? new Date(canceledPeriodEnd) : undefined,
+            updatedAt: new Date(),
+          })
+          .where(eq(users.polarCustomerId, canceledCustomerId));
+
+        const canceledUser = await db.query.users.findFirst({
+          where: eq(users.polarCustomerId, canceledCustomerId),
+        });
+
+        if (canceledUser) {
+          // SECURITY (SEC-INTEG-013): Non-blocking side effects — don't let email failure cause 500
+          Promise.all([
+            upsertContact({ email: canceledUser.email, userId: canceledUser.id, subscriptionStatus: canceledUser.subscriptionStatus ?? "free" }),
+          ]).catch((err) => logger.error("Cancellation side effects failed", { error: err }));
+
+          captureEvent({
+            distinctId: canceledUser.id,
+            event: "subscription_canceled",
+            properties: { provider: "polar", periodEnd: canceledPeriodEnd },
+          });
+        }
+        break;
+      }
+
       case "subscription.revoked": {
-        // Subscription was canceled or revoked
-        const customerId = eventData.customerId as string;
+        // Subscription actually expired or was revoked — now downgrade to free
+        const revokedCustomerId = eventData.customerId as string;
 
         await db
           .update(users)
@@ -330,26 +373,22 @@ export async function POST(request: NextRequest) {
             subscriptionStatus: "free",
             updatedAt: new Date(),
           })
-          .where(eq(users.polarCustomerId, customerId));
+          .where(eq(users.polarCustomerId, revokedCustomerId));
 
-        // Get user for tracking
-        const user = await db.query.users.findFirst({
-          where: eq(users.polarCustomerId, customerId),
+        const revokedUser = await db.query.users.findFirst({
+          where: eq(users.polarCustomerId, revokedCustomerId),
         });
 
-        if (user) {
-          await upsertContact({
-            email: user.email,
-            userId: user.id,
-            subscriptionStatus: "free",
-          });
+        if (revokedUser) {
+          // SECURITY (SEC-INTEG-013): Non-blocking side effects
+          Promise.all([
+            upsertContact({ email: revokedUser.email, userId: revokedUser.id, subscriptionStatus: "free" }),
+          ]).catch((err) => logger.error("Revocation side effects failed", { error: err }));
 
           captureEvent({
-            distinctId: user.id,
-            event: event.type === "subscription.canceled" ? "subscription_canceled" : "subscription_revoked",
-            properties: {
-              provider: "polar",
-            },
+            distinctId: revokedUser.id,
+            event: "subscription_revoked",
+            properties: { provider: "polar" },
           });
         }
         break;

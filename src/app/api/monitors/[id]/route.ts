@@ -14,6 +14,20 @@ import { Platform, ALL_PLATFORMS } from "@/lib/plans";
 import { sanitizeMonitorInput, isValidKeyword } from "@/lib/security";
 import { logError } from "@/lib/error-logger";
 import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
+import { z } from "zod";
+
+const updateMonitorSchema = z.object({
+  name: z.string().min(1).max(200).optional(),
+  companyName: z.string().min(1).max(200).optional(),
+  keywords: z.array(z.string().max(200)).optional(),
+  platforms: z.array(z.string()).min(1).optional(),
+  isActive: z.boolean().optional(),
+  scheduleEnabled: z.boolean().optional(),
+  scheduleStartHour: z.number().int().min(0).max(23).optional(),
+  scheduleEndHour: z.number().int().min(0).max(23).optional(),
+  scheduleDays: z.array(z.number().int().min(0).max(6)).nullable().optional(),
+  scheduleTimezone: z.string().max(100).optional(),
+});
 
 export const dynamic = "force-dynamic";
 
@@ -84,28 +98,18 @@ export async function PATCH(
     }
 
     const body = await parseJsonBody(request);
+
+    const parsed = updateMonitorSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Invalid input", details: parsed.error.flatten() },
+        { status: 400 }
+      );
+    }
     const { name, companyName, keywords, platforms, isActive,
-      scheduleEnabled, scheduleStartHour, scheduleEndHour, scheduleDays, scheduleTimezone } = body;
+      scheduleEnabled, scheduleStartHour, scheduleEndHour, scheduleDays, scheduleTimezone } = parsed.data;
 
-    // Validate input
-    if (name !== undefined && (typeof name !== "string" || !name.trim())) {
-      return NextResponse.json({ error: "Invalid name" }, { status: 400 });
-    }
-
-    if (companyName !== undefined && (typeof companyName !== "string" || !companyName.trim())) {
-      return NextResponse.json({ error: "Invalid company name" }, { status: 400 });
-    }
-
-    // Keywords are now optional
-    if (keywords !== undefined && !Array.isArray(keywords)) {
-      return NextResponse.json({ error: "Keywords must be an array" }, { status: 400 });
-    }
-
-    if (platforms !== undefined && (!Array.isArray(platforms) || platforms.length === 0)) {
-      return NextResponse.json({ error: "At least one platform is required" }, { status: 400 });
-    }
-
-    // Validate platforms
+    // Validate platforms against canonical list
     if (platforms) {
       const invalidPlatforms = platforms.filter((p: string) => !ALL_PLATFORMS.includes(p as Platform));
       if (invalidPlatforms.length > 0) {
@@ -128,8 +132,8 @@ export async function PATCH(
     // Sanitize keywords if provided (keywords are now optional)
     const sanitizedKeywords: string[] | undefined = keywords
       ? keywords
-          .map((k: string) => (typeof k === "string" ? sanitizeMonitorInput(k) : ""))
-          .filter((k: string) => isValidKeyword(k))
+          .map((k) => sanitizeMonitorInput(k))
+          .filter((k) => isValidKeyword(k))
       : undefined;
 
     // Get user's plan for limit checks
@@ -187,12 +191,12 @@ export async function PATCH(
         ...(sanitizedKeywords !== undefined && { keywords: sanitizedKeywords }),
         ...(platforms !== undefined && { platforms: finalPlatforms }),
         ...(isActive !== undefined && { isActive }),
-        // Schedule settings
-        ...(scheduleEnabled !== undefined && { scheduleEnabled: scheduleEnabled === true }),
-        ...(scheduleStartHour !== undefined && typeof scheduleStartHour === "number" && { scheduleStartHour }),
-        ...(scheduleEndHour !== undefined && typeof scheduleEndHour === "number" && { scheduleEndHour }),
-        ...(scheduleDays !== undefined && { scheduleDays: Array.isArray(scheduleDays) ? scheduleDays : null }),
-        ...(scheduleTimezone !== undefined && typeof scheduleTimezone === "string" && { scheduleTimezone }),
+        // Schedule settings (types guaranteed by Zod)
+        ...(scheduleEnabled !== undefined && { scheduleEnabled }),
+        ...(scheduleStartHour !== undefined && { scheduleStartHour }),
+        ...(scheduleEndHour !== undefined && { scheduleEndHour }),
+        ...(scheduleDays !== undefined && { scheduleDays }),
+        ...(scheduleTimezone !== undefined && { scheduleTimezone }),
         updatedAt: new Date(),
       })
       .where(eq(monitors.id, id))

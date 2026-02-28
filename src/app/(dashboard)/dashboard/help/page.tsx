@@ -1032,7 +1032,7 @@ export default function HelpPage() {
                 Slack Setup
               </h4>
               <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground ml-4">
-                <li>Go to <a href="https://api.slack.com/apps" target="_blank" rel="noopener" className="text-primary hover:underline inline-flex items-center gap-1">api.slack.com/apps <ExternalLink className="h-3 w-3" /></a></li>
+                <li>Go to <a href="https://api.slack.com/apps" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">api.slack.com/apps <ExternalLink className="h-3 w-3" /></a></li>
                 <li>Click <strong>&quot;Create New App&quot;</strong> → <strong>&quot;From scratch&quot;</strong></li>
                 <li>Name it (e.g., &quot;Kaulby Alerts&quot;) and select your workspace</li>
                 <li>Go to <strong>Incoming Webhooks</strong> in the sidebar and toggle it <strong>On</strong></li>

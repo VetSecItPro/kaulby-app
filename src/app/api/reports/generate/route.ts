@@ -10,6 +10,7 @@ import { db, monitors, results } from "@/lib/db";
 import { eq, and, gte, inArray, desc, sql } from "drizzle-orm";
 import { getUserPlan } from "@/lib/limits";
 import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
+import { escapeHtml } from "@/lib/security";
 
 // FIX-212: Add maxDuration for long-running report generation
 export const maxDuration = 60;
@@ -453,9 +454,9 @@ function generateHtmlReport(
       <tbody>
         ${data.topPosts.slice(0, 10).map((p) => `
         <tr>
-          <td><a href="${p.url}" target="_blank">${p.title.slice(0, 60)}${p.title.length > 60 ? "..." : ""}</a></td>
-          <td>${p.platform}</td>
-          <td class="sentiment-${p.sentiment}">${p.sentiment}</td>
+          <td><a href="${escapeHtml(p.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(p.title.slice(0, 60))}${p.title.length > 60 ? "..." : ""}</a></td>
+          <td>${escapeHtml(p.platform)}</td>
+          <td class="sentiment-${escapeHtml(p.sentiment)}">${escapeHtml(p.sentiment)}</td>
           <td>${p.engagement.toLocaleString()}</td>
         </tr>
         `).join("")}

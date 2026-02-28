@@ -3,6 +3,16 @@ import { auth } from "@clerk/nextjs/server";
 import { db, bookmarkCollections, bookmarks } from "@/lib/db";
 import { eq, and, count, desc } from "drizzle-orm";
 import { checkApiRateLimit } from "@/lib/rate-limit";
+import { z } from "zod";
+
+const createCollectionSchema = z.object({
+  name: z.string().trim().min(1).max(100),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+});
+
+const deleteCollectionSchema = z.object({
+  id: z.string().min(1).max(100),
+});
 
 /**
  * GET /api/bookmarks/collections
@@ -65,12 +75,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: { "Retry-After": String(rateLimit.retryAfter ?? 60) } });
   }
 
-  const body = await request.json();
-  const { name, color } = body as { name: string; color?: string };
-
-  if (!name?.trim()) {
-    return NextResponse.json({ error: "Name is required" }, { status: 400 });
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
+
+  const parsed = createCollectionSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Invalid input", details: parsed.error.flatten() },
+      { status: 400 }
+    );
+  }
+  const { name, color } = parsed.data;
 
   // Limit collections per user (prevent abuse)
   const existingCount = await db
@@ -113,12 +132,21 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: { "Retry-After": String(rateLimit.retryAfter ?? 60) } });
   }
 
-  const body = await request.json();
-  const { id } = body as { id: string };
-
-  if (!id) {
-    return NextResponse.json({ error: "Collection ID is required" }, { status: 400 });
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
+
+  const parsed = deleteCollectionSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Invalid input", details: parsed.error.flatten() },
+      { status: 400 }
+    );
+  }
+  const { id } = parsed.data;
 
   const collection = await db.query.bookmarkCollections.findFirst({
     where: and(

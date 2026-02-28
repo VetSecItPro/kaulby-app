@@ -219,35 +219,40 @@ describe("PATCH /api/integrations/discord/channels", () => {
     const res = await PATCH(makeRequest({ channelName: "test" }));
     expect(res.status).toBe(400);
     const json = await res.json();
-    expect(json.error).toBe("channelId is required");
+    expect(json.error).toBe("Invalid input");
+    expect(json.details).toBeDefined();
   });
 
   it("returns 400 when channelId is not a string", async () => {
     const res = await PATCH(makeRequest({ channelId: 123 as never }));
     expect(res.status).toBe(400);
     const json = await res.json();
-    expect(json.error).toBe("channelId is required");
+    expect(json.error).toBe("Invalid input");
+    expect(json.details).toBeDefined();
   });
 
   it("returns 400 when channelId format invalid (too short)", async () => {
     const res = await PATCH(makeRequest({ channelId: "1234567890123456" }));
     expect(res.status).toBe(400);
     const json = await res.json();
-    expect(json.error).toBe("Invalid channel ID format");
+    expect(json.error).toBe("Invalid input");
+    expect(json.details).toBeDefined();
   });
 
   it("returns 400 when channelId format invalid (too long)", async () => {
     const res = await PATCH(makeRequest({ channelId: "123456789012345678901" }));
     expect(res.status).toBe(400);
     const json = await res.json();
-    expect(json.error).toBe("Invalid channel ID format");
+    expect(json.error).toBe("Invalid input");
+    expect(json.details).toBeDefined();
   });
 
   it("returns 400 when channelId format invalid (non-numeric)", async () => {
     const res = await PATCH(makeRequest({ channelId: "abc1234567890123456" }));
     expect(res.status).toBe(400);
     const json = await res.json();
-    expect(json.error).toBe("Invalid channel ID format");
+    expect(json.error).toBe("Invalid input");
+    expect(json.details).toBeDefined();
   });
 
   it("returns 400 when Discord not connected", async () => {

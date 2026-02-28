@@ -6,8 +6,15 @@ import { getPlanLimits } from "@/lib/plans";
 import { getUserPlan } from "@/lib/limits";
 import { DETECTION_CATEGORIES, type DetectionCategory } from "@/lib/detection-defaults";
 import { checkApiRateLimit } from "@/lib/rate-limit";
+import { z } from "zod";
 
 const VALID_CATEGORIES = DETECTION_CATEGORIES.map((c) => c.category);
+
+const updateKeywordsSchema = z.object({
+  category: z.enum(["pain_point", "solution_request", "advice_request", "money_talk", "hot_discussion"]),
+  keywords: z.array(z.string().max(200)).max(200),
+  isActive: z.boolean().optional(),
+});
 
 /**
  * GET /api/user/detection-keywords
@@ -98,20 +105,21 @@ export async function PUT(request: NextRequest) {
     );
   }
 
-  const body = await request.json();
-  const { category, keywords, isActive } = body as {
-    category: string;
-    keywords: string[];
-    isActive?: boolean;
-  };
-
-  if (!category || !VALID_CATEGORIES.includes(category as DetectionCategory)) {
-    return NextResponse.json({ error: "Invalid category" }, { status: 400 });
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  if (!Array.isArray(keywords)) {
-    return NextResponse.json({ error: "Keywords must be an array" }, { status: 400 });
+  const parsed = updateKeywordsSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Invalid input", details: parsed.error.flatten() },
+      { status: 400 }
+    );
   }
+  const { category, keywords, isActive } = parsed.data;
 
   // Sanitize: trim, lowercase, deduplicate, limit to 50 keywords per category
   const cleaned = Array.from(new Set(keywords.map((k) => k.trim().toLowerCase()).filter(Boolean))).slice(0, 50);

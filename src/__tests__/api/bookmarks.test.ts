@@ -116,7 +116,8 @@ describe("POST /api/bookmarks", () => {
     const res = await createBookmark(makeRequest("POST", "/api/bookmarks", {}));
     expect(res.status).toBe(400);
     const json = await res.json();
-    expect(json.error).toBe("resultId is required");
+    expect(json.error).toBe("Invalid input");
+    expect(json.details).toBeDefined();
   });
 
   it("returns 404 when result does not exist", async () => {
@@ -192,7 +193,8 @@ describe("POST /api/bookmarks/collections", () => {
     const res = await createCollection(makeRequest("POST", "/api/bookmarks/collections", { name: "  " }));
     expect(res.status).toBe(400);
     const json = await res.json();
-    expect(json.error).toBe("Name is required");
+    expect(json.error).toBe("Invalid input");
+    expect(json.details).toBeDefined();
   });
 
   it("returns 400 when max collections reached", async () => {
@@ -240,7 +242,8 @@ describe("DELETE /api/bookmarks/collections", () => {
     const res = await deleteCollection(makeRequest("DELETE", "/api/bookmarks/collections", {}));
     expect(res.status).toBe(400);
     const json = await res.json();
-    expect(json.error).toBe("Collection ID is required");
+    expect(json.error).toBe("Invalid input");
+    expect(json.details).toBeDefined();
   });
 
   it("returns 404 when collection not found", async () => {

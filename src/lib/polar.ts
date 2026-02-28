@@ -269,6 +269,12 @@ export function getPlanFromProductId(productId: string): PolarPlanKey {
 
   if (productId === proMonthly || productId === proAnnual) return "pro";
   if (productId === teamMonthly || productId === teamAnnual) return "team";
+
+  // SECURITY (SEC-LOGIC-001): Log unknown product IDs — silent fallback masks misconfiguration
+  logger.warn("Unknown Polar product ID — falling back to free tier", {
+    productId,
+    configuredIds: { proMonthly, proAnnual, teamMonthly, teamAnnual },
+  });
   return "free";
 }
 
