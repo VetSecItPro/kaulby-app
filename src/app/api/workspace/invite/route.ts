@@ -8,6 +8,11 @@ import { sendWorkspaceInviteEmail } from "@/lib/email";
 import { findUserWithFallback } from "@/lib/auth-utils";
 import { logActivity } from "@/lib/activity-log";
 import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
+import { z } from "zod";
+
+const createInviteSchema = z.object({
+  email: z.string().email("Invalid email format").max(320),
+});
 
 export const dynamic = "force-dynamic";
 
@@ -80,17 +85,15 @@ export async function POST(request: Request) {
     }
 
     const body = await parseJsonBody(request);
-    const { email } = body;
 
-    if (!email || typeof email !== "string") {
-      return NextResponse.json({ error: "Email is required" }, { status: 400 });
+    const parsed = createInviteSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Invalid input", details: parsed.error.flatten() },
+        { status: 400 }
+      );
     }
-
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
-    }
+    const { email } = parsed.data;
 
     // Get user (with email fallback for Clerk ID mismatch)
     const user = await findUserWithFallback(userId);

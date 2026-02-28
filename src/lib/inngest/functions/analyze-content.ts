@@ -256,7 +256,13 @@ export const analyzeContent = inngest.createFunction(
       }
     }
 
-    const contentToAnalyze = `${result.title}\n\n${result.content || ""}`;
+    // SECURITY (SEC-LLM-001): Truncate scraped content to prevent prompt injection via oversized input
+    // AI output is Zod-validated, so impact of injection is limited to analysis accuracy
+    const MAX_CONTENT_LENGTH = 12000; // ~3k tokens — sufficient for analysis, prevents abuse
+    const rawContent = `${result.title}\n\n${result.content || ""}`;
+    const contentToAnalyze = rawContent.length > MAX_CONTENT_LENGTH
+      ? rawContent.slice(0, MAX_CONTENT_LENGTH) + "\n\n[Content truncated for analysis]"
+      : rawContent;
     const analysisTier = planCheck.useComprehensiveAnalysis ? "team" : "pro";
     const cacheKey = generateContentHash(contentToAnalyze, analysisTier);
 

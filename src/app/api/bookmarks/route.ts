@@ -3,6 +3,13 @@ import { auth } from "@clerk/nextjs/server";
 import { db, bookmarks, bookmarkCollections, results } from "@/lib/db";
 import { eq, and, desc } from "drizzle-orm";
 import { checkApiRateLimit } from "@/lib/rate-limit";
+import { z } from "zod";
+
+const createBookmarkSchema = z.object({
+  resultId: z.string().min(1).max(100),
+  collectionId: z.string().max(100).optional(),
+  note: z.string().max(1000).optional(),
+});
 
 /**
  * GET /api/bookmarks
@@ -60,16 +67,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: { "Retry-After": String(rateLimit.retryAfter ?? 60) } });
   }
 
-  const body = await request.json();
-  const { resultId, collectionId, note } = body as {
-    resultId: string;
-    collectionId?: string;
-    note?: string;
-  };
-
-  if (!resultId) {
-    return NextResponse.json({ error: "resultId is required" }, { status: 400 });
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
+
+  const parsed = createBookmarkSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Invalid input", details: parsed.error.flatten() },
+      { status: 400 }
+    );
+  }
+  const { resultId, collectionId, note } = parsed.data;
 
   // Verify result exists and check for duplicate in parallel (independent queries)
   const [result, existing] = await Promise.all([

@@ -63,10 +63,9 @@ export async function POST() {
     if (error instanceof Error) {
       console.error("Portal session creation failed:", error.message);
     }
-    // Check if it's a Polar API error with more details
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    // SECURITY: Never expose internal error details to client
     return NextResponse.json(
-      { error: "Failed to create portal session", details: errorMessage },
+      { error: "Failed to create portal session" },
       { status: 500 }
     );
   }

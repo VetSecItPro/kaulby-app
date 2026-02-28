@@ -160,7 +160,8 @@ describe("POST /api/monitors", () => {
     const res = await createMonitor(makeRequest("POST", "/api/monitors", { ...validBody, name: "" }));
     expect(res.status).toBe(400);
     const json = await res.json();
-    expect(json.error).toContain("Name is required");
+    expect(json.error).toBe("Invalid input");
+    expect(json.details).toBeDefined();
   });
 
   it("returns 400 when companyName is missing", async () => {
@@ -169,7 +170,8 @@ describe("POST /api/monitors", () => {
     const res = await createMonitor(makeRequest("POST", "/api/monitors", { ...validBody, companyName: "" }));
     expect(res.status).toBe(400);
     const json = await res.json();
-    expect(json.error).toContain("Company/brand name is required");
+    expect(json.error).toBe("Invalid input");
+    expect(json.details).toBeDefined();
   });
 
   it("returns 400 when platforms is empty", async () => {
@@ -178,7 +180,8 @@ describe("POST /api/monitors", () => {
     const res = await createMonitor(makeRequest("POST", "/api/monitors", { ...validBody, platforms: [] }));
     expect(res.status).toBe(400);
     const json = await res.json();
-    expect(json.error).toContain("platform");
+    expect(json.error).toBe("Invalid input");
+    expect(json.details).toBeDefined();
   });
 
   it("returns 403 when monitor limit reached", async () => {

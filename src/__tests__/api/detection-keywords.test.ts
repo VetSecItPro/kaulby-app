@@ -133,7 +133,8 @@ describe("PUT /api/user/detection-keywords", () => {
     const res = await PUT(makeRequest("PUT", { category: "invalid_cat", keywords: ["test"] }));
     expect(res.status).toBe(400);
     const json = await res.json();
-    expect(json.error).toBe("Invalid category");
+    expect(json.error).toBe("Invalid input");
+    expect(json.details).toBeDefined();
   });
 
   it("returns 400 when keywords is not an array", async () => {
@@ -142,7 +143,8 @@ describe("PUT /api/user/detection-keywords", () => {
     const res = await PUT(makeRequest("PUT", { category: "pain_point", keywords: "not-array" }));
     expect(res.status).toBe(400);
     const json = await res.json();
-    expect(json.error).toBe("Keywords must be an array");
+    expect(json.error).toBe("Invalid input");
+    expect(json.details).toBeDefined();
   });
 
   it("returns 403 for free tier users", async () => {

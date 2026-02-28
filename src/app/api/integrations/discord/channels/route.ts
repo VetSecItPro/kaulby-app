@@ -13,6 +13,12 @@ import { listGuildTextChannels } from "@/lib/integrations/discord";
 import { decryptIntegrationData, encryptIntegrationData } from "@/lib/encryption";
 import { checkApiRateLimit } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
+import { z } from "zod";
+
+const saveChannelSchema = z.object({
+  channelId: z.string().regex(/^\d{17,20}$/, "Invalid Discord channel ID format"),
+  channelName: z.string().max(100).optional(),
+});
 
 /**
  * GET /api/integrations/discord/channels
@@ -104,23 +110,21 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
-    const { channelId, channelName } = body as { channelId?: string; channelName?: string };
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
 
-    if (!channelId || typeof channelId !== "string") {
+    const parsed = saveChannelSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "channelId is required" },
+        { error: "Invalid input", details: parsed.error.flatten() },
         { status: 400 }
       );
     }
-
-    // Validate channelId format (Discord snowflake: 17-20 digit number)
-    if (!/^\d{17,20}$/.test(channelId)) {
-      return NextResponse.json(
-        { error: "Invalid channel ID format" },
-        { status: 400 }
-      );
-    }
+    const { channelId, channelName } = parsed.data;
 
     const user = await db.query.users.findFirst({
       where: eq(users.id, userId),

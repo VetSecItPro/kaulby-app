@@ -168,7 +168,8 @@ export async function jsonCompletion<T>(params: {
       },
     };
   } catch {
-    throw new Error(`Failed to parse JSON response: ${result.content}`);
+    // SECURITY: Don't leak raw AI response content in error messages
+    throw new Error("Failed to parse JSON response from AI model");
   }
 }
 

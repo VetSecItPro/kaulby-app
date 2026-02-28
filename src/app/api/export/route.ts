@@ -141,25 +141,37 @@ export async function GET(request: Request) {
       });
     }
 
-    // Get user's audiences
+    // Get user's audiences (bounded to prevent OOM)
     const userAudiences = await db.query.audiences.findMany({
       where: eq(audiences.userId, userId),
+      limit: 1000,
       with: {
         communities: true,
         audienceMonitors: true,
       },
     });
 
-    // Get user's webhooks
+    // Get user's webhooks (exclude secrets from export)
     const userWebhooks = await db.query.webhooks.findMany({
       where: eq(webhooks.userId, userId),
+      limit: 1000,
+      columns: {
+        id: true,
+        name: true,
+        url: true,
+        events: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
 
-    // Get user's alerts
+    // Get user's alerts (bounded to prevent OOM)
     const userAlerts =
       monitorIds.length > 0
         ? await db.query.alerts.findMany({
             where: inArray(alerts.monitorId, monitorIds),
+            limit: 10000,
           })
         : [];
 

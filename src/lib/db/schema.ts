@@ -920,6 +920,17 @@ export const bookmarksRelations = relations(bookmarks, ({ one }) => ({
   }),
 }));
 
+// SECURITY (SEC-INTEG-008): Webhook event deduplication table for idempotency
+export const webhookEvents = pgTable("webhook_events", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  eventId: text("event_id").notNull(),
+  eventType: text("event_type").notNull(),
+  provider: text("provider").notNull().default("polar"),
+  processedAt: timestamp("processed_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("webhook_events_event_id_provider_idx").on(table.eventId, table.provider),
+]);
+
 // Type exports
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;

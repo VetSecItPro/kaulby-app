@@ -6,6 +6,31 @@ import { eq, and } from "drizzle-orm";
 import crypto from "crypto";
 import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
 
+// SECURITY (SEC-SSRF-001): Validate webhook URLs to prevent SSRF
+function isValidWebhookUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    // Must be HTTPS in production
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return false;
+    // Block private/internal IP ranges
+    const hostname = parsed.hostname.toLowerCase();
+    if (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "0.0.0.0" ||
+      hostname.startsWith("10.") ||
+      hostname.startsWith("172.") ||
+      hostname.startsWith("192.168.") ||
+      hostname === "169.254.169.254" || // AWS metadata
+      hostname.endsWith(".internal") ||
+      hostname.endsWith(".local")
+    ) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export const dynamic = "force-dynamic";
 
 // POST - Create new webhook
@@ -42,6 +67,14 @@ export async function POST(request: NextRequest) {
     if (!name || !url) {
       return NextResponse.json(
         { error: "Name and URL are required" },
+        { status: 400 }
+      );
+    }
+
+    // SECURITY (SEC-SSRF-001): Validate webhook URL before storing
+    if (!isValidWebhookUrl(url)) {
+      return NextResponse.json(
+        { error: "Invalid webhook URL. Must be a public HTTPS URL." },
         { status: 400 }
       );
     }
@@ -109,6 +142,14 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json(
         { error: "Webhook not found" },
         { status: 404 }
+      );
+    }
+
+    // SECURITY (SEC-SSRF-001): Validate new URL if provided
+    if (url && !isValidWebhookUrl(url)) {
+      return NextResponse.json(
+        { error: "Invalid webhook URL. Must be a public HTTPS URL." },
+        { status: 400 }
       );
     }
 

@@ -16,30 +16,33 @@ import { captureEvent } from "@/lib/posthog";
 import { logError } from "@/lib/error-logger";
 import { getEffectiveUserId, isLocalDev as checkIsLocalDev } from "@/lib/dev-auth";
 import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
+import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
 const validMonitorTypes = ["keyword", "ai_discovery"];
 
-/** Validate and sanitize monitor creation input */
-function validateMonitorInput(body: Record<string, unknown>) {
-  const { name, companyName, keywords, monitorType, discoveryPrompt, platforms } = body;
+const createMonitorSchema = z.object({
+  name: z.string().min(1).max(200),
+  companyName: z.string().min(1).max(200),
+  keywords: z.array(z.string().max(200)).optional().default([]),
+  monitorType: z.enum(["keyword", "ai_discovery"]).optional().default("keyword"),
+  discoveryPrompt: z.string().max(1000).optional(),
+  platforms: z.array(z.string()).min(1, "At least one platform is required"),
+  platformUrls: z.record(z.string(), z.string().max(500)).optional().default({}),
+  searchQuery: z.string().max(500).optional(),
+  scheduleEnabled: z.boolean().optional().default(false),
+  scheduleStartHour: z.number().int().min(0).max(23).optional().default(9),
+  scheduleEndHour: z.number().int().min(0).max(23).optional().default(17),
+  scheduleDays: z.array(z.number().int().min(0).max(6)).optional(),
+  scheduleTimezone: z.string().max(100).optional().default("America/New_York"),
+});
 
-  // Validate input
-  if (!name || typeof name !== "string") {
-    return { error: "Name is required", status: 400 };
-  }
-
-  if (!companyName || typeof companyName !== "string") {
-    return { error: "Company/brand name is required", status: 400 };
-  }
-
-  // Validate monitor type (defaults to "keyword" for backwards compatibility)
-  const sanitizedMonitorType = (typeof monitorType === "string" && validMonitorTypes.includes(monitorType)) ? (monitorType as "keyword" | "ai_discovery") : "keyword";
-
+/** Validate Zod-parsed monitor input and apply sanitization */
+function sanitizeMonitorFields(data: z.infer<typeof createMonitorSchema>) {
   // Validate AI Discovery mode requirements
-  if (sanitizedMonitorType === "ai_discovery") {
-    if (!discoveryPrompt || typeof discoveryPrompt !== "string" || !discoveryPrompt.trim()) {
+  if (data.monitorType === "ai_discovery") {
+    if (!data.discoveryPrompt?.trim()) {
       return {
         error: "Discovery prompt is required for AI Discovery mode",
         status: 400,
@@ -47,31 +50,23 @@ function validateMonitorInput(body: Record<string, unknown>) {
     }
   }
 
-  // Sanitize discovery prompt if provided (max 1000 chars for detailed prompts)
-  const sanitizedDiscoveryPrompt = discoveryPrompt && typeof discoveryPrompt === "string"
-    ? discoveryPrompt.trim().slice(0, 1000)
-    : null;
+  // Sanitize discovery prompt if provided
+  const sanitizedDiscoveryPrompt = data.discoveryPrompt?.trim() || null;
 
-  // Keywords are now optional - sanitize if provided
-  const sanitizedKeywords = Array.isArray(keywords)
-    ? keywords
-        .map((k: string) => (typeof k === "string" ? sanitizeMonitorInput(k) : ""))
-        .filter((k) => isValidKeyword(k))
-    : [];
-
-  if (!platforms || !Array.isArray(platforms) || platforms.length === 0) {
-    return { error: "At least one platform is required", status: 400 };
-  }
+  // Sanitize keywords
+  const sanitizedKeywords = data.keywords
+    .map((k) => sanitizeMonitorInput(k))
+    .filter((k) => isValidKeyword(k));
 
   // Validate platforms against canonical list from plans.ts
-  const invalidPlatforms = platforms.filter((p: string) => !ALL_PLATFORMS.includes(p as Platform));
+  const invalidPlatforms = data.platforms.filter((p) => !ALL_PLATFORMS.includes(p as Platform));
   if (invalidPlatforms.length > 0) {
     return { error: `Invalid platforms: ${invalidPlatforms.join(", ")}`, status: 400 };
   }
 
   return {
     sanitizedData: {
-      sanitizedMonitorType,
+      sanitizedMonitorType: data.monitorType,
       sanitizedDiscoveryPrompt,
       sanitizedKeywords,
     },
@@ -132,19 +127,17 @@ async function checkMonitorLimits(
 }
 
 /** Sanitize platform URLs */
-function sanitizePlatformUrls(platformUrls: Record<string, unknown>): Record<string, string> {
+function sanitizePlatformUrls(platformUrls: Record<string, string>): Record<string, string> {
   const sanitizedPlatformUrls: Record<string, string> = {};
-  if (platformUrls && typeof platformUrls === "object") {
-    for (const [platform, url] of Object.entries(platformUrls)) {
-      if (typeof url === "string" && url.trim()) {
-        // Basic URL validation - allow Google Maps URLs, Trustpilot, App Store, Play Store, and Place IDs
-        const trimmedUrl = url.trim();
-        if (
-          trimmedUrl.startsWith("https://") ||
-          trimmedUrl.startsWith("ChI") // Google Place ID
-        ) {
-          sanitizedPlatformUrls[platform] = trimmedUrl.slice(0, 500); // Max 500 chars
-        }
+  for (const [platform, url] of Object.entries(platformUrls)) {
+    if (url.trim()) {
+      // Basic URL validation - allow Google Maps URLs, Trustpilot, App Store, Play Store, and Place IDs
+      const trimmedUrl = url.trim();
+      if (
+        trimmedUrl.startsWith("https://") ||
+        trimmedUrl.startsWith("ChI") // Google Place ID
+      ) {
+        sanitizedPlatformUrls[platform] = trimmedUrl.slice(0, 500); // Max 500 chars
       }
     }
   }
@@ -190,11 +183,19 @@ export async function POST(request: Request) {
     await ensureDevUserExists(userId);
 
     const body = await parseJsonBody(request, 51200); // 50KB limit for monitor creation
-    const { name, companyName, searchQuery, platforms, platformUrls,
-      scheduleEnabled, scheduleStartHour, scheduleEndHour, scheduleDays, scheduleTimezone } = body;
 
-    // Validate input
-    const validationResult = validateMonitorInput(body);
+    const parsed = createMonitorSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Invalid input", details: parsed.error.flatten() },
+        { status: 400 }
+      );
+    }
+    const { name, companyName, searchQuery, platforms, platformUrls,
+      scheduleEnabled, scheduleStartHour, scheduleEndHour, scheduleDays, scheduleTimezone } = parsed.data;
+
+    // Apply security sanitization on validated input
+    const validationResult = sanitizeMonitorFields(parsed.data);
     if ("error" in validationResult) {
       return NextResponse.json({ error: validationResult.error }, { status: validationResult.status });
     }
