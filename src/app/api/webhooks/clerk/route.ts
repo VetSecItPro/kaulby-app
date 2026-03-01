@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Webhook } from "svix";
 import { WebhookEvent } from "@clerk/nextjs/server";
 import { db, users } from "@/lib/db";
+import { webhookEvents } from "@/lib/db/schema";
 
 // PERF: Webhook processing may take longer than default 10s — FIX-016
 export const maxDuration = 60;
@@ -49,6 +50,21 @@ export async function POST(request: NextRequest) {
       { error: "Invalid signature" },
       { status: 400 }
     );
+  }
+
+  // SECURITY (SEC-INTEG-008): Idempotency guard — prevent duplicate event processing
+  const eventId = svix_id;
+  try {
+    await db.insert(webhookEvents).values({
+      eventId,
+      eventType: event.type,
+      provider: "clerk",
+    });
+  } catch (dupError: unknown) {
+    if (dupError instanceof Error && dupError.message?.includes("unique")) {
+      return NextResponse.json({ received: true, duplicate: true });
+    }
+    throw dupError;
   }
 
   try {

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { escapeHtml, sanitizeForLog } from "@/lib/security";
+import { db } from "@/lib/db";
+import { webhookEvents } from "@/lib/db/schema";
 
 export const dynamic = "force-dynamic";
 // PERF: Email webhook processing may take longer than default 10s — FIX-016
@@ -49,6 +51,21 @@ export async function POST(request: NextRequest) {
 
     // Resend wraps email data in "data" object
     const email = payload.data || payload;
+
+    // SECURITY (SEC-INTEG-008): Idempotency guard — prevent duplicate email forwarding
+    const eventId = email.email_id || payload.id || `resend-${Date.now()}`;
+    try {
+      await db.insert(webhookEvents).values({
+        eventId,
+        eventType: (payload as Record<string, unknown>)?.type as string || "email.received",
+        provider: "resend",
+      });
+    } catch (dupError: unknown) {
+      if (dupError instanceof Error && dupError.message?.includes("unique")) {
+        return NextResponse.json({ received: true, duplicate: true });
+      }
+      throw dupError;
+    }
     const { from, to, subject } = email;
     let { text, html } = email;
 

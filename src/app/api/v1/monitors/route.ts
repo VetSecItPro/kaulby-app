@@ -6,6 +6,7 @@ import { eq, desc, count } from "drizzle-orm";
 import { Platform, ALL_PLATFORMS } from "@/lib/plans";
 import { sanitizeMonitorInput, isValidKeyword } from "@/lib/security";
 import { checkApiRateLimit } from "@/lib/rate-limit";
+import { getUserPlan, canCreateMonitor, checkKeywordsLimit, filterAllowedPlatforms, getUpgradePrompt } from "@/lib/limits";
 import { z } from "zod";
 
 const createMonitorV1Schema = z.object({
@@ -142,14 +143,41 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Create monitor
+      // SECURITY (SEC-LOGIC-012): Enforce plan limits on v1 API — same as dashboard route
+      const plan = await getUserPlan(userId);
+
+      const monitorCheck = await canCreateMonitor(userId);
+      if (!monitorCheck.allowed) {
+        return NextResponse.json(
+          { error: monitorCheck.message, upgrade: getUpgradePrompt(plan, "monitors") },
+          { status: 403 }
+        );
+      }
+
+      const keywordCheck = checkKeywordsLimit(sanitizedKeywords, plan);
+      if (!keywordCheck.allowed) {
+        return NextResponse.json(
+          { error: keywordCheck.message, upgrade: getUpgradePrompt(plan, "keywords") },
+          { status: 403 }
+        );
+      }
+
+      const allowedPlatforms = await filterAllowedPlatforms(userId, platformsList as Platform[]);
+      if (allowedPlatforms.length === 0) {
+        return NextResponse.json(
+          { error: "None of the requested platforms are available on your plan", upgrade: getUpgradePrompt(plan, "platform") },
+          { status: 403 }
+        );
+      }
+
+      // Create monitor with plan-filtered platforms
       const [newMonitor] = await db
         .insert(monitors)
         .values({
           userId,
           name: sanitizedName,
           keywords: sanitizedKeywords,
-          platforms: platformsList as Platform[],
+          platforms: allowedPlatforms,
           isActive: true,
         })
         .returning();
