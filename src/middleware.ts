@@ -111,6 +111,31 @@ export default async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // RT-002: CSRF — Verify Origin header on mutation requests to API routes.
+  // Blocks cross-origin POST/PUT/PATCH/DELETE from malicious sites.
+  // Webhook/inngest/v1/polar routes are excluded above (they use their own auth).
+  if (
+    pathname.startsWith("/api/") &&
+    ["POST", "PUT", "PATCH", "DELETE"].includes(request.method)
+  ) {
+    const origin = request.headers.get("origin");
+    if (origin) {
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+      const allowedOrigins = new Set([
+        new URL(appUrl).origin,
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://localhost:3002",
+      ]);
+      if (!allowedOrigins.has(origin)) {
+        return NextResponse.json(
+          { error: "Cross-origin request blocked" },
+          { status: 403 }
+        );
+      }
+    }
+  }
+
   // PERF: Cache Clerk config check — env vars don't change at runtime — FIX-021
   const isClerkConfigured = clerkConfigured();
 

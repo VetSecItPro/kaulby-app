@@ -30,3 +30,6 @@ export {
   sanitizeMonitorInput,
   isValidKeyword,
 } from "./sanitize";
+
+// HMAC signing for email tracking URLs (RT-001 open redirect fix)
+export { signTrackingParams, verifyTrackingSignature } from "./hmac";
