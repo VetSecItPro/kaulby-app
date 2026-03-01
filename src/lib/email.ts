@@ -6,6 +6,7 @@ import {
   type WeeklyReportData,
 } from "./email/digest-templates";
 import { escapeHtml } from "./security/sanitize";
+import { signTrackingParams } from "./security/hmac";
 
 // Re-export types for convenience
 export type { DigestMention, DailyDigestData, WeeklyReportData };
@@ -39,6 +40,9 @@ function trackLink(url: string, emailId: string, userId: string, emailType: stri
   });
   if (extras?.resultId) params.set("rid", extras.resultId);
   if (extras?.monitorId) params.set("mid", extras.monitorId);
+  // RT-001: HMAC signature prevents open redirect abuse
+  const sig = signTrackingParams({ eid: emailId, uid: userId, type: emailType, url });
+  params.set("sig", sig);
   return `${TRACK_URL}/click?${params.toString()}`;
 }
 

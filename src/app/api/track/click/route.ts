@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { emailEvents } from "@/lib/db/schema";
-import { sanitizeUrl, isValidUuid } from "@/lib/security";
+import { sanitizeUrl, isValidUuid, verifyTrackingSignature } from "@/lib/security";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -11,9 +11,20 @@ export async function GET(request: NextRequest) {
   const url = searchParams.get("url");
   const resultId = searchParams.get("rid");
   const monitorId = searchParams.get("mid");
+  const sig = searchParams.get("sig");
 
   // If no URL provided, redirect to dashboard
   if (!url) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
+  // RT-001: Verify HMAC signature to prevent open redirect abuse.
+  // Only app-generated tracking URLs (signed in email.ts) are accepted.
+  if (!sig || !emailId || !userId || !emailType) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
+  if (!verifyTrackingSignature({ eid: emailId, uid: userId, type: emailType, url }, sig)) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 

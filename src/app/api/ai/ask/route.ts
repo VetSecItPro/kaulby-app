@@ -274,9 +274,11 @@ export async function POST(req: Request) {
     const relevantResults = await searchRelevantResults(userId, question, monitorIds);
     const resultsContext = formatResultsContext(relevantResults);
 
-    // Build messages (limited conversation history for token efficiency)
+    // RT-004: Scraped data is wrapped in delimiters to reduce prompt injection risk.
+    // The system prompt is separate from untrusted external content.
     const messages: { role: "system" | "user" | "assistant"; content: string }[] = [
-      { role: "system", content: `${SYSTEM_PROMPT}\n\n${resultsContext}` },
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: `<MONITOR_DATA>\n${resultsContext}\n</MONITOR_DATA>` },
     ];
 
     // Add last 4 messages only (not 6)
