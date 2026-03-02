@@ -35,7 +35,7 @@ async function initPostHog() {
     const posthog = (await import("posthog-js")).default;
     if (!posthog.__loaded) {
       posthog.init(key, {
-        api_host: host || "https://us.posthog.com",
+        api_host: host || "https://us.i.posthog.com",
         capture_pageview: true,
         capture_pageleave: true,
         persistence: "localStorage",
