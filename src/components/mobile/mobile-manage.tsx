@@ -8,6 +8,7 @@ import {
   DollarSign,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { getPlatformBarColor, getSentimentBarColor, getPlatformDisplayName } from "@/lib/platform-utils";
 
@@ -117,6 +118,7 @@ export function MobileManage({
           value={stats.totalUsers}
           sublabel={`+${stats.usersToday} today`}
           color="bg-blue-500/10 text-blue-500"
+          href="/manage/users"
         />
         <MobileStatCard
           icon={Radio}
@@ -124,6 +126,7 @@ export function MobileManage({
           value={stats.activeMonitors}
           sublabel={`${stats.totalMonitors} total`}
           color="bg-teal-500/10 text-teal-500"
+          href="/manage/monitors"
         />
         <MobileStatCard
           icon={MessageSquare}
@@ -131,6 +134,7 @@ export function MobileManage({
           value={stats.totalResults}
           sublabel={`+${stats.resultsToday} today`}
           color="bg-purple-500/10 text-purple-500"
+          href="/manage/results"
         />
         <MobileStatCard
           icon={DollarSign}
@@ -138,6 +142,7 @@ export function MobileManage({
           value={`$${stats.totalAiCost.toFixed(2)}`}
           sublabel="All time"
           color="bg-amber-500/10 text-amber-500"
+          href="/manage/costs"
         />
       </motion.div>
 
@@ -344,27 +349,31 @@ function MobileStatCard({
   value,
   sublabel,
   color,
+  href,
 }: {
   icon: React.ElementType;
   label: string;
   value: string | number;
   sublabel: string;
   color: string;
+  href: string;
 }) {
   return (
-    <motion.div whileTap={{ scale: 0.98 }}>
-      <Card>
-        <CardContent className="p-4">
-          <div className={`p-2 rounded-full w-fit ${color} mb-3`}>
-            <Icon className="h-4 w-4" />
-          </div>
-          <p className="text-2xl font-bold">{value}</p>
-          <p className="text-xs text-muted-foreground">
-            {label} <span className="opacity-70">{sublabel}</span>
-          </p>
-        </CardContent>
-      </Card>
-    </motion.div>
+    <Link href={href}>
+      <motion.div whileTap={{ scale: 0.98 }}>
+        <Card>
+          <CardContent className="p-4">
+            <div className={`p-2 rounded-full w-fit ${color} mb-3`}>
+              <Icon className="h-4 w-4" />
+            </div>
+            <p className="text-2xl font-bold">{value}</p>
+            <p className="text-xs text-muted-foreground">
+              {label} <span className="opacity-70">{sublabel}</span>
+            </p>
+          </CardContent>
+        </Card>
+      </motion.div>
+    </Link>
   );
 }
 

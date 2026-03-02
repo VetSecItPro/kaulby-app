@@ -1,7 +1,9 @@
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { ResponsiveDashboardLayout } from "@/components/dashboard/responsive-dashboard-layout";
 import { db } from "@/lib/db";
+import { users } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 
 export default async function ManageLayout({
   children,
@@ -24,10 +26,33 @@ export default async function ManageLayout({
       redirect("/sign-in");
     }
 
-    const dbUser = await db.query.users.findFirst({
-      where: (users, { eq }) => eq(users.id, userId),
-      columns: { isAdmin: true, subscriptionStatus: true },
+    const userColumns = { isAdmin: true, subscriptionStatus: true } as const;
+    let dbUser = await db.query.users.findFirst({
+      where: (u, { eq }) => eq(u.id, userId),
+      columns: userColumns,
     });
+
+    // Fallback: if not found by Clerk ID, try by email (handles Clerk ID mismatch)
+    // Mirrors the same fallback in (dashboard)/layout.tsx
+    if (!dbUser) {
+      const user = await currentUser();
+      const clerkEmail = user?.emailAddresses[0]?.emailAddress;
+      if (clerkEmail) {
+        dbUser = await db.query.users.findFirst({
+          where: (u, { eq }) => eq(u.email, clerkEmail),
+          columns: userColumns,
+        });
+
+        // If found by email, update the Clerk ID so future lookups work directly
+        if (dbUser) {
+          db.update(users)
+            .set({ updatedAt: new Date() })
+            .where(eq(users.email, clerkEmail))
+            .execute()
+            .catch(() => {});
+        }
+      }
+    }
 
     if (!dbUser?.isAdmin) {
       redirect("/dashboard");
