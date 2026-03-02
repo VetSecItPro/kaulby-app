@@ -273,7 +273,7 @@ export function UsersManagement({
                     <TableCell className="hidden lg:table-cell">
                       {user.aiCallsThisMonth}
                     </TableCell>
-                    <TableCell className="hidden md:table-cell text-muted-foreground">
+                    <TableCell className="hidden md:table-cell text-muted-foreground" suppressHydrationWarning>
                       {new Date(user.createdAt).toLocaleDateString()}
                     </TableCell>
                     <TableCell>
