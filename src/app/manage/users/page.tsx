@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { users, monitors, usage } from "@/lib/db/schema";
-import { eq, count, desc, like, or, sql, and, gte } from "drizzle-orm";
+import { eq, count, desc, like, or, sql, and, gte, inArray } from "drizzle-orm";
 import { UsersManagement } from "@/components/admin/users-management";
 
 interface SearchParams {
@@ -74,7 +74,7 @@ async function getUsers(searchParams: SearchParams) {
       count: count(),
     })
     .from(monitors)
-    .where(sql`${monitors.userId} = ANY(${userIds})`)
+    .where(inArray(monitors.userId, userIds))
     .groupBy(monitors.userId) : [];
 
   // Get current month usage for each user
@@ -90,7 +90,7 @@ async function getUsers(searchParams: SearchParams) {
     })
     .from(usage)
     .where(and(
-      sql`${usage.userId} = ANY(${userIds})`,
+      inArray(usage.userId, userIds),
       gte(usage.periodStart, startOfMonth)
     ))
     .groupBy(usage.userId) : [];
@@ -141,10 +141,19 @@ export default async function UsersPage({
 }) {
   // Admin access is enforced by manage/layout.tsx (with Clerk ID email fallback)
   const params = await searchParams;
-  const [usersData, planCounts] = await Promise.all([
-    getUsers(params),
-    getPlanCounts(),
-  ]);
+
+  let usersData: Awaited<ReturnType<typeof getUsers>>;
+  let planCounts: Awaited<ReturnType<typeof getPlanCounts>>;
+
+  try {
+    [usersData, planCounts] = await Promise.all([
+      getUsers(params),
+      getPlanCounts(),
+    ]);
+  } catch (error) {
+    console.error("[manage/users] Failed to load user data:", error);
+    throw error;
+  }
 
   return (
     <UsersManagement
