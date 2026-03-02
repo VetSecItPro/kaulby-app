@@ -85,6 +85,10 @@ const nextConfig = {
     ];
   },
 
+  // Exclude ws from serverless bundling — it uses native Buffer.mask()
+  // which breaks when minified by Next.js (causes "b.mask is not a function")
+  serverExternalPackages: ['ws'],
+
   // Enable experimental features for performance
   experimental: {
     // Optimize package imports (tree-shaking)
