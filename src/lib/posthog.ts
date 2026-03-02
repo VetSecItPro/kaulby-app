@@ -24,7 +24,7 @@ function getPostHog(): PostHog | null {
   if (!posthogClient) {
     try {
       posthogClient = new PostHog(POSTHOG_KEY!, {
-        host: POSTHOG_HOST || "https://us.posthog.com",
+        host: POSTHOG_HOST || "https://us.i.posthog.com",
         flushAt: 1, // Flush immediately for serverless
         flushInterval: 0,
       });
