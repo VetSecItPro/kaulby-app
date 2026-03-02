@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { monitors, users, results } from "@/lib/db/schema";
-import { count, desc, sql, eq } from "drizzle-orm";
+import { count, desc, sql, eq, inArray } from "drizzle-orm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -49,14 +49,15 @@ async function getMonitorStats() {
           count: count(),
         })
         .from(results)
-        .where(sql`${results.monitorId} IN ${monitorIds}`)
+        .where(inArray(results.monitorId, monitorIds))
         .groupBy(results.monitorId)
     : [];
 
   const resultCountMap = new Map(resultCounts.map((r) => [r.monitorId, r.count]));
 
   // Summary stats
-  const [totalActive, totalInactive, byPlatform, byPlan] = await Promise.all([
+  const [totalCount, totalActive, totalInactive, byPlatform, byPlan, uniqueUserCount] = await Promise.all([
+    db.select({ count: count() }).from(monitors),
     db.select({ count: count() }).from(monitors).where(sql`${monitors.isActive} = true`),
     db.select({ count: count() }).from(monitors).where(sql`${monitors.isActive} = false`),
     db
@@ -75,6 +76,7 @@ async function getMonitorStats() {
       .from(monitors)
       .leftJoin(users, eq(monitors.userId, users.id))
       .groupBy(users.subscriptionStatus),
+    db.select({ count: sql<number>`COUNT(DISTINCT ${monitors.userId})` }).from(monitors),
   ]);
 
   return {
@@ -83,7 +85,7 @@ async function getMonitorStats() {
       resultCount: resultCountMap.get(m.id) || 0,
     })),
     summary: {
-      total: allMonitors.length,
+      total: totalCount[0]?.count || 0,
       active: totalActive[0]?.count || 0,
       inactive: totalInactive[0]?.count || 0,
     },
@@ -95,6 +97,7 @@ async function getMonitorStats() {
       plan: p.plan || "free",
       count: p.count,
     })),
+    uniqueUsers: uniqueUserCount[0]?.count || 0,
   };
 }
 
@@ -111,7 +114,7 @@ function formatDate(date: Date | null) {
 function getPlanBadge(plan: string | null) {
   switch (plan) {
     case "enterprise":
-      return <Badge className="bg-amber-500 text-white">Enterprise</Badge>;
+      return <Badge className="bg-amber-500 text-white">Team</Badge>;
     case "pro":
       return <Badge className="bg-primary text-primary-foreground">Pro</Badge>;
     default:
@@ -150,7 +153,7 @@ export default async function MonitorsPage() {
           <CardContent>
             <div className="text-2xl font-bold text-green-500">{data.summary.active}</div>
             <p className="text-xs text-muted-foreground">
-              {((data.summary.active / data.summary.total) * 100).toFixed(1)}% of total
+              {data.summary.total > 0 ? ((data.summary.active / data.summary.total) * 100).toFixed(1) : "0.0"}% of total
             </p>
           </CardContent>
         </Card>
@@ -171,7 +174,7 @@ export default async function MonitorsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {(data.summary.total / new Set(data.monitors.map((m) => m.userId)).size).toFixed(1)}
+              {data.uniqueUsers > 0 ? (data.summary.total / data.uniqueUsers).toFixed(1) : "0.0"}
             </div>
             <p className="text-xs text-muted-foreground">Per active user</p>
           </CardContent>
@@ -183,12 +186,14 @@ export default async function MonitorsPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">By Platform</CardTitle>
-            <CardDescription>Monitor distribution across platforms</CardDescription>
+            <CardDescription>Monitor distribution across platforms (monitors can appear in multiple platforms)</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {data.byPlatform.slice(0, 8).map((p) => {
-                const percentage = (p.count / data.summary.total) * 100;
+              {(() => {
+                const totalPlatformCount = data.byPlatform.reduce((sum, p) => sum + p.count, 0);
+                return data.byPlatform.slice(0, 8).map((p) => {
+                const percentage = totalPlatformCount > 0 ? (p.count / totalPlatformCount) * 100 : 0;
                 return (
                   <div key={p.platform} className="space-y-1">
                     <div className="flex items-center justify-between text-sm">
@@ -202,7 +207,8 @@ export default async function MonitorsPage() {
                     </div>
                   </div>
                 );
-              })}
+              });
+              })()}
             </div>
           </CardContent>
         </Card>
@@ -215,11 +221,11 @@ export default async function MonitorsPage() {
           <CardContent>
             <div className="space-y-3">
               {data.byPlan.map((p) => {
-                const percentage = (p.count / data.summary.total) * 100;
+                const percentage = data.summary.total > 0 ? (p.count / data.summary.total) * 100 : 0;
                 return (
                   <div key={p.plan} className="space-y-1">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="capitalize">{p.plan}</span>
+                      <span className="capitalize">{p.plan === "enterprise" ? "Team" : p.plan}</span>
                       <span className="text-muted-foreground">
                         {p.count} ({percentage.toFixed(1)}%)
                       </span>
@@ -245,7 +251,7 @@ export default async function MonitorsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">All Monitors</CardTitle>
-          <CardDescription>{data.monitors.length} monitors across all users</CardDescription>
+          <CardDescription>Showing {Math.min(50, data.monitors.length)} of {data.summary.total} total monitors</CardDescription>
         </CardHeader>
         <CardContent>
           {data.monitors.length > 0 ? (

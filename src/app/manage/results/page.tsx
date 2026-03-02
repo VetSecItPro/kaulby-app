@@ -68,18 +68,6 @@ async function getResultStats() {
     .groupBy(results.conversationCategory)
     .orderBy(desc(count()));
 
-  // Daily trend
-  const dailyTrend = await db
-    .select({
-      date: sql<string>`DATE(${results.createdAt})`,
-      count: count(),
-    })
-    .from(results)
-    .where(gte(results.createdAt, thirtyDaysAgo))
-    .groupBy(sql`DATE(${results.createdAt})`)
-    .orderBy(desc(sql`DATE(${results.createdAt})`))
-    .limit(14);
-
   // Recent results with user info
   const recentResults = await db
     .select({
@@ -117,10 +105,6 @@ async function getResultStats() {
     byCategory: byCategory.map((c) => ({
       category: c.category,
       count: c.count,
-    })),
-    dailyTrend: dailyTrend.map((d) => ({
-      date: d.date,
-      count: d.count,
     })),
     recentResults: recentResults.map((r) => ({
       id: r.id,
@@ -170,7 +154,7 @@ function getCategoryBadge(category: string | null) {
   const color = colors[category || ""] || "bg-gray-500/10 text-gray-500";
   return (
     <Badge className={color}>
-      {category?.replace("_", " ") || "Unknown"}
+      {category?.replaceAll("_", " ") || "Unknown"}
     </Badge>
   );
 }
@@ -216,7 +200,7 @@ export default async function ResultsPage() {
           <CardContent>
             <div className="text-2xl font-bold">{data.summary.last30d.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
-              {((data.summary.last30d / data.summary.total) * 100).toFixed(1)}% of total
+              {(data.summary.total > 0 ? (data.summary.last30d / data.summary.total) * 100 : 0).toFixed(1)}% of total
             </p>
           </CardContent>
         </Card>
@@ -254,7 +238,7 @@ export default async function ResultsPage() {
           <CardContent>
             <div className="space-y-3">
               {data.byPlatform.slice(0, 6).map((p) => {
-                const percentage = (p.count / data.summary.last30d) * 100;
+                const percentage = data.summary.last30d > 0 ? (p.count / data.summary.last30d) * 100 : 0;
                 return (
                   <div key={p.platform} className="space-y-1">
                     <div className="flex items-center justify-between text-sm">
@@ -278,8 +262,11 @@ export default async function ResultsPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {data.bySentiment.filter((s) => s.sentiment).map((s) => {
-                const percentage = (s.count / data.summary.last30d) * 100;
+              {(() => {
+                const sentimentData = data.bySentiment.filter((s) => s.sentiment);
+                const sentimentTotal = sentimentData.reduce((sum, s) => sum + s.count, 0);
+                return sentimentData.map((s) => {
+                const percentage = sentimentTotal > 0 ? (s.count / sentimentTotal) * 100 : 0;
                 return (
                   <div key={s.sentiment} className="space-y-1">
                     <div className="flex items-center justify-between text-sm">
@@ -294,7 +281,8 @@ export default async function ResultsPage() {
                     </div>
                   </div>
                 );
-              })}
+                });
+              })()}
             </div>
           </CardContent>
         </Card>
@@ -306,12 +294,15 @@ export default async function ResultsPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {data.byCategory.filter((c) => c.category).slice(0, 5).map((c) => {
-                const percentage = (c.count / data.summary.last30d) * 100;
+              {(() => {
+                const categoryData = data.byCategory.filter((c) => c.category).slice(0, 5);
+                const categoryTotal = categoryData.reduce((sum, c) => sum + c.count, 0);
+                return categoryData.map((c) => {
+                const percentage = categoryTotal > 0 ? (c.count / categoryTotal) * 100 : 0;
                 return (
                   <div key={c.category} className="space-y-1">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="capitalize">{c.category?.replace("_", " ")}</span>
+                      <span className="capitalize">{c.category?.replaceAll("_", " ")}</span>
                       <span className="text-muted-foreground">{c.count}</span>
                     </div>
                     <div className="h-2 w-full rounded-full bg-muted">
@@ -319,7 +310,8 @@ export default async function ResultsPage() {
                     </div>
                   </div>
                 );
-              })}
+                });
+              })()}
             </div>
           </CardContent>
         </Card>

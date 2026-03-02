@@ -150,7 +150,7 @@ export default function PrivacyPage() {
             <li><strong>Clerk:</strong> Authentication and user management</li>
             <li><strong>Polar:</strong> Payment processing (Merchant of Record)</li>
             <li><strong>PostHog:</strong> Product analytics</li>
-            <li><strong>Loops:</strong> Email communications</li>
+            <li><strong>Resend:</strong> Email communications</li>
           </ul>
           <p className="text-muted-foreground leading-relaxed mt-4">
             Each service has its own privacy policy governing data handling.

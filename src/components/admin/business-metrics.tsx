@@ -58,7 +58,7 @@ export function BusinessMetrics({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">Business Metrics</h2>
-        <Badge variant="outline">Last 30 days</Badge>
+        <Badge variant="outline">This Month</Badge>
       </div>
 
       {/* Primary Revenue Metrics */}
@@ -72,7 +72,7 @@ export function BusinessMetrics({
             <div className="text-2xl font-bold">{formatCurrency(mrr)}</div>
             <div className={`text-xs flex items-center gap-1 ${getTrendColor(mrrChange)}`}>
               {getTrendIcon(mrrChange)}
-              {mrrChange > 0 ? "+" : ""}{formatPercent(mrrChange)} from last month
+              ~{mrrChange > 0 ? "+" : ""}{formatPercent(mrrChange)} from last month (approx)
             </div>
           </CardContent>
         </Card>
@@ -92,13 +92,13 @@ export function BusinessMetrics({
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">ARPU</CardTitle>
+            <CardTitle className="text-sm font-medium">ARPU (All Users)</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(avgRevenuePerUser)}</div>
             <p className="text-xs text-muted-foreground">
-              Avg revenue per user
+              Includes free users in denominator
             </p>
           </CardContent>
         </Card>
@@ -121,7 +121,7 @@ export function BusinessMetrics({
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Conversion Funnel</CardTitle>
-          <CardDescription>User journey from signup to paid plans</CardDescription>
+          <CardDescription>Net change in paid users vs. new signups this month</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -139,7 +139,7 @@ export function BusinessMetrics({
             <div className="flex items-center gap-4">
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-medium">Pro Conversions</span>
+                  <span className="text-sm font-medium">Net New Pro</span>
                   <span className="text-sm text-muted-foreground">
                     {proConversions} ({monthlySignups > 0 ? ((proConversions / monthlySignups) * 100).toFixed(1) : 0}%)
                   </span>
@@ -154,7 +154,7 @@ export function BusinessMetrics({
             <div className="flex items-center gap-4">
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-medium">Enterprise Conversions</span>
+                  <span className="text-sm font-medium">Net New Team</span>
                   <span className="text-sm text-muted-foreground">
                     {enterpriseConversions} ({monthlySignups > 0 ? ((enterpriseConversions / monthlySignups) * 100).toFixed(1) : 0}%)
                   </span>

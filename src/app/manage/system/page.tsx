@@ -1,6 +1,8 @@
+import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { aiLogs } from "@/lib/db/schema";
-import { count, sum, desc, sql, gte, and } from "drizzle-orm";
+import { aiLogs, users } from "@/lib/db/schema";
+import { count, sum, desc, sql, gte, and, eq } from "drizzle-orm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -146,6 +148,7 @@ async function getDetailedSystemHealth() {
         totalLogs: count(),
         cacheHits: sql<number>`COUNT(CASE WHEN ${aiLogs.cacheHit} = true THEN 1 END)`,
         avgNonCachedCost: sql<number>`AVG(CASE WHEN ${aiLogs.cacheHit} = false OR ${aiLogs.cacheHit} IS NULL THEN ${aiLogs.costUsd} END)`,
+        totalCost7d: sum(aiLogs.costUsd),
       })
       .from(aiLogs)
       .where(gte(aiLogs.createdAt, sevenDaysAgo)),
@@ -155,7 +158,11 @@ async function getDetailedSystemHealth() {
   const cacheHitCount = Number(cacheStats[0]?.cacheHits) || 0;
   const cacheHitRate = totalLogs > 0 ? (cacheHitCount / totalLogs) * 100 : 0;
   const avgNonCachedCost = Number(cacheStats[0]?.avgNonCachedCost) || 0;
+  const totalCost7d = Number(cacheStats[0]?.totalCost7d) || 0;
   const estimatedSavings = cacheHitCount * avgNonCachedCost;
+  const effectiveCostReduction = (estimatedSavings + totalCost7d) > 0
+    ? (estimatedSavings / (estimatedSavings + totalCost7d)) * 100
+    : 0;
 
   return {
     summary: {
@@ -170,6 +177,7 @@ async function getDetailedSystemHealth() {
       totalHits: cacheHitCount,
       totalLogs,
       estimatedSavings,
+      effectiveCostReduction,
     },
     hourlyStats: hourlyStats.map((h) => ({
       hour: h.hour,
@@ -223,6 +231,15 @@ function formatLatency(ms: number) {
 }
 
 export default async function SystemHealthPage() {
+  // Defensive admin auth check (layout already checks, but defense-in-depth)
+  const { userId } = await auth();
+  if (!userId) redirect("/sign-in");
+  const adminUser = await db.query.users.findFirst({
+    where: (u, { eq }) => eq(u.id, userId),
+    columns: { isAdmin: true },
+  });
+  if (!adminUser?.isAdmin) redirect("/dashboard");
+
   const data = await getDetailedSystemHealth();
 
   const errorRate = data.summary.totalCalls24h > 0
@@ -358,11 +375,11 @@ export default async function SystemHealthPage() {
             <div className="rounded-lg bg-muted/50 p-4">
               <p className="text-sm text-muted-foreground">Effective Cost Reduction</p>
               <p className="mt-1 text-2xl font-bold text-green-500">
-                {data.cacheEfficiency.totalLogs > 0
-                  ? `${((data.cacheEfficiency.totalHits / data.cacheEfficiency.totalLogs) * 100).toFixed(0)}%`
+                {data.cacheEfficiency.effectiveCostReduction > 0
+                  ? `${data.cacheEfficiency.effectiveCostReduction.toFixed(0)}%`
                   : "N/A"}
               </p>
-              <p className="mt-1 text-xs text-muted-foreground">Of total AI requests</p>
+              <p className="mt-1 text-xs text-muted-foreground">Of total potential spend</p>
             </div>
           </div>
         </CardContent>
@@ -489,8 +506,13 @@ export default async function SystemHealthPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {data.latencyDistribution.map((bucket) => {
-                const total = data.latencyDistribution.reduce((sum, b) => sum + b.count, 0);
+              {(() => {
+                const latencyOrder = ["< 500ms", "500ms - 1s", "1s - 2s", "2s - 5s", "> 5s"];
+                const sortedDistribution = [...data.latencyDistribution].sort(
+                  (a, b) => latencyOrder.indexOf(a.bucket) - latencyOrder.indexOf(b.bucket)
+                );
+                return sortedDistribution.map((bucket) => {
+                const total = sortedDistribution.reduce((sum, b) => sum + b.count, 0);
                 const percentage = total > 0 ? (bucket.count / total) * 100 : 0;
                 return (
                   <div key={bucket.bucket} className="space-y-1">
@@ -512,7 +534,8 @@ export default async function SystemHealthPage() {
                     </div>
                   </div>
                 );
-              })}
+              });
+              })()}
             </div>
           </CardContent>
         </Card>
@@ -530,7 +553,7 @@ export default async function SystemHealthPage() {
                 return (
                   <div key={peak.hour} className="flex items-center gap-4">
                     <span className="text-muted-foreground w-8">#{index + 1}</span>
-                    <span className="font-medium w-20">{peak.hour}:00</span>
+                    <span className="font-medium w-20">{peak.hour}:00 UTC</span>
                     <div className="flex-1 h-2 bg-muted rounded-full">
                       <div
                         className="h-2 rounded-full bg-primary"

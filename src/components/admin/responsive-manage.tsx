@@ -108,7 +108,7 @@ interface CostBreakdownData {
 interface JobStatus {
   name: string;
   lastRun: Date | null;
-  status: "success" | "failed" | "pending" | "running";
+  status: "success" | "failed" | "pending" | "running" | "unknown";
   runsLast24h: number;
   failuresLast24h: number;
 }
@@ -213,7 +213,7 @@ export function ResponsiveManage({
             value={stats.totalUsers}
             description={`+${stats.usersToday} today • Click to view`}
             icon={Users}
-            trend="up"
+            trend={stats.usersToday > 0 ? "up" : undefined}
             clickable
           />
         </Link>
@@ -232,7 +232,7 @@ export function ResponsiveManage({
             value={stats.totalResults}
             description={`+${stats.resultsToday} today • Click to view`}
             icon={MessageSquare}
-            trend="up"
+            trend={stats.resultsToday > 0 ? "up" : undefined}
             clickable
           />
         </Link>
@@ -260,7 +260,7 @@ export function ResponsiveManage({
             <div className="mt-2 h-2 w-full rounded-full bg-muted">
               <div
                 className="h-2 rounded-full bg-muted-foreground/50"
-                style={{ width: `${(freeUsers / stats.totalUsers) * 100 || 0}%` }}
+                style={{ width: `${stats.totalUsers > 0 ? (freeUsers / stats.totalUsers) * 100 : 0}%` }}
               />
             </div>
           </CardContent>
@@ -276,7 +276,7 @@ export function ResponsiveManage({
             <div className="mt-2 h-2 w-full rounded-full bg-muted">
               <div
                 className="h-2 rounded-full bg-primary"
-                style={{ width: `${(proUsers / stats.totalUsers) * 100 || 0}%` }}
+                style={{ width: `${stats.totalUsers > 0 ? (proUsers / stats.totalUsers) * 100 : 0}%` }}
               />
             </div>
           </CardContent>
@@ -284,7 +284,7 @@ export function ResponsiveManage({
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Enterprise Users
+              Team Users
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -292,7 +292,7 @@ export function ResponsiveManage({
             <div className="mt-2 h-2 w-full rounded-full bg-muted">
               <div
                 className="h-2 rounded-full bg-amber-500"
-                style={{ width: `${(enterpriseUsers / stats.totalUsers) * 100 || 0}%` }}
+                style={{ width: `${stats.totalUsers > 0 ? (enterpriseUsers / stats.totalUsers) * 100 : 0}%` }}
               />
             </div>
           </CardContent>
@@ -360,26 +360,28 @@ export function ResponsiveManage({
           <CardContent>
             <div className="space-y-3">
               {platformDist.length > 0 ? (
-                platformDist.map((p) => {
+                (() => {
                   const total = platformDist.reduce((sum, x) => sum + x.count, 0);
-                  const percentage = total > 0 ? (p.count / total) * 100 : 0;
-                  return (
-                    <div key={p.platform} className="space-y-1">
-                      <div className="flex items-center justify-between text-sm">
-                        <span>{getPlatformDisplayName(p.platform)}</span>
-                        <span className="text-muted-foreground">
-                          {p.count} ({percentage.toFixed(1)}%)
-                        </span>
+                  return platformDist.map((p) => {
+                    const percentage = total > 0 ? (p.count / total) * 100 : 0;
+                    return (
+                      <div key={p.platform} className="space-y-1">
+                        <div className="flex items-center justify-between text-sm">
+                          <span>{getPlatformDisplayName(p.platform)}</span>
+                          <span className="text-muted-foreground">
+                            {p.count} ({percentage.toFixed(1)}%)
+                          </span>
+                        </div>
+                        <div className="h-2 w-full rounded-full bg-muted">
+                          <div
+                            className={`h-2 rounded-full ${getPlatformBarColor(p.platform)}`}
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
                       </div>
-                      <div className="h-2 w-full rounded-full bg-muted">
-                        <div
-                          className={`h-2 rounded-full ${getPlatformBarColor(p.platform)}`}
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })
+                    );
+                  });
+                })()
               ) : (
                 <div className="text-center text-muted-foreground py-4">No results yet</div>
               )}
@@ -395,10 +397,10 @@ export function ResponsiveManage({
           <CardContent>
             <div className="space-y-3">
               {sentimentDist.filter((s) => s.sentiment).length > 0 ? (
-                sentimentDist
-                  .filter((s) => s.sentiment)
-                  .map((s) => {
-                    const total = sentimentDist.reduce((sum, x) => sum + x.count, 0);
+                (() => {
+                  const filtered = sentimentDist.filter((s) => s.sentiment);
+                  const total = filtered.reduce((sum, x) => sum + x.count, 0);
+                  return filtered.map((s) => {
                     const percentage = total > 0 ? (s.count / total) * 100 : 0;
                     return (
                       <div key={s.sentiment} className="space-y-1">
@@ -416,7 +418,8 @@ export function ResponsiveManage({
                         </div>
                       </div>
                     );
-                  })
+                  });
+                })()
               ) : (
                 <div className="text-center text-muted-foreground py-4">
                   No sentiment data yet

@@ -18,11 +18,18 @@ export function CsvExport({ dailyTrend }: CsvExportProps) {
   function handleExport() {
     setDownloading(true);
     try {
+      const escapeCSV = (val: string | number) => {
+        const str = String(val);
+        return str.includes(",") || str.includes('"') || str.includes("\n")
+          ? `"${str.replace(/"/g, '""')}"`
+          : str;
+      };
+
       const headers = ["Date", "Cost (USD)", "API Calls"];
       const rows = dailyTrend.map((row) => [
-        row.date,
-        row.totalCost.toFixed(4),
-        row.totalCalls.toString(),
+        escapeCSV(row.date),
+        escapeCSV(row.totalCost.toFixed(4)),
+        escapeCSV(row.totalCalls.toString()),
       ]);
 
       const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");

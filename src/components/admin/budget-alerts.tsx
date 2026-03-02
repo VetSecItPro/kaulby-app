@@ -218,7 +218,7 @@ export function BudgetAlerts({ initialAlerts }: BudgetAlertsProps) {
     }
 
     const spend = alert.currentPeriodSpend || 0;
-    const percent = (spend / alert.thresholdUsd) * 100;
+    const percent = alert.thresholdUsd > 0 ? (spend / alert.thresholdUsd) * 100 : 0;
 
     if (percent >= 100) {
       return <Badge variant="destructive">Exceeded</Badge>;
@@ -373,7 +373,7 @@ export function BudgetAlerts({ initialAlerts }: BudgetAlertsProps) {
             <TableBody>
               {alerts.map((alert) => {
                 const spend = alert.currentPeriodSpend || 0;
-                const percent = (spend / alert.thresholdUsd) * 100;
+                const percent = alert.thresholdUsd > 0 ? (spend / alert.thresholdUsd) * 100 : 0;
 
                 return (
                   <TableRow key={alert.id}>

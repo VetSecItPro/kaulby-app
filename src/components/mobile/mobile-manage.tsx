@@ -232,26 +232,28 @@ export function MobileManage({
         <Card>
           <CardContent className="p-4 space-y-3">
             {platformDist.length > 0 ? (
-              platformDist.map((p) => {
+              (() => {
                 const total = platformDist.reduce((sum, x) => sum + x.count, 0);
-                const percentage = total > 0 ? (p.count / total) * 100 : 0;
-                return (
-                  <div key={p.platform} className="space-y-1">
-                    <div className="flex items-center justify-between text-sm">
-                      <span>{getPlatformDisplayName(p.platform)}</span>
-                      <span className="text-muted-foreground">
-                        {p.count} ({percentage.toFixed(0)}%)
-                      </span>
+                return platformDist.map((p) => {
+                  const percentage = total > 0 ? (p.count / total) * 100 : 0;
+                  return (
+                    <div key={p.platform} className="space-y-1">
+                      <div className="flex items-center justify-between text-sm">
+                        <span>{getPlatformDisplayName(p.platform)}</span>
+                        <span className="text-muted-foreground">
+                          {p.count} ({percentage.toFixed(0)}%)
+                        </span>
+                      </div>
+                      <div className="h-2 w-full rounded-full bg-muted">
+                        <div
+                          className={`h-2 rounded-full ${getPlatformBarColor(p.platform)}`}
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
                     </div>
-                    <div className="h-2 w-full rounded-full bg-muted">
-                      <div
-                        className={`h-2 rounded-full ${getPlatformBarColor(p.platform)}`}
-                        style={{ width: `${percentage}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })
+                  );
+                });
+              })()
             ) : (
               <p className="text-center text-muted-foreground py-4 text-sm">
                 No data yet
@@ -269,10 +271,10 @@ export function MobileManage({
         <Card>
           <CardContent className="p-4 space-y-3">
             {sentimentDist.filter((s) => s.sentiment).length > 0 ? (
-              sentimentDist
-                .filter((s) => s.sentiment)
-                .map((s) => {
-                  const total = sentimentDist.reduce((sum, x) => sum + x.count, 0);
+              (() => {
+                const filtered = sentimentDist.filter((s) => s.sentiment);
+                const total = filtered.reduce((sum, x) => sum + x.count, 0);
+                return filtered.map((s) => {
                   const percentage = total > 0 ? (s.count / total) * 100 : 0;
                   return (
                     <div key={s.sentiment} className="space-y-1">
@@ -290,7 +292,8 @@ export function MobileManage({
                       </div>
                     </div>
                   );
-                })
+                });
+              })()
             ) : (
               <p className="text-center text-muted-foreground py-4 text-sm">
                 No data yet

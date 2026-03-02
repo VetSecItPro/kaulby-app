@@ -18,7 +18,10 @@ import { Button } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
 
-// Plan price lookup — maps subscriptionStatus values to their monthly price
+// Plan price lookup — maps subscriptionStatus values to their monthly price.
+// NOTE: This uses the standard monthly rate for all users. Users on annual billing
+// actually pay less per month (Pro: $290/12 = ~$24.17, Team: $990/12 = $82.50).
+// Revenue figures on this page may therefore be slightly overstated for annual subscribers.
 function getPlanPrice(plan: string | null): number {
   switch (plan) {
     case "enterprise":
@@ -209,7 +212,7 @@ export default async function UnitEconomicsPage() {
               {formatCurrency(data.summary.totalRevenue)}
             </div>
             <p className="text-xs text-muted-foreground">
-              All users x their plan price
+              Assumes monthly billing rates. Annual subscribers pay less (Pro: ~$24/mo, Team: ~$83/mo). Actual revenue may differ.
             </p>
           </CardContent>
         </Card>
@@ -231,20 +234,20 @@ export default async function UnitEconomicsPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Gross Margin</CardTitle>
+            <CardTitle className="text-sm font-medium">AI Margin</CardTitle>
             <PieChart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${data.summary.grossMargin >= 0 ? "text-green-500" : "text-red-500"}`}>
+            <div className={`text-2xl font-bold ${data.summary.grossMargin > 0 ? "text-green-500" : data.summary.grossMargin < 0 ? "text-red-500" : "text-muted-foreground"}`}>
               {formatCurrency(data.summary.grossMargin)}
             </div>
-            <p className="text-xs text-muted-foreground">Revenue minus AI cost</p>
+            <p className="text-xs text-muted-foreground">Revenue minus AI cost only</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Margin %</CardTitle>
+            <CardTitle className="text-sm font-medium">AI Margin %</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -263,8 +266,8 @@ export default async function UnitEconomicsPage() {
       {/* Margin by Plan */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Margin by Plan</CardTitle>
-          <CardDescription>Revenue vs AI cost breakdown per subscription tier</CardDescription>
+          <CardTitle className="text-lg">AI Margin by Plan</CardTitle>
+          <CardDescription>Revenue vs AI cost breakdown per subscription tier (excludes Apify, Vercel, Inngest costs)</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
@@ -274,8 +277,8 @@ export default async function UnitEconomicsPage() {
                 <TableHead className="text-right">Users</TableHead>
                 <TableHead className="text-right">Monthly Revenue</TableHead>
                 <TableHead className="text-right">AI Cost (30d)</TableHead>
-                <TableHead className="text-right">Margin</TableHead>
-                <TableHead className="text-right">Margin %</TableHead>
+                <TableHead className="text-right">AI Margin</TableHead>
+                <TableHead className="text-right">AI Margin %</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -289,10 +292,10 @@ export default async function UnitEconomicsPage() {
                   <TableCell className="text-right text-amber-500">
                     {formatCurrency(item.totalAiCost)}
                   </TableCell>
-                  <TableCell className={`text-right font-medium ${item.margin >= 0 ? "text-green-500" : "text-red-500"}`}>
+                  <TableCell className={`text-right font-medium ${item.margin > 0 ? "text-green-500" : item.margin < 0 ? "text-red-500" : "text-muted-foreground"}`}>
                     {formatCurrency(item.margin)}
                   </TableCell>
-                  <TableCell className={`text-right font-medium ${item.margin >= 0 ? "text-green-500" : "text-red-500"}`}>
+                  <TableCell className={`text-right font-medium ${item.margin > 0 ? "text-green-500" : item.margin < 0 ? "text-red-500" : "text-muted-foreground"}`}>
                     {item.monthlyRevenue > 0
                       ? `${item.marginPercent.toFixed(1)}%`
                       : "N/A"}
@@ -307,8 +310,8 @@ export default async function UnitEconomicsPage() {
       {/* Customer Profitability */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Customer Profitability</CardTitle>
-          <CardDescription>Top 20 most expensive users by AI cost (last 30 days)</CardDescription>
+          <CardTitle className="text-lg">Customer AI Profit/Loss</CardTitle>
+          <CardDescription>Top 20 most expensive users by AI cost (last 30 days). Only considers AI costs.</CardDescription>
         </CardHeader>
         <CardContent>
           {data.customerProfitability.length > 0 ? (
@@ -319,7 +322,7 @@ export default async function UnitEconomicsPage() {
                   <TableHead>Plan</TableHead>
                   <TableHead className="text-right">Revenue</TableHead>
                   <TableHead className="text-right">AI Cost</TableHead>
-                  <TableHead className="text-right">Profit / Loss</TableHead>
+                  <TableHead className="text-right">AI Profit/Loss</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -338,7 +341,7 @@ export default async function UnitEconomicsPage() {
                     <TableCell className="text-right text-amber-500">
                       {formatCurrency(user.totalAiCost)}
                     </TableCell>
-                    <TableCell className={`text-right font-semibold ${user.profitability >= 0 ? "text-green-500" : "text-red-500"}`}>
+                    <TableCell className={`text-right font-semibold ${user.profitability > 0 ? "text-green-500" : user.profitability < 0 ? "text-red-500" : "text-muted-foreground"}`}>
                       {formatCurrency(user.profitability)}
                     </TableCell>
                   </TableRow>

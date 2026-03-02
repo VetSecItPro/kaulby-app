@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -117,11 +118,21 @@ export default function ErrorLogsPage() {
   const [loading, setLoading] = useState(true);
 
   // Filters
-  const [level, setLevel] = useState<string>("");
-  const [source, setSource] = useState<string>("");
-  const [resolved, setResolved] = useState<string>("");
+  const [level, setLevel] = useState<string>("all");
+  const [source, setSource] = useState<string>("all");
+  const [resolved, setResolved] = useState<string>("all");
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(searchInput);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   // Dialog state
   const [selectedError, setSelectedError] = useState<ErrorLog | null>(null);
@@ -135,9 +146,9 @@ export default function ErrorLogsPage() {
       const params = new URLSearchParams();
       params.set("page", page.toString());
       params.set("limit", "50");
-      if (level) params.set("level", level);
-      if (source) params.set("source", source);
-      if (resolved) params.set("resolved", resolved);
+      if (level && level !== "all") params.set("level", level);
+      if (source && source !== "all") params.set("source", source);
+      if (resolved && resolved !== "all") params.set("resolved", resolved);
       if (search) params.set("search", search);
 
       const response = await fetch(`/api/admin/errors?${params.toString()}`);
@@ -148,7 +159,7 @@ export default function ErrorLogsPage() {
       setStats(data.stats);
       setPagination(data.pagination);
     } catch (error) {
-      console.error("Failed to fetch errors:", error);
+      toast.error("Failed to fetch errors");
     } finally {
       setLoading(false);
     }
@@ -175,7 +186,7 @@ export default function ErrorLogsPage() {
         setSelectedError(updated);
       }
     } catch (error) {
-      console.error("Failed to resolve error:", error);
+      toast.error("Failed to update error status");
     } finally {
       setUpdating(false);
     }
@@ -198,7 +209,7 @@ export default function ErrorLogsPage() {
       setSelectedError(updated);
       fetchErrors();
     } catch (error) {
-      console.error("Failed to save notes:", error);
+      toast.error("Failed to save notes");
     } finally {
       setUpdating(false);
     }
@@ -218,7 +229,7 @@ export default function ErrorLogsPage() {
       setSelectedError(null);
       fetchErrors();
     } catch (error) {
-      console.error("Failed to delete error:", error);
+      toast.error("Failed to delete error log");
     }
   };
 
@@ -334,11 +345,8 @@ export default function ErrorLogsPage() {
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search errors..."
-                  value={search}
-                  onChange={(e) => {
-                    setSearch(e.target.value);
-                    setPage(1);
-                  }}
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
                   className="pl-8"
                 />
               </div>
@@ -354,7 +362,7 @@ export default function ErrorLogsPage() {
                 <SelectValue placeholder="All Levels" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Levels</SelectItem>
+                <SelectItem value="all">All Levels</SelectItem>
                 <SelectItem value="error">Error</SelectItem>
                 <SelectItem value="warning">Warning</SelectItem>
                 <SelectItem value="fatal">Fatal</SelectItem>
@@ -371,7 +379,7 @@ export default function ErrorLogsPage() {
                 <SelectValue placeholder="All Sources" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Sources</SelectItem>
+                <SelectItem value="all">All Sources</SelectItem>
                 <SelectItem value="api">API</SelectItem>
                 <SelectItem value="inngest">Background Job</SelectItem>
                 <SelectItem value="ai">AI/ML</SelectItem>
@@ -392,7 +400,7 @@ export default function ErrorLogsPage() {
                 <SelectValue placeholder="All Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Status</SelectItem>
+                <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="false">Unresolved</SelectItem>
                 <SelectItem value="true">Resolved</SelectItem>
               </SelectContent>

@@ -139,8 +139,8 @@ async function getSystemHealth() {
   const twentyFourHoursAgo = new Date();
   twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
 
-  // Get AI call stats for last 24h
-  const [aiStats, recentAiLogs] = await Promise.all([
+  // Get AI call stats and real error count for last 24h
+  const [aiStats, errorCount24hResult] = await Promise.all([
     db
       .select({
         totalCalls: count(),
@@ -149,53 +149,98 @@ async function getSystemHealth() {
       .from(aiLogs)
       .where(gte(aiLogs.createdAt, twentyFourHoursAgo)),
     db
-      .select({
-        createdAt: aiLogs.createdAt,
-        latencyMs: aiLogs.latencyMs,
-      })
-      .from(aiLogs)
-      .where(gte(aiLogs.createdAt, twentyFourHoursAgo))
-      .orderBy(desc(aiLogs.createdAt))
-      .limit(100),
+      .select({ count: count() })
+      .from(errorLogs)
+      .where(gte(errorLogs.createdAt, twentyFourHoursAgo)),
   ]);
 
-  // Calculate error rate (assume latency > 10000ms or null latency is an error)
-  const errorCount = recentAiLogs.filter(
-    (log) => log.latencyMs === null || log.latencyMs > 10000
-  ).length;
-  const errorRate24h = recentAiLogs.length > 0 ? (errorCount / recentAiLogs.length) * 100 : 0;
+  // Calculate error rate from actual error logs against AI calls
+  const aiCalls24h = aiStats[0]?.totalCalls || 0;
+  const errorCount = errorCount24hResult[0]?.count || 0;
+  const errorRate24h = aiCalls24h > 0 ? (errorCount / aiCalls24h) * 100 : 0;
 
-  // Simulate job data - in production, this would come from Inngest API
+  // TODO: Replace with real Inngest API integration for accurate job metrics.
+  // Currently these are estimates: run-monitors uses monitor updatedAt as a proxy,
+  // digest jobs have no data source and show "unknown" status.
+  const [monitorsScannedRecently] = await db
+    .select({ count: count() })
+    .from(monitors)
+    .where(
+      and(
+        eq(monitors.isActive, true),
+        gte(monitors.updatedAt, twentyFourHoursAgo)
+      )
+    );
+  const recentScanCount = monitorsScannedRecently?.count || 0;
   const jobs = [
     {
-      name: "run-monitors",
-      lastRun: recentAiLogs[0]?.createdAt || null,
-      status: "success" as const,
-      runsLast24h: Math.floor((aiStats[0]?.totalCalls || 0) / 10),
+      name: "run-monitors (estimated)",
+      lastRun: null, // No data — Inngest API integration needed
+      status: (aiCalls24h > 0 ? "success" : "unknown") as "success" | "failed" | "pending" | "running" | "unknown",
+      runsLast24h: recentScanCount,
       failuresLast24h: errorCount,
     },
     {
       name: "send-daily-digest",
-      lastRun: new Date(Date.now() - 12 * 60 * 60 * 1000), // 12 hours ago
-      status: "success" as const,
-      runsLast24h: 1,
+      lastRun: null, // No data — Inngest API integration needed
+      status: "unknown" as const,
+      runsLast24h: 0,
       failuresLast24h: 0,
     },
     {
       name: "send-weekly-digest",
-      lastRun: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
-      status: "success" as const,
+      lastRun: null, // No data — Inngest API integration needed
+      status: "unknown" as const,
       runsLast24h: 0,
       failuresLast24h: 0,
     },
   ];
 
-  // Health checks - assume healthy if we can query the database
+  // Health checks — verify services are reachable
+  let emailHealthy = false;
+  try {
+    if (process.env.RESEND_API_KEY) {
+      const res = await fetch("https://api.resend.com/domains", {
+        headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
+        signal: AbortSignal.timeout(5000),
+      });
+      emailHealthy = res.ok;
+    }
+  } catch {
+    emailHealthy = false;
+  }
+
+  let aiHealthy = false;
+  try {
+    if (process.env.OPENROUTER_API_KEY) {
+      const res = await fetch("https://openrouter.ai/api/v1/models", {
+        headers: { Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}` },
+        signal: AbortSignal.timeout(3000),
+      });
+      aiHealthy = res.ok;
+    }
+  } catch {
+    aiHealthy = false;
+  }
+
+  let polarHealthy = false;
+  try {
+    if (process.env.POLAR_ACCESS_TOKEN) {
+      const res = await fetch("https://api.polar.sh/v1/products", {
+        headers: { Authorization: `Bearer ${process.env.POLAR_ACCESS_TOKEN}` },
+        signal: AbortSignal.timeout(3000),
+      });
+      polarHealthy = res.ok;
+    }
+  } catch {
+    polarHealthy = false;
+  }
+
   const healthChecks = {
     database: true, // If we got this far, database is working
-    ai: aiStats[0]?.totalCalls ? aiStats[0].totalCalls > 0 : true,
-    email: true, // Assume healthy
-    polar: true, // Assume healthy
+    ai: aiHealthy,
+    email: emailHealthy,
+    polar: polarHealthy,
   };
 
   return {
@@ -406,7 +451,8 @@ async function getBusinessMetrics() {
 
   // Last month conversion rate for comparison
   const lastMonthTotalPaidUsers = lastMonthPaidProUsers + lastMonthPaidEnterpriseUsers;
-  const lastMonthTotalUsers = currentSubs.reduce((sum, s) => sum + (s.count || 0), 0) - (monthlySignups[0]?.count || 0);
+  // Estimate last-month total users: users created before this month
+  const lastMonthTotalUsers = Math.max(0, totalUsers - (monthlySignups[0]?.count || 0));
   const lastMonthConversionRate = lastMonthTotalUsers > 0
     ? (lastMonthTotalPaidUsers / lastMonthTotalUsers) * 100
     : 0;
@@ -473,14 +519,26 @@ async function getErrorLogsSummary() {
       level: e.level,
       source: e.source,
       message: e.message,
-      createdAt: e.createdAt?.toISOString() || new Date().toISOString(),
+      createdAt: e.createdAt?.toISOString() || "1970-01-01T00:00:00.000Z",
     })),
   };
 }
 
 export default async function ManagePage() {
   // Auth is handled by the layout - in dev mode, no auth required
-  const [stats, subscriptionBreakdown, recentUsers, aiCosts, userGrowth, platformDist, sentimentDist, businessMetrics, costBreakdown, systemHealth, errorLogsSummary] = await Promise.all([
+  const [
+    statsResult,
+    subscriptionBreakdownResult,
+    recentUsersResult,
+    aiCostsResult,
+    userGrowthResult,
+    platformDistResult,
+    sentimentDistResult,
+    businessMetricsResult,
+    costBreakdownResult,
+    systemHealthResult,
+    errorLogsSummaryResult,
+  ] = await Promise.allSettled([
     getAdminStats(),
     getSubscriptionBreakdown(),
     getRecentUsers(),
@@ -493,6 +551,44 @@ export default async function ManagePage() {
     getSystemHealth(),
     getErrorLogsSummary(),
   ]);
+
+  // Extract values with sensible defaults for any rejected promises
+  const stats = statsResult.status === "fulfilled" ? statsResult.value : {
+    totalUsers: 0, totalMonitors: 0, totalResults: 0, totalAiCost: 0,
+    activeMonitors: 0, usersToday: 0, resultsToday: 0,
+  };
+  const subscriptionBreakdown = subscriptionBreakdownResult.status === "fulfilled"
+    ? subscriptionBreakdownResult.value : [];
+  const recentUsers = recentUsersResult.status === "fulfilled"
+    ? recentUsersResult.value : [];
+  const aiCosts = aiCostsResult.status === "fulfilled"
+    ? aiCostsResult.value : [];
+  const userGrowth = userGrowthResult.status === "fulfilled"
+    ? userGrowthResult.value : [];
+  const platformDist = platformDistResult.status === "fulfilled"
+    ? platformDistResult.value : [];
+  const sentimentDist = sentimentDistResult.status === "fulfilled"
+    ? sentimentDistResult.value : [];
+  const businessMetrics = businessMetricsResult.status === "fulfilled"
+    ? businessMetricsResult.value : {
+      mrr: 0, mrrChange: 0, arr: 0, conversionRate: 0, conversionRateChange: 0,
+      avgRevenuePerUser: 0, proConversions: 0, enterpriseConversions: 0,
+      monthlySignups: 0, paidUserPercentage: 0,
+    };
+  const costBreakdown = costBreakdownResult.status === "fulfilled"
+    ? costBreakdownResult.value : {
+      costByPlan: [], topUsersByCost: [], costByModel: [],
+      avgCostPerUser: 0, avgCostPerPaidUser: 0, costPerResult: 0,
+    };
+  const systemHealth = systemHealthResult.status === "fulfilled"
+    ? systemHealthResult.value : {
+      jobs: [], errorRate24h: 0, avgResponseTime: 0, totalApiCalls24h: 0,
+      healthChecks: { database: false, ai: false, email: false, polar: false },
+    };
+  const errorLogsSummary = errorLogsSummaryResult.status === "fulfilled"
+    ? errorLogsSummaryResult.value : {
+      total: 0, unresolved: 0, byLevel: { error: 0, warning: 0, fatal: 0 }, recentErrors: [],
+    };
 
   const freeUsers = subscriptionBreakdown.find(s => s.status === "free")?.count || 0;
   const proUsers = subscriptionBreakdown.find(s => s.status === "pro")?.count || 0;
