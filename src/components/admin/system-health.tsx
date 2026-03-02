@@ -2,12 +2,12 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, XCircle, Clock, Activity, Server } from "lucide-react";
+import { CheckCircle, XCircle, Clock, Activity, Server, HelpCircle } from "lucide-react";
 
 interface JobStatus {
   name: string;
   lastRun: Date | null;
-  status: "success" | "failed" | "pending" | "running";
+  status: "success" | "failed" | "pending" | "running" | "unknown";
   runsLast24h: number;
   failuresLast24h: number;
 }
@@ -40,6 +40,8 @@ export function SystemHealth({
         return <XCircle className="h-4 w-4 text-red-500" />;
       case "running":
         return <Activity className="h-4 w-4 text-blue-500 animate-pulse" />;
+      case "unknown":
+        return <HelpCircle className="h-4 w-4 text-muted-foreground" />;
       default:
         return <Clock className="h-4 w-4 text-muted-foreground" />;
     }
@@ -53,6 +55,8 @@ export function SystemHealth({
         return <Badge className="bg-red-500/10 text-red-500">Failed</Badge>;
       case "running":
         return <Badge className="bg-blue-500/10 text-blue-500">Running</Badge>;
+      case "unknown":
+        return <Badge variant="outline" className="text-muted-foreground">Unknown</Badge>;
       default:
         return <Badge variant="secondary">Pending</Badge>;
     }
@@ -99,7 +103,7 @@ export function SystemHealth({
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Error Rate (24h)
+              Slow/Timeout Rate
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -111,7 +115,7 @@ export function SystemHealth({
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Avg Response
+              Avg AI Latency
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -123,7 +127,7 @@ export function SystemHealth({
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              API Calls (24h)
+              AI Calls (24h)
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -175,7 +179,7 @@ export function SystemHealth({
               {getHealthStatus(healthChecks.email)}
               <div>
                 <p className="font-medium">Email</p>
-                <p className="text-xs text-muted-foreground">Loops</p>
+                <p className="text-xs text-muted-foreground">Resend</p>
               </div>
             </div>
             <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
@@ -196,7 +200,7 @@ export function SystemHealth({
             <Activity className="h-5 w-5" />
             Background Jobs
           </CardTitle>
-          <CardDescription>Inngest function status and history</CardDescription>
+          <CardDescription>Inngest function status (estimated — pending API integration)</CardDescription>
         </CardHeader>
         <CardContent>
           {jobs.length > 0 ? (

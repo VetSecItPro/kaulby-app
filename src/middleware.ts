@@ -127,6 +127,13 @@ export default async function middleware(request: NextRequest) {
         "http://localhost:3001",
         "http://localhost:3002",
       ]);
+      // Include Vercel preview/production URLs
+      if (process.env.VERCEL_URL) {
+        allowedOrigins.add(`https://${process.env.VERCEL_URL}`);
+      }
+      if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+        allowedOrigins.add(`https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`);
+      }
       if (!allowedOrigins.has(origin)) {
         return NextResponse.json(
           { error: "Cross-origin request blocked" },

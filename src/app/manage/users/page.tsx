@@ -2,8 +2,6 @@ import { db } from "@/lib/db";
 import { users, monitors, usage } from "@/lib/db/schema";
 import { eq, count, desc, like, or, sql, and, gte } from "drizzle-orm";
 import { UsersManagement } from "@/components/admin/users-management";
-import { getEffectiveUserId } from "@/lib/dev-auth";
-import { redirect } from "next/navigation";
 
 interface SearchParams {
   search?: string;
@@ -141,22 +139,7 @@ export default async function UsersPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  // SECURITY: Verify admin access before executing queries — FIX-110
-  const userId = await getEffectiveUserId();
-
-  if (!userId) {
-    redirect("/sign-in");
-  }
-
-  const user = await db.query.users.findFirst({
-    where: eq(users.id, userId),
-    columns: { isAdmin: true },
-  });
-
-  if (!user?.isAdmin) {
-    redirect("/dashboard");
-  }
-
+  // Admin access is enforced by manage/layout.tsx (with Clerk ID email fallback)
   const params = await searchParams;
   const [usersData, planCounts] = await Promise.all([
     getUsers(params),

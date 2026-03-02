@@ -72,7 +72,7 @@ export function CostBreakdown({
   const getPlanBadge = (plan: string) => {
     switch (plan) {
       case "enterprise":
-        return <Badge className="bg-amber-500 text-white">Enterprise</Badge>;
+        return <Badge className="bg-amber-500 text-white">Team</Badge>;
       case "pro":
         return <Badge className="bg-primary text-primary-foreground">Pro</Badge>;
       default:
@@ -97,7 +97,7 @@ export function CostBreakdown({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrencyShort(avgCostPerUser)}</div>
-            <p className="text-xs text-muted-foreground">All users</p>
+            <p className="text-xs text-muted-foreground">Users with AI usage</p>
           </CardContent>
         </Card>
         <Card>
@@ -108,7 +108,7 @@ export function CostBreakdown({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrencyShort(avgCostPerPaidUser)}</div>
-            <p className="text-xs text-muted-foreground">Pro + Enterprise</p>
+            <p className="text-xs text-muted-foreground">Pro + Team</p>
           </CardContent>
         </Card>
         <Card>

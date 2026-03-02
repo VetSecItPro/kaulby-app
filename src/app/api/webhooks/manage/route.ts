@@ -5,6 +5,7 @@ import { webhooks, users } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import crypto from "crypto";
 import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 // SECURITY (SEC-SSRF-001): Validate webhook URLs to prevent SSRF
 function isValidWebhookUrl(url: string): boolean {
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest) {
 
     if (user?.subscriptionStatus !== "enterprise") {
       return NextResponse.json(
-        { error: "Webhooks are only available for Enterprise users" },
+        { error: "Webhooks are only available for Team users" },
         { status: 403 }
       );
     }
@@ -100,7 +101,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof BodyTooLargeError) {
       return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
     }
-    console.error("Create webhook error:", error);
+    logger.error("Create webhook error", { error });
     return NextResponse.json(
       { error: "Failed to create webhook" },
       { status: 500 }
@@ -171,7 +172,7 @@ export async function PUT(request: NextRequest) {
     if (error instanceof BodyTooLargeError) {
       return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
     }
-    console.error("Update webhook error:", error);
+    logger.error("Update webhook error", { error });
     return NextResponse.json(
       { error: "Failed to update webhook" },
       { status: 500 }
@@ -220,7 +221,7 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Delete webhook error:", error);
+    logger.error("Delete webhook error", { error });
     return NextResponse.json(
       { error: "Failed to delete webhook" },
       { status: 500 }

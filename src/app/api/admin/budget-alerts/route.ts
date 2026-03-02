@@ -5,6 +5,7 @@ import { budgetAlerts, users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { isValidEmail, sanitizeUrl } from "@/lib/security";
 import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -89,7 +90,7 @@ export async function POST(request: Request) {
     if (error instanceof BodyTooLargeError) {
       return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
     }
-    console.error("Error creating budget alert:", error);
+    logger.error("Error creating budget alert", { error });
     return NextResponse.json({ error: "Failed to create budget alert" }, { status: 500 });
   }
 }

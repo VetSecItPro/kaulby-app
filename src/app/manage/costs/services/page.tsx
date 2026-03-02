@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { aiLogs, results } from "@/lib/db/schema";
 import { count, sum, gte, sql } from "drizzle-orm";
+import { logger } from "@/lib/logger";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -52,7 +53,7 @@ async function getApifyUsage() {
       limits: limits?.data || null,
     };
   } catch (error) {
-    console.error("Failed to fetch Apify usage:", error);
+    logger.error("Failed to fetch Apify usage", { error: error instanceof Error ? error.message : String(error) });
     return null;
   }
 }
@@ -146,7 +147,8 @@ export default async function ServiceCostsPage() {
   const estimatedApifyCost = (metrics.scraping.totalResults30d / 1000) * 0.50;
 
   // Total estimated monthly costs
-  const totalEstimatedCost = metrics.openRouter.totalCost30d + (apifyUsage?.monthlyUsageUsd || estimatedApifyCost);
+  const vercelBaseCost = 20; // Vercel Pro plan base cost
+  const totalEstimatedCost = metrics.openRouter.totalCost30d + (apifyUsage?.monthlyUsageUsd || estimatedApifyCost) + vercelBaseCost;
 
   return (
     <div className="flex-1 flex-col space-y-6 p-6">
@@ -175,7 +177,7 @@ export default async function ServiceCostsPage() {
             <DollarSign className="h-5 w-5 text-amber-500" />
             Total Estimated Monthly Cost
           </CardTitle>
-          <CardDescription>Combined costs from all services</CardDescription>
+          <CardDescription>Combined costs from OpenRouter, Apify, and Vercel</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-baseline gap-4">
@@ -201,7 +203,7 @@ export default async function ServiceCostsPage() {
             </div>
             <div>
               <span className="text-muted-foreground">Vercel (Hosting)</span>
-              <p className="font-medium text-green-500">Free/Pro tier</p>
+              <p className="font-medium">{formatCurrency(vercelBaseCost)}</p>
             </div>
           </div>
         </CardContent>
@@ -345,21 +347,21 @@ export default async function ServiceCostsPage() {
                 </Button>
               </a>
             </div>
-            <CardDescription>Background jobs (cron monitors, alerts)</CardDescription>
+            <CardDescription>Based on Inngest free tier — may not reflect current pricing</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-2xl font-bold text-green-500">Free</span>
-              <Badge variant="outline">Free Tier</Badge>
+              <Badge variant="outline">Free Tier (estimated)</Badge>
             </div>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Concurrent Executions</span>
-                <span>5 max</span>
+                <span>5 max (estimated)</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Monthly Runs</span>
-                <span>25,000 included</span>
+                <span>25,000 included (estimated)</span>
               </div>
             </div>
             <div className="space-y-1">
@@ -370,7 +372,7 @@ export default async function ServiceCostsPage() {
               <Progress value={15} className="h-2" />
             </div>
             <p className="text-xs text-muted-foreground">
-              Upgrade to Pro ($50/mo) needed if hitting concurrency limits.
+              Upgrade to Pro ($50/mo) needed if hitting concurrency limits. Check Inngest dashboard for actual usage.
             </p>
           </CardContent>
         </Card>
@@ -389,25 +391,25 @@ export default async function ServiceCostsPage() {
                 </Button>
               </a>
             </div>
-            <CardDescription>Hosting, serverless functions, edge</CardDescription>
+            <CardDescription>Based on Vercel Pro plan. Check dashboard for actual usage.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-2xl font-bold text-green-500">Pro</span>
-              <Badge variant="outline">$20/mo</Badge>
+              <Badge variant="outline">$20/mo (estimated)</Badge>
             </div>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Serverless Function Executions</span>
-                <span>1M included</span>
+                <span>1M included (estimated)</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Edge Function Invocations</span>
-                <span>1M included</span>
+                <span>1M included (estimated)</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Bandwidth</span>
-                <span>1TB included</span>
+                <span>1TB included (estimated)</span>
               </div>
             </div>
             <p className="text-xs text-muted-foreground">

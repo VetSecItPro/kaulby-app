@@ -41,6 +41,7 @@ async function initPostHog() {
         persistence: "localStorage",
         autocapture: false,
         advanced_disable_feature_flags: true,
+        advanced_disable_decide: true,
       });
     }
   } catch {

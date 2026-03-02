@@ -69,7 +69,7 @@ export async function upsertContact(params: {
   userId?: string;
   subscriptionStatus?: string;
 }) {
-  // Resend doesn't have contact management like Loops
+  // Resend doesn't have built-in contact management
   // This is a no-op but kept for API compatibility
   logger.info("Contact upsert", { email: params.email });
 }

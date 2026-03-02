@@ -60,7 +60,7 @@ async function getDetailedCostData(days: number = 30) {
     )
     .groupBy(users.subscriptionStatus);
 
-  // Top 20 users by cost
+  // Top 10 users by cost
   const topUsersByCostQuery = await db
     .select({
       userId: aiLogs.userId,
@@ -76,7 +76,7 @@ async function getDetailedCostData(days: number = 30) {
     .where(gte(aiLogs.createdAt, periodStart))
     .groupBy(aiLogs.userId, users.email, users.name, users.subscriptionStatus)
     .orderBy(desc(sum(aiLogs.costUsd)))
-    .limit(20);
+    .limit(10);
 
   // Cost by model - detailed
   const costByModelQuery = await db
@@ -456,7 +456,7 @@ export default async function CostsPage({
         <CardHeader>
           <div className="flex items-center gap-2">
             <Calendar className="h-4 w-4 text-blue-400" />
-            <CardTitle className="text-lg">30-Day Cost Forecast</CardTitle>
+            <CardTitle className="text-lg">Monthly Cost Forecast</CardTitle>
           </div>
           <CardDescription>
             Projected month-end spend based on current daily average
@@ -564,6 +564,8 @@ export default async function CostsPage({
                   const change = item.previousCost > 0
                     ? ((item.totalCost - item.previousCost) / item.previousCost) * 100
                     : 0;
+                  const isNew = item.previousCost === 0 && item.totalCost > 0;
+                  const isDash = item.previousCost === 0 && item.totalCost === 0;
                   return (
                     <TableRow key={item.plan}>
                       <TableCell>{getPlanBadge(item.plan)}</TableCell>
@@ -574,8 +576,8 @@ export default async function CostsPage({
                       <TableCell className="text-right font-medium text-amber-500">
                         {formatCurrency(item.totalCost)}
                       </TableCell>
-                      <TableCell className={`text-right ${change > 0 ? "text-red-500" : change < 0 ? "text-green-500" : ""}`}>
-                        {change > 0 ? "+" : ""}{change.toFixed(1)}%
+                      <TableCell className={`text-right ${isNew ? "text-blue-500" : isDash ? "text-muted-foreground" : change > 0 ? "text-red-500" : change < 0 ? "text-green-500" : ""}`}>
+                        {isNew ? "New" : isDash ? "—" : `${change > 0 ? "+" : ""}${change.toFixed(1)}%`}
                       </TableCell>
                     </TableRow>
                   );

@@ -517,7 +517,7 @@ function PlanBadge({ plan }: { plan: string }) {
     >
       {plan === "pro" && <Crown className="h-3 w-3 mr-1" />}
       {plan === "enterprise" && <Building2 className="h-3 w-3 mr-1" />}
-      <span className="capitalize">{plan}</span>
+      <span className="capitalize">{plan === "enterprise" ? "Team" : plan}</span>
     </Badge>
   );
 }

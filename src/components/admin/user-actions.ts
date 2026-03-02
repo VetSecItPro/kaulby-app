@@ -8,9 +8,7 @@ import { revalidatePath } from "next/cache";
 
 // Verify the current user is an admin
 async function verifyAdmin() {
-  const isDev = process.env.NODE_ENV === "development";
-
-  if (isDev) {
+  if (process.env.NODE_ENV === "development" && process.env.ADMIN_DEV_BYPASS === "true") {
     return true;
   }
 
@@ -32,6 +30,9 @@ async function verifyAdmin() {
   return true;
 }
 
+// NOTE: Admin plan changes do NOT sync with Polar. If the user has an active
+// Polar subscription, the admin should cancel it separately in the Polar dashboard.
+// This function only updates the local database state.
 export async function updateUserPlan(
   userId: string,
   newPlan: "free" | "pro" | "enterprise"
@@ -43,6 +44,14 @@ export async function updateUserPlan(
     .set({
       subscriptionStatus: newPlan,
       updatedAt: new Date(),
+      // When downgrading to free, clear Polar subscription fields so the user
+      // no longer appears as a paid subscriber in business metrics / MRR calculations.
+      // Keep polarCustomerId for potential future re-subscriptions.
+      ...(newPlan === "free" && {
+        polarSubscriptionId: null,
+        currentPeriodStart: null,
+        currentPeriodEnd: null,
+      }),
     })
     .where(eq(users.id, userId));
 
