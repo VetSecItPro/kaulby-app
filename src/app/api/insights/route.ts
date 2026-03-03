@@ -6,6 +6,7 @@ import { getEffectiveUserId } from "@/lib/dev-auth";
 import { getUserPlan } from "@/lib/limits";
 import { getPlanLimits, type PlanKey } from "@/lib/plans";
 import { jsonCompletion, MODELS } from "@/lib/ai/openrouter";
+import { logAiCall } from "@/lib/ai/log";
 import { checkApiRateLimit } from "@/lib/rate-limit";
 import { cachedQuery, CACHE_TTL } from "@/lib/cache";
 import { logger } from "@/lib/logger";
@@ -51,7 +52,8 @@ async function extractTopicsWithAI(
     content: string | null;
     platform: string;
     sentiment: string | null;
-  }[]
+  }[],
+  userId?: string
 ): Promise<AITopic[]> {
   if (resultsData.length === 0) return [];
 
@@ -96,6 +98,17 @@ Rules:
     });
 
     logger.info("Insights AI: Received topics from AI", { topicCount: response.data.topics?.length || 0 });
+
+    // Log AI cost
+    await logAiCall({
+      userId: userId ?? null,
+      model: response.meta.model,
+      promptTokens: response.meta.promptTokens,
+      completionTokens: response.meta.completionTokens,
+      costUsd: response.meta.cost,
+      latencyMs: response.meta.latencyMs,
+      analysisType: "insights",
+    });
 
     // Map result indices back to actual IDs
     return response.data.topics.map(t => ({
@@ -575,7 +588,7 @@ export async function GET(request: Request) {
         keywordTopics: totalKeywordTopics,
         resultCount: userResults.length
       });
-      const aiExtractedTopics = await extractTopicsWithAI(userResults);
+      const aiExtractedTopics = await extractTopicsWithAI(userResults, userId);
       aiTopics = convertAITopicsToCluster(aiExtractedTopics, userResults);
     }
 

@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { db, results, monitors } from "@/lib/db";
 import { eq, desc, and, inArray, gte } from "drizzle-orm";
 import { completion, MODELS, flushAI } from "@/lib/ai/openrouter";
+import { logAiCall } from "@/lib/ai/log";
 import { getUserPlan } from "@/lib/limits";
 import {
   checkAllRateLimits,
@@ -297,6 +298,17 @@ export async function POST(req: Request) {
     });
 
     await flushAI();
+
+    // Log AI cost
+    await logAiCall({
+      userId,
+      model: response.model,
+      promptTokens: response.promptTokens,
+      completionTokens: response.completionTokens,
+      costUsd: response.cost,
+      latencyMs: response.latencyMs,
+      analysisType: "ask",
+    });
 
     // Extract citations with monitor names
     const citedNumbers = response.content.match(/\[(\d+)\]/g) || [];

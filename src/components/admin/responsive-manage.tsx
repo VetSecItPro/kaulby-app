@@ -300,11 +300,7 @@ export function ResponsiveManage({
       </div>
 
       {/* System Health - moved up for visibility */}
-      <Link href="/manage/system" className="block">
-        <div className="transition-all hover:opacity-90 cursor-pointer">
-          <SystemHealth {...systemHealth} />
-        </div>
-      </Link>
+      <SystemHealth {...systemHealth} />
 
       {/* Error Logs Summary */}
       <Link href="/manage/errors" className="block">

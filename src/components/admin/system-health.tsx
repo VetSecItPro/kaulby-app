@@ -3,6 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, XCircle, Clock, Activity, Server, HelpCircle } from "lucide-react";
+import Link from "next/link";
 
 interface JobStatus {
   name: string;
@@ -157,38 +158,46 @@ export function SystemHealth({
             <Server className="h-5 w-5" />
             Service Status
           </CardTitle>
-          <CardDescription>Real-time health of connected services</CardDescription>
+          <CardDescription>Real-time health of connected services — click a service for details</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-4">
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-              {getHealthStatus(healthChecks.database)}
-              <div>
-                <p className="font-medium">Database</p>
-                <p className="text-xs text-muted-foreground">PostgreSQL</p>
+            <Link href="/manage/system/database" className="block">
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 transition-all hover:bg-muted hover:shadow-sm cursor-pointer">
+                {getHealthStatus(healthChecks.database)}
+                <div>
+                  <p className="font-medium">Database</p>
+                  <p className="text-xs text-muted-foreground">PostgreSQL</p>
+                </div>
               </div>
-            </div>
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-              {getHealthStatus(healthChecks.ai)}
-              <div>
-                <p className="font-medium">AI Service</p>
-                <p className="text-xs text-muted-foreground">OpenRouter</p>
+            </Link>
+            <Link href="/manage/system/ai" className="block">
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 transition-all hover:bg-muted hover:shadow-sm cursor-pointer">
+                {getHealthStatus(healthChecks.ai)}
+                <div>
+                  <p className="font-medium">AI Service</p>
+                  <p className="text-xs text-muted-foreground">OpenRouter</p>
+                </div>
               </div>
-            </div>
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-              {getHealthStatus(healthChecks.email)}
-              <div>
-                <p className="font-medium">Email</p>
-                <p className="text-xs text-muted-foreground">Resend</p>
+            </Link>
+            <Link href="/manage/system/email" className="block">
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 transition-all hover:bg-muted hover:shadow-sm cursor-pointer">
+                {getHealthStatus(healthChecks.email)}
+                <div>
+                  <p className="font-medium">Email</p>
+                  <p className="text-xs text-muted-foreground">Resend</p>
+                </div>
               </div>
-            </div>
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-              {getHealthStatus(healthChecks.polar)}
-              <div>
-                <p className="font-medium">Payments</p>
-                <p className="text-xs text-muted-foreground">Polar</p>
+            </Link>
+            <Link href="/manage/system/payments" className="block">
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 transition-all hover:bg-muted hover:shadow-sm cursor-pointer">
+                {getHealthStatus(healthChecks.polar)}
+                <div>
+                  <p className="font-medium">Payments</p>
+                  <p className="text-xs text-muted-foreground">Polar</p>
+                </div>
               </div>
-            </div>
+            </Link>
           </div>
         </CardContent>
       </Card>

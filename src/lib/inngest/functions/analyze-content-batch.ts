@@ -1,7 +1,8 @@
 import { inngest } from "../client";
 import { logger } from "@/lib/logger";
 import { pooledDb } from "@/lib/db";
-import { results, monitors, aiLogs } from "@/lib/db/schema";
+import { results, monitors } from "@/lib/db/schema";
+import { logAiCall } from "@/lib/ai/log";
 import { eq, inArray } from "drizzle-orm";
 import { analyzeBatchSentiment } from "@/lib/ai/analyzers/batch-summary";
 import { selectRepresentativeSample, AI_BATCH_CONFIG, getAdaptiveSamplingConfig, getAdaptiveSampleSize, type SampleableItem } from "@/lib/ai/sampling";
@@ -166,7 +167,7 @@ export const analyzeContentBatch = inngest.createFunction(
 
     // Log AI usage
     await step.run("log-ai-usage", async () => {
-      await pooledDb.insert(aiLogs).values({
+      await logAiCall({
         userId,
         model: analysisResult.meta.model,
         promptTokens: analysisResult.meta.promptTokens,
@@ -174,6 +175,9 @@ export const analyzeContentBatch = inngest.createFunction(
         costUsd: analysisResult.meta.cost,
         latencyMs: analysisResult.meta.latencyMs,
         traceId,
+        monitorId,
+        analysisType: "batch",
+        platform,
       });
 
       await incrementAiCallsCount(userId, 1); // Only 1 AI call for entire batch

@@ -16,6 +16,7 @@ import Link from "next/link";
 import { ArrowLeft, DollarSign, Users, TrendingUp, ChevronRight, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CsvExport } from "./csv-export";
+import { CostPeriodToggle } from "./cost-period-toggle";
 
 export const dynamic = "force-dynamic";
 
@@ -100,11 +101,44 @@ async function getDetailedCostData(days: number = 30) {
       date: sql<string>`DATE(${aiLogs.createdAt})`,
       totalCost: sum(aiLogs.costUsd),
       totalCalls: count(),
+      totalTokens: sum(sql`${aiLogs.promptTokens} + ${aiLogs.completionTokens}`),
     })
     .from(aiLogs)
     .where(gte(aiLogs.createdAt, periodStart))
     .groupBy(sql`DATE(${aiLogs.createdAt})`)
-    .orderBy(sql`DATE(${aiLogs.createdAt})`);
+    .orderBy(desc(sql`DATE(${aiLogs.createdAt})`));
+
+  // Weekly cost trend (last 12 weeks)
+  const weeklyCostStart = new Date();
+  weeklyCostStart.setDate(weeklyCostStart.getDate() - 84); // 12 weeks
+  const weeklyCostTrend = await db
+    .select({
+      week: sql<string>`TO_CHAR(DATE_TRUNC('week', ${aiLogs.createdAt}), 'YYYY-"W"IW')`,
+      weekStart: sql<string>`TO_CHAR(DATE_TRUNC('week', ${aiLogs.createdAt}), 'Mon DD')`,
+      totalCost: sum(aiLogs.costUsd),
+      totalCalls: count(),
+      totalTokens: sum(sql`${aiLogs.promptTokens} + ${aiLogs.completionTokens}`),
+    })
+    .from(aiLogs)
+    .where(gte(aiLogs.createdAt, weeklyCostStart))
+    .groupBy(sql`DATE_TRUNC('week', ${aiLogs.createdAt})`)
+    .orderBy(desc(sql`DATE_TRUNC('week', ${aiLogs.createdAt})`));
+
+  // Monthly cost trend (last 12 months)
+  const monthlyCostStart = new Date();
+  monthlyCostStart.setMonth(monthlyCostStart.getMonth() - 12);
+  const monthlyCostTrend = await db
+    .select({
+      month: sql<string>`TO_CHAR(DATE_TRUNC('month', ${aiLogs.createdAt}), 'YYYY-MM')`,
+      monthLabel: sql<string>`TO_CHAR(DATE_TRUNC('month', ${aiLogs.createdAt}), 'Mon YYYY')`,
+      totalCost: sum(aiLogs.costUsd),
+      totalCalls: count(),
+      totalTokens: sum(sql`${aiLogs.promptTokens} + ${aiLogs.completionTokens}`),
+    })
+    .from(aiLogs)
+    .where(gte(aiLogs.createdAt, monthlyCostStart))
+    .groupBy(sql`DATE_TRUNC('month', ${aiLogs.createdAt})`)
+    .orderBy(desc(sql`DATE_TRUNC('month', ${aiLogs.createdAt})`));
 
   // Current month spend for forecast
   const currentMonthSpendQuery = await db
@@ -233,6 +267,19 @@ async function getDetailedCostData(days: number = 30) {
       date: item.date,
       totalCost: Number(item.totalCost) || 0,
       totalCalls: Number(item.totalCalls) || 0,
+      totalTokens: Number(item.totalTokens) || 0,
+    })),
+    weeklyTrend: weeklyCostTrend.map((item) => ({
+      label: item.weekStart,
+      totalCost: Number(item.totalCost) || 0,
+      totalCalls: Number(item.totalCalls) || 0,
+      totalTokens: Number(item.totalTokens) || 0,
+    })),
+    monthlyTrend: monthlyCostTrend.map((item) => ({
+      label: item.monthLabel,
+      totalCost: Number(item.totalCost) || 0,
+      totalCalls: Number(item.totalCalls) || 0,
+      totalTokens: Number(item.totalTokens) || 0,
     })),
     costByMonitor: costByMonitorQuery.map((item) => ({
       monitorId: item.monitorId || "",
@@ -494,6 +541,18 @@ export default async function CostsPage({
           </div>
         </CardContent>
       </Card>
+
+      {/* Cost Trend with Period Toggle */}
+      <CostPeriodToggle
+        dailyData={data.dailyTrend.map((d) => ({
+          label: d.date,
+          totalCost: d.totalCost,
+          totalCalls: d.totalCalls,
+          totalTokens: d.totalTokens,
+        }))}
+        weeklyData={data.weeklyTrend}
+        monthlyData={data.monthlyTrend}
+      />
 
       {/* Cost by Model */}
       <Card>

@@ -1,6 +1,7 @@
 import { inngest } from "../client";
 import { pooledDb } from "@/lib/db";
 import { results, aiLogs, monitors, painPointCategoryEnum, conversationCategoryEnum } from "@/lib/db/schema";
+import { logAiCall } from "@/lib/ai/log";
 import { eq, count } from "drizzle-orm";
 import {
   analyzeSentiment,
@@ -166,37 +167,6 @@ async function runTeamAnalysis(
     model: comprehensiveResult.meta.model,
     keywordMatchUsed: !!keywordMatch,
   };
-}
-
-/** Log AI call to aiLogs table */
-async function logAiCall(params: {
-  userId: string;
-  model: string;
-  promptTokens: number;
-  completionTokens: number;
-  costUsd: number;
-  latencyMs: number;
-  traceId: string;
-  monitorId: string;
-  resultId: string;
-  analysisType: string;
-  cacheHit: boolean;
-  platform: string;
-}) {
-  await pooledDb.insert(aiLogs).values({
-    userId: params.userId,
-    model: params.model,
-    promptTokens: params.promptTokens,
-    completionTokens: params.completionTokens,
-    costUsd: params.costUsd,
-    latencyMs: params.latencyMs,
-    traceId: params.traceId,
-    monitorId: params.monitorId,
-    resultId: params.resultId,
-    analysisType: params.analysisType,
-    cacheHit: params.cacheHit,
-    platform: params.platform,
-  });
 }
 
 // Analyze content with AI

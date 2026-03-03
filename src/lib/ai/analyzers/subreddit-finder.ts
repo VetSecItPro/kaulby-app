@@ -1,4 +1,5 @@
 import { jsonCompletion } from "../openrouter";
+import { logAiCall } from "../log";
 import { logger } from "@/lib/logger";
 
 interface SubredditSuggestion {
@@ -143,6 +144,16 @@ Only include subreddits where this company/topic would ACTUALLY be discussed.`;
       messages: [
         { role: "user", content: prompt }
       ],
+    });
+
+    // Log AI cost (system-level, no userId)
+    await logAiCall({
+      model: result.meta.model,
+      promptTokens: result.meta.promptTokens,
+      completionTokens: result.meta.completionTokens,
+      costUsd: result.meta.cost,
+      latencyMs: result.meta.latencyMs,
+      analysisType: "subreddit-finder",
     });
 
     // Extract just the subreddit names, prioritizing high relevance
