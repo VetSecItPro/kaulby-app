@@ -113,7 +113,7 @@ function formatDate(date: Date | null) {
 
 function getPlanBadge(plan: string | null) {
   switch (plan) {
-    case "enterprise":
+    case "team":
       return <Badge className="bg-amber-500 text-white">Team</Badge>;
     case "pro":
       return <Badge className="bg-primary text-primary-foreground">Pro</Badge>;
@@ -225,7 +225,7 @@ export default async function MonitorsPage() {
                 return (
                   <div key={p.plan} className="space-y-1">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="capitalize">{p.plan === "enterprise" ? "Team" : p.plan}</span>
+                      <span className="capitalize">{p.plan === "team" ? "Team" : p.plan}</span>
                       <span className="text-muted-foreground">
                         {p.count} ({percentage.toFixed(1)}%)
                       </span>
@@ -233,7 +233,7 @@ export default async function MonitorsPage() {
                     <div className="h-2 w-full rounded-full bg-muted">
                       <div
                         className={`h-2 rounded-full ${
-                          p.plan === "enterprise" ? "bg-amber-500" :
+                          p.plan === "team" ? "bg-amber-500" :
                           p.plan === "pro" ? "bg-primary" : "bg-muted-foreground"
                         }`}
                         style={{ width: `${percentage}%` }}

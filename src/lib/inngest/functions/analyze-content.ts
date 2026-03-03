@@ -457,7 +457,7 @@ export const analyzeContent = inngest.createFunction(
         await flushAI();
       });
 
-      // Trigger webhooks for enterprise users
+      // Trigger webhooks for team users
       await step.run("trigger-webhooks-team", async () => {
         const webhookMetadata = result.metadata as Record<string, unknown> | null;
         await inngest.send({
@@ -585,7 +585,7 @@ export const analyzeContent = inngest.createFunction(
       await flushAI();
     });
 
-    // Trigger webhooks for enterprise users (Pro users can also have webhooks if upgraded)
+    // Trigger webhooks for team users (Pro users can also have webhooks if upgraded)
     await step.run("trigger-webhooks-pro", async () => {
       // Get monitor info for webhook
       const monitor = await pooledDb.query.monitors.findFirst({

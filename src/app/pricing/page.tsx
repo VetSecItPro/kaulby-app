@@ -42,7 +42,7 @@ interface Feature {
 
 interface Plan {
   name: string;
-  key: "free" | "pro" | "enterprise";
+  key: "free" | "pro" | "team";
   description: string;
   monthlyPrice: number;
   annualPrice: number;
@@ -98,7 +98,7 @@ const plans: Plan[] = [
   },
   {
     name: "Team",
-    key: "enterprise",
+    key: "team",
     description: "For growing teams and agencies",
     monthlyPrice: 99,
     annualPrice: 990,
@@ -117,7 +117,7 @@ const plans: Plan[] = [
       { text: "API access" },
     ],
     cta: "Sign Up for Team",
-    href: "/sign-up?plan=enterprise",
+    href: "/sign-up?plan=team",
     popular: false,
   },
 ];
@@ -144,7 +144,7 @@ const featureComparison = [
 export default function PricingPage() {
   const { isSignedIn } = useAuth();
   const [checkoutOpen, setCheckoutOpen] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<"pro" | "enterprise">("pro");
+  const [selectedPlan, setSelectedPlan] = useState<"pro" | "team">("pro");
   const [selectedPlanName, setSelectedPlanName] = useState("Pro");
   const [billingInterval, setBillingInterval] = useState<BillingInterval>("monthly");
   const [dayPassStatus, setDayPassStatus] = useState<{
@@ -188,7 +188,7 @@ export default function PricingPage() {
     }
   };
 
-  const handleUpgrade = (planKey: "pro" | "enterprise", planName: string) => {
+  const handleUpgrade = (planKey: "pro" | "team", planName: string) => {
     setSelectedPlan(planKey);
     setSelectedPlanName(planName);
     setCheckoutOpen(true);
@@ -383,7 +383,7 @@ export default function PricingPage() {
                       <Button
                         className="w-full"
                         variant={plan.popular ? "default" : "outline"}
-                        onClick={() => handleUpgrade(plan.key as "pro" | "enterprise", plan.name)}
+                        onClick={() => handleUpgrade(plan.key as "pro" | "team", plan.name)}
                       >
                         {plan.cta}
                       </Button>

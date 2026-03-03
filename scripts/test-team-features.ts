@@ -54,12 +54,12 @@ async function main() {
     console.log(`✓ Found Owner: ${john.name || john.email} (ID: ${john.id})`);
     console.log(`  Current subscription: ${john.subscriptionStatus}`);
 
-    // Ensure Owner has enterprise subscription for team features
-    if (john.subscriptionStatus !== "enterprise") {
-      console.log("  Upgrading to enterprise for testing...");
+    // Ensure Owner has team subscription for team features
+    if (john.subscriptionStatus !== "team") {
+      console.log("  Upgrading to team for testing...");
       await db
         .update(users)
-        .set({ subscriptionStatus: "enterprise" })
+        .set({ subscriptionStatus: "team" })
         .where(eq(users.id, john.id));
     }
 
@@ -121,7 +121,7 @@ async function main() {
           id: userData.id,
           email: userData.email,
           name: userData.name,
-          subscriptionStatus: "enterprise",
+          subscriptionStatus: "team",
           workspaceId: workspace.id,
           workspaceRole: "editor",
         });
@@ -132,7 +132,7 @@ async function main() {
           .set({
             workspaceId: workspace.id,
             workspaceRole: "editor",
-            subscriptionStatus: "enterprise",
+            subscriptionStatus: "team",
           })
           .where(eq(users.id, userData.id));
         console.log(`✓ Updated ${userData.name} to workspace member`);

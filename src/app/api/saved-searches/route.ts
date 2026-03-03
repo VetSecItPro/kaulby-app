@@ -9,7 +9,7 @@ import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-
 const SAVED_SEARCH_LIMITS = {
   free: 3,
   pro: 20,
-  enterprise: 100,
+  team: 100,
 };
 
 // GET - List user's saved searches

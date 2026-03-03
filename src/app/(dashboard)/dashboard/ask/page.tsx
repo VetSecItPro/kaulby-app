@@ -70,7 +70,7 @@ export default async function AskPage() {
         "free" as const,
       ];
 
-  const isPro = userPlan === "pro" || userPlan === "enterprise";
+  const isPro = userPlan === "pro" || userPlan === "team";
 
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col">

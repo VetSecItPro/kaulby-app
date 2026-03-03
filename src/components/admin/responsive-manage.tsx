@@ -68,7 +68,7 @@ interface BusinessMetricsData {
   conversionRateChange: number;
   avgRevenuePerUser: number;
   proConversions: number;
-  enterpriseConversions: number;
+  teamConversions: number;
   monthlySignups: number;
   paidUserPercentage: number;
 }
@@ -147,7 +147,7 @@ interface ResponsiveManageProps {
   stats: Stats;
   freeUsers: number;
   proUsers: number;
-  enterpriseUsers: number;
+  teamUsers: number;
   userGrowth: UserGrowth[];
   aiCosts: AiCost[];
   platformDist: PlatformDist[];
@@ -166,7 +166,7 @@ export function ResponsiveManage({
   stats,
   freeUsers,
   proUsers,
-  enterpriseUsers,
+  teamUsers,
   userGrowth,
   aiCosts,
   platformDist,
@@ -185,7 +185,7 @@ export function ResponsiveManage({
           stats={stats}
           freeUsers={freeUsers}
           proUsers={proUsers}
-          enterpriseUsers={enterpriseUsers}
+          teamUsers={teamUsers}
           platformDist={platformDist}
           sentimentDist={sentimentDist}
           recentUsers={recentUsers}
@@ -288,11 +288,11 @@ export function ResponsiveManage({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-amber-500">{enterpriseUsers}</div>
+            <div className="text-2xl font-bold text-amber-500">{teamUsers}</div>
             <div className="mt-2 h-2 w-full rounded-full bg-muted">
               <div
                 className="h-2 rounded-full bg-amber-500"
-                style={{ width: `${stats.totalUsers > 0 ? (enterpriseUsers / stats.totalUsers) * 100 : 0}%` }}
+                style={{ width: `${stats.totalUsers > 0 ? (teamUsers / stats.totalUsers) * 100 : 0}%` }}
               />
             </div>
           </CardContent>

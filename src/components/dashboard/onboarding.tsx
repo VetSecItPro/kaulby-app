@@ -43,7 +43,7 @@ interface OnboardingWizardProps {
   isOpen: boolean;
   onClose: () => void;
   userName?: string;
-  userPlan?: "free" | "pro" | "enterprise";
+  userPlan?: "free" | "pro" | "team";
 }
 
 // Pre-built monitor templates for quick setup

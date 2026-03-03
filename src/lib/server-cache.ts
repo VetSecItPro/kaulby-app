@@ -61,7 +61,7 @@ export const getCachedUserPlan = unstable_cache(
     });
 
     if (!user) return null;
-    if (user.isAdmin) return "enterprise";
+    if (user.isAdmin) return "team";
     if (user.dayPassExpiresAt && new Date(user.dayPassExpiresAt) > new Date()) return "pro";
     return user.subscriptionStatus || "free";
   },

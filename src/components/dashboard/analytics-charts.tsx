@@ -127,7 +127,7 @@ export function AnalyticsCharts({ subscriptionStatus = "free" }: AnalyticsCharts
   const [sovData, setSovData] = useState<ShareOfVoiceData | null>(null);
   const [sovLoading, setSovLoading] = useState(false);
 
-  const isTeam = subscriptionStatus === "enterprise";
+  const isTeam = subscriptionStatus === "team";
 
   useEffect(() => {
     const controller = new AbortController();

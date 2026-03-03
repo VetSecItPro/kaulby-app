@@ -4,7 +4,7 @@ import { PLANS, getPlanLimits, ALL_PLATFORMS, type PlanKey } from "../plans";
 describe("plans", () => {
   describe("PLANS definition", () => {
     it("has exactly 3 plan tiers", () => {
-      expect(Object.keys(PLANS)).toEqual(["free", "pro", "enterprise"]);
+      expect(Object.keys(PLANS)).toEqual(["free", "pro", "team"]);
     });
 
     it("free plan has zero pricing", () => {
@@ -18,14 +18,14 @@ describe("plans", () => {
       expect(PLANS.pro.annualPrice).toBe(290);
     });
 
-    it("enterprise plan has correct pricing", () => {
-      expect(PLANS.enterprise.price).toBe(99);
-      expect(PLANS.enterprise.annualPrice).toBe(990);
+    it("team plan has correct pricing", () => {
+      expect(PLANS.team.price).toBe(99);
+      expect(PLANS.team.annualPrice).toBe(990);
     });
 
     it("annual pricing gives 2 months free", () => {
       expect(PLANS.pro.annualPrice).toBe(PLANS.pro.price * 10);
-      expect(PLANS.enterprise.annualPrice).toBe(PLANS.enterprise.price * 10);
+      expect(PLANS.team.annualPrice).toBe(PLANS.team.price * 10);
     });
   });
 
@@ -46,8 +46,8 @@ describe("plans", () => {
       expect(limits.refreshDelayHours).toBe(4);
     });
 
-    it("returns enterprise plan limits", () => {
-      const limits = getPlanLimits("enterprise");
+    it("returns team plan limits", () => {
+      const limits = getPlanLimits("team");
       expect(limits.monitors).toBe(30);
       expect(limits.keywordsPerMonitor).toBe(20);
       expect(limits.resultsVisible).toBe(-1); // unlimited
@@ -72,8 +72,8 @@ describe("plans", () => {
       expect(limits.platforms).not.toContain("g2");
     });
 
-    it("enterprise plan allows all 17 platforms", () => {
-      const limits = getPlanLimits("enterprise");
+    it("team plan allows all 17 platforms", () => {
+      const limits = getPlanLimits("team");
       expect(limits.platforms).toHaveLength(17);
       expect(limits.platforms).toEqual(ALL_PLATFORMS);
     });
@@ -96,8 +96,8 @@ describe("plans", () => {
       expect(limits.aiFeatures.comprehensiveAnalysis).toBe(false);
     });
 
-    it("enterprise plan has comprehensive AI", () => {
-      const limits = getPlanLimits("enterprise");
+    it("team plan has comprehensive AI", () => {
+      const limits = getPlanLimits("team");
       expect(limits.aiFeatures.unlimitedAiAnalysis).toBe(true);
       expect(limits.aiFeatures.comprehensiveAnalysis).toBe(true);
       expect(limits.aiFeatures.askFeature).toBe(true);
@@ -115,8 +115,8 @@ describe("plans", () => {
       expect(limits.digestFrequencies).toEqual(["daily"]);
     });
 
-    it("enterprise plan has all digest frequencies", () => {
-      const limits = getPlanLimits("enterprise");
+    it("team plan has all digest frequencies", () => {
+      const limits = getPlanLimits("team");
       expect(limits.digestFrequencies).toContain("daily");
       expect(limits.digestFrequencies).toContain("weekly");
       expect(limits.digestFrequencies).toContain("monthly");
@@ -143,8 +143,8 @@ describe("plans", () => {
       expect(limits.alerts.webhooks).toBe(false);
     });
 
-    it("enterprise plan has all exports and alerts", () => {
-      const limits = getPlanLimits("enterprise");
+    it("team plan has all exports and alerts", () => {
+      const limits = getPlanLimits("team");
       expect(limits.exports.csv).toBe(true);
       expect(limits.exports.api).toBe(true);
       expect(limits.alerts.email).toBe(true);
@@ -164,7 +164,7 @@ describe("plans", () => {
   });
 
   describe("tier hierarchy", () => {
-    const plans: PlanKey[] = ["free", "pro", "enterprise"];
+    const plans: PlanKey[] = ["free", "pro", "team"];
 
     it("monitors increase with tier", () => {
       const limits = plans.map(getPlanLimits);

@@ -48,7 +48,7 @@ async function ResultsContent({ searchParams }: ResultsPageProps) {
         totalPages={0}
         hasMonitors={false}
         planInfo={{
-          plan: "enterprise",
+          plan: "team",
           visibleLimit: -1,
           isLimited: false,
           hiddenCount: 0,

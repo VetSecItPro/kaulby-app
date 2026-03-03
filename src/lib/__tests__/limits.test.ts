@@ -74,9 +74,9 @@ describe("limits", () => {
       expect(result.allowed).toBe(false);
     });
 
-    it("allows 20 keywords on enterprise plan", () => {
+    it("allows 20 keywords on team plan", () => {
       const keywords = Array.from({ length: 20 }, (_, i) => `kw${i}`);
-      const result = checkKeywordsLimit(keywords, "enterprise");
+      const result = checkKeywordsLimit(keywords, "team");
       expect(result.allowed).toBe(true);
       expect(result.limit).toBe(20);
     });
@@ -113,11 +113,11 @@ describe("limits", () => {
       expect(canAccessPlatformWithPlan("pro", "devto")).toBe(false);
     });
 
-    it("allows devto on enterprise plan", () => {
-      expect(canAccessPlatformWithPlan("enterprise", "devto")).toBe(true);
+    it("allows devto on team plan", () => {
+      expect(canAccessPlatformWithPlan("team", "devto")).toBe(true);
     });
 
-    it("allows all 17 platforms on enterprise plan", () => {
+    it("allows all 17 platforms on team plan", () => {
       const allPlatforms: Platform[] = [
         "reddit", "hackernews", "indiehackers", "producthunt",
         "googlereviews", "youtube", "github", "trustpilot", "x",
@@ -125,7 +125,7 @@ describe("limits", () => {
         "quora", "g2", "yelp", "amazonreviews",
       ];
       for (const p of allPlatforms) {
-        expect(canAccessPlatformWithPlan("enterprise", p)).toBe(true);
+        expect(canAccessPlatformWithPlan("team", p)).toBe(true);
       }
     });
 
@@ -168,9 +168,9 @@ describe("limits", () => {
       expect(shouldProcessMonitorWithPlan("free", recent)).toBe(false);
     });
 
-    it("returns true for enterprise after 2+ hours", () => {
+    it("returns true for team after 2+ hours", () => {
       const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000);
-      expect(shouldProcessMonitorWithPlan("enterprise", threeHoursAgo)).toBe(true);
+      expect(shouldProcessMonitorWithPlan("team", threeHoursAgo)).toBe(true);
     });
   });
 
@@ -186,8 +186,8 @@ describe("limits", () => {
       expect(getPlanLimits("pro").monitors).toBe(10);
     });
 
-    it("enterprise plan allows 30 monitors", () => {
-      expect(getPlanLimits("enterprise").monitors).toBe(30);
+    it("team plan allows 30 monitors", () => {
+      expect(getPlanLimits("team").monitors).toBe(30);
     });
   });
 
@@ -203,8 +203,8 @@ describe("limits", () => {
       expect(getPlanLimits("pro").refreshDelayHours).toBe(4);
     });
 
-    it("enterprise plan has 2-hour refresh delay", () => {
-      expect(getPlanLimits("enterprise").refreshDelayHours).toBe(2);
+    it("team plan has 2-hour refresh delay", () => {
+      expect(getPlanLimits("team").refreshDelayHours).toBe(2);
     });
   });
 
@@ -219,9 +219,9 @@ describe("limits", () => {
       expect(prompt.currentPlan).toBe("free");
     });
 
-    it("suggests enterprise when current plan is pro", () => {
+    it("suggests team when current plan is pro", () => {
       const prompt = getUpgradePrompt("pro", "monitors");
-      expect(prompt.suggestedPlan).toBe("enterprise");
+      expect(prompt.suggestedPlan).toBe("team");
     });
 
     it("includes platform name in context", () => {

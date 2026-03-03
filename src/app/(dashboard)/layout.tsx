@@ -22,7 +22,7 @@ export default async function DashboardLayout({
   // In verified local dev, provide easy testing setup
   if (isLocalDev) {
     return (
-      <ResponsiveDashboardLayout isAdmin={true} subscriptionStatus="enterprise">
+      <ResponsiveDashboardLayout isAdmin={true} subscriptionStatus="team">
         <RoutePreloader />
         <ServiceWorkerRegister />
         <DashboardClientWrapper isNewUser={false} userName="Dev User">
@@ -92,7 +92,7 @@ export default async function DashboardLayout({
   const hasActiveDayPass = dbUser?.dayPassExpiresAt ? new Date(dbUser.dayPassExpiresAt) > new Date() : false;
 
   // Map subscriptionStatus to userPlan type
-  const userPlan = subscriptionStatus === "enterprise" ? "enterprise" : subscriptionStatus === "pro" ? "pro" : "free";
+  const userPlan = subscriptionStatus === "team" ? "team" : subscriptionStatus === "pro" ? "pro" : "free";
 
   // Get workspace role for team badge
   const workspaceRole = dbUser?.workspaceRole || null;

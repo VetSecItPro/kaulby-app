@@ -68,7 +68,7 @@ export function EditMonitorForm({ monitorId, limits, userPlan }: EditMonitorForm
   const [scheduleTimezone, setScheduleTimezone] = useState("America/New_York");
 
   const isPaidUser = userPlan !== "free";
-  const isTeamUser = userPlan === "enterprise";
+  const isTeamUser = userPlan === "team";
   const keywordLimit = limits.keywordsPerMonitor;
   const keywordsRemaining = keywordLimit - keywords.length;
   const isAtKeywordLimit = keywords.length >= keywordLimit;

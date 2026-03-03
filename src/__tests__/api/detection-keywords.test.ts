@@ -33,7 +33,7 @@ vi.mock("@/lib/limits", () => ({
 
 vi.mock("@/lib/plans", () => ({
   getPlanLimits: (plan: string) => ({
-    aiFeatures: { unlimitedAiAnalysis: plan === "pro" || plan === "enterprise" },
+    aiFeatures: { unlimitedAiAnalysis: plan === "pro" || plan === "team" },
   }),
 }));
 

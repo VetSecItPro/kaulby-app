@@ -423,7 +423,7 @@ export function HiddenResultsBanner({ hiddenCount, totalCount }: HiddenResultsBa
 interface RefreshDelayBannerProps {
   delayHours: number;
   nextRefreshAt?: Date | null;
-  subscriptionStatus?: string; // "free" | "pro" | "enterprise"
+  subscriptionStatus?: string; // "free" | "pro" | "team"
 }
 
 export function RefreshDelayBanner({ delayHours, nextRefreshAt, subscriptionStatus = "free" }: RefreshDelayBannerProps) {
@@ -454,8 +454,8 @@ export function RefreshDelayBanner({ delayHours, nextRefreshAt, subscriptionStat
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nextRefreshAt, delayHours]);
 
-  // Team (enterprise) is on the highest tier - no upgrade available
-  const isHighestTier = subscriptionStatus === "enterprise";
+  // Team is on the highest tier - no upgrade available
+  const isHighestTier = subscriptionStatus === "team";
 
   return (
     <div className="inline-flex items-center gap-3 px-3 py-1.5 rounded-md bg-gradient-to-r from-yellow-500/20 to-amber-500/20 border border-yellow-600/40">

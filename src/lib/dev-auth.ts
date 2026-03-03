@@ -14,9 +14,12 @@ export async function getEffectiveUserId(): Promise<string | null> {
                      !process.env.VERCEL_ENV;
 
   if (isLocalDev) {
-    // In local dev, use a test user ID for easier development
-    // This matches the dashboard layout's dev bypass
+    // In local dev, prefer the admin user for full-feature testing
+    // This matches the dashboard layout's dev bypass (which hardcodes team)
     const devUser = await db.query.users.findFirst({
+      where: (table, { eq }) => eq(table.isAdmin, true),
+      columns: { id: true },
+    }) ?? await db.query.users.findFirst({
       columns: { id: true },
     });
     return devUser?.id || null;

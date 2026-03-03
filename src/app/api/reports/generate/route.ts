@@ -74,7 +74,7 @@ export async function POST(req: Request) {
 
     // Check if user has Team tier
     const plan = await getUserPlan(userId);
-    if (plan !== "enterprise") {
+    if (plan !== "team") {
       return NextResponse.json(
         { error: "Report generation requires Team subscription" },
         { status: 403 }

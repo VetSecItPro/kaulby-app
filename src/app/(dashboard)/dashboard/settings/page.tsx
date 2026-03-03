@@ -80,8 +80,8 @@ async function SettingsContent() {
     });
   }
 
-  // In dev mode, default to enterprise (Team) for full feature testing
-  const subscriptionStatus = isDev ? "enterprise" : (user?.subscriptionStatus || "free");
+  // In dev mode, default to team for full feature testing
+  const subscriptionStatus = isDev ? "team" : (user?.subscriptionStatus || "free");
   // In dev mode, show actual user email if available, otherwise show a clear dev mode indicator
   const email = clerkEmail || user?.email || (isDev ? "dev-mode@kaulby.local" : "");
   const name = clerkUser?.fullName || user?.name || (isDev ? "Dev Mode User" : "");
@@ -151,7 +151,7 @@ async function SettingsContent() {
         "Webhooks + API access",
         "5 team seats (+$15/user)",
       ],
-      current: subscriptionStatus === "enterprise",
+      current: subscriptionStatus === "team",
     },
   ];
 

@@ -28,9 +28,9 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfter ?? 60) } });
     }
 
-    // Check if user has Team tier (enterprise feature)
+    // Check if user has Team tier feature
     const plan = await getUserPlan(userId);
-    if (plan !== "enterprise") {
+    if (plan !== "team") {
       return NextResponse.json(
         { error: "Share of Voice requires Team subscription" },
         { status: 403 }

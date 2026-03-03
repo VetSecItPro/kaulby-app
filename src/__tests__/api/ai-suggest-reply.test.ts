@@ -83,7 +83,7 @@ describe("POST /api/ai/suggest-reply", () => {
     expect(res.status).toBe(401);
   });
 
-  it("returns 403 when user is not pro or enterprise", async () => {
+  it("returns 403 when user is not pro or team", async () => {
     mockAuth.mockResolvedValue({ userId: "user_1" });
     mockGetUserPlan.mockResolvedValue("free");
     const res = await POST(makeRequest("POST", "/api/ai/suggest-reply", validBody));

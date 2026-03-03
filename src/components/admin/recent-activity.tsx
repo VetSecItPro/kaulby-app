@@ -22,7 +22,7 @@ export function RecentActivity({ users }: RecentActivityProps) {
     switch (status) {
       case "pro":
         return "bg-primary text-primary-foreground";
-      case "enterprise":
+      case "team":
         return "bg-amber-500 text-white";
       default:
         return "bg-muted text-muted-foreground";

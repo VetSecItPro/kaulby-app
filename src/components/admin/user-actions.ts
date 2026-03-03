@@ -35,7 +35,7 @@ async function verifyAdmin() {
 // This function only updates the local database state.
 export async function updateUserPlan(
   userId: string,
-  newPlan: "free" | "pro" | "enterprise"
+  newPlan: "free" | "pro" | "team"
 ) {
   await verifyAdmin();
 

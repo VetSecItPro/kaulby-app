@@ -460,7 +460,7 @@ function DesktopResultsView(props: ViewProps) {
     return () => observer.disconnect();
   }, [hasMore, loadingMore, handleLoadMore]);
 
-  const canExport = planInfo?.plan === "pro" || planInfo?.plan === "enterprise";
+  const canExport = planInfo?.plan === "pro" || planInfo?.plan === "team";
 
   // Extract keywords from all monitors for highlighting
   const allKeywords = useMemo(() => {

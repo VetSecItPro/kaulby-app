@@ -30,7 +30,7 @@ const AI_RATE_LIMITS = {
     requestsPerDay: 100,
     dailyTokenBudget: 50_000, // ~$0.15-0.50 depending on model
   },
-  enterprise: {
+  team: {
     requestsPerMinute: 10,
     requestsPerHour: 100,
     requestsPerDay: 500,
@@ -64,7 +64,7 @@ function createRedisRatelimiter(
 
 // Lazy-initialized per-tier Redis rate limiters
 let redisLimiters: Record<
-  "pro" | "enterprise",
+  "pro" | "team",
   { minute: Ratelimit | null; hour: Ratelimit | null; day: Ratelimit | null }
 > | null = null;
 
@@ -76,10 +76,10 @@ function getRedisLimiters() {
         hour: createRedisRatelimiter("1 h", AI_RATE_LIMITS.pro.requestsPerHour),
         day: createRedisRatelimiter("1 d", AI_RATE_LIMITS.pro.requestsPerDay),
       },
-      enterprise: {
-        minute: createRedisRatelimiter("1 m", AI_RATE_LIMITS.enterprise.requestsPerMinute),
-        hour: createRedisRatelimiter("1 h", AI_RATE_LIMITS.enterprise.requestsPerHour),
-        day: createRedisRatelimiter("1 d", AI_RATE_LIMITS.enterprise.requestsPerDay),
+      team: {
+        minute: createRedisRatelimiter("1 m", AI_RATE_LIMITS.team.requestsPerMinute),
+        hour: createRedisRatelimiter("1 h", AI_RATE_LIMITS.team.requestsPerHour),
+        day: createRedisRatelimiter("1 d", AI_RATE_LIMITS.team.requestsPerDay),
       },
     };
   }
@@ -132,7 +132,7 @@ function checkRateLimitMemory(
  */
 export async function checkAllRateLimits(
   userId: string,
-  tier: "free" | "pro" | "enterprise"
+  tier: "free" | "pro" | "team"
 ): Promise<{ allowed: boolean; reason?: string; retryAfter?: number }> {
   const limits = AI_RATE_LIMITS[tier];
 
@@ -141,7 +141,7 @@ export async function checkAllRateLimits(
   }
 
   // --- Redis path (distributed) ---
-  if (hasRedis && (tier === "pro" || tier === "enterprise")) {
+  if (hasRedis && (tier === "pro" || tier === "team")) {
     const limiters = getRedisLimiters()[tier];
 
     const minuteResult = limiters.minute ? await limiters.minute.limit(`minute:${userId}`) : null;
@@ -235,7 +235,7 @@ async function getDailyTokenUsage(userId: string): Promise<number> {
  */
 export async function checkTokenBudget(
   userId: string,
-  tier: "free" | "pro" | "enterprise"
+  tier: "free" | "pro" | "team"
 ): Promise<{ allowed: boolean; remaining: number; used: number; limit: number }> {
   const limits = AI_RATE_LIMITS[tier];
   const used = await getDailyTokenUsage(userId);

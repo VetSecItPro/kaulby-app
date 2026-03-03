@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
       const planLimits = {
         free: { monitors: 1, keywords: 3, resultsVisible: 3, refreshHours: 24 },
         pro: { monitors: 10, keywords: 20, resultsVisible: -1, refreshHours: 4 },
-        enterprise: { monitors: 30, keywords: 35, resultsVisible: -1, refreshHours: 2 },
+        team: { monitors: 30, keywords: 35, resultsVisible: -1, refreshHours: 2 },
       };
 
       const currentPlan = user.subscriptionStatus || "free";

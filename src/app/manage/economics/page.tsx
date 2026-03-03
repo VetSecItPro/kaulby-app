@@ -24,8 +24,8 @@ export const dynamic = "force-dynamic";
 // Revenue figures on this page may therefore be slightly overstated for annual subscribers.
 function getPlanPrice(plan: string | null): number {
   switch (plan) {
-    case "enterprise":
-      return PLANS.enterprise.price; // 99
+    case "team":
+      return PLANS.team.price; // 99
     case "pro":
       return PLANS.pro.price; // 29
     default:
@@ -58,7 +58,7 @@ async function getUnitEconomicsData() {
     .where(gte(aiLogs.createdAt, thirtyDaysAgo))
     .groupBy(users.subscriptionStatus);
 
-  const plans = ["free", "pro", "enterprise"] as const;
+  const plans = ["free", "pro", "team"] as const;
 
   const marginByPlan = plans.map((planKey) => {
     const userCount = Number(usersByPlan.find((r) => r.plan === planKey)?.userCount) || 0;
@@ -170,7 +170,7 @@ function formatNumber(value: number) {
 
 function getPlanBadge(plan: string | null) {
   switch (plan) {
-    case "enterprise":
+    case "team":
       return <Badge className="bg-amber-500 text-white">Enterprise</Badge>;
     case "pro":
       return <Badge className="bg-primary text-primary-foreground">Pro</Badge>;

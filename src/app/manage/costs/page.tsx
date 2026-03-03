@@ -175,7 +175,7 @@ async function getDetailedCostData(days: number = 30) {
       .where(
         and(
           gte(aiLogs.createdAt, periodStart),
-          sql`${users.subscriptionStatus} IN ('pro', 'enterprise')`
+          sql`${users.subscriptionStatus} IN ('pro', 'team')`
         )
       ),
   ]);
@@ -327,7 +327,7 @@ function formatNumber(value: number) {
 
 function getPlanBadge(plan: string) {
   switch (plan) {
-    case "enterprise":
+    case "team":
       return <Badge className="bg-amber-500 text-white">Enterprise</Badge>;
     case "pro":
       return <Badge className="bg-primary text-primary-foreground">Pro</Badge>;

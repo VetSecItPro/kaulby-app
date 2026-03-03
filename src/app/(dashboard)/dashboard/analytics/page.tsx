@@ -35,8 +35,8 @@ async function AnalyticsContent() {
       })
     : null;
 
-  // In dev mode without a user, default to enterprise for full feature testing
-  const subscriptionStatus = user?.subscriptionStatus || (isLocalDev() ? "enterprise" : "free");
+  // In dev mode without a user, default to team for full feature testing
+  const subscriptionStatus = user?.subscriptionStatus || (isLocalDev() ? "team" : "free");
 
   return (
     <div className="space-y-8">

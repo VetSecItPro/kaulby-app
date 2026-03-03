@@ -97,8 +97,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Check if user is enterprise
-    if (user.subscriptionStatus !== "enterprise") {
+    // Check if user is team tier
+    if (user.subscriptionStatus !== "team") {
       return NextResponse.json(
         { error: "Team workspaces are only available on the Enterprise plan" },
         { status: 403 }

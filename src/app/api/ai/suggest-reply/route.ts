@@ -46,7 +46,7 @@ export async function POST(req: Request) {
 
     // Check Pro access
     const plan = await getUserPlan(userId);
-    if (plan !== "pro" && plan !== "enterprise") {
+    if (plan !== "pro" && plan !== "team") {
       return NextResponse.json(
         { error: "This feature requires a Pro subscription" },
         { status: 403 }

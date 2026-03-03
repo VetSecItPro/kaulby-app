@@ -95,9 +95,9 @@ describe("GET /api/api-keys", () => {
     expect(res.status).toBe(403);
   });
 
-  it("returns keys for enterprise user", async () => {
+  it("returns keys for team user", async () => {
     mockAuth.mockResolvedValue({ userId: "user_1" });
-    mockFindUserWithFallback.mockResolvedValue({ id: "user_1", subscriptionStatus: "enterprise" });
+    mockFindUserWithFallback.mockResolvedValue({ id: "user_1", subscriptionStatus: "team" });
     const mockKeys = [
       { id: "key_1", name: "Production", keyPrefix: "kby_prod", createdAt: "2024-01-01" },
     ];
@@ -128,7 +128,7 @@ describe("POST /api/api-keys", () => {
     expect(json.error).toContain("Name is required");
   });
 
-  it("returns 403 when user is not enterprise", async () => {
+  it("returns 403 when user is not team", async () => {
     mockAuth.mockResolvedValue({ userId: "user_1" });
     mockFindUserWithFallback.mockResolvedValue({ id: "user_1", subscriptionStatus: "pro" });
     const res = await POST(makeRequest("POST", "/api/api-keys", { name: "Test Key" }));
@@ -139,7 +139,7 @@ describe("POST /api/api-keys", () => {
 
   it("returns 403 when createApiKey returns null (limit reached)", async () => {
     mockAuth.mockResolvedValue({ userId: "user_1" });
-    mockFindUserWithFallback.mockResolvedValue({ id: "user_1", subscriptionStatus: "enterprise" });
+    mockFindUserWithFallback.mockResolvedValue({ id: "user_1", subscriptionStatus: "team" });
     mockCreateApiKey.mockResolvedValue(null);
     const res = await POST(makeRequest("POST", "/api/api-keys", { name: "Test Key" }));
     expect(res.status).toBe(403);
@@ -149,7 +149,7 @@ describe("POST /api/api-keys", () => {
 
   it("creates API key successfully", async () => {
     mockAuth.mockResolvedValue({ userId: "user_1" });
-    mockFindUserWithFallback.mockResolvedValue({ id: "user_1", subscriptionStatus: "enterprise" });
+    mockFindUserWithFallback.mockResolvedValue({ id: "user_1", subscriptionStatus: "team" });
     mockCreateApiKey.mockResolvedValue({
       id: "key_1",
       key: "kby_live_abc123",
@@ -191,7 +191,7 @@ describe("DELETE /api/api-keys", () => {
 
   it("revokes API key successfully", async () => {
     mockAuth.mockResolvedValue({ userId: "user_1" });
-    mockFindUserWithFallback.mockResolvedValue({ id: "user_1", subscriptionStatus: "enterprise" });
+    mockFindUserWithFallback.mockResolvedValue({ id: "user_1", subscriptionStatus: "team" });
     mockRevokeApiKey.mockResolvedValue(undefined);
     const res = await DELETE(makeRequest("DELETE", "/api/api-keys?keyId=key_1"));
     expect(res.status).toBe(200);

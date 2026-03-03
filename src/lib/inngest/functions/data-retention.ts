@@ -7,7 +7,7 @@ import { eq, and, lt, sql, count } from "drizzle-orm";
 const RETENTION_DAYS = {
   free: 3, // Free tier: 3-day history
   pro: 90, // Pro tier: 90-day history
-  enterprise: 365, // Enterprise: 1-year history
+  team: 365, // Team: 1-year history
 } as const;
 
 // Clean up old results based on user's subscription plan
@@ -26,12 +26,12 @@ export const dataRetention = inngest.createFunction(
     const cutoffs = {
       free: new Date(now.getTime() - RETENTION_DAYS.free * 24 * 60 * 60 * 1000),
       pro: new Date(now.getTime() - RETENTION_DAYS.pro * 24 * 60 * 60 * 1000),
-      enterprise: new Date(now.getTime() - RETENTION_DAYS.enterprise * 24 * 60 * 60 * 1000),
+      team: new Date(now.getTime() - RETENTION_DAYS.team * 24 * 60 * 60 * 1000),
     };
 
     // PERF-ASYNC-005: Run independent tier cleanups in parallel
     // SECURITY: Drizzle's sql`` template tag safely handles ${table.column} as column references, not raw string interpolation — FIX-115
-    const [freeDeleted, proDeleted, enterpriseDeleted] = await Promise.all([
+    const [freeDeleted, proDeleted, teamDeleted] = await Promise.all([
       step.run("cleanup-free-tier", async () => {
         const whereClause = and(
           sql`${results.monitorId} IN (
@@ -59,14 +59,14 @@ export const dataRetention = inngest.createFunction(
         if (value > 0) await pooledDb.delete(results).where(whereClause);
         return value;
       }),
-      step.run("cleanup-enterprise-tier", async () => {
+      step.run("cleanup-team-tier", async () => {
         const whereClause = and(
           sql`${results.monitorId} IN (
             SELECT ${monitors.id} FROM ${monitors}
             INNER JOIN ${users} ON ${users.id} = ${monitors.userId}
-            WHERE ${users.subscriptionStatus} = 'enterprise'
+            WHERE ${users.subscriptionStatus} = 'team'
           )`,
-          lt(results.createdAt, cutoffs.enterprise),
+          lt(results.createdAt, cutoffs.team),
           eq(results.isSaved, false)
         );
         const [{ value }] = await pooledDb.select({ value: count() }).from(results).where(whereClause);
@@ -75,7 +75,7 @@ export const dataRetention = inngest.createFunction(
       }),
     ]);
 
-    const totalDeleted = freeDeleted + proDeleted + enterpriseDeleted;
+    const totalDeleted = freeDeleted + proDeleted + teamDeleted;
 
     // Clean up orphaned results (results with no valid monitor)
     const orphanedDeleted = await step.run("cleanup-orphaned-results", async () => {
@@ -85,13 +85,13 @@ export const dataRetention = inngest.createFunction(
       return value;
     });
 
-    logger.info(`Data retention cleanup complete. Deleted ${totalDeleted} old results (free: ${freeDeleted}, pro: ${proDeleted}, enterprise: ${enterpriseDeleted}) and ${orphanedDeleted} orphaned results.`);
+    logger.info(`Data retention cleanup complete. Deleted ${totalDeleted} old results (free: ${freeDeleted}, pro: ${proDeleted}, team: ${teamDeleted}) and ${orphanedDeleted} orphaned results.`);
 
     return {
       success: true,
       deletedResults: totalDeleted,
       deletedOrphaned: orphanedDeleted,
-      breakdown: { free: freeDeleted, pro: proDeleted, enterprise: enterpriseDeleted },
+      breakdown: { free: freeDeleted, pro: proDeleted, team: teamDeleted },
     };
   }
 );

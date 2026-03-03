@@ -56,24 +56,24 @@ describe("inngest/webhook-delivery", () => {
     });
   });
 
-  it("checks if user is enterprise before sending", async () => {
-    mockQuery.mockResolvedValue({ subscriptionStatus: "enterprise" });
+  it("checks if user is team tier before sending", async () => {
+    mockQuery.mockResolvedValue({ subscriptionStatus: "team" });
 
     const user = await mockQuery();
 
-    expect(user.subscriptionStatus).toBe("enterprise");
+    expect(user.subscriptionStatus).toBe("team");
   });
 
-  it("skips delivery for non-enterprise users", async () => {
+  it("skips delivery for non-team users", async () => {
     mockQuery.mockResolvedValue({ subscriptionStatus: "pro" });
 
     const user = await mockQuery();
-    const result = user.subscriptionStatus !== "enterprise"
-      ? { success: false, reason: "not_enterprise" }
+    const result = user.subscriptionStatus !== "team"
+      ? { success: false, reason: "not_team" }
       : { success: true };
 
     expect(result.success).toBe(false);
-    expect(result.reason).toBe("not_enterprise");
+    expect(result.reason).toBe("not_team");
   });
 
   it("finds webhooks subscribed to event type", async () => {

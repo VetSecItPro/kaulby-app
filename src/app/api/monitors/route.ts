@@ -76,7 +76,7 @@ function sanitizeMonitorFields(data: z.infer<typeof createMonitorSchema>) {
 /** Check plan limits for monitor creation */
 async function checkMonitorLimits(
   userId: string,
-  plan: "free" | "pro" | "enterprise",
+  plan: "free" | "pro" | "team",
   keywords: string[],
   platforms: string[]
 ) {
@@ -161,7 +161,7 @@ async function ensureDevUserExists(userId: string): Promise<void> {
     id: userId,
     email: `dev-${userId}@localhost`,
     name: "Dev User",
-    subscriptionStatus: "enterprise", // Give full access in dev mode
+    subscriptionStatus: "team", // Give full access in dev mode
   }).onConflictDoNothing();
 }
 

@@ -12,7 +12,7 @@ export default async function WebhooksPage() {
     if (!isLocalDev()) {
       redirect("/sign-in");
     }
-    // In dev mode with no user, show enterprise view with empty webhooks
+    // In dev mode with no user, show team view with empty webhooks
     return (
       <WebhookManagement
         isEnterprise={true}
@@ -22,15 +22,15 @@ export default async function WebhooksPage() {
     );
   }
 
-  // Check if user is enterprise
+  // Check if user is team tier
   const user = await db.query.users.findFirst({
     where: eq(users.id, userId),
     columns: { subscriptionStatus: true },
   });
 
-  const isEnterprise = user?.subscriptionStatus === "enterprise";
+  const isEnterprise = user?.subscriptionStatus === "team";
 
-  // Get webhooks if enterprise
+  // Get webhooks if team tier
   let userWebhooks: typeof webhooks.$inferSelect[] = [];
   const recentDeliveries: (typeof webhookDeliveries.$inferSelect)[] = [];
 
