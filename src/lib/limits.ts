@@ -73,7 +73,7 @@ export async function getUserPlan(userId: string): Promise<PlanKey> {
 
   // Admins always get Enterprise (Team) tier
   if (user.isAdmin) {
-    return "enterprise";
+    return "team";
   }
 
   // Check for active day pass - grants Pro-level access
@@ -314,7 +314,7 @@ export async function getRefreshDelay(userId: string): Promise<{
 
   // Build contextual message based on tier
   let message: string;
-  if (plan === "enterprise") {
+  if (plan === "team") {
     message = `Results refresh every ${limits.refreshDelayHours} hours.`;
   } else if (plan === "pro") {
     message = `Results refresh every ${limits.refreshDelayHours} hours. Upgrade to Team for 2-hour refresh.`;
@@ -398,8 +398,8 @@ export async function canAccessPlatform(
   const hasAccess = limits.platforms.includes(platform);
 
   // Find the minimum plan that includes this platform
-  let requiredPlan: PlanKey = "enterprise";
-  for (const planKey of ["free", "pro", "enterprise"] as PlanKey[]) {
+  let requiredPlan: PlanKey = "team";
+  for (const planKey of ["free", "pro", "team"] as PlanKey[]) {
     if (PLANS[planKey].limits.platforms.includes(platform)) {
       requiredPlan = planKey;
       break;
@@ -440,7 +440,7 @@ export async function canAccessFeature(
   const limits = getPlanLimits(plan);
 
   let hasAccess = false;
-  let requiredPlan: PlanKey = "enterprise";
+  let requiredPlan: PlanKey = "team";
 
   switch (feature) {
     case "sentiment":
@@ -465,7 +465,7 @@ export async function canAccessFeature(
       break;
     case "webhooks":
       hasAccess = limits.alerts.webhooks;
-      requiredPlan = "enterprise";
+      requiredPlan = "team";
       break;
     case "csv":
       hasAccess = limits.exports.csv;
@@ -473,7 +473,7 @@ export async function canAccessFeature(
       break;
     case "api":
       hasAccess = limits.exports.api;
-      requiredPlan = "enterprise";
+      requiredPlan = "team";
       break;
   }
 
@@ -610,7 +610,7 @@ export function getUpgradePrompt(
     platformName?: string;
   }
 ): UpgradePrompt {
-  const suggestedPlan: PlanKey = currentPlan === "free" ? "pro" : "enterprise";
+  const suggestedPlan: PlanKey = currentPlan === "free" ? "pro" : "team";
   const planName = PLANS[suggestedPlan].name;
 
   const prompts: Record<UpgradeTrigger, {
@@ -666,20 +666,20 @@ export function getUpgradePrompt(
     refresh_delay: {
       title: "Get Faster Monitoring",
       description: "Your results are 24 hours delayed.",
-      benefit: `${planName} refreshes every ${suggestedPlan === "enterprise" ? "2" : "4"} hours so you can respond while conversations are hot.`,
+      benefit: `${planName} refreshes every ${suggestedPlan === "team" ? "2" : "4"} hours so you can respond while conversations are hot.`,
       urgency: "Fresh mentions get 10x more engagement than day-old ones.",
       ctaText: "Upgrade",
     },
     export: {
       title: "Export Your Data",
       description: "Download your results for reporting and analysis.",
-      benefit: `${planName} includes CSV export${suggestedPlan === "enterprise" ? " and API access" : ""}.`,
+      benefit: `${planName} includes CSV export${suggestedPlan === "team" ? " and API access" : ""}.`,
       ctaText: "Unlock exports",
     },
     alerts: {
       title: "Never Miss a Mention",
       description: "Get notified when new results come in.",
-      benefit: `${planName} includes ${suggestedPlan === "enterprise" ? "email, Slack, and webhook" : "email and Slack"} alerts.`,
+      benefit: `${planName} includes ${suggestedPlan === "team" ? "email, Slack, and webhook" : "email and Slack"} alerts.`,
       ctaText: "Enable alerts",
     },
   };
@@ -732,7 +732,7 @@ export async function prefetchUserPlans(
 
   for (const row of rows) {
     if (row.isAdmin) {
-      map.set(row.id, "enterprise");
+      map.set(row.id, "team");
     } else if (row.dayPassExpiresAt && new Date(row.dayPassExpiresAt) > now) {
       map.set(row.id, "pro");
     } else {
@@ -835,7 +835,7 @@ export async function shouldProcessMonitor(
 const MANUAL_SCAN_LIMITS: Record<PlanKey, { cooldownHours: number; dailyLimit: number }> = {
   free: { cooldownHours: 24, dailyLimit: 1 },
   pro: { cooldownHours: 4, dailyLimit: 3 },
-  enterprise: { cooldownHours: 1, dailyLimit: 12 },
+  team: { cooldownHours: 1, dailyLimit: 12 },
 };
 
 interface ManualScanCheckResult {

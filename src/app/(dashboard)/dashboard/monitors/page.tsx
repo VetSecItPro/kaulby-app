@@ -37,7 +37,7 @@ async function MonitorsContent() {
         getUserPlan(effectiveUserId),
         getRefreshDelay(effectiveUserId),
       ])
-    : [[], "enterprise" as const, null];
+    : [[], "team" as const, null];
 
   const planLimits = getPlanLimits(userPlan);
 

@@ -18,7 +18,7 @@ import { relations } from "drizzle-orm";
 export const subscriptionStatusEnum = pgEnum("subscription_status", [
   "free",
   "pro",
-  "enterprise",
+  "team",
 ]);
 
 export const platformEnum = pgEnum("platform", [
@@ -511,7 +511,7 @@ export const webhookStatusEnum = pgEnum("webhook_status", [
   "retrying",
 ]);
 
-// Webhooks - custom webhook endpoints for enterprise users
+// Webhooks - custom webhook endpoints for team tier users
 export const webhooks = pgTable("webhooks", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: text("user_id")

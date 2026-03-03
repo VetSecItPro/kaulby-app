@@ -107,7 +107,7 @@ export default async function DiscoverPage() {
         { platformActivity: {}, hotTopics: [], totalTrending: 0 },
       ];
 
-  const isPro = userPlan === "pro" || userPlan === "enterprise";
+  const isPro = userPlan === "pro" || userPlan === "team";
 
   return (
     <DiscoverView

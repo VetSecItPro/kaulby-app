@@ -20,7 +20,7 @@ interface OnboardingProviderProps {
   children: ReactNode;
   isNewUser: boolean;
   userName?: string;
-  userPlan?: "free" | "pro" | "enterprise";
+  userPlan?: "free" | "pro" | "team";
 }
 
 export function OnboardingProvider({ children, isNewUser, userName, userPlan = "free" }: OnboardingProviderProps) {

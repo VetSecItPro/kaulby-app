@@ -80,7 +80,7 @@ export const sendWebhookEvent = inngest.createFunction(
 
     logger.info(`Sending webhook event ${eventType} for user ${userId}`);
 
-    // Check if user is enterprise (only enterprise users can use webhooks)
+    // Check if user is team tier (only team users can use webhooks)
     const user = await step.run("check-user-plan", async () => {
       return await pooledDb.query.users.findFirst({
         where: eq(users.id, userId),
@@ -88,9 +88,9 @@ export const sendWebhookEvent = inngest.createFunction(
       });
     });
 
-    if (user?.subscriptionStatus !== "enterprise") {
-      logger.info("User is not enterprise, skipping webhook delivery");
-      return { success: false, reason: "not_enterprise" };
+    if (user?.subscriptionStatus !== "team") {
+      logger.info("User is not team tier, skipping webhook delivery");
+      return { success: false, reason: "not_team" };
     }
 
     // Get all active webhooks for this user that subscribe to this event

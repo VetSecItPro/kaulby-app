@@ -12,7 +12,7 @@ interface BusinessMetricsProps {
   conversionRateChange: number;
   avgRevenuePerUser: number;
   proConversions: number;
-  enterpriseConversions: number;
+  teamConversions: number;
   monthlySignups: number;
   paidUserPercentage: number;
 }
@@ -25,7 +25,7 @@ export function BusinessMetrics({
   conversionRateChange,
   avgRevenuePerUser,
   proConversions,
-  enterpriseConversions,
+  teamConversions,
   monthlySignups,
   paidUserPercentage,
 }: BusinessMetricsProps) {
@@ -156,12 +156,12 @@ export function BusinessMetrics({
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-sm font-medium">Net New Team</span>
                   <span className="text-sm text-muted-foreground">
-                    {enterpriseConversions} ({monthlySignups > 0 ? ((enterpriseConversions / monthlySignups) * 100).toFixed(1) : 0}%)
+                    {teamConversions} ({monthlySignups > 0 ? ((teamConversions / monthlySignups) * 100).toFixed(1) : 0}%)
                   </span>
                 </div>
                 <div
                   className="h-3 bg-amber-500 rounded-full"
-                  style={{ width: `${monthlySignups > 0 ? (enterpriseConversions / monthlySignups) * 100 : 0}%` }}
+                  style={{ width: `${monthlySignups > 0 ? (teamConversions / monthlySignups) * 100 : 0}%` }}
                 />
               </div>
             </div>

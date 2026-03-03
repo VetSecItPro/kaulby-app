@@ -67,7 +67,7 @@ interface PlanDefinition {
 }
 
 // Product IDs for subscription plans (Polar.sh)
-export const PLANS: Record<"free" | "pro" | "enterprise", PlanDefinition> = {
+export const PLANS: Record<"free" | "pro" | "team", PlanDefinition> = {
   free: {
     name: "Free",
     description: "Try Kaulby with limited features",
@@ -158,7 +158,7 @@ export const PLANS: Record<"free" | "pro" | "enterprise", PlanDefinition> = {
       },
     },
   },
-  enterprise: {
+  team: {
     name: "Team",
     description: "For growing teams and agencies",
     price: 99,

@@ -74,7 +74,7 @@ describe("api-auth", () => {
       // Mock finding the user
       vi.mocked(db.query.users.findFirst).mockResolvedValueOnce({
         id: "user-1",
-        subscriptionStatus: "enterprise",
+        subscriptionStatus: "team",
         isBanned: false,
       } as never);
 
@@ -106,7 +106,7 @@ describe("api-auth", () => {
 
       vi.mocked(db.query.users.findFirst).mockResolvedValueOnce({
         id: "user-1",
-        subscriptionStatus: "enterprise",
+        subscriptionStatus: "team",
         isBanned: false,
       } as never);
 
@@ -176,7 +176,7 @@ describe("api-auth", () => {
 
       vi.mocked(db.query.users.findFirst).mockResolvedValueOnce({
         id: "user-1",
-        subscriptionStatus: "enterprise",
+        subscriptionStatus: "team",
         isBanned: true,
       } as never);
 
@@ -195,7 +195,7 @@ describe("api-auth", () => {
       expect(body.error).toBe("Account is suspended");
     });
 
-    it("returns 401 for non-enterprise subscription", async () => {
+    it("returns 401 for non-team subscription", async () => {
       const { db } = await import("@/lib/db");
 
       vi.mocked(db.query.apiKeys.findFirst).mockResolvedValueOnce({

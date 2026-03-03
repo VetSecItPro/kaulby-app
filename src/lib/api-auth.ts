@@ -76,7 +76,7 @@ async function validateApiKey(key: string): Promise<{
     return { valid: false, error: "Account is suspended" };
   }
 
-  if (user.subscriptionStatus !== "enterprise") {
+  if (user.subscriptionStatus !== "team") {
     return { valid: false, error: "API access requires Team plan" };
   }
 
@@ -198,7 +198,7 @@ export async function createApiKey(
     columns: { subscriptionStatus: true },
   });
 
-  if (user?.subscriptionStatus !== "enterprise") {
+  if (user?.subscriptionStatus !== "team") {
     return null;
   }
 

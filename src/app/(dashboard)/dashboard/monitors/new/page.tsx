@@ -11,9 +11,9 @@ export default async function NewMonitorPage() {
     if (!isLocalDev()) {
       redirect("/sign-in");
     }
-    // In dev mode with no user, use enterprise defaults
-    const limits = getPlanLimits("enterprise");
-    return <NewMonitorForm limits={limits} userPlan="enterprise" />;
+    // In dev mode with no user, use team defaults
+    const limits = getPlanLimits("team");
+    return <NewMonitorForm limits={limits} userPlan="team" />;
   }
 
   // Fetch user's plan and limits

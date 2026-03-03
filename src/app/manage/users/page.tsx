@@ -30,7 +30,7 @@ async function getUsers(searchParams: SearchParams) {
   }
 
   if (planFilter !== "all") {
-    whereConditions.push(eq(users.subscriptionStatus, planFilter as "free" | "pro" | "enterprise"));
+    whereConditions.push(eq(users.subscriptionStatus, planFilter as "free" | "pro" | "team"));
   }
 
   const whereClause = whereConditions.length > 0
@@ -130,7 +130,7 @@ async function getPlanCounts() {
     all: counts.reduce((sum, c) => sum + c.count, 0),
     free: counts.find(c => c.status === "free")?.count || 0,
     pro: counts.find(c => c.status === "pro")?.count || 0,
-    enterprise: counts.find(c => c.status === "enterprise")?.count || 0,
+    team: counts.find(c => c.status === "team")?.count || 0,
   };
 }
 

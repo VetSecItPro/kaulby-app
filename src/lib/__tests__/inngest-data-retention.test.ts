@@ -86,14 +86,14 @@ describe("inngest data-retention", () => {
     });
 
     it("respects isSaved flag for pro tier (skips bookmarked results)", async () => {
-      // The pro and enterprise tier cleanup includes eq(results.isSaved, false)
+      // The pro and team tier cleanup includes eq(results.isSaved, false)
       // This means saved/bookmarked results are preserved
       const { eq } = await import("drizzle-orm");
       vi.mocked(eq)("isSaved" as never, false as never);
       expect(eq).toHaveBeenCalledWith("isSaved", false);
     });
 
-    it("respects isSaved flag for enterprise tier", async () => {
+    it("respects isSaved flag for team tier", async () => {
       const { eq } = await import("drizzle-orm");
       vi.mocked(eq)("isSaved" as never, false as never);
       expect(eq).toHaveBeenCalledWith("isSaved", false);
@@ -140,21 +140,21 @@ describe("inngest data-retention", () => {
     it("returns correct breakdown of deleted results", () => {
       const freeDeleted = 15;
       const proDeleted = 42;
-      const enterpriseDeleted = 5;
+      const teamDeleted = 5;
       const orphanedDeleted = 3;
-      const totalDeleted = freeDeleted + proDeleted + enterpriseDeleted;
+      const totalDeleted = freeDeleted + proDeleted + teamDeleted;
 
       expect(totalDeleted).toBe(62);
       expect({
         success: true,
         deletedResults: totalDeleted,
         deletedOrphaned: orphanedDeleted,
-        breakdown: { free: freeDeleted, pro: proDeleted, enterprise: enterpriseDeleted },
+        breakdown: { free: freeDeleted, pro: proDeleted, team: teamDeleted },
       }).toEqual({
         success: true,
         deletedResults: 62,
         deletedOrphaned: 3,
-        breakdown: { free: 15, pro: 42, enterprise: 5 },
+        breakdown: { free: 15, pro: 42, team: 5 },
       });
     });
 
@@ -162,7 +162,7 @@ describe("inngest data-retention", () => {
       const now = new Date();
       const freeCutoff = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
       const proCutoff = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-      const enterpriseCutoff = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+      const teamCutoff = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
 
       // Free cutoff should be ~3 days ago
       const freeDaysAgo = (now.getTime() - freeCutoff.getTime()) / (24 * 60 * 60 * 1000);
@@ -172,9 +172,9 @@ describe("inngest data-retention", () => {
       const proDaysAgo = (now.getTime() - proCutoff.getTime()) / (24 * 60 * 60 * 1000);
       expect(Math.round(proDaysAgo)).toBe(90);
 
-      // Enterprise cutoff should be ~365 days ago
-      const enterpriseDaysAgo = (now.getTime() - enterpriseCutoff.getTime()) / (24 * 60 * 60 * 1000);
-      expect(Math.round(enterpriseDaysAgo)).toBe(365);
+      // Team cutoff should be ~365 days ago
+      const teamDaysAgo = (now.getTime() - teamCutoff.getTime()) / (24 * 60 * 60 * 1000);
+      expect(Math.round(teamDaysAgo)).toBe(365);
     });
   });
 
@@ -182,7 +182,7 @@ describe("inngest data-retention", () => {
     it("resets usage for users whose billing period has ended", async () => {
       mockFindMany.mockResolvedValueOnce([
         { id: "user-1", currentPeriodStart: new Date("2025-01-01"), currentPeriodEnd: new Date("2025-01-31"), subscriptionStatus: "pro" },
-        { id: "user-2", currentPeriodStart: new Date("2025-01-01"), currentPeriodEnd: new Date("2025-01-31"), subscriptionStatus: "enterprise" },
+        { id: "user-2", currentPeriodStart: new Date("2025-01-01"), currentPeriodEnd: new Date("2025-01-31"), subscriptionStatus: "team" },
       ]);
 
       const usersToReset = await mockFindMany();

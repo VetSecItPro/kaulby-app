@@ -49,13 +49,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfter ?? 60) } });
     }
 
-    // Check if user is enterprise
+    // Check if user is team tier
     const user = await db.query.users.findFirst({
       where: eq(users.id, userId),
       columns: { subscriptionStatus: true },
     });
 
-    if (user?.subscriptionStatus !== "enterprise") {
+    if (user?.subscriptionStatus !== "team") {
       return NextResponse.json(
         { error: "Webhooks are only available for Team users" },
         { status: 403 }

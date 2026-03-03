@@ -54,10 +54,10 @@ describe("ai/rate-limit", () => {
       expect(result.allowed).toBe(true);
     });
 
-    it("allows enterprise tier users within limits", async () => {
+    it("allows team tier users within limits", async () => {
       const { checkAllRateLimits } = await import("@/lib/ai/rate-limit");
 
-      const result = await checkAllRateLimits("user-1", "enterprise");
+      const result = await checkAllRateLimits("user-1", "team");
 
       expect(result.allowed).toBe(true);
     });

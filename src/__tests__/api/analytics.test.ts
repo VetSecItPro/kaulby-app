@@ -80,7 +80,7 @@ function makeRequest(method: string, url: string): NextRequest {
 beforeEach(() => {
   vi.clearAllMocks();
   mockCheckApiRateLimit.mockResolvedValue({ allowed: true });
-  mockGetUserPlan.mockResolvedValue("enterprise");
+  mockGetUserPlan.mockResolvedValue("team");
   mockAuth.mockResolvedValue({ userId: "user_1" });
 });
 
@@ -121,7 +121,7 @@ describe("GET /api/analytics/share-of-voice", () => {
     expect(res.status).toBe(401);
   });
 
-  it("returns 403 when user is not enterprise", async () => {
+  it("returns 403 when user is not team", async () => {
     mockGetUserPlan.mockResolvedValue("pro");
     const res = await GET_SHARE_OF_VOICE(makeRequest("GET", "/api/analytics/share-of-voice"));
     expect(res.status).toBe(403);

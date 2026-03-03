@@ -65,7 +65,7 @@ const platformMetadata: Record<Platform, {
   trustpilot: {
     description: "Business reviews and reputation tracking",
     bestFor: ["B2B services", "e-commerce", "SaaS", "competitor analysis"],
-    suggestFor: ["B2B", "SaaS", "competitor", "enterprise"],
+    suggestFor: ["B2B", "SaaS", "competitor", "team"],
   },
   appstore: {
     description: "iOS app reviews and competitor tracking",
@@ -90,7 +90,7 @@ const platformMetadata: Record<Platform, {
   g2: {
     description: "B2B software reviews and comparisons",
     bestFor: ["SaaS products", "enterprise software", "competitor analysis"],
-    suggestFor: ["B2B", "SaaS", "software", "enterprise"],
+    suggestFor: ["B2B", "SaaS", "software", "team"],
   },
   yelp: {
     description: "Local business reviews and ratings",

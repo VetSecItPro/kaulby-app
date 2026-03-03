@@ -190,7 +190,7 @@ describe("POST /api/workspace", () => {
     expect(res.status).toBe(404);
   });
 
-  it("returns 403 when user is not enterprise", async () => {
+  it("returns 403 when user is not team tier", async () => {
     mockAuth.mockResolvedValue({ userId: "user_1" });
     mockFindUserWithFallback.mockResolvedValue({
       id: "user_1",
@@ -207,7 +207,7 @@ describe("POST /api/workspace", () => {
     mockAuth.mockResolvedValue({ userId: "user_1" });
     mockFindUserWithFallback.mockResolvedValue({
       id: "user_1",
-      subscriptionStatus: "enterprise",
+      subscriptionStatus: "team",
       workspaceId: "ws_existing",
     });
     const res = await POST(makeRequest("POST", "/api/workspace", { name: "My Team" }));
@@ -216,11 +216,11 @@ describe("POST /api/workspace", () => {
     expect(json.error).toContain("already in a workspace");
   });
 
-  it("creates workspace successfully for enterprise user", async () => {
+  it("creates workspace successfully for team user", async () => {
     mockAuth.mockResolvedValue({ userId: "user_1" });
     mockFindUserWithFallback.mockResolvedValue({
       id: "user_1",
-      subscriptionStatus: "enterprise",
+      subscriptionStatus: "team",
       workspaceId: null,
     });
     mockDbInsert.mockReturnValue({

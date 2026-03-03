@@ -24,8 +24,8 @@ interface PolarWebhookEvent {
 }
 
 // Map PolarPlanKey to subscription status for database
-function mapPlanToSubscriptionStatus(plan: PolarPlanKey): "free" | "pro" | "enterprise" {
-  if (plan === "team") return "enterprise";
+// Now an identity function since internal naming matches Polar's "team" key
+function mapPlanToSubscriptionStatus(plan: PolarPlanKey): "free" | "pro" | "team" {
   return plan;
 }
 

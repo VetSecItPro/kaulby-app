@@ -23,13 +23,13 @@ export default async function DashboardPage() {
   }
 
   // Run cached queries in parallel for better performance
-  // In dev mode, default to enterprise (Team) for full feature testing
+  // In dev mode, default to team for full feature testing
   const [userPlan, userMonitors] = userId
     ? await Promise.all([
         getUserPlan(userId),
         getCachedMonitorIds(userId),
       ])
-    : [isDev ? "enterprise" as const : "free" as const, []];
+    : [isDev ? "team" as const : "free" as const, []];
 
   const hasMonitors = userMonitors.length > 0;
 

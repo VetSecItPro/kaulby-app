@@ -16,7 +16,7 @@ export default async function ManageLayout({
                      !process.env.VERCEL &&
                      !process.env.VERCEL_ENV;
 
-  let subscriptionStatus: "free" | "pro" | "enterprise" = "enterprise";
+  let subscriptionStatus: "free" | "pro" | "team" = "team";
 
   // In production (and non-opted-in dev), require auth and admin status
   if (!isLocalDev) {

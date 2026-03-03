@@ -71,7 +71,7 @@ interface PlanCounts {
   all: number;
   free: number;
   pro: number;
-  enterprise: number;
+  team: number;
 }
 
 interface UsersManagementProps {
@@ -89,7 +89,7 @@ const planFilters = [
   { value: "all", label: "All Plans", icon: Users },
   { value: "free", label: "Free", icon: User },
   { value: "pro", label: "Pro", icon: Crown },
-  { value: "enterprise", label: "Team", icon: Building2 },
+  { value: "team", label: "Team", icon: Building2 },
 ];
 
 export function UsersManagement({
@@ -135,10 +135,10 @@ export function UsersManagement({
 
   const handlePlanAction = async (action: "upgrade" | "downgrade", user: UserData) => {
     const newPlan = action === "upgrade"
-      ? (user.subscriptionStatus === "free" ? "pro" : "enterprise")
-      : (user.subscriptionStatus === "enterprise" ? "pro" : "free");
+      ? (user.subscriptionStatus === "free" ? "pro" : "team")
+      : (user.subscriptionStatus === "team" ? "pro" : "free");
 
-    await updateUserPlan(user.id, newPlan as "free" | "pro" | "enterprise");
+    await updateUserPlan(user.id, newPlan as "free" | "pro" | "team");
     setActionDialog({ type: null, user: null });
     router.refresh();
   };
@@ -303,7 +303,7 @@ export function UsersManagement({
                             </DropdownMenuItem>
                           )}
                           <DropdownMenuSeparator />
-                          {user.subscriptionStatus !== "enterprise" && (
+                          {user.subscriptionStatus !== "team" && (
                             <DropdownMenuItem
                               onClick={() => setActionDialog({ type: "upgrade", user })}
                             >
@@ -447,7 +447,7 @@ export function UsersManagement({
                   Upgrade {actionDialog.user?.email} from{" "}
                   <strong>{actionDialog.user?.subscriptionStatus}</strong> to{" "}
                   <strong>
-                    {actionDialog.user?.subscriptionStatus === "free" ? "pro" : "enterprise"}
+                    {actionDialog.user?.subscriptionStatus === "free" ? "pro" : "team"}
                   </strong>
                   ?
                 </>
@@ -457,7 +457,7 @@ export function UsersManagement({
                   Downgrade {actionDialog.user?.email} from{" "}
                   <strong>{actionDialog.user?.subscriptionStatus}</strong> to{" "}
                   <strong>
-                    {actionDialog.user?.subscriptionStatus === "enterprise" ? "pro" : "free"}
+                    {actionDialog.user?.subscriptionStatus === "team" ? "pro" : "free"}
                   </strong>
                   ?
                 </>
@@ -511,13 +511,13 @@ function PlanBadge({ plan }: { plan: string }) {
       variant="outline"
       className={cn(
         plan === "pro" && "bg-primary/10 text-primary border-primary",
-        plan === "enterprise" && "bg-amber-500/10 text-amber-600 border-amber-500",
+        plan === "team" && "bg-amber-500/10 text-amber-600 border-amber-500",
         plan === "free" && "bg-muted text-muted-foreground"
       )}
     >
       {plan === "pro" && <Crown className="h-3 w-3 mr-1" />}
-      {plan === "enterprise" && <Building2 className="h-3 w-3 mr-1" />}
-      <span className="capitalize">{plan === "enterprise" ? "Team" : plan}</span>
+      {plan === "team" && <Building2 className="h-3 w-3 mr-1" />}
+      <span className="capitalize">{plan === "team" ? "Team" : plan}</span>
     </Badge>
   );
 }

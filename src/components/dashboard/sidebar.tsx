@@ -108,7 +108,7 @@ function getPlanBadge(subscriptionStatus: string, hasActiveDayPass: boolean): { 
   }
 
   switch (subscriptionStatus) {
-    case "enterprise":
+    case "team":
       return { label: "Team", className: "bg-amber-400 text-black", show: true };
     case "pro":
       return { label: "Pro", className: "bg-teal-500 text-black", show: true };
@@ -226,7 +226,7 @@ export function Sidebar({ isAdmin = false, subscriptionStatus = "free", hasActiv
           <DayPassTimer expiresAt={dayPassExpiresAt} />
         )}
         {/* Workspace Role Badge - only for Team accounts */}
-        {subscriptionStatus === "enterprise" && workspaceRole && (
+        {subscriptionStatus === "team" && workspaceRole && (
           <span
             className={cn(
               "ml-1 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide rounded-full",
@@ -295,7 +295,7 @@ export function Sidebar({ isAdmin = false, subscriptionStatus = "free", hasActiv
       </div>
 
       {/* Billing Link - hidden for Team tier users */}
-      {subscriptionStatus !== "enterprise" && (
+      {subscriptionStatus !== "team" && (
         <div className="px-2 pb-2">
           <Link
             href="/dashboard/settings"

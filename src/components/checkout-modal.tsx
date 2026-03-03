@@ -15,7 +15,7 @@ import type { BillingInterval } from "@/lib/plans";
 interface CheckoutModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  plan: "pro" | "enterprise";
+  plan: "pro" | "team";
   planName: string;
   billingInterval?: BillingInterval;
 }
@@ -35,8 +35,7 @@ export function CheckoutModal({
     setError(null);
 
     try {
-      // Map plan names for Polar API (enterprise -> team)
-      const polarPlan = plan === "enterprise" ? "team" : plan;
+      const polarPlan = plan;
 
       const response = await fetch("/api/polar/checkout", {
         method: "POST",

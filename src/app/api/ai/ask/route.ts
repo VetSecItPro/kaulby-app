@@ -216,7 +216,7 @@ export async function POST(req: Request) {
 
     // Get user plan
     const plan = await getUserPlan(userId);
-    if (plan !== "pro" && plan !== "enterprise") {
+    if (plan !== "pro" && plan !== "team") {
       return NextResponse.json(
         { error: "This feature requires a Pro subscription" },
         { status: 403 }
@@ -288,10 +288,10 @@ export async function POST(req: Request) {
 
     messages.push({ role: "user", content: question });
 
-    // Generate AI response (use primary model for cost efficiency, premium for enterprise)
+    // Generate AI response (use primary model for cost efficiency, premium for team)
     const response = await completion({
       messages,
-      model: plan === "enterprise" ? MODELS.premium : MODELS.primary,
+      model: plan === "team" ? MODELS.premium : MODELS.primary,
       maxTokens: 512, // Reduced from 1024 for cost control
       temperature: 0.5, // Lower temperature for more focused responses
     });

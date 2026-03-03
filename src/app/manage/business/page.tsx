@@ -75,10 +75,10 @@ async function getDetailedBusinessMetrics() {
   // Compute billing-aware MRR: detect annual billing when period span > 60 days
   const ANNUAL_THRESHOLD_MS = 60 * 24 * 60 * 60 * 1000; // 60 days in ms
   const proAnnualMonthly = PLANS.pro.annualPrice / 12;     // $290/12 = ~$24.17
-  const enterpriseAnnualMonthly = PLANS.enterprise.annualPrice / 12; // $990/12 = $82.50
+  const teamAnnualMonthly = PLANS.team.annualPrice / 12; // $990/12 = $82.50
 
   let paidProUsers = 0;
-  let paidEnterpriseUsers = 0;
+  let paidTeamUsers = 0;
   let billingAwareMrr = 0;
 
   for (const user of paidUsersRaw) {
@@ -90,9 +90,9 @@ async function getDetailedBusinessMetrics() {
     if (user.status === "pro") {
       paidProUsers++;
       billingAwareMrr += isAnnual ? proAnnualMonthly : PLANS.pro.price;
-    } else if (user.status === "enterprise") {
-      paidEnterpriseUsers++;
-      billingAwareMrr += isAnnual ? enterpriseAnnualMonthly : PLANS.enterprise.price;
+    } else if (user.status === "team") {
+      paidTeamUsers++;
+      billingAwareMrr += isAnnual ? teamAnnualMonthly : PLANS.team.price;
     }
   }
 
@@ -127,8 +127,8 @@ async function getDetailedBusinessMetrics() {
   // Calculate metrics
   const currentFreeUsers = currentSubs.find(s => s.status === "free")?.count || 0;
   const currentProUsers = currentSubs.find(s => s.status === "pro")?.count || 0;
-  const currentEnterpriseUsers = currentSubs.find(s => s.status === "enterprise")?.count || 0;
-  const totalUsers = currentProUsers + currentEnterpriseUsers + currentFreeUsers;
+  const currentTeamUsers = currentSubs.find(s => s.status === "team")?.count || 0;
+  const totalUsers = currentProUsers + currentTeamUsers + currentFreeUsers;
 
   // Use billing-aware MRR that accounts for annual vs monthly billing intervals
   const mrr = billingAwareMrr;
@@ -136,16 +136,16 @@ async function getDetailedBusinessMetrics() {
   // Last month comparison uses flat monthly prices since we lack historical billing data.
   // This makes the MRR change percentage approximate.
   const lastMonthPaidProUsers = lastMonthSubs.find(s => s.status === "pro")?.count || 0;
-  const lastMonthPaidEnterpriseUsers = lastMonthSubs.find(s => s.status === "enterprise")?.count || 0;
-  const lastMonthMrr = (lastMonthPaidProUsers * PLANS.pro.price) + (lastMonthPaidEnterpriseUsers * PLANS.enterprise.price);
+  const lastMonthPaidTeamUsers = lastMonthSubs.find(s => s.status === "team")?.count || 0;
+  const lastMonthMrr = (lastMonthPaidProUsers * PLANS.pro.price) + (lastMonthPaidTeamUsers * PLANS.team.price);
 
   const mrrChange = lastMonthMrr > 0 ? ((mrr - lastMonthMrr) / lastMonthMrr) * 100 : 0;
   const arr = mrr * 12;
   const avgRevenuePerUser = totalUsers > 0 ? mrr / totalUsers : 0;
-  const totalPaidUsers = paidProUsers + paidEnterpriseUsers;
+  const totalPaidUsers = paidProUsers + paidTeamUsers;
   const paidUserPercentage = totalUsers > 0 ? (totalPaidUsers / totalUsers) * 100 : 0;
   const proConversions = paidProUsers - lastMonthPaidProUsers;
-  const enterpriseConversions = paidEnterpriseUsers - lastMonthPaidEnterpriseUsers;
+  const teamConversions = paidTeamUsers - lastMonthPaidTeamUsers;
   const conversionRate = totalUsers > 0 ? (totalPaidUsers / totalUsers) * 100 : 0;
 
   return {
@@ -156,15 +156,15 @@ async function getDetailedBusinessMetrics() {
     paidUserPercentage,
     conversionRate,
     proConversions: Math.max(0, proConversions),
-    enterpriseConversions: Math.max(0, enterpriseConversions),
+    teamConversions: Math.max(0, teamConversions),
     monthlySignups: monthlySignups[0]?.count || 0,
     subscriptionBreakdown: {
       free: currentFreeUsers,
       pro: currentProUsers,
-      enterprise: currentEnterpriseUsers,
+      team: currentTeamUsers,
       total: totalUsers,
       paidPro: paidProUsers,
-      paidEnterprise: paidEnterpriseUsers,
+      paidTeam: paidTeamUsers,
     },
     dailySignups: dailySignups.map(d => ({
       date: d.date,
@@ -219,7 +219,7 @@ function getTrendColor(change: number) {
 
 function getPlanBadge(plan: string | null) {
   switch (plan) {
-    case "enterprise":
+    case "team":
       return <Badge className="bg-amber-500 text-white">Team</Badge>;
     case "pro":
       return <Badge className="bg-primary text-primary-foreground">Pro</Badge>;
@@ -346,18 +346,18 @@ export default async function BusinessMetricsPage() {
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Team Users</span>
                 <div className="text-right">
-                  <span className="text-2xl font-bold text-amber-500">{data.subscriptionBreakdown.enterprise}</span>
-                  <span className="text-xs text-muted-foreground ml-2">({data.subscriptionBreakdown.paidEnterprise} paid)</span>
+                  <span className="text-2xl font-bold text-amber-500">{data.subscriptionBreakdown.team}</span>
+                  <span className="text-xs text-muted-foreground ml-2">({data.subscriptionBreakdown.paidTeam} paid)</span>
                 </div>
               </div>
               <div className="h-3 w-full rounded-full bg-muted">
                 <div
                   className="h-3 rounded-full bg-amber-500"
-                  style={{ width: `${data.subscriptionBreakdown.total > 0 ? (data.subscriptionBreakdown.enterprise / data.subscriptionBreakdown.total) * 100 : 0}%` }}
+                  style={{ width: `${data.subscriptionBreakdown.total > 0 ? (data.subscriptionBreakdown.team / data.subscriptionBreakdown.total) * 100 : 0}%` }}
                 />
               </div>
               <p className="text-xs text-muted-foreground">
-                {formatCurrency(PLANS.enterprise.price)}/mo × {data.subscriptionBreakdown.paidEnterprise} = {formatCurrency(data.subscriptionBreakdown.paidEnterprise * PLANS.enterprise.price)}
+                {formatCurrency(PLANS.team.price)}/mo × {data.subscriptionBreakdown.paidTeam} = {formatCurrency(data.subscriptionBreakdown.paidTeam * PLANS.team.price)}
               </p>
             </div>
           </div>
@@ -403,12 +403,12 @@ export default async function BusinessMetricsPage() {
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-sm font-medium">Net New Team</span>
                     <span className="text-sm text-muted-foreground">
-                      {data.enterpriseConversions} ({data.monthlySignups > 0 ? ((data.enterpriseConversions / data.monthlySignups) * 100).toFixed(1) : 0}%)
+                      {data.teamConversions} ({data.monthlySignups > 0 ? ((data.teamConversions / data.monthlySignups) * 100).toFixed(1) : 0}%)
                     </span>
                   </div>
                   <div
                     className="h-3 bg-amber-500 rounded-full"
-                    style={{ width: `${data.monthlySignups > 0 ? (data.enterpriseConversions / data.monthlySignups) * 100 : 0}%` }}
+                    style={{ width: `${data.monthlySignups > 0 ? (data.teamConversions / data.monthlySignups) * 100 : 0}%` }}
                   />
                 </div>
               </div>
@@ -422,7 +422,7 @@ export default async function BusinessMetricsPage() {
                   <div className="text-right">
                     <p className="text-2xl font-bold">{formatPercent(data.conversionRate)}</p>
                     <p className="text-xs text-muted-foreground">
-                      {data.subscriptionBreakdown.paidPro + data.subscriptionBreakdown.paidEnterprise} paid / {data.subscriptionBreakdown.total} total
+                      {data.subscriptionBreakdown.paidPro + data.subscriptionBreakdown.paidTeam} paid / {data.subscriptionBreakdown.total} total
                     </p>
                   </div>
                 </div>

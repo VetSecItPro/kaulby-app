@@ -15,14 +15,14 @@ export default async function EditMonitorPage({ params }: EditMonitorPageProps) 
     if (!isLocalDev()) {
       redirect("/sign-in");
     }
-    // In dev mode with no user, use enterprise defaults
+    // In dev mode with no user, use team defaults
     const resolvedParams = await params;
-    const limits = getPlanLimits("enterprise");
+    const limits = getPlanLimits("team");
     return (
       <EditMonitorForm
         monitorId={resolvedParams.id}
         limits={limits}
-        userPlan="enterprise"
+        userPlan="team"
       />
     );
   }

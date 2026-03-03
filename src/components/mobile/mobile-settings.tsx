@@ -89,7 +89,7 @@ const itemVariants = {
 // Helper to convert internal plan names to display names
 function getPlanDisplayName(status: string): string {
   const displayNames: Record<string, string> = {
-    enterprise: "Team",
+    team: "Team",
     pro: "Pro",
     free: "Free",
   };
@@ -100,14 +100,14 @@ function getPlanDisplayName(status: string): string {
 const TIER_ORDER: Record<string, number> = {
   free: 0,
   pro: 1,
-  enterprise: 2,
+  team: 2,
 };
 
 // Map plan display names to internal tier names
 const PLAN_TO_TIER: Record<string, string> = {
   "Free": "free",
   "Pro": "pro",
-  "Team": "enterprise",
+  "Team": "team",
 };
 
 // Helper to determine if switching to a plan is an upgrade or downgrade

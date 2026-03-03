@@ -90,7 +90,7 @@ type MonitorType = "keyword" | "ai_discovery";
 
 // Get default platforms for a user's plan
 function getDefaultPlatforms(userPlan: string): string[] {
-  if (userPlan === "enterprise") {
+  if (userPlan === "team") {
     return ALL_PLATFORMS.map((p) => p.id);
   }
   if (userPlan === "pro") {
@@ -188,7 +188,7 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
   const [scheduleTimezone, setScheduleTimezone] = useState("America/New_York");
 
   const isPaidUser = userPlan !== "free";
-  const isTeamUser = userPlan === "enterprise";
+  const isTeamUser = userPlan === "team";
   const keywordLimit = limits.keywordsPerMonitor;
   const keywordsRemaining = keywordLimit - keywords.length;
   const isAtKeywordLimit = keywords.length >= keywordLimit;
@@ -381,7 +381,7 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
           {/* Quick create defaults info */}
           <div className="text-xs text-muted-foreground space-y-1">
             <p>
-              Defaults: {userPlan === "enterprise" ? "All 17 platforms" : userPlan === "pro" ? "9 Pro platforms" : "Reddit"} | Keyword mode | Scans on your plan&apos;s schedule
+              Defaults: {userPlan === "team" ? "All 17 platforms" : userPlan === "pro" ? "9 Pro platforms" : "Reddit"} | Keyword mode | Scans on your plan&apos;s schedule
             </p>
           </div>
 

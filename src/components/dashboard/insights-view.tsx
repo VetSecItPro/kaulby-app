@@ -54,7 +54,7 @@ interface InsightsData {
   aiTopics: TopicCluster[]; // AI-generated topics for Pro/Team
   platformCorrelation: PlatformCorrelation[];
   totalResults: number;
-  plan: "free" | "pro" | "enterprise";
+  plan: "free" | "pro" | "team";
   canHaveMultiplePlatforms: boolean;
   platformsInData: string[];
 }

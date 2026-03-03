@@ -27,7 +27,7 @@ const THRESHOLDS = {
     requireMultiplePlatforms: false, // Show single-platform topics
     useAiFallback: true,        // AI fills gaps when < 3 topics found
   },
-  enterprise: {
+  team: {
     minKeywordOccurrence: 2,
     minResultsPerTopic: 2,
     requireMultiplePlatforms: false,

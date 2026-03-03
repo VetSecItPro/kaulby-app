@@ -79,7 +79,7 @@ interface ResponsiveSettingsProps {
 // Helper to convert internal plan names to display names
 function getPlanDisplayName(status: string): string {
   const displayNames: Record<string, string> = {
-    enterprise: "Team",
+    team: "Team",
     pro: "Pro",
     free: "Free",
   };
@@ -90,14 +90,14 @@ function getPlanDisplayName(status: string): string {
 const TIER_ORDER: Record<string, number> = {
   free: 0,
   pro: 1,
-  enterprise: 2,
+  team: 2,
 };
 
 // Map plan display names to internal tier names
 const PLAN_TO_TIER: Record<string, string> = {
   "Free": "free",
   "Pro": "pro",
-  "Team": "enterprise",
+  "Team": "team",
 };
 
 // Helper to determine if switching to a plan is an upgrade or downgrade
@@ -472,7 +472,7 @@ export function ResponsiveSettings({
           </div>
 
           {/* Scheduled PDF Reports - Team tier only */}
-          {subscriptionStatus === "enterprise" && (
+          {subscriptionStatus === "team" && (
             <div className="pt-4 border-t space-y-4">
               <div className="flex items-center gap-2">
                 <FileText className="h-4 w-4 text-muted-foreground" />
@@ -549,7 +549,7 @@ export function ResponsiveSettings({
           )}
 
           {/* Upsell for non-Team users */}
-          {subscriptionStatus !== "enterprise" && (
+          {subscriptionStatus !== "team" && (
             <div className="pt-4 border-t">
               <div className="flex items-center gap-2 text-muted-foreground">
                 <FileText className="h-4 w-4" />
@@ -580,7 +580,7 @@ export function ResponsiveSettings({
         </div>
         <IntegrationsSettings
           integrations={DEFAULT_INTEGRATIONS}
-          isPro={subscriptionStatus === "pro" || subscriptionStatus === "enterprise"}
+          isPro={subscriptionStatus === "pro" || subscriptionStatus === "team"}
           onConnect={async (integrationId) => {
             if (integrationId === "hubspot") {
               // Initiate HubSpot OAuth flow

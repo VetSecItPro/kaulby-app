@@ -58,7 +58,7 @@ export const sendScheduledReports = inngest.createFunction(
     const eligibleUsers = await step.run("fetch-eligible-users", async () => {
       return pooledDb.query.users.findMany({
         where: and(
-          eq(users.subscriptionStatus, "enterprise"),
+          eq(users.subscriptionStatus, "team"),
           sql`${users.reportSchedule} != 'off'`
         ),
         columns: {

@@ -48,7 +48,7 @@ interface BusinessMetricsData {
   conversionRateChange: number;
   avgRevenuePerUser: number;
   proConversions: number;
-  enterpriseConversions: number;
+  teamConversions: number;
   monthlySignups: number;
   paidUserPercentage: number;
 }
@@ -57,7 +57,7 @@ interface MobileManageProps {
   stats: Stats;
   freeUsers: number;
   proUsers: number;
-  enterpriseUsers: number;
+  teamUsers: number;
   platformDist: PlatformDist[];
   sentimentDist: SentimentDist[];
   recentUsers: RecentUser[];
@@ -86,7 +86,7 @@ export function MobileManage({
   stats,
   freeUsers,
   proUsers,
-  enterpriseUsers,
+  teamUsers,
   platformDist,
   sentimentDist,
   recentUsers,
@@ -167,7 +167,7 @@ export function MobileManage({
             />
             <SubscriptionBar
               label="Team"
-              value={enterpriseUsers}
+              value={teamUsers}
               total={stats.totalUsers}
               color="bg-amber-500"
             />

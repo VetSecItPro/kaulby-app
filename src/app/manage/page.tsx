@@ -331,7 +331,7 @@ async function getCostBreakdown() {
     .where(
       and(
         gte(aiLogs.createdAt, thirtyDaysAgo),
-        sql`${users.subscriptionStatus} IN ('pro', 'enterprise')`
+        sql`${users.subscriptionStatus} IN ('pro', 'team')`
       )
     );
 
@@ -413,21 +413,21 @@ async function getBusinessMetrics() {
 
   // Calculate current MRR - ONLY from users who actually paid via Polar
   const paidProUsers = paidUsers.find(s => s.status === "pro")?.count || 0;
-  const paidEnterpriseUsers = paidUsers.find(s => s.status === "enterprise")?.count || 0;
+  const paidTeamUsers = paidUsers.find(s => s.status === "team")?.count || 0;
 
   // Total users for conversion rate calculation
   const currentFreeUsers = currentSubs.find(s => s.status === "free")?.count || 0;
   const currentProUsers = currentSubs.find(s => s.status === "pro")?.count || 0;
-  const currentEnterpriseUsers = currentSubs.find(s => s.status === "enterprise")?.count || 0;
-  const totalUsers = currentProUsers + currentEnterpriseUsers + currentFreeUsers;
+  const currentTeamUsers = currentSubs.find(s => s.status === "team")?.count || 0;
+  const totalUsers = currentProUsers + currentTeamUsers + currentFreeUsers;
 
   // MRR from REAL Polar payments only
-  const mrr = (paidProUsers * PLANS.pro.price) + (paidEnterpriseUsers * PLANS.enterprise.price);
+  const mrr = (paidProUsers * PLANS.pro.price) + (paidTeamUsers * PLANS.team.price);
 
   // Calculate last month MRR for comparison (from real Polar payments)
   const lastMonthPaidProUsers = lastMonthSubs.find(s => s.status === "pro")?.count || 0;
-  const lastMonthPaidEnterpriseUsers = lastMonthSubs.find(s => s.status === "enterprise")?.count || 0;
-  const lastMonthMrr = (lastMonthPaidProUsers * PLANS.pro.price) + (lastMonthPaidEnterpriseUsers * PLANS.enterprise.price);
+  const lastMonthPaidTeamUsers = lastMonthSubs.find(s => s.status === "team")?.count || 0;
+  const lastMonthMrr = (lastMonthPaidProUsers * PLANS.pro.price) + (lastMonthPaidTeamUsers * PLANS.team.price);
 
   // MRR change percentage
   const mrrChange = lastMonthMrr > 0 ? ((mrr - lastMonthMrr) / lastMonthMrr) * 100 : (mrr > 0 ? 100 : 0);
@@ -439,18 +439,18 @@ async function getBusinessMetrics() {
   const avgRevenuePerUser = totalUsers > 0 ? mrr / totalUsers : 0;
 
   // Paid user percentage (users who actually paid, not just status)
-  const totalPaidUsers = paidProUsers + paidEnterpriseUsers;
+  const totalPaidUsers = paidProUsers + paidTeamUsers;
   const paidUserPercentage = totalUsers > 0 ? (totalPaidUsers / totalUsers) * 100 : 0;
 
   // Conversion metrics (based on actual Polar payments)
   const proConversions = paidProUsers - lastMonthPaidProUsers;
-  const enterpriseConversions = paidEnterpriseUsers - lastMonthPaidEnterpriseUsers;
+  const teamConversions = paidTeamUsers - lastMonthPaidTeamUsers;
 
   // Calculate conversion rate (actually paid users / total users)
   const conversionRate = totalUsers > 0 ? (totalPaidUsers / totalUsers) * 100 : 0;
 
   // Last month conversion rate for comparison
-  const lastMonthTotalPaidUsers = lastMonthPaidProUsers + lastMonthPaidEnterpriseUsers;
+  const lastMonthTotalPaidUsers = lastMonthPaidProUsers + lastMonthPaidTeamUsers;
   // Estimate last-month total users: users created before this month
   const lastMonthTotalUsers = Math.max(0, totalUsers - (monthlySignups[0]?.count || 0));
   const lastMonthConversionRate = lastMonthTotalUsers > 0
@@ -466,7 +466,7 @@ async function getBusinessMetrics() {
     conversionRateChange,
     avgRevenuePerUser,
     proConversions: Math.max(0, proConversions),
-    enterpriseConversions: Math.max(0, enterpriseConversions),
+    teamConversions: Math.max(0, teamConversions),
     monthlySignups: monthlySignups[0]?.count || 0,
     paidUserPercentage,
   };
@@ -572,7 +572,7 @@ export default async function ManagePage() {
   const businessMetrics = businessMetricsResult.status === "fulfilled"
     ? businessMetricsResult.value : {
       mrr: 0, mrrChange: 0, arr: 0, conversionRate: 0, conversionRateChange: 0,
-      avgRevenuePerUser: 0, proConversions: 0, enterpriseConversions: 0,
+      avgRevenuePerUser: 0, proConversions: 0, teamConversions: 0,
       monthlySignups: 0, paidUserPercentage: 0,
     };
   const costBreakdown = costBreakdownResult.status === "fulfilled"
@@ -592,14 +592,14 @@ export default async function ManagePage() {
 
   const freeUsers = subscriptionBreakdown.find(s => s.status === "free")?.count || 0;
   const proUsers = subscriptionBreakdown.find(s => s.status === "pro")?.count || 0;
-  const enterpriseUsers = subscriptionBreakdown.find(s => s.status === "enterprise")?.count || 0;
+  const teamUsers = subscriptionBreakdown.find(s => s.status === "team")?.count || 0;
 
   return (
     <ResponsiveManage
       stats={stats}
       freeUsers={freeUsers}
       proUsers={proUsers}
-      enterpriseUsers={enterpriseUsers}
+      teamUsers={teamUsers}
       userGrowth={userGrowth}
       aiCosts={aiCosts}
       platformDist={platformDist}
