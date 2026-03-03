@@ -1,7 +1,7 @@
 // PERF: Code-split admin sections — FIX-203
 import { db } from "@/lib/db";
-import { users, monitors, results, aiLogs, errorLogs } from "@/lib/db/schema";
-import { count, sum, desc, sql, gte, and, lt, eq } from "drizzle-orm";
+import { users, monitors, results, aiLogs, errorLogs, emailEvents, webhookDeliveries, apiKeys } from "@/lib/db/schema";
+import { count, sum, desc, sql, gte, and, lt, eq, isNull } from "drizzle-orm";
 import { ResponsiveManage } from "@/components/admin/responsive-manage";
 import { PLANS } from "@/lib/plans";
 
@@ -9,6 +9,9 @@ import { PLANS } from "@/lib/plans";
 export const dynamic = "force-dynamic";
 
 async function getAdminStats() {
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
   const [
     totalUsers,
     totalMonitors,
@@ -17,6 +20,7 @@ async function getAdminStats() {
     activeMonitors,
     usersToday,
     resultsToday,
+    stuckMonitorCount,
   ] = await Promise.all([
     db.select({ count: count() }).from(users),
     db.select({ count: count() }).from(monitors),
@@ -29,6 +33,13 @@ async function getAdminStats() {
     db.select({ count: count() }).from(results).where(
       gte(results.createdAt, sql`NOW() - INTERVAL '24 hours'`)
     ),
+    // Stuck monitors: active but not scanned in 7+ days or never scanned
+    db.select({ count: count() }).from(monitors).where(
+      and(
+        eq(monitors.isActive, true),
+        sql`(${monitors.lastCheckedAt} IS NULL OR ${monitors.lastCheckedAt} < ${sevenDaysAgo})`
+      )
+    ),
   ]);
 
   return {
@@ -39,6 +50,7 @@ async function getAdminStats() {
     activeMonitors: activeMonitors[0]?.count || 0,
     usersToday: usersToday[0]?.count || 0,
     resultsToday: resultsToday[0]?.count || 0,
+    stuckMonitorCount: stuckMonitorCount[0]?.count || 0,
   };
 }
 
@@ -135,6 +147,99 @@ async function getSentimentBreakdown() {
   return breakdown;
 }
 
+async function getEngagementSummary() {
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const [resultStats, emailStats] = await Promise.all([
+    db
+      .select({
+        total: count(),
+        viewed: sql<number>`COUNT(*) FILTER (WHERE ${results.isViewed} = true)`,
+        clicked: sql<number>`COUNT(*) FILTER (WHERE ${results.isClicked} = true)`,
+      })
+      .from(results)
+      .where(gte(results.createdAt, thirtyDaysAgo)),
+    db
+      .select({
+        sent: sql<number>`COUNT(DISTINCT ${emailEvents.emailId}) FILTER (WHERE ${emailEvents.eventType} = 'sent')`,
+        opened: sql<number>`COUNT(DISTINCT ${emailEvents.emailId}) FILTER (WHERE ${emailEvents.eventType} = 'opened')`,
+      })
+      .from(emailEvents)
+      .where(gte(emailEvents.createdAt, thirtyDaysAgo)),
+  ]);
+
+  const r = resultStats[0] || { total: 0, viewed: 0, clicked: 0 };
+  const e = emailStats[0] || { sent: 0, opened: 0 };
+  const total = r.total || 1;
+  const sent = Number(e.sent) || 1;
+
+  return {
+    viewRate: Number(((Number(r.viewed) / total) * 100).toFixed(1)),
+    clickRate: Number(((Number(r.clicked) / total) * 100).toFixed(1)),
+    emailOpenRate: Number(((Number(e.opened) / sent) * 100).toFixed(1)),
+  };
+}
+
+async function getContentSummary() {
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const stats = await db
+    .select({
+      avgLeadScore: sql<number>`AVG(${results.leadScore})`,
+      highQualityLeads: sql<number>`COUNT(*) FILTER (WHERE ${results.leadScore} >= 70)`,
+    })
+    .from(results)
+    .where(
+      and(
+        gte(results.createdAt, thirtyDaysAgo),
+        sql`${results.leadScore} IS NOT NULL`
+      )
+    );
+
+  const s = stats[0] || { avgLeadScore: 0, highQualityLeads: 0 };
+
+  return {
+    avgLeadScore: Math.round(Number(s.avgLeadScore) || 0),
+    highQualityLeads: Number(s.highQualityLeads),
+  };
+}
+
+async function getIntegrationsSummary() {
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const [deliveryStats, activeKeyCount] = await Promise.all([
+    db
+      .select({
+        total: count(),
+        success: sql<number>`COUNT(*) FILTER (WHERE ${webhookDeliveries.status} = 'success')`,
+      })
+      .from(webhookDeliveries)
+      .where(gte(webhookDeliveries.createdAt, thirtyDaysAgo)),
+    db
+      .select({ count: count() })
+      .from(apiKeys)
+      .where(
+        and(
+          eq(apiKeys.isActive, true),
+          isNull(apiKeys.revokedAt)
+        )
+      ),
+  ]);
+
+  const d = deliveryStats[0] || { total: 0, success: 0 };
+  const totalDel = Number(d.total) || 0;
+  const successDel = Number(d.success) || 0;
+
+  return {
+    webhookSuccessRate: totalDel > 0 ? Number(((successDel / totalDel) * 100).toFixed(1)) : 0,
+    activeApiKeys: activeKeyCount[0]?.count || 0,
+    totalDeliveries: totalDel,
+  };
+}
+
 async function getSystemHealth() {
   const twentyFourHoursAgo = new Date();
   twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
@@ -159,39 +264,66 @@ async function getSystemHealth() {
   const errorCount = errorCount24hResult[0]?.count || 0;
   const errorRate24h = aiCalls24h > 0 ? (errorCount / aiCalls24h) * 100 : 0;
 
-  // TODO: Replace with real Inngest API integration for accurate job metrics.
-  // Currently these are estimates: run-monitors uses monitor updatedAt as a proxy,
-  // digest jobs have no data source and show "unknown" status.
-  const [monitorsScannedRecently] = await db
-    .select({ count: count() })
-    .from(monitors)
-    .where(
-      and(
-        eq(monitors.isActive, true),
-        gte(monitors.updatedAt, twentyFourHoursAgo)
-      )
-    );
-  const recentScanCount = monitorsScannedRecently?.count || 0;
+  // Proxy metrics: run-monitors uses monitor updatedAt, digests use aiLogs analysisType
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  const [monitorsScannedRecently, digestRuns24h, digestRuns7d] = await Promise.all([
+    db
+      .select({ count: count() })
+      .from(monitors)
+      .where(
+        and(
+          eq(monitors.isActive, true),
+          gte(monitors.updatedAt, twentyFourHoursAgo)
+        )
+      ),
+    // Daily digest proxy: weekly-insights AI logs in last 24h
+    db
+      .select({ count: count() })
+      .from(aiLogs)
+      .where(
+        and(
+          eq(aiLogs.analysisType, "weekly-insights"),
+          gte(aiLogs.createdAt, twentyFourHoursAgo)
+        )
+      ),
+    // Weekly digest proxy: weekly-insights AI logs in last 7 days
+    db
+      .select({ count: count() })
+      .from(aiLogs)
+      .where(
+        and(
+          eq(aiLogs.analysisType, "weekly-insights"),
+          gte(aiLogs.createdAt, sevenDaysAgo)
+        )
+      ),
+  ]);
+
+  const recentScanCount = monitorsScannedRecently[0]?.count || 0;
+  const dailyDigestRuns = digestRuns24h[0]?.count || 0;
+  const weeklyDigestRuns = digestRuns7d[0]?.count || 0;
+
   const jobs = [
     {
       name: "run-monitors (estimated)",
-      lastRun: null, // No data — Inngest API integration needed
+      lastRun: null,
       status: (aiCalls24h > 0 ? "success" : "unknown") as "success" | "failed" | "pending" | "running" | "unknown",
       runsLast24h: recentScanCount,
       failuresLast24h: errorCount,
     },
     {
       name: "send-daily-digest",
-      lastRun: null, // No data — Inngest API integration needed
-      status: "unknown" as const,
-      runsLast24h: 0,
+      lastRun: null,
+      status: (dailyDigestRuns > 0 ? "success" : "pending") as "success" | "failed" | "pending" | "running" | "unknown",
+      runsLast24h: dailyDigestRuns,
       failuresLast24h: 0,
     },
     {
       name: "send-weekly-digest",
-      lastRun: null, // No data — Inngest API integration needed
-      status: "unknown" as const,
-      runsLast24h: 0,
+      lastRun: null,
+      status: (weeklyDigestRuns > 0 ? "success" : "pending") as "success" | "failed" | "pending" | "running" | "unknown",
+      runsLast24h: weeklyDigestRuns,
       failuresLast24h: 0,
     },
   ];
@@ -373,7 +505,7 @@ async function getBusinessMetrics() {
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
   // Get subscription counts - ONLY count users who actually paid via Polar
-  const [currentSubs, paidUsers, lastMonthSubs, monthlySignups] = await Promise.all([
+  const [currentSubs, paidUsersRaw, lastMonthSubs, monthlySignups] = await Promise.all([
     // Current subscription breakdown (all users for display)
     db.select({
       status: users.subscriptionStatus,
@@ -382,14 +514,14 @@ async function getBusinessMetrics() {
     .from(users)
     .groupBy(users.subscriptionStatus),
 
-    // REAL paid users - only those with Polar subscription ID
+    // Fetch per-user billing period data to detect annual vs monthly billing
     db.select({
       status: users.subscriptionStatus,
-      count: count(),
+      currentPeriodStart: users.currentPeriodStart,
+      currentPeriodEnd: users.currentPeriodEnd,
     })
     .from(users)
-    .where(sql`${users.polarSubscriptionId} IS NOT NULL`)
-    .groupBy(users.subscriptionStatus),
+    .where(sql`${users.polarSubscriptionId} IS NOT NULL`),
 
     // Last month paid users with Polar subscription
     db.select({
@@ -411,9 +543,29 @@ async function getBusinessMetrics() {
     .where(gte(users.createdAt, startOfMonth)),
   ]);
 
-  // Calculate current MRR - ONLY from users who actually paid via Polar
-  const paidProUsers = paidUsers.find(s => s.status === "pro")?.count || 0;
-  const paidTeamUsers = paidUsers.find(s => s.status === "team")?.count || 0;
+  // Compute billing-aware MRR: detect annual billing when period span > 60 days
+  const ANNUAL_THRESHOLD_MS = 60 * 24 * 60 * 60 * 1000;
+  const proAnnualMonthly = PLANS.pro.annualPrice / 12;
+  const teamAnnualMonthly = PLANS.team.annualPrice / 12;
+
+  let paidProUsers = 0;
+  let paidTeamUsers = 0;
+  let billingAwareMrr = 0;
+
+  for (const user of paidUsersRaw) {
+    const isAnnual =
+      user.currentPeriodStart &&
+      user.currentPeriodEnd &&
+      (new Date(user.currentPeriodEnd).getTime() - new Date(user.currentPeriodStart).getTime()) > ANNUAL_THRESHOLD_MS;
+
+    if (user.status === "pro") {
+      paidProUsers++;
+      billingAwareMrr += isAnnual ? proAnnualMonthly : PLANS.pro.price;
+    } else if (user.status === "team") {
+      paidTeamUsers++;
+      billingAwareMrr += isAnnual ? teamAnnualMonthly : PLANS.team.price;
+    }
+  }
 
   // Total users for conversion rate calculation
   const currentFreeUsers = currentSubs.find(s => s.status === "free")?.count || 0;
@@ -421,10 +573,10 @@ async function getBusinessMetrics() {
   const currentTeamUsers = currentSubs.find(s => s.status === "team")?.count || 0;
   const totalUsers = currentProUsers + currentTeamUsers + currentFreeUsers;
 
-  // MRR from REAL Polar payments only
-  const mrr = (paidProUsers * PLANS.pro.price) + (paidTeamUsers * PLANS.team.price);
+  // MRR from REAL Polar payments only (billing-aware)
+  const mrr = billingAwareMrr;
 
-  // Calculate last month MRR for comparison (from real Polar payments)
+  // Calculate last month MRR for comparison (flat rates since we lack historical billing data)
   const lastMonthPaidProUsers = lastMonthSubs.find(s => s.status === "pro")?.count || 0;
   const lastMonthPaidTeamUsers = lastMonthSubs.find(s => s.status === "team")?.count || 0;
   const lastMonthMrr = (lastMonthPaidProUsers * PLANS.pro.price) + (lastMonthPaidTeamUsers * PLANS.team.price);
@@ -538,6 +690,9 @@ export default async function ManagePage() {
     costBreakdownResult,
     systemHealthResult,
     errorLogsSummaryResult,
+    engagementSummaryResult,
+    contentSummaryResult,
+    integrationsSummaryResult,
   ] = await Promise.allSettled([
     getAdminStats(),
     getSubscriptionBreakdown(),
@@ -550,12 +705,15 @@ export default async function ManagePage() {
     getCostBreakdown(),
     getSystemHealth(),
     getErrorLogsSummary(),
+    getEngagementSummary(),
+    getContentSummary(),
+    getIntegrationsSummary(),
   ]);
 
   // Extract values with sensible defaults for any rejected promises
   const stats = statsResult.status === "fulfilled" ? statsResult.value : {
     totalUsers: 0, totalMonitors: 0, totalResults: 0, totalAiCost: 0,
-    activeMonitors: 0, usersToday: 0, resultsToday: 0,
+    activeMonitors: 0, usersToday: 0, resultsToday: 0, stuckMonitorCount: 0,
   };
   const subscriptionBreakdown = subscriptionBreakdownResult.status === "fulfilled"
     ? subscriptionBreakdownResult.value : [];
@@ -589,6 +747,12 @@ export default async function ManagePage() {
     ? errorLogsSummaryResult.value : {
       total: 0, unresolved: 0, byLevel: { error: 0, warning: 0, fatal: 0 }, recentErrors: [],
     };
+  const engagementSummary = engagementSummaryResult.status === "fulfilled"
+    ? engagementSummaryResult.value : { viewRate: 0, clickRate: 0, emailOpenRate: 0 };
+  const contentSummary = contentSummaryResult.status === "fulfilled"
+    ? contentSummaryResult.value : { avgLeadScore: 0, highQualityLeads: 0 };
+  const integrationsSummary = integrationsSummaryResult.status === "fulfilled"
+    ? integrationsSummaryResult.value : { webhookSuccessRate: 0, activeApiKeys: 0, totalDeliveries: 0 };
 
   const freeUsers = subscriptionBreakdown.find(s => s.status === "free")?.count || 0;
   const proUsers = subscriptionBreakdown.find(s => s.status === "pro")?.count || 0;
@@ -609,6 +773,10 @@ export default async function ManagePage() {
       costBreakdown={costBreakdown}
       systemHealth={systemHealth}
       errorLogsSummary={errorLogsSummary}
+      engagementSummary={engagementSummary}
+      contentSummary={contentSummary}
+      integrationsSummary={integrationsSummary}
+      stuckMonitorCount={stats.stuckMonitorCount}
     />
   );
 }

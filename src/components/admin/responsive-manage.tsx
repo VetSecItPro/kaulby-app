@@ -9,6 +9,10 @@ import {
   MessageSquare,
   DollarSign,
   TrendingUp,
+  Eye,
+  Target,
+  Webhook,
+  AlertTriangle,
 } from "lucide-react";
 import Link from "next/link";
 import { AdminCharts } from "./admin-charts-lazy";
@@ -50,6 +54,23 @@ interface PlatformDist {
 interface SentimentDist {
   sentiment: string | null;
   count: number;
+}
+
+interface EngagementSummary {
+  viewRate: number;
+  clickRate: number;
+  emailOpenRate: number;
+}
+
+interface ContentSummary {
+  avgLeadScore: number;
+  highQualityLeads: number;
+}
+
+interface IntegrationsSummary {
+  webhookSuccessRate: number;
+  activeApiKeys: number;
+  totalDeliveries: number;
 }
 
 interface RecentUser {
@@ -157,6 +178,10 @@ interface ResponsiveManageProps {
   costBreakdown: CostBreakdownData;
   systemHealth: SystemHealthData;
   errorLogsSummary: ErrorLogsSummary;
+  engagementSummary: EngagementSummary;
+  contentSummary: ContentSummary;
+  integrationsSummary: IntegrationsSummary;
+  stuckMonitorCount: number;
 }
 
 
@@ -176,6 +201,10 @@ export function ResponsiveManage({
   costBreakdown,
   systemHealth,
   errorLogsSummary,
+  engagementSummary,
+  contentSummary,
+  integrationsSummary,
+  stuckMonitorCount,
 }: ResponsiveManageProps) {
   return (
     <>
@@ -190,6 +219,10 @@ export function ResponsiveManage({
           sentimentDist={sentimentDist}
           recentUsers={recentUsers}
           businessMetrics={businessMetrics}
+          engagementSummary={engagementSummary}
+          contentSummary={contentSummary}
+          integrationsSummary={integrationsSummary}
+          stuckMonitorCount={stuckMonitorCount}
         />
       </div>
 
@@ -217,7 +250,7 @@ export function ResponsiveManage({
             clickable
           />
         </Link>
-        <Link href="/manage/monitors" className="block">
+        <Link href="/manage/monitors" className="block relative">
           <StatsCard
             title="Active Monitors"
             value={stats.activeMonitors}
@@ -225,6 +258,12 @@ export function ResponsiveManage({
             icon={Radio}
             clickable
           />
+          {stuckMonitorCount > 0 && (
+            <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30">
+              <AlertTriangle className="h-3 w-3 text-amber-500" />
+              <span className="text-xs font-medium text-amber-500">{stuckMonitorCount} stuck</span>
+            </div>
+          )}
         </Link>
         <Link href="/manage/results" className="block">
           <StatsCard
@@ -335,6 +374,57 @@ export function ResponsiveManage({
           </CardHeader>
         </Card>
       </Link>
+
+      {/* New Detail Page Links */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Link href="/manage/engagement" className="block">
+          <Card className="transition-all hover:border-emerald-500 hover:shadow-md cursor-pointer border-emerald-500/30">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Eye className="h-5 w-5 text-emerald-500" />
+                  Engagement
+                </CardTitle>
+              </div>
+              <CardDescription>
+                View {engagementSummary.viewRate}% · Click {engagementSummary.clickRate}% · Email Open {engagementSummary.emailOpenRate}%
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
+
+        <Link href="/manage/content" className="block">
+          <Card className="transition-all hover:border-blue-500 hover:shadow-md cursor-pointer border-blue-500/30">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Target className="h-5 w-5 text-blue-500" />
+                  Content Intelligence
+                </CardTitle>
+              </div>
+              <CardDescription>
+                Avg Lead Score: {contentSummary.avgLeadScore} · {contentSummary.highQualityLeads} high-quality leads
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
+
+        <Link href="/manage/integrations" className="block">
+          <Card className="transition-all hover:border-purple-500 hover:shadow-md cursor-pointer border-purple-500/30">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Webhook className="h-5 w-5 text-purple-500" />
+                  Integrations
+                </CardTitle>
+              </div>
+              <CardDescription>
+                Webhooks: {integrationsSummary.webhookSuccessRate}% success · {integrationsSummary.activeApiKeys} API keys
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
+      </div>
 
       {/* Cost Breakdown */}
       <Link href="/manage/costs" className="block">
