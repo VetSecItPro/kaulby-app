@@ -124,6 +124,35 @@ export async function GET(request: NextRequest) {
     )
     .groupBy(errorLogs.source);
 
+  // Error trends: hourly (last 24h) and daily (last 7d)
+  const twentyFourHoursAgo = new Date();
+  twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  const [hourlyTrend, dailyTrend] = await Promise.all([
+    db
+      .select({
+        hour: sql<string>`TO_CHAR(DATE_TRUNC('hour', ${errorLogs.createdAt}), 'HH24:00')`,
+        hourTs: sql<string>`DATE_TRUNC('hour', ${errorLogs.createdAt})`,
+        count: count(),
+      })
+      .from(errorLogs)
+      .where(gte(errorLogs.createdAt, twentyFourHoursAgo))
+      .groupBy(sql`DATE_TRUNC('hour', ${errorLogs.createdAt})`)
+      .orderBy(sql`DATE_TRUNC('hour', ${errorLogs.createdAt})`),
+    db
+      .select({
+        date: sql<string>`TO_CHAR(DATE(${errorLogs.createdAt}), 'Mon DD')`,
+        dateRaw: sql<string>`DATE(${errorLogs.createdAt})`,
+        count: count(),
+      })
+      .from(errorLogs)
+      .where(gte(errorLogs.createdAt, sevenDaysAgo))
+      .groupBy(sql`DATE(${errorLogs.createdAt})`)
+      .orderBy(sql`DATE(${errorLogs.createdAt})`),
+  ]);
+
   return NextResponse.json({
     errors,
     pagination: {
@@ -144,6 +173,16 @@ export async function GET(request: NextRequest) {
         acc[s.source] = Number(s.count);
         return acc;
       }, {} as Record<string, number>),
+    },
+    trends: {
+      hourly: hourlyTrend.map((h) => ({
+        label: h.hour,
+        count: Number(h.count),
+      })),
+      daily: dailyTrend.map((d) => ({
+        label: d.date,
+        count: Number(d.count),
+      })),
     },
   });
 }

@@ -169,6 +169,24 @@ async function getDetailedCostData(days: number = 30) {
     .orderBy(desc(sum(aiLogs.costUsd)))
     .limit(20);
 
+  // Cost by platform
+  const costByPlatformQuery = await db
+    .select({
+      platform: aiLogs.platform,
+      totalCost: sum(aiLogs.costUsd),
+      totalCalls: count(),
+      totalTokens: sum(sql`${aiLogs.promptTokens} + ${aiLogs.completionTokens}`),
+    })
+    .from(aiLogs)
+    .where(
+      and(
+        gte(aiLogs.createdAt, periodStart),
+        sql`${aiLogs.platform} IS NOT NULL`
+      )
+    )
+    .groupBy(aiLogs.platform)
+    .orderBy(desc(sum(aiLogs.costUsd)));
+
   // Cost by analysis type
   const costByAnalysisTypeQuery = await db
     .select({
@@ -287,6 +305,12 @@ async function getDetailedCostData(days: number = 30) {
       platform: item.platform || "unknown",
       totalCost: Number(item.totalCost) || 0,
       totalCalls: Number(item.totalCalls) || 0,
+    })),
+    costByPlatform: costByPlatformQuery.map((item) => ({
+      platform: item.platform || "unknown",
+      totalCost: Number(item.totalCost) || 0,
+      totalCalls: Number(item.totalCalls) || 0,
+      totalTokens: Number(item.totalTokens) || 0,
     })),
     costByAnalysisType: costByAnalysisTypeQuery.map((item) => ({
       analysisType: item.analysisType || "unknown",
@@ -748,6 +772,48 @@ export default async function CostsPage({
             </Table>
           ) : (
             <div className="text-center text-muted-foreground py-8">No analysis type data yet</div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Cost by Platform */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Cost by Platform</CardTitle>
+          <CardDescription>
+            AI spend broken down by monitoring platform (last {days} days)
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {data.costByPlatform.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Platform</TableHead>
+                  <TableHead className="text-right">Calls</TableHead>
+                  <TableHead className="text-right">Tokens</TableHead>
+                  <TableHead className="text-right">Cost</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data.costByPlatform.map((item) => (
+                  <TableRow key={item.platform}>
+                    <TableCell>
+                      <Badge variant="outline" className="text-xs">
+                        {item.platform}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">{formatNumber(item.totalCalls)}</TableCell>
+                    <TableCell className="text-right">{formatNumber(item.totalTokens)}</TableCell>
+                    <TableCell className="text-right font-medium text-amber-500">
+                      {formatCurrency(item.totalCost)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="text-center text-muted-foreground py-8">No platform cost data yet</div>
           )}
         </CardContent>
       </Card>

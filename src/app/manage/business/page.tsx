@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { users, aiLogs } from "@/lib/db/schema";
-import { count, desc, sql, gte, and, lt } from "drizzle-orm";
+import { count, desc, sql, gte, and, lt, eq } from "drizzle-orm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -12,7 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import Link from "next/link";
-import { ArrowLeft, DollarSign, Users, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { ArrowLeft, DollarSign, Users, TrendingUp, TrendingDown, Minus, AlertTriangle, UserMinus, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PLANS } from "@/lib/plans";
 
@@ -116,7 +116,49 @@ async function getDetailedBusinessMetrics() {
     .orderBy(desc(users.updatedAt))
     .limit(20);
 
-  // Churn data (approximate - users who haven't been active)
+  // --- DAU/WAU/MAU from lastActiveAt ---
+  const oneDayAgo = new Date();
+  oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  const [dauResult, wauResult, mauResult] = await Promise.all([
+    db.select({ count: count() }).from(users).where(gte(users.lastActiveAt, oneDayAgo)),
+    db.select({ count: count() }).from(users).where(gte(users.lastActiveAt, sevenDaysAgo)),
+    db.select({ count: count() }).from(users).where(gte(users.lastActiveAt, thirtyDaysAgo)),
+  ]);
+
+  const dau = dauResult[0]?.count || 0;
+  const wau = wauResult[0]?.count || 0;
+  const mau = mauResult[0]?.count || 0;
+  const dauMauRatio = mau > 0 ? (dau / mau) * 100 : 0;
+
+  // --- Churn & Retention ---
+  const thirtyDaysAgoForChurn = new Date();
+  thirtyDaysAgoForChurn.setDate(thirtyDaysAgoForChurn.getDate() - 30);
+
+  const [churnedUsersResult, atRiskUsersResult] = await Promise.all([
+    // Churned: had a Polar subscription but now on free plan
+    db.select({ count: count() }).from(users).where(
+      and(
+        sql`${users.polarSubscriptionId} IS NOT NULL`,
+        eq(users.subscriptionStatus, "free")
+      )
+    ),
+    // At-risk: paid users inactive for 30+ days
+    db.select({ count: count() }).from(users).where(
+      and(
+        sql`${users.subscriptionStatus} IN ('pro', 'team')`,
+        sql`${users.polarSubscriptionId} IS NOT NULL`,
+        sql`(${users.lastActiveAt} IS NULL OR ${users.lastActiveAt} < ${thirtyDaysAgoForChurn})`
+      )
+    ),
+  ]);
+
+  const churnedUsers = churnedUsersResult[0]?.count || 0;
+  const atRiskUsers = atRiskUsersResult[0]?.count || 0;
+
+  // Active AI usage (for existing activeUsers metric)
   const activeUsers30d = await db
     .select({
       count: count(sql`DISTINCT ${aiLogs.userId}`),
@@ -180,6 +222,12 @@ async function getDetailedBusinessMetrics() {
     })),
     activeUsers: activeUsers30d[0]?.count || 0,
     ltv: avgRevenuePerUser * 12, // Simplified LTV calculation
+    dau,
+    wau,
+    mau,
+    dauMauRatio,
+    churnedUsers,
+    atRiskUsers,
   };
 }
 
@@ -500,6 +548,79 @@ export default async function BusinessMetricsPage() {
           ) : (
             <div className="text-center text-muted-foreground py-8">No recent conversions</div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Active Users (DAU/WAU/MAU) */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Activity className="h-4 w-4 text-blue-400" />
+            <CardTitle className="text-lg">Active Users</CardTitle>
+          </div>
+          <CardDescription>Based on last meaningful activity (dashboard visit, monitor action)</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-4">
+            <div className="rounded-lg bg-muted/50 p-4">
+              <p className="text-sm text-muted-foreground">DAU (24h)</p>
+              <p className="mt-1 text-2xl font-bold">{data.dau}</p>
+            </div>
+            <div className="rounded-lg bg-muted/50 p-4">
+              <p className="text-sm text-muted-foreground">WAU (7d)</p>
+              <p className="mt-1 text-2xl font-bold">{data.wau}</p>
+            </div>
+            <div className="rounded-lg bg-muted/50 p-4">
+              <p className="text-sm text-muted-foreground">MAU (30d)</p>
+              <p className="mt-1 text-2xl font-bold">{data.mau}</p>
+            </div>
+            <div className="rounded-lg bg-muted/50 p-4">
+              <p className="text-sm text-muted-foreground">DAU/MAU Ratio</p>
+              <p className={`mt-1 text-2xl font-bold ${data.dauMauRatio >= 20 ? "text-green-500" : data.dauMauRatio >= 10 ? "text-amber-500" : "text-red-500"}`}>
+                {formatPercent(data.dauMauRatio)}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">Healthy SaaS: 20-50%</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Churn & Retention */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <UserMinus className="h-4 w-4 text-red-400" />
+            <CardTitle className="text-lg">Churn & Retention</CardTitle>
+          </div>
+          <CardDescription>Churned users (had subscription, now free) and at-risk paid users (inactive 30+ days)</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="rounded-lg bg-muted/50 p-4">
+              <div className="flex items-center gap-2">
+                <UserMinus className="h-4 w-4 text-red-500" />
+                <p className="text-sm text-muted-foreground">Churned Users</p>
+              </div>
+              <p className={`mt-1 text-2xl font-bold ${data.churnedUsers > 0 ? "text-red-500" : "text-green-500"}`}>
+                {data.churnedUsers}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Had Polar subscription, now on free plan
+              </p>
+            </div>
+            <div className="rounded-lg bg-muted/50 p-4">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-amber-500" />
+                <p className="text-sm text-muted-foreground">At-Risk Paid Users</p>
+              </div>
+              <p className={`mt-1 text-2xl font-bold ${data.atRiskUsers > 0 ? "text-amber-500" : "text-green-500"}`}>
+                {data.atRiskUsers}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Paid users with no activity in 30+ days
+              </p>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>

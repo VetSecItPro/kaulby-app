@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { users, aiLogs, results } from "@/lib/db/schema";
-import { count, sum, desc, gte, eq } from "drizzle-orm";
+import { count, sum, desc, gte, eq, and, sql } from "drizzle-orm";
 import { PLANS } from "@/lib/plans";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,29 +13,56 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import Link from "next/link";
-import { ArrowLeft, DollarSign, TrendingUp, Users, PieChart } from "lucide-react";
+import { ArrowLeft, DollarSign, TrendingUp, Users, PieChart, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
 
-// Plan price lookup — maps subscriptionStatus values to their monthly price.
-// NOTE: This uses the standard monthly rate for all users. Users on annual billing
-// actually pay less per month (Pro: $290/12 = ~$24.17, Team: $990/12 = $82.50).
-// Revenue figures on this page may therefore be slightly overstated for annual subscribers.
-function getPlanPrice(plan: string | null): number {
+const ANNUAL_THRESHOLD_MS = 60 * 24 * 60 * 60 * 1000; // 60 days in ms
+
+function getUserMonthlyRevenue(
+  plan: string | null,
+  periodStart: Date | null,
+  periodEnd: Date | null
+): number {
+  const isAnnual =
+    periodStart &&
+    periodEnd &&
+    (new Date(periodEnd).getTime() - new Date(periodStart).getTime()) > ANNUAL_THRESHOLD_MS;
+
   switch (plan) {
     case "team":
-      return PLANS.team.price; // 99
+      return isAnnual ? PLANS.team.annualPrice / 12 : PLANS.team.price;
     case "pro":
-      return PLANS.pro.price; // 29
+      return isAnnual ? PLANS.pro.annualPrice / 12 : PLANS.pro.price;
     default:
-      return PLANS.free.price; // 0
+      return 0;
   }
 }
 
 async function getUnitEconomicsData() {
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  // --- Billing-aware revenue: fetch per-user billing periods for paid users ---
+  const paidUsersRaw = await db
+    .select({
+      id: users.id,
+      status: users.subscriptionStatus,
+      currentPeriodStart: users.currentPeriodStart,
+      currentPeriodEnd: users.currentPeriodEnd,
+    })
+    .from(users)
+    .where(sql`${users.polarSubscriptionId} IS NOT NULL`);
+
+  // Build a map of userId -> monthly revenue for paid users
+  const paidUserRevenueMap = new Map<string, number>();
+  for (const u of paidUsersRaw) {
+    paidUserRevenueMap.set(
+      u.id,
+      getUserMonthlyRevenue(u.status, u.currentPeriodStart, u.currentPeriodEnd)
+    );
+  }
 
   // --- Margin by Plan ---
   // Count users per plan (all users, not just those with AI logs)
@@ -58,13 +85,20 @@ async function getUnitEconomicsData() {
     .where(gte(aiLogs.createdAt, thirtyDaysAgo))
     .groupBy(users.subscriptionStatus);
 
+  // Compute billing-aware revenue per plan
+  const planRevenue = { free: 0, pro: 0, team: 0 };
+  for (const u of paidUsersRaw) {
+    const rev = getUserMonthlyRevenue(u.status, u.currentPeriodStart, u.currentPeriodEnd);
+    if (u.status === "pro") planRevenue.pro += rev;
+    else if (u.status === "team") planRevenue.team += rev;
+  }
+
   const plans = ["free", "pro", "team"] as const;
 
   const marginByPlan = plans.map((planKey) => {
     const userCount = Number(usersByPlan.find((r) => r.plan === planKey)?.userCount) || 0;
     const totalAiCost = Number(aiCostByPlan.find((r) => r.plan === planKey)?.totalAiCost) || 0;
-    const planPrice = getPlanPrice(planKey);
-    const monthlyRevenue = userCount * planPrice;
+    const monthlyRevenue = planRevenue[planKey];
     const margin = monthlyRevenue - totalAiCost;
     const marginPercent = monthlyRevenue > 0 ? (margin / monthlyRevenue) * 100 : 0;
 
@@ -85,30 +119,58 @@ async function getUnitEconomicsData() {
       email: users.email,
       name: users.name,
       subscriptionStatus: users.subscriptionStatus,
+      currentPeriodStart: users.currentPeriodStart,
+      currentPeriodEnd: users.currentPeriodEnd,
       totalAiCost: sum(aiLogs.costUsd),
     })
     .from(aiLogs)
     .innerJoin(users, eq(aiLogs.userId, users.id))
     .where(gte(aiLogs.createdAt, thirtyDaysAgo))
-    .groupBy(aiLogs.userId, users.email, users.name, users.subscriptionStatus)
+    .groupBy(aiLogs.userId, users.email, users.name, users.subscriptionStatus, users.currentPeriodStart, users.currentPeriodEnd)
     .orderBy(desc(sum(aiLogs.costUsd)))
     .limit(20);
 
-  const customerProfitability = topUsersByCost.map((user) => {
-    const totalAiCost = Number(user.totalAiCost) || 0;
-    const planPrice = getPlanPrice(user.subscriptionStatus);
-    const profitability = planPrice - totalAiCost;
+  const paidProfitability: typeof customerProfitability = [];
+  const freeTierSubsidy: typeof customerProfitability = [];
 
-    return {
+  type ProfitEntry = {
+    userId: string;
+    email: string | null;
+    name: string | null;
+    subscriptionStatus: string;
+    totalAiCost: number;
+    monthlyRevenue: number;
+    profitability: number;
+  };
+  const customerProfitability: ProfitEntry[] = [];
+
+  for (const user of topUsersByCost) {
+    const totalAiCost = Number(user.totalAiCost) || 0;
+    const monthlyRevenue = getUserMonthlyRevenue(
+      user.subscriptionStatus,
+      user.currentPeriodStart,
+      user.currentPeriodEnd
+    );
+    const profitability = monthlyRevenue - totalAiCost;
+    const entry: ProfitEntry = {
       userId: user.userId || "",
       email: user.email,
       name: user.name,
       subscriptionStatus: user.subscriptionStatus || "free",
       totalAiCost,
-      monthlyRevenue: planPrice,
+      monthlyRevenue,
       profitability,
     };
-  });
+    customerProfitability.push(entry);
+    if (user.subscriptionStatus === "free" || !user.subscriptionStatus) {
+      freeTierSubsidy.push(entry);
+    } else {
+      paidProfitability.push(entry);
+    }
+  }
+
+  // Free tier total subsidy cost
+  const freeSubsidyCost = freeTierSubsidy.reduce((sum, u) => sum + u.totalAiCost, 0);
 
   // --- Summary stats ---
   const [totalAiStats, resultsCount] = await Promise.all([
@@ -128,14 +190,17 @@ async function getUnitEconomicsData() {
   const totalAiCost30d = Number(totalAiStats[0]?.totalCost) || 0;
   const totalResults30d = resultsCount[0]?.count || 0;
 
-  // Total revenue = sum over all users of their plan price
-  const totalRevenue = marginByPlan.reduce((sum, p) => sum + p.monthlyRevenue, 0);
+  // Total revenue = billing-aware sum
+  const totalRevenue = marginByPlan.reduce((s, p) => s + p.monthlyRevenue, 0);
   const grossMargin = totalRevenue - totalAiCost30d;
   const grossMarginPercent = totalRevenue > 0 ? (grossMargin / totalRevenue) * 100 : 0;
   const costPerResult = totalResults30d > 0 ? totalAiCost30d / totalResults30d : 0;
 
   return {
     marginByPlan,
+    paidProfitability,
+    freeTierSubsidy,
+    freeSubsidyCost,
     customerProfitability,
     summary: {
       totalRevenue,
@@ -212,7 +277,7 @@ export default async function UnitEconomicsPage() {
               {formatCurrency(data.summary.totalRevenue)}
             </div>
             <p className="text-xs text-muted-foreground">
-              Assumes monthly billing rates. Annual subscribers pay less (Pro: ~$24/mo, Team: ~$83/mo). Actual revenue may differ.
+              Billing-aware: annual subscribers use actual monthly equivalent
             </p>
           </CardContent>
         </Card>
@@ -307,14 +372,37 @@ export default async function UnitEconomicsPage() {
         </CardContent>
       </Card>
 
-      {/* Customer Profitability */}
+      {/* Free Tier Subsidy Summary */}
+      {data.freeSubsidyCost > 0 && (
+        <Card className="border-amber-500/50">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Gift className="h-4 w-4 text-amber-500" />
+                Free Tier Subsidy Cost
+              </CardTitle>
+              <CardDescription>Total AI spend on free users (acquisition cost)</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-amber-500">
+              {formatCurrency(data.freeSubsidyCost)}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {data.freeTierSubsidy.length} free user{data.freeTierSubsidy.length !== 1 ? "s" : ""} with AI usage in the last 30 days
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Paid Customer Profitability */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Customer AI Profit/Loss</CardTitle>
-          <CardDescription>Top 20 most expensive users by AI cost (last 30 days). Only considers AI costs.</CardDescription>
+          <CardTitle className="text-lg">Paid Customer AI Profit/Loss</CardTitle>
+          <CardDescription>Pro and Team users ranked by AI cost (last 30 days). Revenue is billing-aware (annual vs monthly).</CardDescription>
         </CardHeader>
         <CardContent>
-          {data.customerProfitability.length > 0 ? (
+          {data.paidProfitability.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -326,7 +414,7 @@ export default async function UnitEconomicsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.customerProfitability.map((user) => (
+                {data.paidProfitability.map((user) => (
                   <TableRow key={user.userId}>
                     <TableCell>
                       <div>
@@ -349,10 +437,50 @@ export default async function UnitEconomicsPage() {
               </TableBody>
             </Table>
           ) : (
-            <div className="text-center text-muted-foreground py-8">No AI usage data in the last 30 days</div>
+            <div className="text-center text-muted-foreground py-8">No paid user AI usage in the last 30 days</div>
           )}
         </CardContent>
       </Card>
+
+      {/* Free Tier Subsidy Breakdown */}
+      {data.freeTierSubsidy.length > 0 && (
+        <Card className="border-amber-500/30">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Gift className="h-4 w-4 text-amber-500" />
+              Free Tier Subsidy Breakdown
+            </CardTitle>
+            <CardDescription>Free users with AI usage — these are acquisition costs, not losses. Negative values are expected.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>User</TableHead>
+                  <TableHead>Plan</TableHead>
+                  <TableHead className="text-right">AI Cost</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data.freeTierSubsidy.map((user) => (
+                  <TableRow key={user.userId}>
+                    <TableCell>
+                      <div>
+                        <p className="font-medium">{user.name || "Unnamed"}</p>
+                        <p className="text-xs text-muted-foreground">{user.email}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell>{getPlanBadge(user.subscriptionStatus)}</TableCell>
+                    <TableCell className="text-right text-amber-500">
+                      {formatCurrency(user.totalAiCost)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

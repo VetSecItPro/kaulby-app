@@ -6,6 +6,11 @@ import {
   Radio,
   MessageSquare,
   DollarSign,
+  Eye,
+  Target,
+  Webhook,
+  AlertTriangle,
+  ChevronRight,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
@@ -53,6 +58,23 @@ interface BusinessMetricsData {
   paidUserPercentage: number;
 }
 
+interface EngagementSummary {
+  viewRate: number;
+  clickRate: number;
+  emailOpenRate: number;
+}
+
+interface ContentSummary {
+  avgLeadScore: number;
+  highQualityLeads: number;
+}
+
+interface IntegrationsSummary {
+  webhookSuccessRate: number;
+  activeApiKeys: number;
+  totalDeliveries: number;
+}
+
 interface MobileManageProps {
   stats: Stats;
   freeUsers: number;
@@ -62,6 +84,10 @@ interface MobileManageProps {
   sentimentDist: SentimentDist[];
   recentUsers: RecentUser[];
   businessMetrics?: BusinessMetricsData;
+  engagementSummary: EngagementSummary;
+  contentSummary: ContentSummary;
+  integrationsSummary: IntegrationsSummary;
+  stuckMonitorCount: number;
 }
 
 const containerVariants = {
@@ -91,6 +117,10 @@ export function MobileManage({
   sentimentDist,
   recentUsers,
   businessMetrics,
+  engagementSummary,
+  contentSummary,
+  integrationsSummary,
+  stuckMonitorCount,
 }: MobileManageProps) {
   return (
     <motion.div
@@ -120,14 +150,22 @@ export function MobileManage({
           color="bg-blue-500/10 text-blue-500"
           href="/manage/users"
         />
-        <MobileStatCard
-          icon={Radio}
-          label="Monitors"
-          value={stats.activeMonitors}
-          sublabel={`${stats.totalMonitors} total`}
-          color="bg-teal-500/10 text-teal-500"
-          href="/manage/monitors"
-        />
+        <div className="relative">
+          <MobileStatCard
+            icon={Radio}
+            label="Monitors"
+            value={stats.activeMonitors}
+            sublabel={`${stats.totalMonitors} total`}
+            color="bg-teal-500/10 text-teal-500"
+            href="/manage/monitors"
+          />
+          {stuckMonitorCount > 0 && (
+            <div className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30">
+              <AlertTriangle className="h-2.5 w-2.5 text-amber-500" />
+              <span className="text-[10px] font-medium text-amber-500">{stuckMonitorCount}</span>
+            </div>
+          )}
+        </div>
         <MobileStatCard
           icon={MessageSquare}
           label="Results"
@@ -223,6 +261,69 @@ export function MobileManage({
           </div>
         </motion.div>
       )}
+
+      {/* Detail Page Links */}
+      <motion.div variants={itemVariants} className="space-y-3">
+        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+          Insights
+        </h2>
+        <div className="space-y-2">
+          <Link href="/manage/engagement">
+            <Card className="border-emerald-500/30">
+              <CardContent className="p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-full bg-emerald-500/10">
+                    <Eye className="h-4 w-4 text-emerald-500" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">Engagement</p>
+                    <p className="text-xs text-muted-foreground">
+                      View {engagementSummary.viewRate}% · Click {engagementSummary.clickRate}%
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/manage/content">
+            <Card className="border-blue-500/30">
+              <CardContent className="p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-full bg-blue-500/10">
+                    <Target className="h-4 w-4 text-blue-500" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">Content Intelligence</p>
+                    <p className="text-xs text-muted-foreground">
+                      Lead Score: {contentSummary.avgLeadScore} · {contentSummary.highQualityLeads} high-quality
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/manage/integrations">
+            <Card className="border-purple-500/30">
+              <CardContent className="p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-full bg-purple-500/10">
+                    <Webhook className="h-4 w-4 text-purple-500" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">Integrations</p>
+                    <p className="text-xs text-muted-foreground">
+                      Webhooks: {integrationsSummary.webhookSuccessRate}% · {integrationsSummary.activeApiKeys} API keys
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </CardContent>
+            </Card>
+          </Link>
+        </div>
+      </motion.div>
 
       {/* Platform Distribution */}
       <motion.div variants={itemVariants} className="space-y-3">

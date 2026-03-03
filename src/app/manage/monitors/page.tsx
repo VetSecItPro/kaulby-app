@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { monitors, users, results } from "@/lib/db/schema";
-import { count, desc, sql, eq, inArray } from "drizzle-orm";
+import { count, desc, sql, eq, and, gte, isNull, inArray } from "drizzle-orm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -12,7 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import Link from "next/link";
-import { ArrowLeft, Radio, Activity, AlertCircle } from "lucide-react";
+import { ArrowLeft, Radio, Activity, AlertCircle, AlertTriangle, Clock, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getPlatformDisplayName } from "@/lib/platform-utils";
 
@@ -55,8 +55,11 @@ async function getMonitorStats() {
 
   const resultCountMap = new Map(resultCounts.map((r) => [r.monitorId, r.count]));
 
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
   // Summary stats
-  const [totalCount, totalActive, totalInactive, byPlatform, byPlan, uniqueUserCount] = await Promise.all([
+  const [totalCount, totalActive, totalInactive, byPlatform, byPlan, uniqueUserCount, stuckMonitors, typeDistribution, scheduleAdoption] = await Promise.all([
     db.select({ count: count() }).from(monitors),
     db.select({ count: count() }).from(monitors).where(sql`${monitors.isActive} = true`),
     db.select({ count: count() }).from(monitors).where(sql`${monitors.isActive} = false`),
@@ -77,7 +80,44 @@ async function getMonitorStats() {
       .leftJoin(users, eq(monitors.userId, users.id))
       .groupBy(users.subscriptionStatus),
     db.select({ count: sql<number>`COUNT(DISTINCT ${monitors.userId})` }).from(monitors),
+    // Stuck monitors: active but not checked in 7+ days (or never checked)
+    db
+      .select({
+        id: monitors.id,
+        name: monitors.name,
+        lastCheckedAt: monitors.lastCheckedAt,
+        userEmail: users.email,
+        userId: monitors.userId,
+      })
+      .from(monitors)
+      .leftJoin(users, eq(monitors.userId, users.id))
+      .where(
+        and(
+          eq(monitors.isActive, true),
+          sql`(${monitors.lastCheckedAt} IS NULL OR ${monitors.lastCheckedAt} < ${sevenDaysAgo})`
+        )
+      )
+      .orderBy(monitors.lastCheckedAt)
+      .limit(50),
+    // Monitor type distribution
+    db
+      .select({
+        monitorType: monitors.monitorType,
+        count: count(),
+      })
+      .from(monitors)
+      .groupBy(monitors.monitorType),
+    // Schedule adoption among active monitors
+    db
+      .select({
+        total: count(),
+        scheduled: sql<number>`COUNT(*) FILTER (WHERE ${monitors.scheduleEnabled} = true)`,
+      })
+      .from(monitors)
+      .where(eq(monitors.isActive, true)),
   ]);
+
+  const scheduleData = scheduleAdoption[0] || { total: 0, scheduled: 0 };
 
   return {
     monitors: allMonitors.map((m) => ({
@@ -98,6 +138,22 @@ async function getMonitorStats() {
       count: p.count,
     })),
     uniqueUsers: uniqueUserCount[0]?.count || 0,
+    stuckMonitors: stuckMonitors.map((m) => ({
+      id: m.id,
+      name: m.name,
+      lastCheckedAt: m.lastCheckedAt,
+      userEmail: m.userEmail,
+    })),
+    stuckCount: stuckMonitors.length,
+    typeDistribution: typeDistribution.map((t) => ({
+      type: t.monitorType,
+      count: t.count,
+    })),
+    scheduleAdoption: {
+      total: scheduleData.total,
+      scheduled: Number(scheduleData.scheduled),
+      rate: scheduleData.total > 0 ? (Number(scheduleData.scheduled) / scheduleData.total) * 100 : 0,
+    },
   };
 }
 
@@ -144,7 +200,7 @@ export default async function MonitorsPage() {
       </div>
 
       {/* Summary Stats */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Active Monitors</CardTitle>
@@ -179,7 +235,80 @@ export default async function MonitorsPage() {
             <p className="text-xs text-muted-foreground">Per active user</p>
           </CardContent>
         </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Stuck Monitors</CardTitle>
+            <AlertTriangle className={`h-4 w-4 ${data.stuckCount > 0 ? "text-amber-500" : "text-muted-foreground"}`} />
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${data.stuckCount > 0 ? "text-amber-500" : ""}`}>{data.stuckCount}</div>
+            <p className="text-xs text-muted-foreground">No scan in 7+ days</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Monitor Types</CardTitle>
+            <Radio className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-sm space-y-1">
+              {data.typeDistribution.map((t) => (
+                <div key={t.type} className="flex justify-between">
+                  <span className="capitalize text-xs">{t.type.replace(/_/g, " ")}</span>
+                  <span className="text-xs font-medium">{t.count}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Schedule Adoption</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{data.scheduleAdoption.rate.toFixed(1)}%</div>
+            <p className="text-xs text-muted-foreground">
+              {data.scheduleAdoption.scheduled}/{data.scheduleAdoption.total} active
+            </p>
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Stuck Monitors Warning */}
+      {data.stuckMonitors.length > 0 && (
+        <Card className="border-amber-500/30">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Stuck Monitors
+            </CardTitle>
+            <CardDescription>Active monitors that haven&apos;t been scanned in 7+ days</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Monitor</TableHead>
+                  <TableHead>User</TableHead>
+                  <TableHead className="text-right">Last Scanned</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data.stuckMonitors.map((m) => (
+                  <TableRow key={m.id}>
+                    <TableCell className="font-medium">{m.name}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{m.userEmail || "—"}</TableCell>
+                    <TableCell className="text-right text-muted-foreground text-sm">
+                      {m.lastCheckedAt ? formatDate(m.lastCheckedAt) : "Never"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Distribution */}
       <div className="grid gap-4 md:grid-cols-2">

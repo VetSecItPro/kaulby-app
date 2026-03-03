@@ -76,6 +76,16 @@ interface ErrorStats {
   bySource: Record<string, number>;
 }
 
+interface TrendEntry {
+  label: string;
+  count: number;
+}
+
+interface ErrorTrends {
+  hourly: TrendEntry[];
+  daily: TrendEntry[];
+}
+
 interface PaginationInfo {
   page: number;
   limit: number;
@@ -114,6 +124,7 @@ const sourceLabels: Record<string, string> = {
 export default function ErrorLogsPage() {
   const [errors, setErrors] = useState<ErrorLog[]>([]);
   const [stats, setStats] = useState<ErrorStats | null>(null);
+  const [trends, setTrends] = useState<ErrorTrends | null>(null);
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -157,6 +168,7 @@ export default function ErrorLogsPage() {
       const data = await response.json();
       setErrors(data.errors);
       setStats(data.stats);
+      setTrends(data.trends || null);
       setPagination(data.pagination);
     } catch (error) {
       toast.error("Failed to fetch errors");
@@ -330,6 +342,72 @@ export default function ErrorLogsPage() {
               </div>
             </CardContent>
           </Card>
+        </div>
+      )}
+
+      {/* Error Trends */}
+      {trends && (trends.hourly.length > 0 || trends.daily.length > 0) && (
+        <div className="grid gap-4 md:grid-cols-2">
+          {/* Hourly Trend (24h) */}
+          {trends.hourly.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">Errors by Hour (Last 24h)</CardTitle>
+                <CardDescription>Spike patterns in the last 24 hours</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-end gap-1 h-24">
+                  {trends.hourly.map((h, i) => {
+                    const maxCount = Math.max(...trends.hourly.map((e) => e.count));
+                    const height = maxCount > 0 ? (h.count / maxCount) * 100 : 0;
+                    return (
+                      <div key={i} className="flex-1 flex flex-col items-center gap-1 group relative">
+                        <div
+                          className={`w-full rounded-t transition-colors ${h.count > 0 ? "bg-red-500/70 hover:bg-red-500" : "bg-muted"}`}
+                          style={{ height: `${Math.max(height, 2)}%` }}
+                        />
+                        <div className="absolute -top-6 left-1/2 -translate-x-1/2 hidden group-hover:block bg-popover border text-xs px-1.5 py-0.5 rounded shadow whitespace-nowrap z-10">
+                          {h.label}: {h.count}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="flex justify-between text-xs text-muted-foreground mt-2">
+                  <span>{trends.hourly[0]?.label}</span>
+                  <span>{trends.hourly[trends.hourly.length - 1]?.label}</span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Daily Trend (7d) */}
+          {trends.daily.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">Errors by Day (Last 7d)</CardTitle>
+                <CardDescription>Daily error trajectory</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-end gap-2 h-24">
+                  {trends.daily.map((d, i) => {
+                    const maxCount = Math.max(...trends.daily.map((e) => e.count));
+                    const height = maxCount > 0 ? (d.count / maxCount) * 100 : 0;
+                    return (
+                      <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                        <span className="text-xs text-muted-foreground">{d.count}</span>
+                        <div
+                          className={`w-full rounded-t ${d.count > 0 ? "bg-red-500/70" : "bg-muted"}`}
+                          style={{ height: `${Math.max(height, 4)}%` }}
+                        />
+                        <span className="text-xs text-muted-foreground">{d.label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
 
