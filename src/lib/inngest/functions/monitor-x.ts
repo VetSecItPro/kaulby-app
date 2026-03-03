@@ -1,5 +1,6 @@
 import { inngest } from "../client";
 import { logger } from "@/lib/logger";
+import { logAiCall } from "@/lib/ai/log";
 import { contentMatchesMonitor } from "@/lib/content-matcher";
 import {
   getActiveMonitors,
@@ -51,6 +52,7 @@ export async function searchX(
       .toISOString()
       .split("T")[0];
 
+    const xaiStartTime = Date.now();
     const response = await fetch("https://api.x.ai/v1/responses", {
       method: "POST",
       headers: {
@@ -111,6 +113,22 @@ export async function searchX(
       // Fallback: Chat Completions format (in case the API returns this format)
       content = data.choices?.[0]?.message?.content || "[]";
     }
+
+    const xaiLatencyMs = Date.now() - xaiStartTime;
+
+    // Extract usage data if present (xAI Responses API may include it)
+    const xaiUsage = data.usage as { input_tokens?: number; output_tokens?: number } | undefined;
+
+    // Log xAI cost
+    await logAiCall({
+      model: "grok-3-fast",
+      promptTokens: xaiUsage?.input_tokens ?? 0,
+      completionTokens: xaiUsage?.output_tokens ?? 0,
+      costUsd: 0, // xAI pricing is via server-side tool invocations, not easily mapped to per-token cost
+      latencyMs: xaiLatencyMs,
+      analysisType: "x-search",
+      platform: "x",
+    });
 
     if (!content) {
       return { posts: [], error: "No content in xAI response" };

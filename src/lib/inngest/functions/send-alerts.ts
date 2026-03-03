@@ -4,6 +4,7 @@ import { eq, and, gte, inArray, isNull, sql } from "drizzle-orm";
 import { sendAlertEmail, sendDigestEmail, type WeeklyInsights } from "@/lib/email";
 import { getPlanLimits } from "@/lib/plans";
 import { generateWeeklyInsights } from "@/lib/ai";
+import { logAiCall } from "@/lib/ai/log";
 import { sendWebhookNotification, type NotificationResult } from "@/lib/notifications";
 import { sendDiscordBotMessage } from "@/lib/integrations/discord";
 import { decryptIntegrationData } from "@/lib/encryption";
@@ -450,6 +451,18 @@ async function sendDigestForTimezone(
             return generateWeeklyInsights(analysisResults);
           });
           const raw = insightsResult.result;
+
+          // Log AI cost for weekly insights generation
+          await logAiCall({
+            userId: user.id,
+            model: insightsResult.meta.model,
+            promptTokens: 0, // generateWeeklyInsights doesn't return token counts
+            completionTokens: 0,
+            costUsd: insightsResult.meta.cost,
+            latencyMs: insightsResult.meta.latencyMs,
+            analysisType: "weekly-insights",
+          });
+
           aiInsights = {
             ...raw,
             // Normalize opportunities to string[] (WeeklyInsightsResult may return objects)

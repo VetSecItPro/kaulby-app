@@ -1,3 +1,5 @@
+import { withSentryConfig } from "@sentry/nextjs";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Enable React strict mode for better development
@@ -78,7 +80,7 @@ const nextConfig = {
           },
           {
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' https://clerk.kaulbyapp.com https://*.clerk.accounts.dev https://challenges.cloudflare.com https://us.i.posthog.com https://us-assets.i.posthog.com https://vercel.live; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.clerk.com https://img.clerk.com https://vercel.live https://*.vercel.live; connect-src 'self' https://*.clerk.accounts.dev https://clerk.kaulbyapp.com https://us.i.posthog.com https://us.posthog.com https://us-assets.i.posthog.com https://api.polar.sh https://vercel.live https://*.vercel.live; frame-src https://challenges.cloudflare.com https://*.clerk.accounts.dev https://vercel.live; worker-src 'self' blob:; frame-ancestors 'none';",
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' https://clerk.kaulbyapp.com https://*.clerk.accounts.dev https://challenges.cloudflare.com https://us.i.posthog.com https://us-assets.i.posthog.com https://vercel.live; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.clerk.com https://img.clerk.com https://vercel.live https://*.vercel.live; connect-src 'self' https://*.clerk.accounts.dev https://clerk.kaulbyapp.com https://us.i.posthog.com https://us.posthog.com https://us-assets.i.posthog.com https://api.polar.sh https://vercel.live https://*.vercel.live https://*.sentry.io; frame-src https://challenges.cloudflare.com https://*.clerk.accounts.dev https://vercel.live; worker-src 'self' blob:; frame-ancestors 'none';",
           },
         ],
       },
@@ -99,6 +101,7 @@ const nextConfig = {
       'recharts',
       '@icons-pack/react-simple-icons',
       'posthog-js',
+      '@sentry/nextjs',
     ],
   },
 
@@ -112,4 +115,18 @@ const nextConfig = {
   poweredByHeader: false,
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  // Upload source maps for better stack traces
+  sourcemaps: {
+    deleteSourcemapsAfterUpload: true,
+  },
+
+  // Suppress source map upload logs during build
+  silent: !process.env.CI,
+
+  // Hide source maps from clients
+  hideSourceMaps: true,
+
+  // Disable Sentry telemetry
+  telemetry: false,
+});

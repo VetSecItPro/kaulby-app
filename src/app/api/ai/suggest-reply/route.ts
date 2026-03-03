@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { jsonCompletion, MODELS, flushAI } from "@/lib/ai/openrouter";
+import { logAiCall } from "@/lib/ai/log";
 import { getUserPlan } from "@/lib/limits";
 import {
   checkAllRateLimits,
@@ -123,6 +124,17 @@ Return JSON: {"suggestions": [{"text": "...", "tone": "helpful|professional|casu
     });
 
     await flushAI();
+
+    // Log AI cost
+    await logAiCall({
+      userId,
+      model: result.meta.model,
+      promptTokens: result.meta.promptTokens,
+      completionTokens: result.meta.completionTokens,
+      costUsd: result.meta.cost,
+      latencyMs: result.meta.latencyMs,
+      analysisType: "suggest-reply",
+    });
 
     // Validate and clean suggestions
     const suggestions = (result.data.suggestions || [])
