@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   ArrowUpRight,
   ArrowDownRight,
   Minus,
   Swords,
-  Loader2,
   Users,
 } from "lucide-react";
 
@@ -207,12 +207,12 @@ function EmptyState() {
         Create at least two monitors to compare brands. Your first monitor is treated as your own
         brand, and additional monitors represent competitors.
       </p>
-      <a
+      <Link
         href="/dashboard/monitors"
         className="mt-6 inline-flex items-center justify-center rounded-md bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
       >
         Manage Monitors
-      </a>
+      </Link>
     </div>
   );
 }
