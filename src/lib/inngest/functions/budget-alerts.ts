@@ -171,18 +171,16 @@ Review costs at: ${process.env.NEXT_PUBLIC_APP_URL || "https://kaulbyapp.com"}/m
 
   // Send email notification
   if (alert.notifyEmail) {
-    try {
-      const { Resend } = await import("resend");
-      const resend = new Resend(process.env.RESEND_API_KEY);
-
-      await resend.emails.send({
-        from: "Kaulby Alerts <alerts@kaulbyapp.com>",
-        to: alert.notifyEmail,
-        subject: `${emoji} Budget ${status}: ${alert.name} - $${currentSpend.toFixed(2)} (${percentOfThreshold.toFixed(0)}%)`,
-        text: message,
-      });
-    } catch (error) {
-      logger.error("Failed to send budget alert email", { error: error instanceof Error ? error.message : String(error) });
+    const { sendEmailWithRetry } = await import("@/lib/email/send-with-retry");
+    const result = await sendEmailWithRetry({
+      from: "Kaulby Alerts <alerts@kaulbyapp.com>",
+      to: alert.notifyEmail,
+      subject: `${emoji} Budget ${status}: ${alert.name} - $${currentSpend.toFixed(2)} (${percentOfThreshold.toFixed(0)}%)`,
+      text: message,
+      emailType: "budget",
+    });
+    if (!result.success) {
+      logger.error("Budget alert email failed after retries", { alertName: alert.name, error: result.error });
     }
   }
 
@@ -193,6 +191,7 @@ Review costs at: ${process.env.NEXT_PUBLIC_APP_URL || "https://kaulbyapp.com"}/m
 
       await fetch(alert.notifySlack, {
         method: "POST",
+        signal: AbortSignal.timeout(30000),
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           attachments: [

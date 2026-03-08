@@ -4,6 +4,7 @@ import {
   getActiveMonitors,
   prefetchPlans,
   shouldSkipMonitor,
+  updateSkippedMonitor,
   saveNewResults,
   triggerAiAnalysis,
   updateMonitorStats,
@@ -172,7 +173,10 @@ export const monitorProductHunt = inngest.createFunction(
 
     // No stagger for ProductHunt - simple for...of loop
     for (const monitor of phMonitors) {
-      if (shouldSkipMonitor(monitor, planMap, "producthunt")) continue;
+      if (shouldSkipMonitor(monitor, planMap, "producthunt")) {
+        await updateSkippedMonitor(monitor.id, step);
+        continue;
+      }
 
       // Check each post for keyword matches
       const matchingPosts = posts.filter((post) => {

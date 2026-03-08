@@ -17,6 +17,7 @@ import {
   TextReveal,
 } from "@/components/shared/home-animations-lazy";
 import { HeroDashboard } from "@/components/landing/hero-dashboard";
+import { TestimonialSection } from "@/components/landing/testimonials";
 import { FeatureTabs } from "@/components/landing/feature-tabs";
 import { PlatformLogo } from "@/components/landing/platform-logos";
 import { PWAInstallButton } from "@/components/shared/pwa-install-button";
@@ -230,6 +231,11 @@ export default function HomePage() {
               </AnimatedStepCard>
             </div>
           </div>
+        </AnimatedSection>
+
+        {/* Testimonials Section */}
+        <AnimatedSection>
+          <TestimonialSection />
         </AnimatedSection>
 
         {/* CTA Section - Split Layout */}

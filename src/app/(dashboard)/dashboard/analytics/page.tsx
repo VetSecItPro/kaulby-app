@@ -5,6 +5,7 @@ import { db, users } from "@/lib/db";
 import { getEffectiveUserId, isLocalDev } from "@/lib/dev-auth";
 // PERF-BUNDLE-001: Lazy-load recharts via client wrapper with ssr: false
 import { LazyAnalyticsCharts } from "@/components/dashboard/analytics-charts-lazy";
+import { BrandScores } from "@/components/dashboard/brand-scores";
 
 function AnalyticsPageSkeleton() {
   return (
@@ -46,6 +47,8 @@ async function AnalyticsContent() {
           Track mention trends, sentiment patterns, and platform performance over time.
         </p>
       </div>
+
+      <BrandScores />
 
       <LazyAnalyticsCharts subscriptionStatus={subscriptionStatus} />
     </div>

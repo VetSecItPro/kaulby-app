@@ -32,8 +32,10 @@ import { Check, X, ShieldCheck, CreditCard, RefreshCw, ArrowRight } from "lucide
 import { CheckoutModal } from "@/components/checkout-modal";
 import { MarketingFooter } from "@/components/shared/marketing-footer";
 import { cn } from "@/lib/utils";
+import { TestimonialStrip } from "@/components/landing/testimonials";
 import { toast } from "sonner";
 import type { BillingInterval } from "@/lib/plans";
+import { FAQSchema } from "@/lib/seo/structured-data";
 
 interface Feature {
   text: string;
@@ -530,6 +532,23 @@ export default function PricingPage() {
               </div>
             </div>
           </div>
+
+          {/* Testimonials */}
+          <TestimonialStrip />
+
+          {/* FAQ Schema for SEO/AEO */}
+          <FAQSchema faqs={[
+            { question: "Is there really a free plan?", answer: "Yes! The Free plan is free forever. You can monitor 1 keyword on Reddit with basic AI analysis and daily refresh." },
+            { question: "How does the 14-day free trial work?", answer: "Pro and Team plans include a 14-day free trial with full access to all features. You won't be charged until the trial ends. Cancel anytime during the trial." },
+            { question: "Can I cancel anytime?", answer: "Yes, you can cancel your subscription at any time from your account settings. You'll continue to have access until the end of your current billing period." },
+            { question: "What platforms does Kaulby monitor?", answer: "Kaulby monitors 17 platforms: Reddit, Hacker News, Indie Hackers, Product Hunt, Google Reviews, YouTube, GitHub, Trustpilot, X (Twitter), Dev.to, Hashnode, App Store, Play Store, Quora, G2, Yelp, and Amazon Reviews." },
+            { question: "How is Kaulby different from Brand24?", answer: "Kaulby focuses on community monitoring with AI-powered pain point detection and sentiment analysis across 17 platforms, starting at $29/mo. Brand24 starts at $99/mo and focuses on broader social media monitoring." },
+            { question: "What replaced GummySearch?", answer: "Kaulby is the best GummySearch alternative. It covers Reddit plus 16 additional platforms, includes AI-powered analysis, and offers a free tier. Visit kaulbyapp.com/gummysearch for migration details." },
+            { question: "What is the Day Pass?", answer: "The Day Pass gives you full Pro access for 24 hours with a one-time $10 payment. Perfect for quick research without committing to a subscription." },
+            { question: "How often are results refreshed?", answer: "Free plans refresh once per day. Pro plans refresh every 4 hours. Team plans refresh every 2 hours with real-time email alerts." },
+            { question: "Is my data secure?", answer: "Yes. We use industry-standard encryption, are GDPR compliant, and you can export or delete your data at any time." },
+            { question: "What is the Founding Members program?", answer: "The first 1,000 Pro and Team subscribers become Founding Members and lock in their current price forever, even when prices increase." },
+          ]} />
 
           {/* FAQ Section */}
           <div className="mt-20 max-w-2xl mx-auto">

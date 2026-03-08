@@ -20,6 +20,35 @@ import { cachedQuery, getRedditCacheTTL, CACHE_TTL } from "@/lib/cache";
 import { randomBytes } from "crypto";
 import { logger } from "@/lib/logger";
 
+// Circuit breaker for Reddit data sources
+const circuitBreakers: Record<string, { failures: number; openUntil: number }> = {};
+const CIRCUIT_THRESHOLD = 3;
+const CIRCUIT_COOLDOWN = 5 * 60 * 1000; // 5 minutes
+
+function isCircuitOpen(source: string): boolean {
+  const cb = circuitBreakers[source];
+  if (!cb || cb.failures < CIRCUIT_THRESHOLD) return false;
+  if (Date.now() > cb.openUntil) {
+    // Half-open: allow one probe
+    return false;
+  }
+  return true;
+}
+
+function recordSuccess(source: string): void {
+  circuitBreakers[source] = { failures: 0, openUntil: 0 };
+}
+
+function recordFailure(source: string): void {
+  const cb = circuitBreakers[source] || { failures: 0, openUntil: 0 };
+  cb.failures++;
+  if (cb.failures >= CIRCUIT_THRESHOLD) {
+    cb.openUntil = Date.now() + CIRCUIT_COOLDOWN;
+    logger.warn(`[Reddit] Circuit breaker OPEN for ${source} — skipping for 5 minutes`);
+  }
+  circuitBreakers[source] = cb;
+}
+
 interface RedditPost {
   id: string;
   title: string;
@@ -71,6 +100,7 @@ async function searchRedditSerper(
 
     const response = await fetch("https://google.serper.dev/search", {
       method: "POST",
+      signal: AbortSignal.timeout(30000),
       headers: {
         "X-API-KEY": apiKey,
         "Content-Type": "application/json",
@@ -150,6 +180,7 @@ async function searchRedditApify(
       "https://api.apify.com/v2/acts/trudax~reddit-scraper/runs?token=" + apiKey,
       {
         method: "POST",
+        signal: AbortSignal.timeout(30000),
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           startUrls: [{ url: `https://www.reddit.com/r/${subreddit}/new/` }],
@@ -174,7 +205,8 @@ async function searchRedditApify(
       await new Promise(resolve => setTimeout(resolve, 2000));
 
       const statusResponse = await fetch(
-        `https://api.apify.com/v2/actor-runs/${runId}?token=${apiKey}`
+        `https://api.apify.com/v2/actor-runs/${runId}?token=${apiKey}`,
+        { signal: AbortSignal.timeout(30000) }
       );
       const statusData = await statusResponse.json();
 
@@ -189,7 +221,8 @@ async function searchRedditApify(
 
     // Get results
     const resultsResponse = await fetch(
-      `https://api.apify.com/v2/actor-runs/${runId}/dataset/items?token=${apiKey}`
+      `https://api.apify.com/v2/actor-runs/${runId}/dataset/items?token=${apiKey}`,
+      { signal: AbortSignal.timeout(30000) }
     );
     const results = await resultsResponse.json();
 
@@ -230,24 +263,50 @@ async function searchRedditApify(
  * Fetch from public Reddit JSON endpoint
  * WARNING: This is what GummySearch used - NOT recommended for production
  * Only use as absolute last resort
+ *
+ * Includes exponential backoff on 429 (rate limit) and 503 (overloaded) responses.
  */
 async function searchRedditPublic(
   subreddit: string,
   limit: number = 50
 ): Promise<RedditPost[]> {
-  const response = await fetch(
-    `https://www.reddit.com/r/${subreddit}/new.json?limit=${limit}`,
-    {
-      headers: { "User-Agent": "Kaulby/1.0" },
-    }
-  );
+  const maxRetries = 3;
+  const baseDelayMs = 1000;
 
-  if (!response.ok) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const response = await fetch(
+      `https://www.reddit.com/r/${subreddit}/new.json?limit=${limit}`,
+      {
+        headers: { "User-Agent": "Kaulby/1.0" },
+        signal: AbortSignal.timeout(30000),
+      }
+    );
+
+    if (response.ok) {
+      const data = await response.json();
+      return data.data.children.map((child: { data: RedditPost }) => child.data);
+    }
+
+    // Retry on rate limit or server overload
+    if ((response.status === 429 || response.status === 503) && attempt < maxRetries) {
+      const retryAfter = response.headers.get("Retry-After");
+      const delayMs = retryAfter
+        ? parseInt(retryAfter) * 1000
+        : baseDelayMs * Math.pow(2, attempt); // 1s, 2s, 4s
+      logger.warn("[Reddit] Public API rate limited, retrying", {
+        status: response.status,
+        attempt: attempt + 1,
+        delayMs,
+        subreddit,
+      });
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+      continue;
+    }
+
     throw new Error(`Public Reddit API error: ${response.status}`);
   }
 
-  const data = await response.json();
-  return data.data.children.map((child: { data: RedditPost }) => child.data);
+  throw new Error("Public Reddit API: max retries exceeded");
 }
 
 // ============================================================================
@@ -281,7 +340,7 @@ export async function searchRedditResilient(
 
   // Try Serper first (PRIMARY - best value) with caching
   const hasSerper = process.env.SERPER_API_KEY;
-  if (hasSerper) {
+  if (hasSerper && !isCircuitOpen("serper")) {
     try {
       const { data: posts, cached } = await cachedQuery<RedditPost[]>(
         "serper:reddit",
@@ -294,15 +353,19 @@ export async function searchRedditResilient(
         logger.debug("[Reddit] Cache hit", { subreddit, provider: "serper" });
       }
 
+      recordSuccess("serper");
       return { posts, source: "serper" };
     } catch (error) {
+      recordFailure("serper");
       logger.warn("[Reddit] Serper failed, trying Apify", { error: error instanceof Error ? error.message : String(error) });
     }
+  } else if (hasSerper && isCircuitOpen("serper")) {
+    logger.debug("[Reddit] Skipping Serper — circuit breaker open", { subreddit });
   }
 
   // Try Apify as backup with caching
   const hasApify = process.env.APIFY_API_KEY;
-  if (hasApify) {
+  if (hasApify && !isCircuitOpen("apify")) {
     try {
       const { data: posts, cached } = await cachedQuery<RedditPost[]>(
         "apify:reddit",
@@ -315,38 +378,53 @@ export async function searchRedditResilient(
         logger.debug("[Reddit] Cache hit", { subreddit, provider: "apify" });
       }
 
+      recordSuccess("apify");
       return { posts, source: "apify" };
     } catch (error) {
+      recordFailure("apify");
       logger.warn("[Reddit] Apify failed, falling back to public API", { error: error instanceof Error ? error.message : String(error) });
     }
+  } else if (hasApify && isCircuitOpen("apify")) {
+    logger.debug("[Reddit] Skipping Apify — circuit breaker open", { subreddit });
   }
 
   // Last resort: Public JSON API (risky but works for now) - shorter cache
-  try {
-    logger.warn("[Reddit] Using public JSON API - NOT RECOMMENDED for production", { subreddit });
+  if (!isCircuitOpen("public")) {
+    try {
+      logger.warn("[Reddit] Using public JSON API - NOT RECOMMENDED for production", { subreddit });
 
-    const { data: posts, cached } = await cachedQuery<RedditPost[]>(
-      "public:reddit",
-      cacheParams,
-      () => searchRedditPublic(subreddit, limit),
-      CACHE_TTL.REDDIT_HOT // Shorter TTL for public API since it's risky
-    );
+      const { data: posts, cached } = await cachedQuery<RedditPost[]>(
+        "public:reddit",
+        cacheParams,
+        () => searchRedditPublic(subreddit, limit),
+        CACHE_TTL.REDDIT_HOT // Shorter TTL for public API since it's risky
+      );
 
-    if (cached) {
-      logger.debug("[Reddit] Cache hit", { subreddit, provider: "public" });
+      if (cached) {
+        logger.debug("[Reddit] Cache hit", { subreddit, provider: "public" });
+      }
+
+      recordSuccess("public");
+      return {
+        posts,
+        source: "public",
+        error: "Using risky public API - configure SERPER_API_KEY for reliability"
+      };
+    } catch (error) {
+      recordFailure("public");
+      logger.error("[Reddit] All providers failed", { subreddit, error: error instanceof Error ? error.message : String(error) });
+      return {
+        posts: [],
+        source: "public",
+        error: `All Reddit providers failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+      };
     }
-
-    return {
-      posts,
-      source: "public",
-      error: "Using risky public API - configure SERPER_API_KEY for reliability"
-    };
-  } catch (error) {
-    logger.error("[Reddit] All providers failed", { subreddit, error: error instanceof Error ? error.message : String(error) });
-    return {
-      posts: [],
-      source: "public",
-      error: `All Reddit providers failed: ${error instanceof Error ? error.message : "Unknown error"}`,
-    };
   }
+
+  logger.error("[Reddit] All providers have open circuit breakers", { subreddit });
+  return {
+    posts: [],
+    source: "public",
+    error: "All Reddit providers temporarily unavailable (circuit breakers open)",
+  };
 }

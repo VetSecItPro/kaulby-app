@@ -7,6 +7,7 @@ import { generateWeeklyInsights } from "@/lib/ai";
 import { logAiCall } from "@/lib/ai/log";
 import { sendWebhookNotification, type NotificationResult } from "@/lib/notifications";
 import { sendDiscordBotMessage } from "@/lib/integrations/discord";
+import { sendTeamsMessage, formatTeamsAlert } from "@/lib/integrations/teams";
 import { decryptIntegrationData } from "@/lib/encryption";
 import { logger } from "@/lib/logger";
 
@@ -208,6 +209,52 @@ export const sendAlert = inngest.createFunction(
       };
     }
 
+    // Teams webhook notifications
+    if (alert.channel === "teams") {
+      const teamsResult = await step.run("send-teams-webhook", async () => {
+        try {
+          const user = alert.monitor.user;
+          if (!user) return { success: false, error: "No user on monitor" };
+
+          // The destination contains the webhook URL (stored encrypted in integrations,
+          // but for alert.destination it's stored directly like Slack webhooks)
+          const card = formatTeamsAlert({
+            monitorName: alert.monitor.name,
+            results: matchingResults.map((r) => ({
+              title: r.title,
+              platform: r.platform,
+              sourceUrl: r.sourceUrl,
+              sentiment: r.sentiment,
+              aiSummary: r.aiSummary,
+            })),
+            dashboardUrl: `https://kaulbyapp.com/dashboard/monitors/${alert.monitor.id}`,
+          });
+
+          return sendTeamsMessage(alert.destination, card);
+        } catch (error) {
+          logger.error("Teams webhook alert error", {
+            alertId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : "Unknown error sending Teams alert",
+          };
+        }
+      });
+
+      if (!teamsResult.success) {
+        logger.error("Teams webhook notification failed", { alertId, error: teamsResult.error });
+      }
+
+      return {
+        sent: teamsResult.success,
+        channel: alert.channel,
+        resultsCount: matchingResults.length,
+        error: teamsResult.error,
+      };
+    }
+
     // Discord integration alert (bot token + channel ID)
     // Runs in addition to any webhook-based alerts above. If the user has
     // connected Discord via OAuth AND selected a channel, send rich embeds
@@ -257,7 +304,7 @@ export const sendAlert = inngest.createFunction(
           alertId,
           error: error instanceof Error ? error.message : String(error),
         });
-        return { skipped: true, reason: "Unexpected error" };
+        return { sent: false, reason: "Unexpected error", error: error instanceof Error ? error.message : String(error) };
       }
     });
 
@@ -266,6 +313,7 @@ export const sendAlert = inngest.createFunction(
       channel: alert.channel,
       resultsCount: matchingResults.length,
       discordIntegration: discordIntegrationResult,
+      discordFailed: "sent" in discordIntegrationResult ? discordIntegrationResult.sent === false : false,
     };
   }
 );

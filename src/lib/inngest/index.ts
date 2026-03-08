@@ -32,9 +32,15 @@ export { resetStuckScans } from "./functions/reset-stuck-scans";
 export { checkBudgetAlerts } from "./functions/budget-alerts";
 export { collectCommunityStats, fetchSubredditStats, ALL_TRACKED_SUBREDDITS } from "./functions/community-stats";
 export { detectInactiveUsers, sendReengagement } from "./functions/reengagement";
+// Trial win-back
+export { detectExpiredTrials, sendTrialWinback } from "./functions/trial-winback";
 export { sendScheduledReports } from "./functions/send-scheduled-reports";
+// Onboarding
+export { onboardingFollowup } from "./functions/onboarding-followup";
 // HubSpot CRM sync
 export { syncHubspotContacts } from "./functions/sync-hubspot-contacts";
+// AI Visibility
+export { checkAIVisibilityJob } from "./functions/ai-visibility";
 
 // All functions for the Inngest handler
 import { monitorReddit } from "./functions/monitor-reddit";
@@ -69,9 +75,15 @@ import { resetStuckScans } from "./functions/reset-stuck-scans";
 import { checkBudgetAlerts } from "./functions/budget-alerts";
 import { collectCommunityStats, fetchSubredditStats } from "./functions/community-stats";
 import { detectInactiveUsers, sendReengagement } from "./functions/reengagement";
+// Trial win-back
+import { detectExpiredTrials, sendTrialWinback } from "./functions/trial-winback";
 import { sendScheduledReports } from "./functions/send-scheduled-reports";
+// Onboarding
+import { onboardingFollowup } from "./functions/onboarding-followup";
 // HubSpot CRM sync
 import { syncHubspotContacts } from "./functions/sync-hubspot-contacts";
+// AI Visibility
+import { checkAIVisibilityJob } from "./functions/ai-visibility";
 
 export const functions = [
   monitorReddit,
@@ -117,8 +129,15 @@ export const functions = [
   // Churn prevention
   detectInactiveUsers,
   sendReengagement,
+  // Trial win-back
+  detectExpiredTrials,
+  sendTrialWinback,
   // Scheduled reports
   sendScheduledReports,
+  // Onboarding
+  onboardingFollowup,
   // HubSpot CRM sync
   syncHubspotContacts,
+  // AI Visibility
+  checkAIVisibilityJob,
 ];

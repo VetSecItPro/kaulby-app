@@ -88,11 +88,41 @@ class RedisCache implements CacheBackend {
   private redis: Redis;
   private stats = { hits: 0, misses: 0 };
 
+  // Circuit breaker: after N consecutive failures, skip Redis for a cooldown period
+  private consecutiveFailures = 0;
+  private circuitOpenUntil = 0;
+  private static readonly FAILURE_THRESHOLD = 3;
+  private static readonly COOLDOWN_MS = 30_000; // 30 seconds
+
   constructor() {
     this.redis = new Redis({
       url: process.env.UPSTASH_REDIS_REST_URL!.trim(),
       token: process.env.UPSTASH_REDIS_REST_TOKEN!.trim(),
     });
+  }
+
+  /** Check if circuit breaker is open (Redis is being skipped) */
+  private isCircuitOpen(): boolean {
+    if (this.consecutiveFailures < RedisCache.FAILURE_THRESHOLD) return false;
+    if (Date.now() > this.circuitOpenUntil) {
+      // Cooldown expired — allow one probe request (half-open)
+      return false;
+    }
+    return true;
+  }
+
+  private recordSuccess(): void {
+    this.consecutiveFailures = 0;
+  }
+
+  private recordFailure(): void {
+    this.consecutiveFailures++;
+    if (this.consecutiveFailures >= RedisCache.FAILURE_THRESHOLD) {
+      this.circuitOpenUntil = Date.now() + RedisCache.COOLDOWN_MS;
+      logger.warn("[Redis Cache] Circuit breaker OPEN — skipping Redis for 30s", {
+        failures: this.consecutiveFailures,
+      });
+    }
   }
 
   generateKey(prefix: string, params: Record<string, unknown>): string {
@@ -102,8 +132,13 @@ class RedisCache implements CacheBackend {
   }
 
   async get<T>(key: string): Promise<T | null> {
+    if (this.isCircuitOpen()) {
+      this.stats.misses++;
+      return null;
+    }
     try {
       const data = await this.redis.get<T>(key);
+      this.recordSuccess();
       if (data !== null) {
         this.stats.hits++;
         return data;
@@ -111,6 +146,7 @@ class RedisCache implements CacheBackend {
       this.stats.misses++;
       return null;
     } catch (error) {
+      this.recordFailure();
       logger.error("[Redis Cache] Get error", { error: error instanceof Error ? error.message : String(error) });
       this.stats.misses++;
       return null;
@@ -118,30 +154,39 @@ class RedisCache implements CacheBackend {
   }
 
   async set<T>(key: string, data: T, ttlMs: number): Promise<void> {
+    if (this.isCircuitOpen()) return;
     try {
       // Upstash uses seconds for EX
       const ttlSeconds = Math.ceil(ttlMs / 1000);
       await this.redis.set(key, data, { ex: ttlSeconds });
+      this.recordSuccess();
     } catch (error) {
+      this.recordFailure();
       logger.error("[Redis Cache] Set error", { error: error instanceof Error ? error.message : String(error) });
     }
   }
 
   async has(key: string): Promise<boolean> {
+    if (this.isCircuitOpen()) return false;
     try {
       const exists = await this.redis.exists(key);
+      this.recordSuccess();
       return exists === 1;
     } catch (error) {
+      this.recordFailure();
       logger.error("[Redis Cache] Exists error", { error: error instanceof Error ? error.message : String(error) });
       return false;
     }
   }
 
   async delete(key: string): Promise<boolean> {
+    if (this.isCircuitOpen()) return false;
     try {
       const deleted = await this.redis.del(key);
+      this.recordSuccess();
       return deleted === 1;
     } catch (error) {
+      this.recordFailure();
       logger.error("[Redis Cache] Delete error", { error: error instanceof Error ? error.message : String(error) });
       return false;
     }

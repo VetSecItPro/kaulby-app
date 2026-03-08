@@ -38,7 +38,7 @@ export async function GET() {
   const integrations = (user?.integrations as Record<string, unknown>) || {};
   const status: Record<string, IntegrationStatus> = {};
 
-  for (const provider of ["discord", "slack", "hubspot"] as const) {
+  for (const provider of ["discord", "slack", "hubspot", "teams"] as const) {
     const data = integrations[provider] as Record<string, unknown> | undefined;
     if (!data || !data.connected) {
       status[provider] = { connected: false };
@@ -56,6 +56,7 @@ export async function GET() {
         (data.guildName as string) ||    // Discord
         (data.teamName as string) ||     // Slack
         (data.portalId ? `Portal ${data.portalId}` : undefined) || // HubSpot
+        (provider === "teams" ? "Microsoft Teams" : undefined) || // Teams
         undefined,
     };
 
@@ -65,11 +66,15 @@ export async function GET() {
     }
 
     // If token is missing/corrupt, mark as disconnected
-    if (!decrypted.accessToken && provider !== "slack") {
+    if (!decrypted.accessToken && provider !== "slack" && provider !== "teams") {
       status[provider] = { connected: false };
     }
     // Slack uses webhookUrl instead of accessToken
     if (provider === "slack" && !decrypted.accessToken && !decrypted.webhookUrl) {
+      status[provider] = { connected: false };
+    }
+    // Teams uses webhookUrl only (no OAuth tokens)
+    if (provider === "teams" && !decrypted.webhookUrl) {
       status[provider] = { connected: false };
     }
   }
