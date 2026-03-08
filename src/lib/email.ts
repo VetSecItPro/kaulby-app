@@ -1052,6 +1052,70 @@ function getDeletionReminderEmailHtml(name: string): string {
 // ============================================================================
 
 // Send re-engagement email to inactive users
+// Send day-3 onboarding follow-up email for users who haven't set up a monitor
+export function getOnboardingFollowupHtml(name: string = "there"): string {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://kaulbyapp.com";
+  return `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin: 0; padding: 0; background: ${COLORS.bg}; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: ${COLORS.bg};">
+<tr><td align="center" style="padding: 40px 16px;">
+<table role="presentation" width="560" cellspacing="0" cellpadding="0" style="background: ${COLORS.card}; border: 1px solid ${COLORS.cardBorder}; border-radius: 16px;">
+<tr><td style="padding: 32px;">
+  <p style="margin: 0 0 4px; font-size: 22px; font-weight: 700; color: ${COLORS.accent};">Kaulby</p>
+</td></tr>
+<tr><td style="padding: 0 32px 24px;">
+  <h1 style="margin: 0 0 16px; font-size: 24px; color: ${COLORS.text};">Hey ${name}, ready to see what people are saying?</h1>
+  <p style="margin: 0 0 16px; font-size: 15px; color: ${COLORS.textMuted}; line-height: 1.6;">
+    You signed up for Kaulby 3 days ago but haven't set up your first monitor yet. Here's how quick it is:
+  </p>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
+    <tr><td style="padding: 12px 16px; background: rgba(94, 234, 212, 0.08); border-radius: 8px; border-left: 3px solid ${COLORS.accent};">
+      <p style="margin: 0 0 8px; font-size: 14px; color: ${COLORS.text}; font-weight: 600;">1. Enter your brand name or keyword</p>
+      <p style="margin: 0 0 8px; font-size: 14px; color: ${COLORS.text}; font-weight: 600;">2. Pick which platforms to monitor</p>
+      <p style="margin: 0; font-size: 14px; color: ${COLORS.text}; font-weight: 600;">3. Get AI-analyzed results within minutes</p>
+    </td></tr>
+  </table>
+  <p style="margin: 0 0 8px; font-size: 14px; color: ${COLORS.textMuted};">Popular things to monitor:</p>
+  <ul style="margin: 0 0 24px; padding-left: 20px; color: ${COLORS.textMuted}; font-size: 14px; line-height: 1.8;">
+    <li>Your company or product name</li>
+    <li>Competitor brand names</li>
+    <li>Industry keywords (e.g., "best CRM for startups")</li>
+  </ul>
+</td></tr>
+<tr><td align="center" style="padding: 0 32px 32px;">
+  <a href="${appUrl}/dashboard/monitors" style="display: inline-block; padding: 14px 32px; background: ${COLORS.accent}; color: #000; font-size: 15px; font-weight: 600; text-decoration: none; border-radius: 8px;">
+    Set Up Your First Monitor
+  </a>
+</td></tr>
+<tr><td style="padding: 0 32px 24px; border-top: 1px solid ${COLORS.cardBorder};">
+  <p style="margin: 16px 0 0; font-size: 12px; color: ${COLORS.textDim}; text-align: center;">
+    You're receiving this because you signed up for <a href="${appUrl}" style="color: ${COLORS.accent}; text-decoration: none;">Kaulby</a>.
+    The free tier includes 1 monitor on Reddit — no credit card needed.
+  </p>
+</td></tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>`;
+}
+
+export async function sendOnboardingFollowupEmail(params: {
+  email: string;
+  name?: string;
+}) {
+  const { email, name = "there" } = params;
+
+  await getResend().emails.send({
+    from: FROM_EMAIL,
+    to: email,
+    subject: "Quick tip: Set up your first monitor in 60 seconds",
+    html: getOnboardingFollowupHtml(name),
+  });
+}
+
 export async function sendReengagementEmail(params: {
   email: string;
   name?: string;
@@ -1196,6 +1260,216 @@ function getReengagementEmailHtml(
             <td align="center" style="padding-top: 16px;">
               <p style="margin: 0; font-size: 13px; color: ${COLORS.textDim};">
                 Your monitors are actively tracking conversations 24/7
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  `;
+  return getEmailWrapper(content);
+}
+
+// ──────────────────────────────────────────────────────
+// Trial Win-Back Email
+// ──────────────────────────────────────────────────────
+
+export async function sendTrialWinbackEmail(params: {
+  email: string;
+  name?: string;
+  stats: {
+    totalMentions: number;
+    platforms: number;
+    topMention?: {
+      title: string;
+      platform: string;
+      url: string;
+    };
+  };
+}) {
+  const { email, name = "there", stats } = params;
+
+  await getResend().emails.send({
+    from: FROM_EMAIL,
+    to: email,
+    subject: `Your trial ended — but ${stats.totalMentions > 0 ? `${stats.totalMentions} mentions` : "your monitors"} don't have to stop`,
+    html: getTrialWinbackEmailHtml(name, stats),
+  });
+}
+
+function getTrialWinbackEmailHtml(
+  name: string,
+  stats: {
+    totalMentions: number;
+    platforms: number;
+    topMention?: {
+      title: string;
+      platform: string;
+      url: string;
+    };
+  }
+): string {
+  // Build stats section showing what they found during trial
+  let statsHtml = "";
+  if (stats.totalMentions > 0 || stats.platforms > 0) {
+    statsHtml = `
+      <tr>
+        <td style="padding: 0 32px 24px;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: linear-gradient(135deg, rgba(94, 234, 212, 0.1) 0%, rgba(212, 165, 116, 0.1) 100%); border: 1px solid ${COLORS.cardBorder}; border-radius: 12px;">
+            <tr>
+              <td style="padding: 24px;">
+                <p style="margin: 0 0 16px; font-size: 13px; font-weight: 600; color: ${COLORS.accent}; text-transform: uppercase; letter-spacing: 0.5px;">What You Found During Your Trial</p>
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                  ${stats.totalMentions > 0 ? `
+                  <tr>
+                    <td style="padding: 8px 0;">
+                      <table role="presentation" cellspacing="0" cellpadding="0">
+                        <tr>
+                          <td style="width: 48px; vertical-align: top;">
+                            <span style="display: inline-block; width: 40px; height: 40px; background: rgba(94, 234, 212, 0.2); border-radius: 10px; text-align: center; line-height: 40px; font-size: 18px;">&#x1F4AC;</span>
+                          </td>
+                          <td style="padding-left: 12px; vertical-align: middle;">
+                            <p style="margin: 0; font-size: 24px; font-weight: 700; color: ${COLORS.text};">${stats.totalMentions}</p>
+                            <p style="margin: 2px 0 0; font-size: 13px; color: ${COLORS.textMuted};">mentions discovered</p>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                  ` : ""}
+                  ${stats.platforms > 0 ? `
+                  <tr>
+                    <td style="padding: 8px 0;">
+                      <table role="presentation" cellspacing="0" cellpadding="0">
+                        <tr>
+                          <td style="width: 48px; vertical-align: top;">
+                            <span style="display: inline-block; width: 40px; height: 40px; background: rgba(212, 165, 116, 0.2); border-radius: 10px; text-align: center; line-height: 40px; font-size: 18px;">&#x1F30D;</span>
+                          </td>
+                          <td style="padding-left: 12px; vertical-align: middle;">
+                            <p style="margin: 0; font-size: 24px; font-weight: 700; color: ${COLORS.text};">${stats.platforms}</p>
+                            <p style="margin: 2px 0 0; font-size: 13px; color: ${COLORS.textMuted};">platforms monitored</p>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                  ` : ""}
+                </table>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    `;
+  }
+
+  // Build top mention highlight
+  let topMentionHtml = "";
+  if (stats.topMention) {
+    topMentionHtml = `
+      <tr>
+        <td style="padding: 0 32px 24px;">
+          <p style="margin: 0 0 12px; font-size: 12px; font-weight: 600; color: ${COLORS.textDim}; text-transform: uppercase; letter-spacing: 0.5px;">Your Top Mention</p>
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: ${COLORS.bg}; border: 1px solid ${COLORS.cardBorder}; border-radius: 12px;">
+            <tr>
+              <td style="padding: 16px 20px;">
+                <a href="${stats.topMention.url}" style="color: ${COLORS.accent}; font-weight: 500; text-decoration: none; font-size: 15px; line-height: 1.4;">${escapeHtml(stats.topMention.title)}</a>
+                <div style="margin-top: 8px;">
+                  <span style="display: inline-block; padding: 2px 8px; background: ${COLORS.card}; border: 1px solid ${COLORS.cardBorder}; border-radius: 4px; font-size: 11px; color: ${COLORS.textDim};">${stats.topMention.platform}</span>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    `;
+  }
+
+  // Pricing comparison
+  const pricingHtml = `
+    <tr>
+      <td style="padding: 0 32px 24px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border: 1px solid ${COLORS.cardBorder}; border-radius: 12px;">
+          <tr>
+            <td style="padding: 24px;">
+              <p style="margin: 0 0 16px; font-size: 13px; font-weight: 600; color: ${COLORS.accentGold}; text-transform: uppercase; letter-spacing: 0.5px;">Pick Up Where You Left Off</p>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td style="padding: 8px 0; border-bottom: 1px solid ${COLORS.cardBorder};">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                      <tr>
+                        <td style="vertical-align: middle;">
+                          <p style="margin: 0; font-size: 15px; font-weight: 600; color: ${COLORS.text};">Pro</p>
+                          <p style="margin: 2px 0 0; font-size: 13px; color: ${COLORS.textMuted};">10 monitors &middot; 9 platforms &middot; 4hr refresh</p>
+                        </td>
+                        <td style="text-align: right; vertical-align: middle;">
+                          <p style="margin: 0; font-size: 18px; font-weight: 700; color: ${COLORS.accent};">$29<span style="font-size: 13px; font-weight: 400; color: ${COLORS.textDim};">/mo</span></p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                      <tr>
+                        <td style="vertical-align: middle;">
+                          <p style="margin: 0; font-size: 15px; font-weight: 600; color: ${COLORS.text};">Team</p>
+                          <p style="margin: 2px 0 0; font-size: 13px; color: ${COLORS.textMuted};">30 monitors &middot; All 17 platforms &middot; 2hr refresh</p>
+                        </td>
+                        <td style="text-align: right; vertical-align: middle;">
+                          <p style="margin: 0; font-size: 18px; font-weight: 700; color: ${COLORS.accent};">$99<span style="font-size: 13px; font-weight: 400; color: ${COLORS.textDim};">/mo</span></p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  `;
+
+  const content = `
+    <tr>
+      <td style="padding: 40px 32px 24px; text-align: center;">
+        <div style="display: inline-block; width: 64px; height: 64px; background: linear-gradient(135deg, rgba(94, 234, 212, 0.2), rgba(212, 165, 116, 0.2)); border-radius: 50%; line-height: 64px; margin-bottom: 20px;">
+          <span style="font-size: 32px;">&#x23F3;</span>
+        </div>
+        <h1 style="margin: 0 0 8px; font-size: 24px; font-weight: 700; color: ${COLORS.text};">Your Trial Has Ended, ${escapeHtml(name)}</h1>
+        <p style="margin: 0; font-size: 15px; color: ${COLORS.textMuted};">But the conversations about your brand haven't stopped</p>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 0 32px 24px;">
+        <p style="margin: 0; font-size: 15px; line-height: 1.7; color: ${COLORS.textMuted};">
+          During your trial, Kaulby was hard at work scanning the web for mentions of your brand${stats.totalMentions > 0 ? ` &mdash; and found <strong style="color: ${COLORS.text};">${stats.totalMentions} mentions</strong> across ${stats.platforms} platform${stats.platforms !== 1 ? "s" : ""}` : ""}. Without an active plan, your monitors are paused and new mentions are going untracked.
+        </p>
+      </td>
+    </tr>
+    ${statsHtml}
+    ${topMentionHtml}
+    ${pricingHtml}
+    <tr>
+      <td style="padding: 0 32px 16px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+          <tr>
+            <td align="center">
+              <a href="${APP_URL}/dashboard/billing" style="display: inline-block; padding: 14px 36px; background-color: ${COLORS.accent}; color: ${COLORS.bg}; text-decoration: none; font-weight: 600; font-size: 15px; border-radius: 50px;">Upgrade Now</a>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 0 32px 40px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+          <tr>
+            <td align="center">
+              <p style="margin: 0; font-size: 13px; color: ${COLORS.textDim};">
+                Come back within 7 days to resume your monitors right where you left off
               </p>
             </td>
           </tr>

@@ -42,6 +42,9 @@ async function initPostHog() {
         autocapture: false,
         advanced_disable_feature_flags: true,
         advanced_disable_decide: true,
+        session_recording: {
+          maskAllInputs: true,
+        },
       });
     }
   } catch {

@@ -33,6 +33,7 @@ async function getClerkHandler() {
       "/terms",
       "/cookies", // Cookie policy page
       "/docs/api(.*)", // Public API documentation
+      "/status", // Public system status page
       "/install", // PWA installation instructions
       "/gummysearch", // GummySearch migration landing page
       "/subreddits(.*)", // Programmatic SEO - subreddit landing pages
@@ -48,6 +49,7 @@ async function getClerkHandler() {
       "/api/track(.*)", // Email tracking pixels/clicks (public by design)
       "/invite(.*)", // Public invite acceptance page
       "/banned", // Banned user page
+      "/report(.*)", // Public shared report pages
       "/robots.txt", // Search engine crawling directives
       "/sitemap.xml", // Search engine sitemap
       "/opengraph-image", // Dynamic OG image (must be public for social crawlers)
@@ -65,9 +67,11 @@ async function getClerkHandler() {
 }
 
 // Bot blocking — return 403 before any serverless work (saves Clerk invocations too)
+// NOTE: Beneficial AEO crawlers (GPTBot, ChatGPT-User, ClaudeBot, PerplexityBot,
+// OAI-SearchBot) are ALLOWED — they help Kaulby appear in AI search results.
+// Only block aggressive scrapers and non-beneficial bots.
 const BLOCKED_BOTS = [
-  'GPTBot', 'ChatGPT-User', 'CCBot', 'ClaudeBot', 'anthropic-ai',
-  'PerplexityBot', 'Bytespider', 'meta-externalagent', 'FacebookBot',
+  'CCBot', 'Bytespider', 'meta-externalagent', 'FacebookBot',
   'facebookexternalhit', 'AhrefsBot', 'SemrushBot', 'MJ12bot', 'DotBot',
   'PetalBot', 'Amazonbot', 'YouBot', 'Applebot-Extended', 'cohere-ai',
   'Google-Extended',

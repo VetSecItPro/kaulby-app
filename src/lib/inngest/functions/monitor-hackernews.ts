@@ -6,6 +6,7 @@ import {
   getActiveMonitors,
   prefetchPlans,
   shouldSkipMonitor,
+  updateSkippedMonitor,
   applyStagger,
   saveNewResults,
   triggerAiAnalysis,
@@ -41,7 +42,10 @@ export const monitorHackerNews = inngest.createFunction(
       const monitor = hnMonitors[i];
 
       await applyStagger(i, hnMonitors.length, "hackernews", monitor.id, step);
-      if (shouldSkipMonitor(monitor, planMap, "hackernews")) continue;
+      if (shouldSkipMonitor(monitor, planMap, "hackernews")) {
+        await updateSkippedMonitor(monitor.id, step);
+        continue;
+      }
 
       // Build search keywords from monitor config
       const searchKeywords: string[] = [];

@@ -65,4 +65,20 @@ export type Events = {
       };
     };
   };
+  "user/trial-expiry.winback": {
+    data: {
+      userId: string;
+      email: string;
+      name?: string;
+      stats: {
+        totalMentions: number;
+        platforms: number;
+        topMention?: {
+          title: string;
+          platform: string;
+          url: string;
+        };
+      };
+    };
+  };
 };

@@ -648,13 +648,31 @@ export function ResponsiveSettings({
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-1">
+            <div className="space-y-2">
               <p className="text-sm text-muted-foreground">Monitors</p>
-              <p className="text-2xl font-bold">{dataStats.monitors}</p>
+              <p className="text-2xl font-bold">{dataStats.monitors}<span className="text-sm font-normal text-muted-foreground">
+                {" "}/ {subscriptionStatus === "free" ? "1" : subscriptionStatus === "pro" ? "10" : "30"}
+              </span></p>
+              <div className="h-2 rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-primary transition-all"
+                  style={{
+                    width: `${Math.min(100, (dataStats.monitors / (subscriptionStatus === "free" ? 1 : subscriptionStatus === "pro" ? 10 : 30)) * 100)}%`,
+                  }}
+                />
+              </div>
             </div>
-            <div className="space-y-1">
+            <div className="space-y-2">
               <p className="text-sm text-muted-foreground">Results Stored</p>
               <p className="text-2xl font-bold">{formatNumber(dataStats.results)}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">Platforms Available</p>
+              <p className="text-2xl font-bold">{subscriptionStatus === "free" ? "1" : subscriptionStatus === "pro" ? "9" : "17"}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">Refresh Cycle</p>
+              <p className="text-2xl font-bold">{subscriptionStatus === "free" ? "24h" : subscriptionStatus === "pro" ? "4h" : "2h"}</p>
             </div>
           </div>
 

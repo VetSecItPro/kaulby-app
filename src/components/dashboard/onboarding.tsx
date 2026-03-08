@@ -59,10 +59,10 @@ const MONITOR_TEMPLATES = [
   {
     id: "competitor",
     icon: Target,
-    title: "Competitor Tracking",
-    description: "Monitor what people say about competitors",
+    title: "Competitor Intelligence",
+    description: "Track complaints, feature requests, and switching intent about competitors",
     placeholder: "Competitor name",
-    suggestedKeywords: ["problems with", "switching from", "hate"],
+    suggestedKeywords: ["problems with", "switching from", "hate", "alternative to", "vs", "frustrated with"],
   },
   {
     id: "tech",
@@ -79,6 +79,14 @@ const MONITOR_TEMPLATES = [
     description: "Track interest in your product category",
     placeholder: "e.g., project management, CRM",
     suggestedKeywords: ["looking for", "recommend", "best"],
+  },
+  {
+    id: "leads",
+    icon: Zap,
+    title: "Lead Generation",
+    description: "Find people actively looking to buy in your category",
+    placeholder: "Your product category (e.g., CRM, monitoring)",
+    suggestedKeywords: ["looking for", "recommend a", "alternatives to", "need help with", "anyone use"],
   },
   {
     id: "custom",
@@ -123,6 +131,7 @@ export function OnboardingWizard({ isOpen, onClose, userName, userPlan = "free" 
   const [keywordInput, setKeywordInput] = useState("");
   const [keywords, setKeywords] = useState<string[]>([]);
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(["reddit"]);
+  const [tosAccepted, setTosAccepted] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
@@ -207,6 +216,9 @@ export function OnboardingWizard({ isOpen, onClose, userName, userPlan = "free" 
         throw new Error(data.error || "Failed to create monitor");
       }
 
+      // Record ToS acceptance
+      fetch("/api/user/tos", { method: "POST" }).catch(() => {});
+
       // Mark onboarding as complete
       await fetch("/api/user/onboarding", {
         method: "POST",
@@ -278,13 +290,28 @@ export function OnboardingWizard({ isOpen, onClose, userName, userPlan = "free" 
                   description="Get notified when someone talks about you"
                 />
               </div>
+
+              <div className="flex items-start space-x-3 mt-6 p-4 rounded-lg border border-border bg-card/50">
+                <Checkbox
+                  id="tos"
+                  checked={tosAccepted}
+                  onCheckedChange={(checked) => setTosAccepted(checked === true)}
+                  className="mt-0.5"
+                />
+                <Label htmlFor="tos" className="text-sm text-muted-foreground leading-relaxed cursor-pointer">
+                  I agree to the{" "}
+                  <a href="/terms" target="_blank" className="text-teal-400 hover:underline">Terms of Service</a>
+                  {" "}and{" "}
+                  <a href="/privacy" target="_blank" className="text-teal-400 hover:underline">Privacy Policy</a>
+                </Label>
+              </div>
             </div>
 
             <DialogFooter className="flex-col gap-2 sm:flex-row">
               <Button variant="ghost" onClick={handleSkip}>
                 Skip for now
               </Button>
-              <Button onClick={handleNext} className="gap-2">
+              <Button onClick={handleNext} className="gap-2" disabled={!tosAccepted}>
                 Get Started
                 <ArrowRight className="h-4 w-4" />
               </Button>

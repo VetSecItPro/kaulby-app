@@ -5,6 +5,7 @@ import {
   getActiveMonitors,
   prefetchPlans,
   shouldSkipMonitor,
+  updateSkippedMonitor,
   applyStagger,
   saveNewResults,
   triggerAiAnalysis,
@@ -54,7 +55,10 @@ export const monitorGoogleReviews = inngest.createFunction(
       const monitor = googleMonitors[i];
 
       await applyStagger(i, googleMonitors.length, "googlereviews", monitor.id, step);
-      if (shouldSkipMonitor(monitor, planMap, "googlereviews")) continue;
+      if (shouldSkipMonitor(monitor, planMap, "googlereviews")) {
+        await updateSkippedMonitor(monitor.id, step);
+        continue;
+      }
 
       // Get business URL from platformUrls, keywords, or companyName
       let businessUrl: string | null = null;

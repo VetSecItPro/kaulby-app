@@ -5,6 +5,7 @@ import {
   getActiveMonitors,
   prefetchPlans,
   shouldSkipMonitor,
+  updateSkippedMonitor,
   applyStagger,
   saveNewResults,
   triggerAiAnalysis,
@@ -131,7 +132,10 @@ export const monitorDevTo = inngest.createFunction(
       const monitor = devtoMonitors[i];
 
       await applyStagger(i, devtoMonitors.length, "devto", monitor.id, step);
-      if (shouldSkipMonitor(monitor, planMap, "devto")) continue;
+      if (shouldSkipMonitor(monitor, planMap, "devto")) {
+        await updateSkippedMonitor(monitor.id, step);
+        continue;
+      }
 
       // Search Dev.to
       const articles = await step.run(`search-devto-${monitor.id}`, async () => {

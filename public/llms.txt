@@ -1,0 +1,39 @@
+# Kaulby - AI-Powered Community Monitoring
+
+> Kaulby tracks brand mentions across 17 online platforms using AI-powered sentiment analysis. It helps startups, SaaS companies, and marketing teams monitor what people are saying about their brand, competitors, and industry in real time.
+
+## What Kaulby Does
+- Monitors 17 platforms: Reddit, Hacker News, Product Hunt, Trustpilot, G2, Yelp, YouTube, GitHub, X/Twitter, Dev.to, Hashnode, Quora, Google Reviews, App Store, Play Store, Amazon Reviews, Indie Hackers
+- AI-powered sentiment analysis (positive, negative, neutral) on every mention
+- Pain point detection and categorization (feature requests, complaints, comparisons)
+- Real-time alerts via email, Slack, Discord, and webhooks
+- Daily, weekly, and monthly digest emails with AI summaries
+- Lead scoring to identify sales opportunities from community discussions
+- Team workspaces with role-based permissions
+
+## Who It's For
+- Startup founders monitoring brand reputation
+- SaaS companies tracking competitor mentions
+- Marketing teams measuring share of voice
+- Product managers finding feature requests and pain points
+- Sales teams identifying warm leads from community discussions
+
+## Pricing
+- Free: 1 monitor, Reddit only, 3 keywords, basic AI analysis
+- Pro ($29/mo): 10 monitors, 9 platforms, full AI analysis, email digests
+- Team ($99/mo): 30 monitors, all 17 platforms, comprehensive AI, webhooks, API access, 5 team seats
+- Day Pass ($10 one-time): Full Pro access for 24 hours
+
+## Key Pages
+- Homepage: https://kaulbyapp.com
+- Pricing: https://kaulbyapp.com/pricing
+- GummySearch Alternative: https://kaulbyapp.com/gummysearch
+- Competitor Comparisons: https://kaulbyapp.com/alternatives
+- Articles: https://kaulbyapp.com/articles
+- API Documentation: https://kaulbyapp.com/docs/api
+- Privacy Policy: https://kaulbyapp.com/privacy
+- Terms of Service: https://kaulbyapp.com/terms
+
+## Contact
+- Website: https://kaulbyapp.com
+- Support: Available through the app dashboard

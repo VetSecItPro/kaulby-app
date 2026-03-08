@@ -47,6 +47,7 @@ export const alertChannelEnum = pgEnum("alert_channel", [
   "email",
   "slack",
   "in_app",
+  "teams",
 ]);
 
 export const alertFrequencyEnum = pgEnum("alert_frequency", [
@@ -207,12 +208,23 @@ export const users = pgTable("users", {
   // Activity tracking for churn detection
   lastActiveAt: timestamp("last_active_at"), // Last meaningful activity (dashboard visit, monitor action)
   reengagementEmailSentAt: timestamp("reengagement_email_sent_at"), // Prevent duplicate re-engagement emails
+  trialWinbackSentAt: timestamp("trial_winback_sent_at"), // Prevent duplicate trial win-back emails
   // Scheduled PDF Reports (Team tier feature)
   reportSchedule: text("report_schedule").default("off"), // 'off' | 'weekly' | 'monthly'
   reportDay: integer("report_day").default(1), // Day of week (1=Mon) for weekly, day of month for monthly
   reportLastSentAt: timestamp("report_last_sent_at"), // Track last report sent to prevent duplicates
+  // White-label report customization (Team tier)
+  reportBranding: jsonb("report_branding").$type<{
+    companyName?: string;     // Custom company name (replaces "Kaulby" in header)
+    logoUrl?: string;          // Custom logo URL
+    primaryColor?: string;     // Hex color for headers/accents
+    footerText?: string;       // Custom footer text
+    hideKaulbyBranding?: boolean; // Remove "Powered by Kaulby" footer
+  }>(),
   // Email digest pause feature
   digestPaused: boolean("digest_paused").default(false).notNull(), // Pause emails while keeping monitors active
+  // Terms of Service acceptance tracking — legal paper trail
+  tosAcceptedAt: timestamp("tos_accepted_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
@@ -311,6 +323,13 @@ export const monitors = pgTable("monitors", {
   scheduleEndHour: integer("schedule_end_hour").default(17), // 0-23, default 5 PM
   scheduleDays: integer("schedule_days").array(), // 0=Sun, 1=Mon, ..., 6=Sat. null = all days
   scheduleTimezone: text("schedule_timezone").default("America/New_York"), // IANA timezone
+  // Crisis detection thresholds (configurable per monitor, Team tier only)
+  crisisThresholds: jsonb("crisis_thresholds").$type<{
+    negativeSpikePct: number;       // Percentage increase to trigger (default: 50)
+    viralEngagement: number;         // Engagement score for viral detection (default: 100)
+    minNegativeCount: number;        // Minimum negative count before alerting (default: 5)
+    volumeSpikeMultiplier: number;   // Multiplier for volume spike detection (default: 2)
+  }>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
@@ -719,6 +738,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   detectionKeywords: many(userDetectionKeywords),
   bookmarkCollections: many(bookmarkCollections),
   bookmarks: many(bookmarks),
+  aiVisibilityChecks: many(aiVisibilityChecks),
 }));
 
 export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
@@ -776,6 +796,7 @@ export const monitorsRelations = relations(monitors, ({ one, many }) => ({
   alerts: many(alerts),
   results: many(results),
   audienceMonitors: many(audienceMonitors),
+  aiVisibilityChecks: many(aiVisibilityChecks),
 }));
 
 export const alertsRelations = relations(alerts, ({ one }) => ({
@@ -931,6 +952,87 @@ export const webhookEvents = pgTable("webhook_events", {
   uniqueIndex("webhook_events_event_id_provider_idx").on(table.eventId, table.provider),
 ]);
 
+// Shared Reports - public shareable report links for stakeholders
+export const sharedReports = pgTable("shared_reports", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  monitorId: uuid("monitor_id").references(() => monitors.id, { onDelete: "cascade" }),
+  shareToken: text("share_token").notNull().unique(), // Random token for public URL
+  title: text("title").notNull(),
+  periodStart: timestamp("period_start").notNull(),
+  periodEnd: timestamp("period_end").notNull(),
+  reportData: jsonb("report_data").$type<Record<string, unknown>>().notNull(), // Snapshot of report data
+  expiresAt: timestamp("expires_at"), // Optional expiry
+  isActive: boolean("is_active").default(true).notNull(),
+  viewCount: integer("view_count").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("shared_reports_user_id_idx").on(table.userId),
+  index("shared_reports_share_token_idx").on(table.shareToken),
+  index("shared_reports_monitor_id_idx").on(table.monitorId),
+]);
+
+export const sharedReportsRelations = relations(sharedReports, ({ one }) => ({
+  user: one(users, {
+    fields: [sharedReports.userId],
+    references: [users.id],
+  }),
+  monitor: one(monitors, {
+    fields: [sharedReports.monitorId],
+    references: [monitors.id],
+  }),
+}));
+
+// Email delivery failure tracking — no silent failures
+export const emailDeliveryFailures = pgTable("email_delivery_failures", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
+  emailType: text("email_type").notNull(), // 'alert' | 'digest' | 'report' | 'onboarding' | 'budget' | 'subscription'
+  recipient: text("recipient").notNull(),
+  subject: text("subject"),
+  errorMessage: text("error_message").notNull(),
+  errorCode: text("error_code"), // HTTP status or Resend error code
+  retryCount: integer("retry_count").default(0).notNull(),
+  maxRetries: integer("max_retries").default(3).notNull(),
+  nextRetryAt: timestamp("next_retry_at", { withTimezone: true }),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index("email_failures_user_id_idx").on(table.userId),
+  index("email_failures_unresolved_idx").on(table.resolvedAt, table.nextRetryAt),
+]);
+
+// AI Visibility Checks - track brand mentions in AI/LLM responses (Team tier)
+export const aiVisibilityChecks = pgTable("ai_visibility_checks", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  monitorId: uuid("monitor_id").references(() => monitors.id, { onDelete: "cascade" }),
+  brandName: text("brand_name").notNull(),
+  model: text("model").notNull(),
+  query: text("query").notNull(),
+  mentioned: boolean("mentioned").notNull(),
+  position: text("position"), // "primary" | "secondary" | "not_found"
+  context: text("context"),
+  competitors: jsonb("competitors").$type<string[]>(),
+  checkedAt: timestamp("checked_at").defaultNow().notNull(),
+}, (table) => [
+  index("ai_visibility_checks_user_id_idx").on(table.userId),
+  index("ai_visibility_checks_monitor_id_idx").on(table.monitorId),
+  index("ai_visibility_checks_checked_at_idx").on(table.checkedAt),
+  index("ai_visibility_checks_user_checked_idx").on(table.userId, table.checkedAt),
+]);
+
+export const aiVisibilityChecksRelations = relations(aiVisibilityChecks, ({ one }) => ({
+  user: one(users, {
+    fields: [aiVisibilityChecks.userId],
+    references: [users.id],
+  }),
+  monitor: one(monitors, {
+    fields: [aiVisibilityChecks.monitorId],
+    references: [monitors.id],
+  }),
+}));
+
 // Type exports
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -942,3 +1044,6 @@ export type Notification = typeof notifications.$inferSelect;
 export type UserDetectionKeyword = typeof userDetectionKeywords.$inferSelect;
 export type BookmarkCollection = typeof bookmarkCollections.$inferSelect;
 export type Bookmark = typeof bookmarks.$inferSelect;
+export type EmailDeliveryFailure = typeof emailDeliveryFailures.$inferSelect;
+export type SharedReport = typeof sharedReports.$inferSelect;
+export type AIVisibilityCheck = typeof aiVisibilityChecks.$inferSelect;

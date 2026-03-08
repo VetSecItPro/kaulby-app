@@ -1,10 +1,15 @@
 import { inngest } from "../client";
 import { logger } from "@/lib/logger";
-import { fetchYelpReviews, isApifyConfigured, type YelpReviewItem } from "@/lib/apify";
+import {
+  searchYelpSerper,
+  isSerperConfigured,
+  type YelpReviewItem,
+} from "@/lib/serper";
 import {
   getActiveMonitors,
   prefetchPlans,
   shouldSkipMonitor,
+  updateSkippedMonitor,
   applyStagger,
   saveNewResults,
   triggerAiAnalysis,
@@ -13,15 +18,13 @@ import {
 } from "../utils/monitor-helpers";
 
 /**
- * Monitor Yelp business reviews
+ * Monitor Yelp business reviews via Serper (Google Search)
+ *
+ * Uses Google Search to find Yelp reviews — legally compliant,
+ * no direct scraping of Yelp's site.
  *
  * For Yelp monitors, platformUrls.yelp should contain a Yelp business page URL.
  * Example: https://www.yelp.com/biz/restaurant-name-city
- *
- * Runs every hour - shouldProcessMonitor() handles tier-based delays:
- * - Team: every 2 hours
- * - Pro: every 4 hours
- * - Free: every 24 hours (but Yelp is Pro+ only)
  */
 export const monitorYelp = inngest.createFunction(
   {
@@ -35,8 +38,8 @@ export const monitorYelp = inngest.createFunction(
   async ({ step: _step }) => {
     const step = _step as unknown as MonitorStep;
 
-    if (!isApifyConfigured()) {
-      return { message: "Apify API key not configured, skipping Yelp monitoring" };
+    if (!isSerperConfigured()) {
+      return { message: "Serper API key not configured, skipping Yelp monitoring" };
     }
 
     const yelpMonitors = await getActiveMonitors("yelp", step);
@@ -53,7 +56,10 @@ export const monitorYelp = inngest.createFunction(
       const monitor = yelpMonitors[i];
 
       await applyStagger(i, yelpMonitors.length, "yelp", monitor.id, step);
-      if (shouldSkipMonitor(monitor, planMap, "yelp")) continue;
+      if (shouldSkipMonitor(monitor, planMap, "yelp")) {
+        await updateSkippedMonitor(monitor.id, step);
+        continue;
+      }
 
       // Get business URL from platformUrls or keywords
       let businessUrl: string | null = null;
@@ -66,12 +72,12 @@ export const monitorYelp = inngest.createFunction(
       }
       if (!businessUrl) continue;
 
-      // Fetch reviews (platform-specific)
+      // Fetch reviews via Serper (Google Search)
       const reviews = await step.run(`fetch-reviews-${monitor.id}`, async () => {
         try {
-          return await fetchYelpReviews(businessUrl!, 30);
+          return await searchYelpSerper(businessUrl!, 30);
         } catch (error) {
-          logger.error("[Yelp] Error fetching reviews", { businessUrl, error: error instanceof Error ? error.message : String(error) });
+          logger.error("[Yelp] Error searching via Serper", { businessUrl, error: error instanceof Error ? error.message : String(error) });
           return [] as YelpReviewItem[];
         }
       });
@@ -109,7 +115,7 @@ export const monitorYelp = inngest.createFunction(
     }
 
     return {
-      message: `Scanned Yelp, found ${totalResults} new reviews`,
+      message: `Scanned Yelp via Serper, found ${totalResults} new reviews`,
       totalResults,
       monitorResults,
     };

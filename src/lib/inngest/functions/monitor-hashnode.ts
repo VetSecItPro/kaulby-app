@@ -5,6 +5,7 @@ import {
   getActiveMonitors,
   prefetchPlans,
   shouldSkipMonitor,
+  updateSkippedMonitor,
   applyStagger,
   saveNewResults,
   triggerAiAnalysis,
@@ -204,7 +205,10 @@ export const monitorHashnode = inngest.createFunction(
       const monitor = hashnodeMonitors[i];
 
       await applyStagger(i, hashnodeMonitors.length, "hashnode", monitor.id, step);
-      if (shouldSkipMonitor(monitor, planMap, "hashnode")) continue;
+      if (shouldSkipMonitor(monitor, planMap, "hashnode")) {
+        await updateSkippedMonitor(monitor.id, step);
+        continue;
+      }
 
       // Search Hashnode
       const articles = await step.run(`search-hashnode-${monitor.id}`, async () => {

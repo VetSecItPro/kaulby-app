@@ -269,7 +269,21 @@ export async function POST(request: NextRequest) {
         // SECURITY (SEC-INTEG-013): Non-blocking side effects — don't let email failure cause 500
         Promise.all([
           upsertContact({ email: user.email, userId: user.id, subscriptionStatus: subscriptionStatus }),
-          sendSubscriptionEmail({ email: user.email, name: user.name || undefined, plan: plan === "team" ? "Team" : plan.charAt(0).toUpperCase() + plan.slice(1) }),
+          sendSubscriptionEmail({ email: user.email, name: user.name || undefined, plan: plan === "team" ? "Team" : plan.charAt(0).toUpperCase() + plan.slice(1) })
+            .catch(async (err) => {
+              logger.error("Subscription email failed", { error: err, userId: user.id });
+              const { pooledDb } = await import("@/lib/db");
+              const { emailDeliveryFailures } = await import("@/lib/db/schema");
+              await pooledDb.insert(emailDeliveryFailures).values({
+                userId: user.id,
+                emailType: "subscription",
+                recipient: user.email,
+                subject: "Subscription confirmation",
+                errorMessage: err instanceof Error ? err.message : String(err),
+                retryCount: 0,
+                maxRetries: 0,
+              }).catch(() => {}); // don't let DB error mask webhook response
+            }),
         ]).catch((err) => logger.error("Subscription side effects failed", { error: err }));
 
         // Track in PostHog

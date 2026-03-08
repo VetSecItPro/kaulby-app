@@ -5,6 +5,7 @@ import {
   getActiveMonitors,
   prefetchPlans,
   shouldSkipMonitor,
+  updateSkippedMonitor,
   applyStagger,
   saveNewResults,
   triggerAiAnalysis,
@@ -175,7 +176,10 @@ export const monitorIndieHackers = inngest.createFunction(
       const monitor = ihMonitors[i];
 
       await applyStagger(i, ihMonitors.length, "indiehackers", monitor.id, step);
-      if (shouldSkipMonitor(monitor, planMap, "indiehackers")) continue;
+      if (shouldSkipMonitor(monitor, planMap, "indiehackers")) {
+        await updateSkippedMonitor(monitor.id, step);
+        continue;
+      }
 
       // Fetch Indie Hackers posts
       const posts = await step.run(`fetch-ih-${monitor.id}`, async () => {

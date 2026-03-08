@@ -1,6 +1,9 @@
 import { MetadataRoute } from "next";
 import { ALL_TRACKED_SUBREDDITS } from "@/lib/data/tracked-subreddits";
 import { blogArticles } from "@/lib/data/blog-articles";
+import { ALL_PLATFORM_SLUGS } from "@/lib/data/platforms";
+import { ALL_USE_CASE_SLUGS } from "@/lib/data/use-cases";
+import { ALL_COMPETITOR_SLUGS } from "@/lib/data/competitors";
 
 // All tool slugs
 const toolSlugs = [
@@ -8,21 +11,6 @@ const toolSlugs = [
   "social-listening-for-startups",
   "brand-monitoring",
   "competitor-monitoring",
-];
-
-// All competitor/alternative slugs
-const alternativeSlugs = [
-  "mention",
-  "brand24",
-  "brandwatch",
-  "hootsuite",
-  "sproutsocial",
-  "awario",
-  "syften",
-  "gummysearch",
-  "redreach",
-  "subredditsignals",
-  "f5bot",
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -83,19 +71,23 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "weekly",
       priority: 0.85,
     },
+    {
+      url: `${baseUrl}/roadmap`,
+      lastModified: currentDate,
+      changeFrequency: "weekly",
+      priority: 0.6,
+    },
+    {
+      url: `${baseUrl}/status`,
+      lastModified: currentDate,
+      changeFrequency: "daily",
+      priority: 0.5,
+    },
   ];
 
   // Tool pages - SEO landing pages
   const toolPages: MetadataRoute.Sitemap = toolSlugs.map((slug) => ({
     url: `${baseUrl}/tools/${slug}`,
-    lastModified: currentDate,
-    changeFrequency: "weekly" as const,
-    priority: 0.8,
-  }));
-
-  // Alternative/comparison pages - SEO landing pages
-  const alternativePages: MetadataRoute.Sitemap = alternativeSlugs.map((slug) => ({
-    url: `${baseUrl}/alternatives/${slug}`,
     lastModified: currentDate,
     changeFrequency: "weekly" as const,
     priority: 0.8,
@@ -125,6 +117,30 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.7,
   }));
 
+  // Platform monitoring pages
+  const platformPages: MetadataRoute.Sitemap = ALL_PLATFORM_SLUGS.map((slug) => ({
+    url: `${baseUrl}/monitor/${slug}`,
+    lastModified: currentDate,
+    changeFrequency: "weekly" as const,
+    priority: 0.8,
+  }));
+
+  // Use case pages
+  const useCasePages: MetadataRoute.Sitemap = ALL_USE_CASE_SLUGS.map((slug) => ({
+    url: `${baseUrl}/use-case/${slug}`,
+    lastModified: currentDate,
+    changeFrequency: "weekly" as const,
+    priority: 0.8,
+  }));
+
+  // Competitor comparison pages
+  const comparisonPages: MetadataRoute.Sitemap = ALL_COMPETITOR_SLUGS.map((slug) => ({
+    url: `${baseUrl}/compare/${slug}`,
+    lastModified: currentDate,
+    changeFrequency: "weekly" as const,
+    priority: 0.8,
+  }));
+
   // Legal pages - lower priority
   const legalPages: MetadataRoute.Sitemap = [
     {
@@ -145,8 +161,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ...corePages,
     ...marketingPages,
     ...toolPages,
-    ...alternativePages,
     ...subredditPages,
+    ...platformPages,
+    ...useCasePages,
+    ...comparisonPages,
     ...articlePages,
     ...legalPages,
   ];

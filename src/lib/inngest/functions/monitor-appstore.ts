@@ -5,6 +5,7 @@ import {
   getActiveMonitors,
   prefetchPlans,
   shouldSkipMonitor,
+  updateSkippedMonitor,
   applyStagger,
   saveNewResults,
   triggerAiAnalysis,
@@ -50,7 +51,10 @@ export const monitorAppStore = inngest.createFunction(
       const monitor = appStoreMonitors[i];
 
       await applyStagger(i, appStoreMonitors.length, "appstore", monitor.id, step);
-      if (shouldSkipMonitor(monitor, planMap, "appstore")) continue;
+      if (shouldSkipMonitor(monitor, planMap, "appstore")) {
+        await updateSkippedMonitor(monitor.id, step);
+        continue;
+      }
 
       // Get app URL from platformUrls or keywords
       let appUrl: string | null = null;

@@ -5,6 +5,20 @@ import { eq, and, gte, inArray, sql, desc } from "drizzle-orm";
 import { sendAlertEmail } from "@/lib/email";
 import { sendWebhookNotification } from "@/lib/notifications";
 
+const DEFAULT_THRESHOLDS = {
+  negativeSpikePct: 50,
+  viralEngagement: 100,
+  minNegativeCount: 5,
+  volumeSpikeMultiplier: 2,
+};
+
+interface CrisisThresholds {
+  negativeSpikePct: number;
+  viralEngagement: number;
+  minNegativeCount: number;
+  volumeSpikeMultiplier: number;
+}
+
 interface CrisisAlert {
   userId: string;
   monitorId: string;
@@ -25,14 +39,40 @@ interface CrisisAlert {
   };
 }
 
+/** Merge per-monitor thresholds with defaults, validating each value */
+function resolveThresholds(
+  raw: Partial<CrisisThresholds> | null | undefined,
+): CrisisThresholds {
+  if (!raw) return { ...DEFAULT_THRESHOLDS };
+  return {
+    negativeSpikePct:
+      typeof raw.negativeSpikePct === "number" && raw.negativeSpikePct > 0
+        ? raw.negativeSpikePct
+        : DEFAULT_THRESHOLDS.negativeSpikePct,
+    viralEngagement:
+      typeof raw.viralEngagement === "number" && raw.viralEngagement > 0
+        ? raw.viralEngagement
+        : DEFAULT_THRESHOLDS.viralEngagement,
+    minNegativeCount:
+      typeof raw.minNegativeCount === "number" && raw.minNegativeCount > 0
+        ? raw.minNegativeCount
+        : DEFAULT_THRESHOLDS.minNegativeCount,
+    volumeSpikeMultiplier:
+      typeof raw.volumeSpikeMultiplier === "number" && raw.volumeSpikeMultiplier > 1
+        ? raw.volumeSpikeMultiplier
+        : DEFAULT_THRESHOLDS.volumeSpikeMultiplier,
+  };
+}
+
 /**
  * Crisis Detection Function
  *
  * Runs every hour to detect:
- * 1. Sudden spikes in negative sentiment (>50% increase)
- * 2. Viral negative posts (>100 engagement in 24h)
- * 3. Volume spikes with negative sentiment
+ * 1. Sudden spikes in negative sentiment (configurable % increase)
+ * 2. Viral negative posts (configurable engagement threshold)
+ * 3. Volume spikes with negative sentiment (configurable multiplier)
  *
+ * Thresholds are configurable per-monitor via the crisisThresholds column.
  * Only runs for Team tier users.
  */
 export const detectCrisis = inngest.createFunction(
@@ -65,7 +105,7 @@ export const detectCrisis = inngest.createFunction(
     for (let i = 0; i < teamUsers.length; i += USER_BATCH_SIZE) {
       const batch = teamUsers.slice(i, i + USER_BATCH_SIZE);
       await Promise.all(batch.map(user => step.run(`check-user-${user.id}`, async () => {
-        // Get user's active monitors
+        // Get user's active monitors (including crisisThresholds)
         const userMonitors = await pooledDb.query.monitors.findMany({
           where: and(
             eq(monitors.userId, user.id),
@@ -75,12 +115,27 @@ export const detectCrisis = inngest.createFunction(
             id: true,
             name: true,
             companyName: true,
+            crisisThresholds: true,
           },
         });
 
         if (userMonitors.length === 0) return;
 
         const monitorIds = userMonitors.map((m) => m.id);
+
+        // Build per-monitor threshold map
+        const thresholdsByMonitor = new Map<string, CrisisThresholds>();
+        for (const m of userMonitors) {
+          thresholdsByMonitor.set(m.id, resolveThresholds(m.crisisThresholds));
+        }
+
+        // Find the lowest viralEngagement threshold across all monitors
+        // so the DB query captures all potentially viral posts
+        const minViralEngagement = Math.min(
+          ...userMonitors.map(
+            (m) => resolveThresholds(m.crisisThresholds).viralEngagement,
+          ),
+        );
 
         // Time windows
         const now = new Date();
@@ -104,10 +159,11 @@ export const detectCrisis = inngest.createFunction(
           )
           .groupBy(results.monitorId);
 
-        // Get sentiment counts for previous 24h
+        // Get sentiment and total counts for previous 24h (needed for volume spike)
         const previousSentiment = await pooledDb
           .select({
             monitorId: results.monitorId,
+            total: sql<number>`count(*)`,
             negative: sql<number>`count(*) filter (where ${results.sentiment} = 'negative')`,
           })
           .from(results)
@@ -120,16 +176,16 @@ export const detectCrisis = inngest.createFunction(
           )
           .groupBy(results.monitorId);
 
-        // Check for viral negative posts (high engagement)
+        // Check for viral negative posts (using lowest threshold across monitors)
         const viralNegative = await pooledDb.query.results.findMany({
           where: and(
             inArray(results.monitorId, monitorIds),
             gte(results.createdAt, last24h),
             eq(results.sentiment, "negative"),
-            gte(results.engagementScore, 100)
+            gte(results.engagementScore, minViralEngagement)
           ),
           orderBy: [desc(results.engagementScore)],
-          limit: 5,
+          limit: 20, // Fetch more to filter per-monitor thresholds
           columns: {
             id: true,
             monitorId: true,
@@ -156,17 +212,20 @@ export const detectCrisis = inngest.createFunction(
 
         // Analyze each monitor
         for (const monitor of userMonitors) {
+          const thresholds = thresholdsByMonitor.get(monitor.id)!;
           const current = currentSentimentByMonitor.get(monitor.id);
           const previous = previousSentimentByMonitor.get(monitor.id);
 
           const currentNegative = Number(current?.negative || 0);
           const previousNegative = Number(previous?.negative || 0);
+          const currentTotal = Number(current?.total || 0);
+          const previousTotal = Number(previous?.total || 0);
 
-          // Check for negative spike (>50% increase with at least 5 negative)
-          if (previousNegative > 0 && currentNegative >= 5) {
+          // 1. Check for negative spike (configurable % increase with min negative count)
+          if (previousNegative > 0 && currentNegative >= thresholds.minNegativeCount) {
             const percentageIncrease = ((currentNegative - previousNegative) / previousNegative) * 100;
 
-            if (percentageIncrease >= 50) {
+            if (percentageIncrease >= thresholds.negativeSpikePct) {
               const monitorViralNegative = viralByMonitor.get(monitor.id) || [];
 
               crisisAlerts.push({
@@ -174,7 +233,7 @@ export const detectCrisis = inngest.createFunction(
                 monitorId: monitor.id,
                 monitorName: monitor.name,
                 type: "negative_spike",
-                severity: percentageIncrease >= 100 ? "critical" : "warning",
+                severity: percentageIncrease >= thresholds.negativeSpikePct * 2 ? "critical" : "warning",
                 message: `Negative sentiment spike detected: ${percentageIncrease.toFixed(0)}% increase in the last 24 hours`,
                 details: {
                   currentNegative,
@@ -191,8 +250,12 @@ export const detectCrisis = inngest.createFunction(
             }
           }
 
-          // Check for viral negative posts
-          const monitorViral = viralByMonitor.get(monitor.id) || [];
+          // 2. Check for viral negative posts (using per-monitor engagement threshold)
+          const allViralForMonitor = viralByMonitor.get(monitor.id) || [];
+          // Filter by this monitor's specific threshold (DB query used the global minimum)
+          const monitorViral = allViralForMonitor.filter(
+            (r) => (r.engagementScore || 0) >= thresholds.viralEngagement,
+          );
           if (monitorViral.length > 0) {
             const highestEngagement = monitorViral[0];
             crisisAlerts.push({
@@ -200,7 +263,7 @@ export const detectCrisis = inngest.createFunction(
               monitorId: monitor.id,
               monitorName: monitor.name,
               type: "viral_negative",
-              severity: (highestEngagement.engagementScore || 0) >= 500 ? "critical" : "warning",
+              severity: (highestEngagement.engagementScore || 0) >= thresholds.viralEngagement * 5 ? "critical" : "warning",
               message: `Viral negative post detected with ${highestEngagement.engagementScore} engagement`,
               details: {
                 currentNegative,
@@ -212,6 +275,29 @@ export const detectCrisis = inngest.createFunction(
                   platform: r.platform,
                   engagementScore: r.engagementScore || 0,
                 })),
+              },
+            });
+          }
+
+          // 3. Volume spike detection: total mentions jumped by multiplier AND has negatives
+          if (
+            previousTotal > 0 &&
+            currentTotal > previousTotal * thresholds.volumeSpikeMultiplier &&
+            currentNegative > 0
+          ) {
+            const volumeMultiplier = currentTotal / previousTotal;
+
+            crisisAlerts.push({
+              userId: user.id,
+              monitorId: monitor.id,
+              monitorName: monitor.name,
+              type: "volume_spike",
+              severity: volumeMultiplier >= thresholds.volumeSpikeMultiplier * 2 ? "critical" : "warning",
+              message: `Volume spike detected: ${volumeMultiplier.toFixed(1)}x increase in total mentions (${previousTotal} → ${currentTotal}) with ${currentNegative} negative posts`,
+              details: {
+                currentNegative,
+                previousNegative,
+                percentageIncrease: ((currentTotal - previousTotal) / previousTotal) * 100,
               },
             });
           }

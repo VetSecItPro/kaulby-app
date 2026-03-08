@@ -1,10 +1,15 @@
 import { inngest } from "../client";
 import { logger } from "@/lib/logger";
-import { fetchTrustpilotReviews, isApifyConfigured, type TrustpilotReviewItem } from "@/lib/apify";
+import {
+  searchTrustpilotSerper,
+  isSerperConfigured,
+  type TrustpilotReviewItem,
+} from "@/lib/serper";
 import {
   getActiveMonitors,
   prefetchPlans,
   shouldSkipMonitor,
+  updateSkippedMonitor,
   applyStagger,
   saveNewResults,
   triggerAiAnalysis,
@@ -13,12 +18,13 @@ import {
 } from "../utils/monitor-helpers";
 
 /**
- * Monitor Trustpilot reviews for companies
+ * Monitor Trustpilot reviews via Serper (Google Search)
+ *
+ * Uses Google Search to find Trustpilot reviews — legally compliant,
+ * no direct scraping of Trustpilot's site.
  *
  * For Trustpilot monitors, the "keywords" field stores Trustpilot URLs
  * or company domains to monitor (e.g., "example.com" or "https://trustpilot.com/review/example.com")
- *
- * Runs every 4 hours since Trustpilot reviews update more frequently than Google
  */
 export const monitorTrustpilot = inngest.createFunction(
   {
@@ -32,8 +38,8 @@ export const monitorTrustpilot = inngest.createFunction(
   async ({ step: _step }) => {
     const step = _step as unknown as MonitorStep;
 
-    if (!isApifyConfigured()) {
-      return { message: "Apify API key not configured, skipping Trustpilot monitoring" };
+    if (!isSerperConfigured()) {
+      return { message: "Serper API key not configured, skipping Trustpilot monitoring" };
     }
 
     const trustpilotMonitors = await getActiveMonitors("trustpilot", step);
@@ -50,7 +56,10 @@ export const monitorTrustpilot = inngest.createFunction(
       const monitor = trustpilotMonitors[i];
 
       await applyStagger(i, trustpilotMonitors.length, "trustpilot", monitor.id, step);
-      if (shouldSkipMonitor(monitor, planMap, "trustpilot")) continue;
+      if (shouldSkipMonitor(monitor, planMap, "trustpilot")) {
+        await updateSkippedMonitor(monitor.id, step);
+        continue;
+      }
 
       // Get company URL from platformUrls, keywords, or companyName
       let companyUrl: string | null = null;
@@ -66,12 +75,12 @@ export const monitorTrustpilot = inngest.createFunction(
       }
       if (!companyUrl) continue;
 
-      // Fetch reviews (platform-specific)
+      // Fetch reviews via Serper (Google Search)
       const reviews = await step.run(`fetch-reviews-${monitor.id}-${companyUrl.slice(0, 20)}`, async () => {
         try {
-          return await fetchTrustpilotReviews(companyUrl!, 20);
+          return await searchTrustpilotSerper(companyUrl!, 20);
         } catch (error) {
-          logger.error("[Trustpilot] Error fetching reviews", { companyUrl, error: error instanceof Error ? error.message : String(error) });
+          logger.error("[Trustpilot] Error searching via Serper", { companyUrl, error: error instanceof Error ? error.message : String(error) });
           return [] as TrustpilotReviewItem[];
         }
       });
@@ -107,7 +116,7 @@ export const monitorTrustpilot = inngest.createFunction(
     }
 
     return {
-      message: `Scanned Trustpilot, found ${totalResults} new reviews`,
+      message: `Scanned Trustpilot via Serper, found ${totalResults} new reviews`,
       totalResults,
       monitorResults,
     };

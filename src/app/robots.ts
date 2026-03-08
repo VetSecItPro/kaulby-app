@@ -82,6 +82,25 @@ export default function robots(): MetadataRoute.Robots {
           "/alternatives/",
           "/pricing",
           "/articles/",
+          "/gummysearch",
+          "/subreddits/",
+        ],
+        disallow: [
+          "/api/",
+          "/dashboard/",
+          "/manage/",
+        ],
+      },
+      {
+        userAgent: "OAI-SearchBot",
+        allow: [
+          "/",
+          "/tools/",
+          "/alternatives/",
+          "/pricing",
+          "/articles/",
+          "/gummysearch",
+          "/subreddits/",
         ],
         disallow: [
           "/api/",

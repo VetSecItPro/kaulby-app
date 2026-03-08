@@ -45,6 +45,7 @@ import { getPlatformBadgeColor, getPlatformDisplayName } from "@/lib/platform-ut
 import { ExportDialog } from "./export-dialog";
 import { BlurredAiAnalysis } from "./upgrade-prompt";
 import { LeadScoreBadge } from "./lead-score-badge";
+import { SourceAuthorityBadge } from "./source-authority-badge";
 import { calculateLeadScore, type LeadScoreFactors } from "@/lib/ai/lead-scoring";
 
 type ConversationCategory = "pain_point" | "solution_request" | "advice_request" | "money_talk" | "hot_discussion";
@@ -203,6 +204,7 @@ export const ResultCard = memo(function ResultCard({
               >
                 {getPlatformDisplayName(result.platform)}
               </Badge>
+              <SourceAuthorityBadge platform={result.platform} />
               {result.sentiment && sentimentIcons[result.sentiment]}
               {/* Conversation Category Badge - GummySearch-style high-value classification */}
               {result.conversationCategory && conversationCategoryStyles[result.conversationCategory] && (() => {

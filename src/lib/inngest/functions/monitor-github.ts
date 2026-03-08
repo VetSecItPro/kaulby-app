@@ -9,6 +9,7 @@ import {
   getActiveMonitors,
   prefetchPlans,
   shouldSkipMonitor,
+  updateSkippedMonitor,
   applyStagger,
   triggerAiAnalysis,
   updateMonitorStats,
@@ -179,7 +180,10 @@ export const monitorGitHub = inngest.createFunction(
       const monitor = githubMonitors[i];
 
       await applyStagger(i, githubMonitors.length, "github", monitor.id, step);
-      if (shouldSkipMonitor(monitor, planMap, "github")) continue;
+      if (shouldSkipMonitor(monitor, planMap, "github")) {
+        await updateSkippedMonitor(monitor.id, step);
+        continue;
+      }
 
       let monitorMatchCount = 0;
       const newResultIds: string[] = [];
