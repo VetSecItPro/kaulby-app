@@ -137,6 +137,16 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: "Audience not found" }, { status: 404 });
     }
 
+    // Verify monitor belongs to this user
+    const monitor = await db.query.monitors.findFirst({
+      where: and(eq(monitors.id, monitorId), eq(monitors.userId, userId)),
+      columns: { id: true },
+    });
+
+    if (!monitor) {
+      return NextResponse.json({ error: "Monitor not found" }, { status: 404 });
+    }
+
     // Remove monitor from audience
     await db
       .delete(audienceMonitors)

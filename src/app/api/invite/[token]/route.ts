@@ -50,9 +50,15 @@ export async function GET(
       where: eq(users.id, invite.invitedBy),
     });
 
+    // Mask email to prevent PII leakage (e.g., j***@example.com)
+    const maskedEmail = invite.email.replace(
+      /^(.{1,2})(.*)(@.*)$/,
+      (_, start, middle, domain) => start + "*".repeat(Math.min(middle.length, 5)) + domain
+    );
+
     return NextResponse.json({
       invite: {
-        email: invite.email,
+        email: maskedEmail,
         workspaceName: workspace.name,
         inviterName: inviter?.name || inviter?.email || "Someone",
         expiresAt: invite.expiresAt,
