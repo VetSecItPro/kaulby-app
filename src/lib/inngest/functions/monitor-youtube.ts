@@ -1,10 +1,15 @@
 import { inngest } from "../client";
 import { logger } from "@/lib/logger";
-import { fetchYouTubeComments, isApifyConfigured, type YouTubeCommentItem } from "@/lib/apify";
+import {
+  fetchYouTubeCommentsApi,
+  isYouTubeApiConfigured,
+  type YouTubeCommentItem,
+} from "@/lib/youtube";
 import {
   getActiveMonitors,
   prefetchPlans,
   shouldSkipMonitor,
+  updateSkippedMonitor,
   applyStagger,
   saveNewResults,
   triggerAiAnalysis,
@@ -13,15 +18,12 @@ import {
 } from "../utils/monitor-helpers";
 
 /**
- * Monitor YouTube video comments
+ * Monitor YouTube video comments via official YouTube Data API v3
+ *
+ * Uses Google's official API — legally compliant, free quota (10k units/day).
  *
  * For YouTube monitors, platformUrls.youtube should contain a YouTube video URL.
  * Alternatively, keywords can contain YouTube video URLs to monitor.
- *
- * Runs every hour - shouldProcessMonitor() handles tier-based delays:
- * - Team: every 2 hours
- * - Pro: every 4 hours
- * - Free: every 24 hours (but YouTube is Pro+ only)
  */
 export const monitorYouTube = inngest.createFunction(
   {
@@ -35,8 +37,8 @@ export const monitorYouTube = inngest.createFunction(
   async ({ step: _step }) => {
     const step = _step as unknown as MonitorStep;
 
-    if (!isApifyConfigured()) {
-      return { message: "Apify API key not configured, skipping YouTube monitoring" };
+    if (!isYouTubeApiConfigured()) {
+      return { message: "YouTube API key not configured, skipping YouTube monitoring" };
     }
 
     const youtubeMonitors = await getActiveMonitors("youtube", step);
@@ -53,7 +55,10 @@ export const monitorYouTube = inngest.createFunction(
       const monitor = youtubeMonitors[i];
 
       await applyStagger(i, youtubeMonitors.length, "youtube", monitor.id, step);
-      if (shouldSkipMonitor(monitor, planMap, "youtube")) continue;
+      if (shouldSkipMonitor(monitor, planMap, "youtube")) {
+        await updateSkippedMonitor(monitor.id, step);
+        continue;
+      }
 
       // Get video URL from platformUrls or keywords
       let videoUrl: string | null = null;
@@ -68,12 +73,12 @@ export const monitorYouTube = inngest.createFunction(
       }
       if (!videoUrl) continue;
 
-      // Fetch comments (platform-specific)
+      // Fetch comments via YouTube Data API v3
       const comments = await step.run(`fetch-comments-${monitor.id}`, async () => {
         try {
-          return await fetchYouTubeComments(videoUrl!, 50);
+          return await fetchYouTubeCommentsApi(videoUrl!, 50);
         } catch (error) {
-          logger.error("[YouTube] Error fetching comments", { videoUrl, error: error instanceof Error ? error.message : String(error) });
+          logger.error("[YouTube] Error fetching comments via API", { videoUrl, error: error instanceof Error ? error.message : String(error) });
           return [] as YouTubeCommentItem[];
         }
       });
@@ -112,7 +117,7 @@ export const monitorYouTube = inngest.createFunction(
     }
 
     return {
-      message: `Scanned YouTube, found ${totalResults} new comments`,
+      message: `Scanned YouTube via API, found ${totalResults} new comments`,
       totalResults,
       monitorResults,
     };

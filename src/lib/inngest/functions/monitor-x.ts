@@ -6,6 +6,7 @@ import {
   getActiveMonitors,
   prefetchPlans,
   shouldSkipMonitor,
+  updateSkippedMonitor,
   applyStagger,
   saveNewResults,
   triggerAiAnalysis,
@@ -215,7 +216,10 @@ export const monitorX = inngest.createFunction(
       const monitor = xMonitors[i];
 
       await applyStagger(i, xMonitors.length, "x", monitor.id, step);
-      if (shouldSkipMonitor(monitor, planMap, "x")) continue;
+      if (shouldSkipMonitor(monitor, planMap, "x")) {
+        await updateSkippedMonitor(monitor.id, step);
+        continue;
+      }
 
       const newResultIds: string[] = [];
 

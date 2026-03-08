@@ -1,7 +1,7 @@
 import { inngest } from "../client";
 import { logger } from "@/lib/logger";
 import { pooledDb } from "@/lib/db";
-import { monitors } from "@/lib/db/schema";
+import { monitors, audiences } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { findRelevantSubredditsCached } from "@/lib/ai";
 import { contentMatchesMonitor } from "@/lib/content-matcher";
@@ -10,6 +10,7 @@ import {
   getActiveMonitors,
   prefetchPlans,
   shouldSkipMonitor,
+  updateSkippedMonitor,
   applyStagger,
   saveNewResults,
   triggerAiAnalysis,
@@ -44,7 +45,10 @@ export const monitorReddit = inngest.createFunction(
       const monitor = redditMonitors[i];
 
       await applyStagger(i, redditMonitors.length, "reddit", monitor.id, step);
-      if (shouldSkipMonitor(monitor, planMap, "reddit")) continue;
+      if (shouldSkipMonitor(monitor, planMap, "reddit")) {
+        await updateSkippedMonitor(monitor.id, step);
+        continue;
+      }
 
       let monitorMatchCount = 0;
       const newResultIds: string[] = [];
@@ -54,7 +58,7 @@ export const monitorReddit = inngest.createFunction(
         // First, check for user-defined audience
         if (monitor.audienceId) {
           const audience = await pooledDb.query.audiences.findFirst({
-            where: eq(monitors.id, monitor.audienceId),
+            where: eq(audiences.id, monitor.audienceId),
             with: { communities: true },
           });
           const audienceSubreddits = audience?.communities

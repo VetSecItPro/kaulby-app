@@ -32,8 +32,10 @@ import { Check, X, ShieldCheck, CreditCard, RefreshCw, ArrowRight } from "lucide
 import { CheckoutModal } from "@/components/checkout-modal";
 import { MarketingFooter } from "@/components/shared/marketing-footer";
 import { cn } from "@/lib/utils";
+import { TestimonialStrip } from "@/components/landing/testimonials";
 import { toast } from "sonner";
 import type { BillingInterval } from "@/lib/plans";
+import { FAQSchema } from "@/lib/seo/structured-data";
 
 interface Feature {
   text: string;
@@ -44,6 +46,7 @@ interface Plan {
   name: string;
   key: "free" | "pro" | "team";
   description: string;
+  useCase: string;
   monthlyPrice: number;
   annualPrice: number;
   features: Feature[];
@@ -58,6 +61,7 @@ const plans: Plan[] = [
     name: "Free",
     key: "free",
     description: "Get started with basic monitoring",
+    useCase: "Perfect for solo founders validating an idea on Reddit",
     monthlyPrice: 0,
     annualPrice: 0,
     trialDays: 0,
@@ -78,6 +82,7 @@ const plans: Plan[] = [
     name: "Pro",
     key: "pro",
     description: "For power users and professionals",
+    useCase: "Built for marketers and product teams tracking brand mentions",
     monthlyPrice: 29,
     annualPrice: 290,
     trialDays: 14,
@@ -100,6 +105,7 @@ const plans: Plan[] = [
     name: "Team",
     key: "team",
     description: "For growing teams and agencies",
+    useCase: "Designed for agencies and teams managing multiple brands",
     monthlyPrice: 99,
     annualPrice: 990,
     trialDays: 14,
@@ -152,8 +158,9 @@ export default function PricingPage() {
     expiresAt: string | null;
   } | null>(null);
   const [isPurchasingDayPass, setIsPurchasingDayPass] = useState(false);
+  const [currentPlan, setCurrentPlan] = useState<string | null>(null);
 
-  // Fetch day pass status for signed-in users
+  // Fetch day pass status and current plan for signed-in users
   useEffect(() => {
     if (isSignedIn) {
       fetch("/api/user/day-pass")
@@ -165,6 +172,13 @@ export default function PricingPage() {
           });
         })
         .catch(console.error);
+
+      fetch("/api/user/subscription")
+        .then((res) => res.json())
+        .then((data) => {
+          setCurrentPlan(data.plan || "free");
+        })
+        .catch(() => setCurrentPlan("free"));
     }
   }, [isSignedIn]);
 
@@ -316,9 +330,10 @@ export default function PricingPage() {
             {plans.map((plan) => (
               <Card
                 key={plan.name}
-                className={`relative flex flex-col ${
-                  plan.popular ? "border-primary shadow-lg" : ""
-                }`}
+                className={cn(
+                  "relative flex flex-col",
+                  plan.popular && "border-primary shadow-lg lg:-translate-y-2 lg:scale-[1.02]"
+                )}
               >
                 {plan.popular && (
                   <Badge className="absolute -top-3 left-1/2 -translate-x-1/2">
@@ -328,19 +343,30 @@ export default function PricingPage() {
                 <CardHeader>
                   <CardTitle>{plan.name}</CardTitle>
                   <CardDescription>{plan.description}</CardDescription>
+                  <p className="text-xs text-muted-foreground mt-1.5 italic">{plan.useCase}</p>
                 </CardHeader>
                 <CardContent className="flex-1">
                   <div className="mb-6 min-h-[72px]">
                     <div className="flex items-baseline gap-1">
+                      {billingInterval === "annual" && plan.monthlyPrice > 0 && (
+                        <span className="text-lg line-through text-muted-foreground mr-1">${plan.monthlyPrice}</span>
+                      )}
                       <span className="text-4xl font-bold">{getDisplayPrice(plan)}</span>
                       <span className="text-muted-foreground">/mo</span>
                     </div>
                     {plan.monthlyPrice > 0 ? (
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {billingInterval === "annual"
-                          ? `Billed annually ($${plan.annualPrice}/year)`
-                          : `Billed monthly`}
-                      </p>
+                      <div className="mt-1 space-y-0.5">
+                        <p className="text-sm text-muted-foreground">
+                          {billingInterval === "annual"
+                            ? `Billed annually ($${plan.annualPrice}/year)`
+                            : `Billed monthly`}
+                        </p>
+                        {billingInterval === "annual" && (
+                          <Badge variant="secondary" className="bg-green-500/10 text-green-500 text-[10px]">
+                            Save ${plan.monthlyPrice * 12 - plan.annualPrice}/yr
+                          </Badge>
+                        )}
+                      </div>
                     ) : (
                       <p className="text-sm text-muted-foreground mt-1">Free forever</p>
                     )}
@@ -375,7 +401,7 @@ export default function PricingPage() {
                       </Button>
                     </Link>
                   ) : (
-                    plan.key === "free" ? (
+                    currentPlan === plan.key ? (
                       <Button className="w-full" variant="outline" disabled>
                         Current Plan
                       </Button>
@@ -531,6 +557,25 @@ export default function PricingPage() {
             </div>
           </div>
 
+          {/* Testimonials */}
+          <TestimonialStrip />
+
+          {/* FAQ Schema for SEO/AEO */}
+          <FAQSchema faqs={[
+            { question: "Is there really a free plan?", answer: "Yes! The Free plan is free forever. You can monitor 1 keyword on Reddit with basic AI analysis and daily refresh." },
+            { question: "How does the 14-day free trial work?", answer: "Pro and Team plans include a 14-day free trial with full access to all features. You won't be charged until the trial ends. Cancel anytime during the trial." },
+            { question: "Can I cancel anytime?", answer: "Yes, you can cancel your subscription at any time from your account settings. You'll continue to have access until the end of your current billing period." },
+            { question: "What platforms does Kaulby monitor?", answer: "Kaulby monitors 17 platforms: Reddit, Hacker News, Indie Hackers, Product Hunt, Google Reviews, YouTube, GitHub, Trustpilot, X (Twitter), Dev.to, Hashnode, App Store, Play Store, Quora, G2, Yelp, and Amazon Reviews." },
+            { question: "How is Kaulby different from Brand24?", answer: "Kaulby focuses on community monitoring with AI-powered pain point detection and sentiment analysis across 17 platforms, starting at $29/mo. Brand24 starts at $99/mo and focuses on broader social media monitoring." },
+            { question: "What replaced GummySearch?", answer: "Kaulby is the best GummySearch alternative. It covers Reddit plus 16 additional platforms, includes AI-powered analysis, and offers a free tier. Visit kaulbyapp.com/gummysearch for migration details." },
+            { question: "What is the Day Pass?", answer: "The Day Pass gives you full Pro access for 24 hours with a one-time $10 payment. Perfect for quick research without committing to a subscription." },
+            { question: "How often are results refreshed?", answer: "Free plans refresh once per day. Pro plans refresh every 4 hours. Team plans refresh every 2 hours with real-time email alerts." },
+            { question: "Is my data secure?", answer: "Yes. We use industry-standard encryption, are GDPR compliant, and you can export or delete your data at any time." },
+            { question: "What is the Founding Members program?", answer: "The first 1,000 Pro and Team subscribers become Founding Members and lock in their current price forever, even when prices increase." },
+            { question: "What happens when I hit my monitor or keyword limit?", answer: "Your existing monitors keep working normally. You won't be able to create new monitors or add more keywords until you upgrade. We'll prompt you to upgrade when you reach your limit." },
+            { question: "Do you offer startup or nonprofit discounts?", answer: "Yes! We offer case-by-case discounts for startups, nonprofits, and open-source projects. Contact us at support@kaulbyapp.com." },
+          ]} />
+
           {/* FAQ Section */}
           <div className="mt-20 max-w-2xl mx-auto">
             <h2 className="text-2xl font-bold text-center mb-8">
@@ -623,6 +668,21 @@ export default function PricingPage() {
                   Yes. We use industry-standard encryption for all data in transit and at rest.
                   Your monitoring data is stored securely and never shared with third parties.
                   We&apos;re GDPR compliant and you can export or delete your data at any time.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="limits">
+                <AccordionTrigger>What happens when I hit my monitor or keyword limit?</AccordionTrigger>
+                <AccordionContent>
+                  Your existing monitors keep working normally. You simply won&apos;t be able to create
+                  new monitors or add more keywords until you upgrade to a higher plan. We&apos;ll show
+                  you a prompt to upgrade when you reach your limit.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="discounts">
+                <AccordionTrigger>Do you offer startup or nonprofit discounts?</AccordionTrigger>
+                <AccordionContent>
+                  Yes! We offer case-by-case discounts for startups, nonprofits, and open-source projects.
+                  Contact us at support@kaulbyapp.com with details about your organization.
                 </AccordionContent>
               </AccordionItem>
             </Accordion>

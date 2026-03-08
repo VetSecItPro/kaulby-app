@@ -1,10 +1,15 @@
 import { inngest } from "../client";
 import { logger } from "@/lib/logger";
-import { fetchQuoraAnswers, isApifyConfigured, type QuoraAnswerItem } from "@/lib/apify";
+import {
+  searchQuoraSerper,
+  isSerperConfigured,
+  type QuoraAnswerItem,
+} from "@/lib/serper";
 import {
   getActiveMonitors,
   prefetchPlans,
   shouldSkipMonitor,
+  updateSkippedMonitor,
   applyStagger,
   saveNewResults,
   triggerAiAnalysis,
@@ -13,15 +18,13 @@ import {
 } from "../utils/monitor-helpers";
 
 /**
- * Monitor Quora for Q&A discussions matching keywords
+ * Monitor Quora for Q&A discussions via Serper (Google Search)
+ *
+ * Uses Google Search to find Quora questions and answers — legally compliant,
+ * no direct scraping of Quora's site.
  *
  * Searches Quora for questions and answers containing the monitor's keywords.
  * Great for finding pain points, solution requests, and product discussions.
- *
- * Runs every hour - shouldProcessMonitor() handles tier-based delays:
- * - Team: every 2 hours
- * - Pro: every 4 hours
- * - Free: every 24 hours (but Quora is Team only)
  */
 export const monitorQuora = inngest.createFunction(
   {
@@ -35,8 +38,8 @@ export const monitorQuora = inngest.createFunction(
   async ({ step: _step }) => {
     const step = _step as unknown as MonitorStep;
 
-    if (!isApifyConfigured()) {
-      return { message: "Apify API key not configured, skipping Quora monitoring" };
+    if (!isSerperConfigured()) {
+      return { message: "Serper API key not configured, skipping Quora monitoring" };
     }
 
     const quoraMonitors = await getActiveMonitors("quora", step);
@@ -53,19 +56,22 @@ export const monitorQuora = inngest.createFunction(
       const monitor = quoraMonitors[i];
 
       await applyStagger(i, quoraMonitors.length, "quora", monitor.id, step);
-      if (shouldSkipMonitor(monitor, planMap, "quora")) continue;
+      if (shouldSkipMonitor(monitor, planMap, "quora")) {
+        await updateSkippedMonitor(monitor.id, step);
+        continue;
+      }
 
       let monitorCount = 0;
       let allNewResultIds: string[] = [];
 
       // For Quora, keywords are search queries to find relevant discussions
       for (const keyword of monitor.keywords) {
-        // Fetch answers (platform-specific)
+        // Fetch answers via Serper (Google Search)
         const answers = await step.run(`fetch-quora-${monitor.id}-${keyword.slice(0, 20)}`, async () => {
           try {
-            return await fetchQuoraAnswers(keyword, 15);
+            return await searchQuoraSerper(keyword, 15);
           } catch (error) {
-            logger.error("[Quora] Error fetching answers", { keyword, error: error instanceof Error ? error.message : String(error) });
+            logger.error("[Quora] Error searching via Serper", { keyword, error: error instanceof Error ? error.message : String(error) });
             return [] as QuoraAnswerItem[];
           }
         });
@@ -109,7 +115,7 @@ export const monitorQuora = inngest.createFunction(
     }
 
     return {
-      message: `Scanned Quora, found ${totalResults} new answers`,
+      message: `Scanned Quora via Serper, found ${totalResults} new answers`,
       totalResults,
       monitorResults,
     };

@@ -323,39 +323,68 @@ export const analyzeContent = inngest.createFunction(
     // TEAM TIER: Comprehensive Analysis (Gemini 2.5 Pro - 70% cheaper than Claude)
     // =========================================================================
     if (planCheck.useComprehensiveAnalysis) {
-      // Get monitor info for context
-      const monitor = await step.run("get-monitor", async () => {
-        return pooledDb.query.monitors.findFirst({
-          where: eq(monitors.id, result.monitorId),
-          with: { user: true },
+      try {
+        // Get monitor info for context
+        const monitor = await step.run("get-monitor", async () => {
+          return pooledDb.query.monitors.findFirst({
+            where: eq(monitors.id, result.monitorId),
+            with: { user: true },
+          });
         });
-      });
 
-      // Check custom detection keywords BEFORE AI call (cost optimization)
-      const teamKeywordMatch = await step.run("check-detection-keywords-team", async () => {
-        return matchDetectionKeywords(contentToAnalyze, userId);
-      });
+        // Check custom detection keywords BEFORE AI call (cost optimization)
+        const teamKeywordMatch = await step.run("check-detection-keywords-team", async () => {
+          return matchDetectionKeywords(contentToAnalyze, userId);
+        });
 
-      // Run comprehensive analysis
-      const teamAnalysisResult = await step.run("run-team-analysis", async () => {
-        return runTeamAnalysis(contentToAnalyze, result, monitor, teamKeywordMatch);
-      });
+        // Run comprehensive analysis
+        const teamAnalysisResult = await step.run("run-team-analysis", async () => {
+          return runTeamAnalysis(contentToAnalyze, result, monitor, teamKeywordMatch);
+        });
 
-      const analysis = teamAnalysisResult.analysis;
-      const category = teamAnalysisResult.category;
+        const analysis = teamAnalysisResult.analysis;
+        const category = teamAnalysisResult.category;
 
-      // Update result with comprehensive AI analysis
-      await step.run("update-result-team", async () => {
-        await pooledDb
-          .update(results)
-          .set({
+        // Update result with comprehensive AI analysis
+        await step.run("update-result-team", async () => {
+          await pooledDb
+            .update(results)
+            .set({
+              sentiment: analysis.sentiment.label,
+              sentimentScore: analysis.sentiment.score,
+              painPointCategory: analysis.classification.category as typeof painPointCategoryEnum.enumValues[number],
+              conversationCategory: category.category as typeof conversationCategoryEnum.enumValues[number],
+              conversationCategoryConfidence: category.confidence,
+              aiSummary: analysis.executiveSummary,
+              // Store full analysis as JSON metadata
+              aiAnalysis: JSON.stringify({
+                tier: "team",
+                sentiment: analysis.sentiment,
+                classification: analysis.classification,
+                conversationCategory: category,
+                opportunity: analysis.opportunity,
+                competitive: analysis.competitive,
+                actions: analysis.actions,
+                suggestedResponse: analysis.suggestedResponse,
+                contentOpportunity: analysis.contentOpportunity,
+                platformContext: analysis.platformContext,
+                executiveSummary: analysis.executiveSummary,
+                analyzedAt: new Date().toISOString(),
+              }),
+            })
+            .where(eq(results.id, resultId));
+        });
+
+        // Cache the analysis for reuse by other users with same content
+        await step.run("cache-team-analysis", async () => {
+          const cacheData = {
+            tier: "team",
             sentiment: analysis.sentiment.label,
             sentimentScore: analysis.sentiment.score,
-            painPointCategory: analysis.classification.category as typeof painPointCategoryEnum.enumValues[number],
-            conversationCategory: category.category as typeof conversationCategoryEnum.enumValues[number],
+            painPointCategory: analysis.classification.category,
+            conversationCategory: category.category,
             conversationCategoryConfidence: category.confidence,
             aiSummary: analysis.executiveSummary,
-            // Store full analysis as JSON metadata
             aiAnalysis: JSON.stringify({
               tier: "team",
               sentiment: analysis.sentiment,
@@ -370,66 +399,201 @@ export const analyzeContent = inngest.createFunction(
               executiveSummary: analysis.executiveSummary,
               analyzedAt: new Date().toISOString(),
             }),
+          };
+          await cache.set(cacheKey, cacheData, AI_ANALYSIS_CACHE_TTL);
+          logger.debug("[AI Analysis] Cached TEAM tier analysis", { cacheKey: cacheKey.slice(-8) });
+        });
+
+        // Log AI usage for Team tier (comprehensive + optional categorization)
+        await step.run("log-ai-usage-team", async () => {
+          await logAiCall({
+            userId,
+            model: teamAnalysisResult.model,
+            promptTokens: teamAnalysisResult.totalPromptTokens,
+            completionTokens: teamAnalysisResult.totalCompletionTokens,
+            costUsd: teamAnalysisResult.totalCost,
+            latencyMs: teamAnalysisResult.totalLatency,
+            traceId,
+            monitorId: result.monitorId,
+            resultId,
+            analysisType: "comprehensive",
+            cacheHit: false,
+            platform: result.platform,
+          });
+
+          await incrementAiCallsCount(userId, teamAnalysisResult.aiCallCount);
+        });
+
+        await step.run("flush-langfuse", async () => {
+          await flushAI();
+        });
+
+        // Trigger webhooks for team users
+        await step.run("trigger-webhooks-team", async () => {
+          const webhookMetadata = result.metadata as Record<string, unknown> | null;
+          await inngest.send({
+            name: "webhook/send",
+            data: {
+              userId,
+              eventType: "new_result",
+              data: {
+                monitorName: monitor?.name || "Monitor",
+                result: {
+                  id: resultId,
+                  title: result.title,
+                  content: result.content,
+                  sourceUrl: result.sourceUrl,
+                  platform: result.platform,
+                  author: result.author,
+                  postedAt: result.postedAt,
+                  sentiment: analysis.sentiment.label,
+                  conversationCategory: category.category,
+                  aiSummary: analysis.executiveSummary,
+                  engagement: (webhookMetadata?.upvotes as number) || (webhookMetadata?.score as number) || undefined,
+                  commentCount: (webhookMetadata?.commentCount as number) || (webhookMetadata?.numComments as number) || undefined,
+                },
+              },
+            },
+          });
+        });
+
+        return {
+          tier: "team",
+          analysis: teamAnalysisResult.analysis,
+          conversationCategory: category,
+          keywordMatchUsed: teamAnalysisResult.keywordMatchUsed,
+          totalCost: teamAnalysisResult.totalCost,
+          model: teamAnalysisResult.model,
+        };
+      } catch (teamError) {
+        logger.error("[AI Analysis] Team tier analysis failed — applying fallback", {
+          resultId,
+          userId,
+          error: teamError instanceof Error ? teamError.message : String(teamError),
+        });
+
+        // Fallback: mark result as analyzed with neutral defaults
+        await step.run("fallback-update-team", async () => {
+          await pooledDb
+            .update(results)
+            .set({
+              sentiment: "neutral",
+              sentimentScore: 50,
+              aiSummary: "Analysis temporarily unavailable. Content has been saved and will be analyzed on the next cycle.",
+              painPointCategory: "general_discussion",
+            })
+            .where(eq(results.id, resultId));
+        });
+
+        return {
+          tier: analysisTier,
+          cached: false,
+          fallback: true,
+          message: "AI analysis failed — applied fallback values",
+        };
+      }
+    }
+
+    // =========================================================================
+    // PRO TIER: Standard Analysis (Gemini 2.5 Flash) - same model as Team tier
+    // All tiers now use Flash for maximum cost efficiency
+    // =========================================================================
+
+    try {
+      // Check custom detection keywords BEFORE AI call (cost optimization)
+      const keywordMatch = await step.run("check-detection-keywords", async () => {
+        return matchDetectionKeywords(contentToAnalyze, userId);
+      });
+
+      // Run Pro analysis
+      const proAnalysisResult = await step.run("run-pro-analysis", async () => {
+        return runProAnalysis(contentToAnalyze, result, userId, keywordMatch);
+      });
+
+      const resolvedCategory = proAnalysisResult.resolvedCategory;
+
+      // Update result with AI analysis
+      await step.run("update-result", async () => {
+        await pooledDb
+          .update(results)
+          .set({
+            sentiment: proAnalysisResult.sentiment.sentiment,
+            sentimentScore: proAnalysisResult.sentiment.score,
+            painPointCategory: proAnalysisResult.painPoint.category as typeof painPointCategoryEnum.enumValues[number],
+            conversationCategory: resolvedCategory.category as typeof conversationCategoryEnum.enumValues[number],
+            conversationCategoryConfidence: resolvedCategory.confidence,
+            aiSummary: proAnalysisResult.summary.summary,
+            // Store Pro tier analysis as JSON metadata
+            aiAnalysis: JSON.stringify({
+              tier: "pro",
+              sentiment: proAnalysisResult.sentiment,
+              painPoint: proAnalysisResult.painPoint,
+              summary: proAnalysisResult.summary,
+              conversationCategory: proAnalysisResult.conversationCategory,
+              analyzedAt: new Date().toISOString(),
+            }),
           })
           .where(eq(results.id, resultId));
       });
 
       // Cache the analysis for reuse by other users with same content
-      await step.run("cache-team-analysis", async () => {
+      await step.run("cache-pro-analysis", async () => {
         const cacheData = {
-          tier: "team",
-          sentiment: analysis.sentiment.label,
-          sentimentScore: analysis.sentiment.score,
-          painPointCategory: analysis.classification.category,
-          conversationCategory: category.category,
-          conversationCategoryConfidence: category.confidence,
-          aiSummary: analysis.executiveSummary,
+          tier: "pro",
+          sentiment: proAnalysisResult.sentiment.sentiment,
+          sentimentScore: proAnalysisResult.sentiment.score,
+          painPointCategory: proAnalysisResult.painPoint.category,
+          conversationCategory: resolvedCategory.category,
+          conversationCategoryConfidence: resolvedCategory.confidence,
+          aiSummary: proAnalysisResult.summary.summary,
           aiAnalysis: JSON.stringify({
-            tier: "team",
-            sentiment: analysis.sentiment,
-            classification: analysis.classification,
-            conversationCategory: category,
-            opportunity: analysis.opportunity,
-            competitive: analysis.competitive,
-            actions: analysis.actions,
-            suggestedResponse: analysis.suggestedResponse,
-            contentOpportunity: analysis.contentOpportunity,
-            platformContext: analysis.platformContext,
-            executiveSummary: analysis.executiveSummary,
+            tier: "pro",
+            sentiment: proAnalysisResult.sentiment,
+            painPoint: proAnalysisResult.painPoint,
+            summary: proAnalysisResult.summary,
+            conversationCategory: proAnalysisResult.conversationCategory,
             analyzedAt: new Date().toISOString(),
           }),
         };
         await cache.set(cacheKey, cacheData, AI_ANALYSIS_CACHE_TTL);
-        logger.debug("[AI Analysis] Cached TEAM tier analysis", { cacheKey: cacheKey.slice(-8) });
+        logger.debug("[AI Analysis] Cached PRO tier analysis", { cacheKey: cacheKey.slice(-8) });
       });
 
-      // Log AI usage for Team tier (comprehensive + optional categorization)
-      await step.run("log-ai-usage-team", async () => {
+      // Log AI usage (3 or 4 calls depending on keyword match)
+      await step.run("log-ai-usage", async () => {
         await logAiCall({
           userId,
-          model: teamAnalysisResult.model,
-          promptTokens: teamAnalysisResult.totalPromptTokens,
-          completionTokens: teamAnalysisResult.totalCompletionTokens,
-          costUsd: teamAnalysisResult.totalCost,
-          latencyMs: teamAnalysisResult.totalLatency,
+          model: proAnalysisResult.model,
+          promptTokens: proAnalysisResult.totalPromptTokens,
+          completionTokens: proAnalysisResult.totalCompletionTokens,
+          costUsd: proAnalysisResult.totalCost,
+          latencyMs: proAnalysisResult.totalLatency,
           traceId,
           monitorId: result.monitorId,
           resultId,
-          analysisType: "comprehensive",
+          analysisType: "mixed",
           cacheHit: false,
           platform: result.platform,
         });
 
-        await incrementAiCallsCount(userId, teamAnalysisResult.aiCallCount);
+        await incrementAiCallsCount(userId, proAnalysisResult.aiCallCount);
       });
 
+      // Flush Langfuse events
       await step.run("flush-langfuse", async () => {
         await flushAI();
       });
 
-      // Trigger webhooks for team users
-      await step.run("trigger-webhooks-team", async () => {
-        const webhookMetadata = result.metadata as Record<string, unknown> | null;
+      // Trigger webhooks for team users (Pro users can also have webhooks if upgraded)
+      await step.run("trigger-webhooks-pro", async () => {
+        // Get monitor info for webhook
+        const monitor = await pooledDb.query.monitors.findFirst({
+          where: eq(monitors.id, result.monitorId),
+          columns: { name: true },
+        });
+
+        const metadata = result.metadata as Record<string, unknown> | null;
+
         await inngest.send({
           name: "webhook/send",
           data: {
@@ -445,11 +609,11 @@ export const analyzeContent = inngest.createFunction(
                 platform: result.platform,
                 author: result.author,
                 postedAt: result.postedAt,
-                sentiment: analysis.sentiment.label,
-                conversationCategory: category.category,
-                aiSummary: analysis.executiveSummary,
-                engagement: (webhookMetadata?.upvotes as number) || (webhookMetadata?.score as number) || undefined,
-                commentCount: (webhookMetadata?.commentCount as number) || (webhookMetadata?.numComments as number) || undefined,
+                sentiment: proAnalysisResult.sentiment.sentiment,
+                conversationCategory: resolvedCategory.category,
+                aiSummary: proAnalysisResult.summary.summary,
+                engagement: (metadata?.upvotes as number) || (metadata?.score as number) || undefined,
+                commentCount: (metadata?.commentCount as number) || (metadata?.numComments as number) || undefined,
               },
             },
           },
@@ -457,148 +621,40 @@ export const analyzeContent = inngest.createFunction(
       });
 
       return {
-        tier: "team",
-        analysis: teamAnalysisResult.analysis,
-        conversationCategory: category,
-        keywordMatchUsed: teamAnalysisResult.keywordMatchUsed,
-        totalCost: teamAnalysisResult.totalCost,
-        model: teamAnalysisResult.model,
+        tier: "pro",
+        sentiment: proAnalysisResult.sentiment,
+        painPoint: proAnalysisResult.painPoint,
+        summary: proAnalysisResult.summary,
+        conversationCategory: resolvedCategory,
+        keywordMatchUsed: proAnalysisResult.keywordMatchUsed,
+        totalCost: proAnalysisResult.totalCost,
+      };
+    } catch (proError) {
+      logger.error("[AI Analysis] Pro tier analysis failed — applying fallback", {
+        resultId,
+        userId,
+        error: proError instanceof Error ? proError.message : String(proError),
+      });
+
+      // Fallback: mark result as analyzed with neutral defaults
+      await step.run("fallback-update-pro", async () => {
+        await pooledDb
+          .update(results)
+          .set({
+            sentiment: "neutral",
+            sentimentScore: 50,
+            aiSummary: "Analysis temporarily unavailable. Content has been saved and will be analyzed on the next cycle.",
+            painPointCategory: "general_discussion",
+          })
+          .where(eq(results.id, resultId));
+      });
+
+      return {
+        tier: analysisTier,
+        cached: false,
+        fallback: true,
+        message: "AI analysis failed — applied fallback values",
       };
     }
-
-    // =========================================================================
-    // PRO TIER: Standard Analysis (Gemini 2.5 Flash) - same model as Team tier
-    // All tiers now use Flash for maximum cost efficiency
-    // =========================================================================
-
-    // Check custom detection keywords BEFORE AI call (cost optimization)
-    const keywordMatch = await step.run("check-detection-keywords", async () => {
-      return matchDetectionKeywords(contentToAnalyze, userId);
-    });
-
-    // Run Pro analysis
-    const proAnalysisResult = await step.run("run-pro-analysis", async () => {
-      return runProAnalysis(contentToAnalyze, result, userId, keywordMatch);
-    });
-
-    const resolvedCategory = proAnalysisResult.resolvedCategory;
-
-    // Update result with AI analysis
-    await step.run("update-result", async () => {
-      await pooledDb
-        .update(results)
-        .set({
-          sentiment: proAnalysisResult.sentiment.sentiment,
-          sentimentScore: proAnalysisResult.sentiment.score,
-          painPointCategory: proAnalysisResult.painPoint.category as typeof painPointCategoryEnum.enumValues[number],
-          conversationCategory: resolvedCategory.category as typeof conversationCategoryEnum.enumValues[number],
-          conversationCategoryConfidence: resolvedCategory.confidence,
-          aiSummary: proAnalysisResult.summary.summary,
-          // Store Pro tier analysis as JSON metadata
-          aiAnalysis: JSON.stringify({
-            tier: "pro",
-            sentiment: proAnalysisResult.sentiment,
-            painPoint: proAnalysisResult.painPoint,
-            summary: proAnalysisResult.summary,
-            conversationCategory: proAnalysisResult.conversationCategory,
-            analyzedAt: new Date().toISOString(),
-          }),
-        })
-        .where(eq(results.id, resultId));
-    });
-
-    // Cache the analysis for reuse by other users with same content
-    await step.run("cache-pro-analysis", async () => {
-      const cacheData = {
-        tier: "pro",
-        sentiment: proAnalysisResult.sentiment.sentiment,
-        sentimentScore: proAnalysisResult.sentiment.score,
-        painPointCategory: proAnalysisResult.painPoint.category,
-        conversationCategory: resolvedCategory.category,
-        conversationCategoryConfidence: resolvedCategory.confidence,
-        aiSummary: proAnalysisResult.summary.summary,
-        aiAnalysis: JSON.stringify({
-          tier: "pro",
-          sentiment: proAnalysisResult.sentiment,
-          painPoint: proAnalysisResult.painPoint,
-          summary: proAnalysisResult.summary,
-          conversationCategory: proAnalysisResult.conversationCategory,
-          analyzedAt: new Date().toISOString(),
-        }),
-      };
-      await cache.set(cacheKey, cacheData, AI_ANALYSIS_CACHE_TTL);
-      logger.debug("[AI Analysis] Cached PRO tier analysis", { cacheKey: cacheKey.slice(-8) });
-    });
-
-    // Log AI usage (3 or 4 calls depending on keyword match)
-    await step.run("log-ai-usage", async () => {
-      await logAiCall({
-        userId,
-        model: proAnalysisResult.model,
-        promptTokens: proAnalysisResult.totalPromptTokens,
-        completionTokens: proAnalysisResult.totalCompletionTokens,
-        costUsd: proAnalysisResult.totalCost,
-        latencyMs: proAnalysisResult.totalLatency,
-        traceId,
-        monitorId: result.monitorId,
-        resultId,
-        analysisType: "mixed",
-        cacheHit: false,
-        platform: result.platform,
-      });
-
-      await incrementAiCallsCount(userId, proAnalysisResult.aiCallCount);
-    });
-
-    // Flush Langfuse events
-    await step.run("flush-langfuse", async () => {
-      await flushAI();
-    });
-
-    // Trigger webhooks for team users (Pro users can also have webhooks if upgraded)
-    await step.run("trigger-webhooks-pro", async () => {
-      // Get monitor info for webhook
-      const monitor = await pooledDb.query.monitors.findFirst({
-        where: eq(monitors.id, result.monitorId),
-        columns: { name: true },
-      });
-
-      const metadata = result.metadata as Record<string, unknown> | null;
-
-      await inngest.send({
-        name: "webhook/send",
-        data: {
-          userId,
-          eventType: "new_result",
-          data: {
-            monitorName: monitor?.name || "Monitor",
-            result: {
-              id: resultId,
-              title: result.title,
-              content: result.content,
-              sourceUrl: result.sourceUrl,
-              platform: result.platform,
-              author: result.author,
-              postedAt: result.postedAt,
-              sentiment: proAnalysisResult.sentiment.sentiment,
-              conversationCategory: resolvedCategory.category,
-              aiSummary: proAnalysisResult.summary.summary,
-              engagement: (metadata?.upvotes as number) || (metadata?.score as number) || undefined,
-              commentCount: (metadata?.commentCount as number) || (metadata?.numComments as number) || undefined,
-            },
-          },
-        },
-      });
-    });
-
-    return {
-      tier: "pro",
-      sentiment: proAnalysisResult.sentiment,
-      painPoint: proAnalysisResult.painPoint,
-      summary: proAnalysisResult.summary,
-      conversationCategory: resolvedCategory,
-      keywordMatchUsed: proAnalysisResult.keywordMatchUsed,
-      totalCost: proAnalysisResult.totalCost,
-    };
   }
 );

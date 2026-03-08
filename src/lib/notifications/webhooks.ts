@@ -1,10 +1,13 @@
 /**
- * Slack and Discord webhook notification helpers
+ * Slack, Discord, and Teams webhook notification helpers
  *
- * Formats result notifications for both platforms following their respective APIs:
+ * Formats result notifications for all platforms following their respective APIs:
  * - Slack: Block Kit format with attachments
  * - Discord: Embed format with rich content
+ * - Teams: MessageCard format with sections and facts
  */
+
+import { formatTeamsAlert, sendTeamsMessage } from "@/lib/integrations/teams";
 
 // Category styling for notifications
 const conversationCategoryConfig = {
@@ -420,6 +423,40 @@ async function sendDiscordWebhook(
 }
 
 // ============================================================================
+// TEAMS WEBHOOK
+// ============================================================================
+
+/**
+ * Send a Teams webhook notification using MessageCard format
+ */
+async function sendTeamsWebhook(
+  webhookUrl: string,
+  payload: WebhookPayload
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const card = formatTeamsAlert({
+      monitorName: payload.monitorName,
+      results: payload.results.map((r) => ({
+        title: r.title,
+        platform: r.platform,
+        sourceUrl: r.sourceUrl,
+        sentiment: r.sentiment,
+        aiSummary: r.aiSummary,
+      })),
+      dashboardUrl:
+        payload.dashboardUrl || "https://kaulbyapp.com/dashboard",
+    });
+
+    return sendTeamsMessage(webhookUrl, card);
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+// ============================================================================
 // HELPERS
 // ============================================================================
 
@@ -436,12 +473,19 @@ function escapeSlackText(text: string): string {
 /**
  * Detect webhook type from URL
  */
-export function detectWebhookType(url: string): "slack" | "discord" | "unknown" {
+export function detectWebhookType(url: string): "slack" | "discord" | "teams" | "unknown" {
   if (url.includes("hooks.slack.com") || url.includes("slack.com/services")) {
     return "slack";
   }
   if (url.includes("discord.com/api/webhooks") || url.includes("discordapp.com/api/webhooks")) {
     return "discord";
+  }
+  if (
+    url.includes(".webhook.office.com") ||
+    url.includes("outlook.office.com/webhook") ||
+    url.includes(".webhook.office365.com")
+  ) {
+    return "teams";
   }
   return "unknown";
 }
@@ -463,6 +507,11 @@ export async function sendWebhookNotification(
   if (type === "discord") {
     const result = await sendDiscordWebhook(webhookUrl, payload);
     return { ...result, type: "discord" };
+  }
+
+  if (type === "teams") {
+    const result = await sendTeamsWebhook(webhookUrl, payload);
+    return { ...result, type: "teams" };
   }
 
   // For unknown webhook types, try a simple POST with JSON

@@ -1,10 +1,15 @@
 import { inngest } from "../client";
 import { logger } from "@/lib/logger";
-import { fetchAmazonReviews, isApifyConfigured, type AmazonReviewItem } from "@/lib/apify";
+import {
+  searchAmazonSerper,
+  isSerperConfigured,
+  type AmazonReviewItem,
+} from "@/lib/serper";
 import {
   getActiveMonitors,
   prefetchPlans,
   shouldSkipMonitor,
+  updateSkippedMonitor,
   applyStagger,
   saveNewResults,
   triggerAiAnalysis,
@@ -13,15 +18,13 @@ import {
 } from "../utils/monitor-helpers";
 
 /**
- * Monitor Amazon product reviews
+ * Monitor Amazon product reviews via Serper (Google Search)
+ *
+ * Uses Google Search to find Amazon reviews — legally compliant,
+ * no direct scraping of Amazon's site.
  *
  * For Amazon monitors, platformUrls.amazonreviews should contain an Amazon product URL or ASIN.
  * Example: https://amazon.com/dp/B08N5WRWNW or just B08N5WRWNW
- *
- * Runs every hour - shouldProcessMonitor() handles tier-based delays:
- * - Team: every 2 hours
- * - Pro: every 4 hours
- * - Free: every 24 hours (but Amazon is Pro+ only)
  */
 export const monitorAmazon = inngest.createFunction(
   {
@@ -35,8 +38,8 @@ export const monitorAmazon = inngest.createFunction(
   async ({ step: _step }) => {
     const step = _step as unknown as MonitorStep;
 
-    if (!isApifyConfigured()) {
-      return { message: "Apify API key not configured, skipping Amazon monitoring" };
+    if (!isSerperConfigured()) {
+      return { message: "Serper API key not configured, skipping Amazon monitoring" };
     }
 
     const amazonMonitors = await getActiveMonitors("amazonreviews", step);
@@ -53,7 +56,10 @@ export const monitorAmazon = inngest.createFunction(
       const monitor = amazonMonitors[i];
 
       await applyStagger(i, amazonMonitors.length, "amazonreviews", monitor.id, step);
-      if (shouldSkipMonitor(monitor, planMap, "amazonreviews")) continue;
+      if (shouldSkipMonitor(monitor, planMap, "amazonreviews")) {
+        await updateSkippedMonitor(monitor.id, step);
+        continue;
+      }
 
       // Get product URL/ASIN from platformUrls or keywords
       let productUrl: string | null = null;
@@ -68,12 +74,12 @@ export const monitorAmazon = inngest.createFunction(
       }
       if (!productUrl) continue;
 
-      // Fetch reviews (platform-specific)
+      // Fetch reviews via Serper (Google Search)
       const reviews = await step.run(`fetch-reviews-${monitor.id}`, async () => {
         try {
-          return await fetchAmazonReviews(productUrl!, 30);
+          return await searchAmazonSerper(productUrl!, 30);
         } catch (error) {
-          logger.error("[Amazon] Error fetching reviews", { productUrl, error: error instanceof Error ? error.message : String(error) });
+          logger.error("[Amazon] Error searching via Serper", { productUrl, error: error instanceof Error ? error.message : String(error) });
           return [] as AmazonReviewItem[];
         }
       });
@@ -112,7 +118,7 @@ export const monitorAmazon = inngest.createFunction(
     }
 
     return {
-      message: `Scanned Amazon, found ${totalResults} new reviews`,
+      message: `Scanned Amazon via Serper, found ${totalResults} new reviews`,
       totalResults,
       monitorResults,
     };

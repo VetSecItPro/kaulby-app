@@ -121,6 +121,21 @@ export function shouldSkipMonitor(
 }
 
 /**
+ * Update lastCheckedAt for a skipped monitor so the dashboard doesn't show stale times.
+ */
+export async function updateSkippedMonitor(
+  monitorId: string,
+  step: MonitorStep
+): Promise<void> {
+  await step.run(`update-skipped-${monitorId}`, async () => {
+    await pooledDb
+      .update(monitors)
+      .set({ lastCheckedAt: new Date() })
+      .where(eq(monitors.id, monitorId));
+  });
+}
+
+/**
  * Apply stagger delay between monitors to prevent thundering herd.
  */
 export async function applyStagger(

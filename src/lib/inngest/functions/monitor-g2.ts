@@ -1,10 +1,15 @@
 import { inngest } from "../client";
 import { logger } from "@/lib/logger";
-import { fetchG2Reviews, isApifyConfigured, type G2ReviewItem } from "@/lib/apify";
+import {
+  searchG2Serper,
+  isSerperConfigured,
+  type G2ReviewItem,
+} from "@/lib/serper";
 import {
   getActiveMonitors,
   prefetchPlans,
   shouldSkipMonitor,
+  updateSkippedMonitor,
   applyStagger,
   saveNewResults,
   triggerAiAnalysis,
@@ -13,15 +18,13 @@ import {
 } from "../utils/monitor-helpers";
 
 /**
- * Monitor G2 software reviews
+ * Monitor G2 software reviews via Serper (Google Search)
+ *
+ * Uses Google Search to find G2 reviews — legally compliant,
+ * no direct scraping of G2's site.
  *
  * For G2 monitors, platformUrls.g2 should contain a G2 product page URL.
  * Example: https://www.g2.com/products/slack/reviews
- *
- * Runs every hour - shouldProcessMonitor() handles tier-based delays:
- * - Team: every 2 hours
- * - Pro: every 4 hours
- * - Free: every 24 hours (but G2 is Pro+ only)
  */
 export const monitorG2 = inngest.createFunction(
   {
@@ -35,8 +38,8 @@ export const monitorG2 = inngest.createFunction(
   async ({ step: _step }) => {
     const step = _step as unknown as MonitorStep;
 
-    if (!isApifyConfigured()) {
-      return { message: "Apify API key not configured, skipping G2 monitoring" };
+    if (!isSerperConfigured()) {
+      return { message: "Serper API key not configured, skipping G2 monitoring" };
     }
 
     const g2Monitors = await getActiveMonitors("g2", step);
@@ -53,7 +56,10 @@ export const monitorG2 = inngest.createFunction(
       const monitor = g2Monitors[i];
 
       await applyStagger(i, g2Monitors.length, "g2", monitor.id, step);
-      if (shouldSkipMonitor(monitor, planMap, "g2")) continue;
+      if (shouldSkipMonitor(monitor, planMap, "g2")) {
+        await updateSkippedMonitor(monitor.id, step);
+        continue;
+      }
 
       // Get product URL from platformUrls or keywords
       let productUrl: string | null = null;
@@ -66,12 +72,12 @@ export const monitorG2 = inngest.createFunction(
       }
       if (!productUrl) continue;
 
-      // Fetch reviews (platform-specific)
+      // Fetch reviews via Serper (Google Search)
       const reviews = await step.run(`fetch-reviews-${monitor.id}`, async () => {
         try {
-          return await fetchG2Reviews(productUrl!, 30);
+          return await searchG2Serper(productUrl!, 30);
         } catch (error) {
-          logger.error("[G2] Error fetching reviews", { productUrl, error: error instanceof Error ? error.message : String(error) });
+          logger.error("[G2] Error searching via Serper", { productUrl, error: error instanceof Error ? error.message : String(error) });
           return [] as G2ReviewItem[];
         }
       });
@@ -116,7 +122,7 @@ export const monitorG2 = inngest.createFunction(
     }
 
     return {
-      message: `Scanned G2, found ${totalResults} new reviews`,
+      message: `Scanned G2 via Serper, found ${totalResults} new reviews`,
       totalResults,
       monitorResults,
     };

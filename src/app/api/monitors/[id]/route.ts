@@ -199,7 +199,7 @@ export async function PATCH(
         ...(scheduleTimezone !== undefined && { scheduleTimezone }),
         updatedAt: new Date(),
       })
-      .where(eq(monitors.id, id))
+      .where(and(eq(monitors.id, id), eq(monitors.userId, userId)))
       .returning();
 
     // Revalidate cache
@@ -247,7 +247,7 @@ export async function DELETE(
     }
 
     // Delete monitor (cascade will delete results and alerts)
-    await db.delete(monitors).where(eq(monitors.id, id));
+    await db.delete(monitors).where(and(eq(monitors.id, id), eq(monitors.userId, userId)));
 
     // Revalidate cache
     revalidateTag("monitors");

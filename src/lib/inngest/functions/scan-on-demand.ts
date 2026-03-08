@@ -5,16 +5,22 @@ import { eq, inArray } from "drizzle-orm";
 import { incrementResultsCount, getUserPlan, canAccessPlatformWithPlan } from "@/lib/limits";
 import {
   fetchGoogleReviews,
-  fetchTrustpilotReviews,
   fetchAppStoreReviews,
   fetchPlayStoreReviews,
-  fetchQuoraAnswers,
-  fetchYouTubeComments,
-  fetchG2Reviews,
-  fetchYelpReviews,
-  fetchAmazonReviews,
   isApifyConfigured,
 } from "@/lib/apify";
+import {
+  fetchYouTubeCommentsApi,
+  isYouTubeApiConfigured,
+} from "@/lib/youtube";
+import {
+  searchTrustpilotSerper,
+  searchG2Serper,
+  searchYelpSerper,
+  searchQuoraSerper,
+  searchAmazonSerper,
+  isSerperConfigured,
+} from "@/lib/serper";
 import { findRelevantSubredditsCached } from "@/lib/ai";
 import { searchRedditResilient } from "@/lib/reddit";
 import { searchX } from "./monitor-x";
@@ -104,7 +110,7 @@ export const scanOnDemand = inngest.createFunction(
             break;
 
           case "trustpilot":
-            if (isApifyConfigured()) {
+            if (isSerperConfigured()) {
               platformCount = await step.run(`scan-trustpilot-${monitorId}`, async () => {
                 return scanTrustpilotForMonitor(monitor);
               });
@@ -128,7 +134,7 @@ export const scanOnDemand = inngest.createFunction(
             break;
 
           case "quora":
-            if (isApifyConfigured()) {
+            if (isSerperConfigured()) {
               platformCount = await step.run(`scan-quora-${monitorId}`, async () => {
                 return scanQuoraForMonitor(monitor);
               });
@@ -142,7 +148,7 @@ export const scanOnDemand = inngest.createFunction(
             break;
 
           case "youtube":
-            if (isApifyConfigured()) {
+            if (isYouTubeApiConfigured()) {
               platformCount = await step.run(`scan-youtube-${monitorId}`, async () => {
                 return scanYouTubeForMonitor(monitor);
               });
@@ -150,7 +156,7 @@ export const scanOnDemand = inngest.createFunction(
             break;
 
           case "g2":
-            if (isApifyConfigured()) {
+            if (isSerperConfigured()) {
               platformCount = await step.run(`scan-g2-${monitorId}`, async () => {
                 return scanG2ForMonitor(monitor);
               });
@@ -158,7 +164,7 @@ export const scanOnDemand = inngest.createFunction(
             break;
 
           case "yelp":
-            if (isApifyConfigured()) {
+            if (isSerperConfigured()) {
               platformCount = await step.run(`scan-yelp-${monitorId}`, async () => {
                 return scanYelpForMonitor(monitor);
               });
@@ -166,7 +172,7 @@ export const scanOnDemand = inngest.createFunction(
             break;
 
           case "amazonreviews":
-            if (isApifyConfigured()) {
+            if (isSerperConfigured()) {
               platformCount = await step.run(`scan-amazonreviews-${monitorId}`, async () => {
                 return scanAmazonReviewsForMonitor(monitor);
               });
@@ -639,7 +645,7 @@ async function scanTrustpilotForMonitor(monitor: MonitorData): Promise<number> {
 
   for (const term of searchTerms) {
     try {
-      const reviews = await fetchTrustpilotReviews(term, 20);
+      const reviews = await searchTrustpilotSerper(term, 20);
 
       // Batch check for existing results
       const urls = reviews.map(review => review.url || `trustpilot-${review.id}`);
@@ -839,7 +845,7 @@ async function scanQuoraForMonitor(monitor: MonitorData): Promise<number> {
 
   for (const term of searchTerms) {
     try {
-      const answers = await fetchQuoraAnswers(term, 15);
+      const answers = await searchQuoraSerper(term, 15);
 
       // Batch check for existing results
       const urls = answers.map(answer => answer.answerUrl || answer.questionUrl || `quora-${answer.questionId}-${answer.answerId || "q"}`);
@@ -1087,7 +1093,7 @@ async function scanProductHuntForMonitor(monitor: MonitorData): Promise<number> 
 /**
  * Scan YouTube for video comments matching monitor keywords.
  * Keywords should contain YouTube video URLs.
- * Uses Apify actor: streamers/youtube-comment-scraper
+ * Uses official YouTube Data API v3
  */
 async function scanYouTubeForMonitor(monitor: MonitorData): Promise<number> {
   let count = 0;
@@ -1104,7 +1110,7 @@ async function scanYouTubeForMonitor(monitor: MonitorData): Promise<number> {
 
   for (const videoUrl of videoUrls) {
     try {
-      const comments = await fetchYouTubeComments(videoUrl, 50);
+      const comments = await fetchYouTubeCommentsApi(videoUrl, 50);
 
       // Batch check for existing results
       const urls = comments.map(comment => `https://www.youtube.com/watch?v=${comment.videoId}&lc=${comment.commentId}`);
@@ -1181,7 +1187,7 @@ async function scanG2ForMonitor(monitor: MonitorData): Promise<number> {
 
   for (const productUrl of productUrls) {
     try {
-      const reviews = await fetchG2Reviews(productUrl, 30);
+      const reviews = await searchG2Serper(productUrl, 30);
 
       // Batch check for existing results
       const urls = reviews.map(review => review.url || `g2-${review.reviewId}`);
@@ -1267,7 +1273,7 @@ async function scanYelpForMonitor(monitor: MonitorData): Promise<number> {
 
   for (const businessUrl of businessUrls) {
     try {
-      const reviews = await fetchYelpReviews(businessUrl, 30);
+      const reviews = await searchYelpSerper(businessUrl, 30);
 
       // Batch check for existing results
       const urls = reviews.map(review => review.url || `yelp-${review.reviewId}`);
@@ -1347,7 +1353,7 @@ async function scanAmazonReviewsForMonitor(monitor: MonitorData): Promise<number
 
   for (const productUrl of productUrls) {
     try {
-      const reviews = await fetchAmazonReviews(productUrl, 30);
+      const reviews = await searchAmazonSerper(productUrl, 30);
 
       // Batch check for existing results
       const urls = reviews.map(review => review.url || `amazon-${review.reviewId}`);
