@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { db, results, monitors } from "@/lib/db";
-import { eq, desc, and, inArray, gte } from "drizzle-orm";
-import { completion, MODELS, flushAI } from "@/lib/ai/openrouter";
+import { MODELS, completionWithTools, flushAI } from "@/lib/ai/openrouter";
 import { logAiCall } from "@/lib/ai/log";
 import { getUserPlan } from "@/lib/limits";
 import {
@@ -13,15 +11,26 @@ import {
   getCachedAnswer,
   cacheAnswer,
 } from "@/lib/ai/rate-limit";
+import { AI_TOOLS, TOOL_METADATA, executeTool, type ToolResult } from "@/lib/ai/tools";
+import type OpenAI from "openai";
 
-// FIX-212: Add maxDuration for long-running AI operations
 export const maxDuration = 60;
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 interface AskRequest {
   question: string;
   monitorIds?: string[];
   audienceIds?: string[];
   conversationHistory?: { role: "user" | "assistant"; content: string }[];
+  pendingConfirmation?: {
+    toolCallId: string;
+    toolName: string;
+    confirmed: boolean;
+    params?: Record<string, unknown>;
+  };
 }
 
 interface Citation {
@@ -33,180 +42,45 @@ interface Citation {
   monitorName: string;
 }
 
-interface SearchResult {
-  id: string;
-  title: string;
-  content: string | null;
-  platform: string;
-  sourceUrl: string;
-  sentiment: string | null;
-  conversationCategory: string | null;
-  aiSummary: string | null;
-  engagementScore: number | null;
-  leadScore: number | null;
-  postedAt: Date | null;
-  monitorId: string;
-  monitorName: string;
-  companyName: string | null;
-  relevanceScore?: number;
-}
+// ---------------------------------------------------------------------------
+// System prompt — agentic with tools
+// ---------------------------------------------------------------------------
 
-// Stop words for keyword extraction
-const STOP_WORDS = new Set([
-  "what", "where", "when", "which", "that", "this", "they", "their", "about",
-  "from", "with", "have", "been", "were", "being", "show", "find", "looking",
-  "people", "saying", "tell", "give", "want", "need", "could", "would", "should",
-  "most", "more", "some", "many", "much", "very", "also", "just", "only",
-]);
+const SYSTEM_PROMPT = `You are Kaulby AI, an intelligent assistant for social listening and community monitoring.
 
-/**
- * Extract keywords from question
- */
-function extractKeywords(question: string): string[] {
-  return question
-    .toLowerCase()
-    .replace(/[^\w\s]/g, " ")
-    .split(/\s+/)
-    .filter((w) => w.length > 3 && !STOP_WORDS.has(w));
-}
+You have access to tools to query the user's monitoring data, analyze trends, and perform actions like creating or managing monitors.
 
-/**
- * Search for relevant results (optimized)
- */
-async function searchRelevantResults(
-  userId: string,
-  question: string,
-  monitorIds?: string[]
-): Promise<SearchResult[]> {
-  const keywords = extractKeywords(question);
-  const lowerQuestion = question.toLowerCase();
+RULES:
+1. ALWAYS use tools to fetch data before answering. Never guess or fabricate data.
+2. When the user asks about their data, call search_results, get_insights_summary, or get_aggregations first.
+3. Cite specific results using [1], [2] notation referencing the "index" field from search_results.
+4. Be conversational, concise, and actionable.
+5. When summarizing, mention which monitor/brand and platform each insight comes from.
+6. If lead score > 70, flag it as a "hot lead" worth responding to.
+7. For destructive actions (create/update/delete monitors), explain what you'll do before calling the tool.
+8. If no relevant data exists, say so clearly.
+9. Use bullet points for multiple items — keep responses scannable.
+10. When the user asks "what can you do" or similar, briefly list your capabilities.
 
-  // Get user's monitors with names
-  const userMonitors = await db.query.monitors.findMany({
-    where: eq(monitors.userId, userId),
-    columns: { id: true, name: true, companyName: true },
-  });
+CAPABILITIES:
+- Search and filter results across all monitors (by platform, sentiment, category, date, lead score)
+- View monitor details, subscription info, saved results, audiences, alerts
+- Analyze sentiment trends, find high-intent leads, compare monitors
+- Create, update, pause, resume, or delete monitors
+- Trigger on-demand scans
+- Bookmark, hide, or mark results as viewed
 
-  const monitorMap = new Map(userMonitors.map((m) => [m.id, { name: m.name, companyName: m.companyName }]));
+REMEMBER: You are Kaulby AI, not a general-purpose assistant. Stay focused on the user's monitoring data and community intelligence.`;
 
-  const validMonitorIds = monitorIds?.length
-    ? monitorIds.filter((id) => userMonitors.some((m) => m.id === id))
-    : userMonitors.map((m) => m.id);
+// ---------------------------------------------------------------------------
+// Max tool iterations
+// ---------------------------------------------------------------------------
 
-  if (validMonitorIds.length === 0) return [];
+const MAX_TOOL_ITERATIONS = 6;
 
-  // Determine time filter from question
-  let daysBack = 30;
-  if (lowerQuestion.includes("last 7 days") || lowerQuestion.includes("this week") || lowerQuestion.includes("last week")) {
-    daysBack = 7;
-  } else if (lowerQuestion.includes("today") || lowerQuestion.includes("24 hours")) {
-    daysBack = 1;
-  } else if (lowerQuestion.includes("last 90 days") || lowerQuestion.includes("3 months")) {
-    daysBack = 90;
-  }
-
-  const dateFilter = gte(results.createdAt, new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000));
-
-  // FIX-208: Add limit to prevent unbounded query that feeds AI context
-  const searchResults = await db.query.results.findMany({
-    where: and(
-      inArray(results.monitorId, validMonitorIds),
-      dateFilter,
-      eq(results.isHidden, false)
-    ),
-    orderBy: [desc(results.engagementScore), desc(results.createdAt)],
-    limit: 500, // Limit to 500 results max for AI context
-    columns: {
-      id: true,
-      title: true,
-      content: true,
-      platform: true,
-      sourceUrl: true,
-      sentiment: true,
-      conversationCategory: true,
-      aiSummary: true,
-      engagementScore: true,
-      leadScore: true,
-      postedAt: true,
-      monitorId: true,
-    },
-  });
-
-  // Score and rank results, adding monitor info
-  const scored = searchResults.map((r) => {
-    let score = 0;
-    const text = `${r.title} ${r.aiSummary || ""}`.toLowerCase();
-    const monitorInfo = monitorMap.get(r.monitorId) || { name: "Unknown", companyName: null };
-
-    // Keyword matching (use summary, not full content for efficiency)
-    keywords.forEach((kw) => { if (text.includes(kw)) score += 10; });
-
-    // Intent matching
-    if (lowerQuestion.includes("solution") && r.conversationCategory === "solution_request") score += 20;
-    if (lowerQuestion.includes("pain") && r.conversationCategory === "pain_point") score += 20;
-    if (lowerQuestion.includes("pricing") && r.conversationCategory === "money_talk") score += 20;
-    if ((lowerQuestion.includes("hot") || lowerQuestion.includes("lead")) && (r.leadScore || 0) > 50) score += 15;
-    if (lowerQuestion.includes("negative") && r.sentiment === "negative") score += 15;
-    if (lowerQuestion.includes("positive") && r.sentiment === "positive") score += 15;
-    if (r.engagementScore && r.engagementScore > 50) score += 5;
-
-    return {
-      ...r,
-      monitorName: monitorInfo.name,
-      companyName: monitorInfo.companyName,
-      relevanceScore: score,
-    };
-  });
-
-  return scored.sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0)).slice(0, 15);
-}
-
-/**
- * Format results context with monitor names for actionable insights
- */
-function formatResultsContext(results: SearchResult[]): string {
-  if (results.length === 0) return "No relevant results found.";
-
-  return results.map((r, i) => {
-    // Use aiSummary if available, otherwise truncate content
-    const summary = r.aiSummary || (r.content ? r.content.slice(0, 150) + "..." : "");
-    // Include monitor/brand name prominently
-    const brandLabel = r.companyName || r.monitorName;
-    const meta = [
-      r.sentiment,
-      r.conversationCategory?.replace(/_/g, " "),
-      r.leadScore && r.leadScore > 50 ? `lead score: ${r.leadScore}` : null,
-    ].filter(Boolean).join(", ");
-
-    return `[${i + 1}] MONITOR: "${brandLabel}" | PLATFORM: ${r.platform}${meta ? ` | ${meta}` : ""}
-TITLE: "${r.title}"
-SUMMARY: ${summary}`;
-  }).join("\n\n");
-}
-
-// Conversational system prompt with actionable focus
-const SYSTEM_PROMPT = `You are Kaulby AI, a helpful assistant that analyzes the user's social listening data.
-
-CRITICAL RULES:
-1. ALWAYS mention which monitor/brand each insight comes from. The user may have multiple monitors.
-2. ALWAYS cite sources as [1], [2], etc. linking to specific mentions.
-3. Be conversational and actionable - this is a chat, not a report.
-4. When summarizing complaints or feedback, specify: "For [Monitor Name], customers on [Platform] are saying..."
-5. If lead score > 70, call it out as a "hot lead" worth responding to.
-6. Keep responses focused and scannable - use bullet points for multiple items.
-7. If no relevant data exists, say so clearly.
-
-FORMAT EXAMPLE:
-"Looking at your monitors, here's what I found:
-
-**For Dunkin** (from Google Reviews):
-- Multiple customers complaining about slow service [1][3]
-- One hot lead asking about franchise opportunities [2]
-
-**For Starbucks** (from Reddit):
-- Discussion about new seasonal drinks getting mixed reviews [4]"
-
-Results from user's monitors:`;
+// ---------------------------------------------------------------------------
+// POST handler
+// ---------------------------------------------------------------------------
 
 export async function POST(req: Request) {
   try {
@@ -215,7 +89,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get user plan
+    // Plan check
     const plan = await getUserPlan(userId);
     if (plan !== "pro" && plan !== "team") {
       return NextResponse.json(
@@ -250,7 +124,12 @@ export async function POST(req: Request) {
     }
 
     const body: AskRequest = await req.json();
-    const { monitorIds, conversationHistory = [] } = body;
+    const { conversationHistory = [] } = body;
+
+    // Handle pending confirmation
+    if (body.pendingConfirmation) {
+      return handleConfirmation(userId, body.pendingConfirmation, plan, budgetCheck.remaining);
+    }
 
     // Input validation
     const inputValidation = validateInput(body.question || "");
@@ -258,88 +137,160 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: inputValidation.reason }, { status: 400 });
     }
 
-    // Sanitize input
     const question = sanitizeInput(body.question, 500);
 
-    // Check cache for repeated questions
+    // Check cache
     const cached = getCachedAnswer(userId, question);
     if (cached) {
       return NextResponse.json({
         answer: cached.answer,
         citations: cached.citations,
-        meta: { model: "cache", resultsSearched: 0, cached: true },
+        meta: { model: "cache", resultsSearched: 0, cached: true, tokensUsed: 0, iterations: 0 },
       });
     }
 
-    // Search relevant results
-    const relevantResults = await searchRelevantResults(userId, question, monitorIds);
-    const resultsContext = formatResultsContext(relevantResults);
-
-    // RT-004: Scraped data is wrapped in delimiters to reduce prompt injection risk.
-    // The system prompt is separate from untrusted external content.
-    const messages: { role: "system" | "user" | "assistant"; content: string }[] = [
+    // Build message history
+    const messages: OpenAI.ChatCompletionMessageParam[] = [
       { role: "system", content: SYSTEM_PROMPT },
-      { role: "user", content: `<MONITOR_DATA>\n${resultsContext}\n</MONITOR_DATA>` },
     ];
 
-    // Add last 4 messages only (not 6)
+    // Add last 4 conversation messages
     conversationHistory.slice(-4).forEach((msg) => {
       messages.push({ role: msg.role, content: sanitizeInput(msg.content, 300) });
     });
 
     messages.push({ role: "user", content: question });
 
-    // Generate AI response (use primary model for cost efficiency, premium for team)
-    const response = await completion({
-      messages,
-      model: plan === "team" ? MODELS.premium : MODELS.primary,
-      maxTokens: 512, // Reduced from 1024 for cost control
-      temperature: 0.5, // Lower temperature for more focused responses
-    });
+    // ── Tool calling loop ──────────────────────────────────────────────
+    let totalPromptTokens = 0;
+    let totalCompletionTokens = 0;
+    let totalCost = 0;
+    let totalLatency = 0;
+    let iterations = 0;
+    const toolsUsed: { name: string; label: string }[] = [];
+    let finalContent = "";
+    let usedModel: string = MODELS.primary;
+
+    for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
+      iterations++;
+
+      // Check if we're running low on budget
+      const tokensLeft = budgetCheck.remaining - (totalPromptTokens + totalCompletionTokens);
+      const useTools = tokensLeft > 5000; // Need headroom for tool responses
+
+      const response = await completionWithTools({
+        messages,
+        tools: useTools ? AI_TOOLS : undefined,
+        model: plan === "team" ? MODELS.premium : MODELS.primary,
+        maxTokens: 1024,
+        temperature: 0.5,
+      });
+
+      totalPromptTokens += response.promptTokens;
+      totalCompletionTokens += response.completionTokens;
+      totalCost += response.cost;
+      totalLatency += response.latencyMs;
+      usedModel = response.model;
+
+      const msg = response.message;
+
+      // No tool calls — this is the final answer
+      if (!msg.tool_calls || msg.tool_calls.length === 0) {
+        finalContent = msg.content || "";
+        break;
+      }
+
+      // Model wants to call tools — execute them
+      // Add assistant message with tool calls to the conversation
+      messages.push(msg as OpenAI.ChatCompletionMessageParam);
+
+      for (const toolCall of msg.tool_calls) {
+        // Only handle function tool calls (skip custom tool calls)
+        if (toolCall.type !== "function") continue;
+        const toolName = toolCall.function.name;
+        const meta = TOOL_METADATA[toolName];
+
+        // Parse arguments
+        let toolParams: Record<string, unknown> = {};
+        try {
+          toolParams = JSON.parse(toolCall.function.arguments || "{}");
+        } catch {
+          toolParams = {};
+        }
+
+        // Check if tool requires confirmation
+        if (meta?.category === "dangerous_write") {
+          // Return a pending confirmation response
+          return NextResponse.json({
+            answer: meta.confirmationMessage || `I need your confirmation to run: ${toolName}`,
+            citations: [],
+            toolsUsed,
+            pendingConfirmation: {
+              toolCallId: toolCall.id,
+              toolName,
+              message: meta.confirmationMessage || `Confirm action: ${toolName}?`,
+              params: toolParams,
+              // Send conversation state so we can resume
+              conversationState: messages.map((m) => {
+                if (typeof m === "object" && "role" in m) {
+                  return { role: m.role, content: "content" in m ? m.content : "" };
+                }
+                return m;
+              }),
+            },
+            meta: {
+              model: usedModel,
+              tokensUsed: totalPromptTokens + totalCompletionTokens,
+              budgetRemaining: budgetCheck.remaining - (totalPromptTokens + totalCompletionTokens),
+              iterations,
+            },
+          });
+        }
+
+        // Execute the tool
+        const result: ToolResult = await executeTool(toolName, toolParams, userId);
+
+        if (meta) {
+          toolsUsed.push({ name: toolName, label: meta.label });
+        }
+
+        // Add tool result to messages
+        messages.push({
+          role: "tool",
+          tool_call_id: toolCall.id,
+          content: JSON.stringify(result.success ? result.data : { error: result.error }),
+        } as OpenAI.ChatCompletionMessageParam);
+      }
+    }
 
     await flushAI();
 
     // Log AI cost
     await logAiCall({
       userId,
-      model: response.model,
-      promptTokens: response.promptTokens,
-      completionTokens: response.completionTokens,
-      costUsd: response.cost,
-      latencyMs: response.latencyMs,
+      model: usedModel,
+      promptTokens: totalPromptTokens,
+      completionTokens: totalCompletionTokens,
+      costUsd: totalCost,
+      latencyMs: totalLatency,
       analysisType: "ask",
     });
 
-    // Extract citations with monitor names
-    const citedNumbers = response.content.match(/\[(\d+)\]/g) || [];
-    const citedIndices = Array.from(new Set(citedNumbers.map((n) => parseInt(n.slice(1, -1)) - 1)));
-
-    const citations: Citation[] = citedIndices
-      .filter((i) => i >= 0 && i < relevantResults.length)
-      .slice(0, 5) // Limit citations
-      .map((i) => {
-        const r = relevantResults[i];
-        return {
-          id: r.id,
-          title: r.title,
-          platform: r.platform,
-          sourceUrl: r.sourceUrl,
-          snippet: r.aiSummary?.slice(0, 80) || r.title,
-          monitorName: r.companyName || r.monitorName,
-        };
-      });
+    // Extract citations from the final response
+    const citations = extractCitations(finalContent, messages);
 
     // Cache the response
-    cacheAnswer(userId, question, response.content, citations);
+    cacheAnswer(userId, question, finalContent, citations);
 
     return NextResponse.json({
-      answer: response.content,
+      answer: finalContent,
       citations,
+      toolsUsed,
       meta: {
-        model: response.model,
-        resultsSearched: relevantResults.length,
-        tokensUsed: response.promptTokens + response.completionTokens,
-        budgetRemaining: budgetCheck.remaining - (response.promptTokens + response.completionTokens),
+        model: usedModel,
+        tokensUsed: totalPromptTokens + totalCompletionTokens,
+        budgetRemaining: budgetCheck.remaining - (totalPromptTokens + totalCompletionTokens),
+        iterations,
       },
     });
   } catch (error) {
@@ -349,4 +300,130 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
+}
+
+// ---------------------------------------------------------------------------
+// Handle confirmation of dangerous write tools
+// ---------------------------------------------------------------------------
+
+async function handleConfirmation(
+  userId: string,
+  confirmation: NonNullable<AskRequest["pendingConfirmation"]>,
+  plan: "free" | "pro" | "team",
+  budgetRemaining: number
+) {
+  if (!confirmation.confirmed) {
+    return NextResponse.json({
+      answer: "No problem — I've cancelled that action.",
+      citations: [],
+      toolsUsed: [],
+      meta: { model: "none", tokensUsed: 0, budgetRemaining, iterations: 0 },
+    });
+  }
+
+  // Execute the confirmed tool
+  const result = await executeTool(confirmation.toolName, confirmation.params || {}, userId);
+  const meta = TOOL_METADATA[confirmation.toolName];
+
+  if (!result.success) {
+    return NextResponse.json({
+      answer: `I couldn't complete that action: ${result.error}`,
+      citations: [],
+      toolsUsed: [{ name: confirmation.toolName, label: meta?.label || confirmation.toolName }],
+      meta: { model: "none", tokensUsed: 0, budgetRemaining, iterations: 0 },
+    });
+  }
+
+  // Generate a follow-up response using the tool result
+  const response = await completionWithTools({
+    messages: [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: `The user confirmed the action. Here is the result:\n${JSON.stringify(result.data)}` },
+      { role: "user", content: "Summarize what was done in 1-2 sentences. Be conversational." },
+    ],
+    model: plan === "team" ? MODELS.premium : MODELS.primary,
+    maxTokens: 256,
+    temperature: 0.5,
+  });
+
+  await flushAI();
+
+  await logAiCall({
+    userId,
+    model: response.model,
+    promptTokens: response.promptTokens,
+    completionTokens: response.completionTokens,
+    costUsd: response.cost,
+    latencyMs: response.latencyMs,
+    analysisType: "ask",
+  });
+
+  return NextResponse.json({
+    answer: response.message.content || "Done! The action was completed successfully.",
+    citations: [],
+    toolsUsed: [{ name: confirmation.toolName, label: meta?.label || confirmation.toolName }],
+    meta: {
+      model: response.model,
+      tokensUsed: response.promptTokens + response.completionTokens,
+      budgetRemaining: budgetRemaining - (response.promptTokens + response.completionTokens),
+      iterations: 1,
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Extract citations from tool call results in the message history
+// ---------------------------------------------------------------------------
+
+function extractCitations(
+  answer: string,
+  messages: OpenAI.ChatCompletionMessageParam[]
+): Citation[] {
+  // Find cited numbers in the answer [1], [2], etc.
+  const citedNumbers = answer.match(/\[(\d+)\]/g) || [];
+  const citedIndices = Array.from(new Set(citedNumbers.map((n) => parseInt(n.slice(1, -1)))));
+
+  if (citedIndices.length === 0) return [];
+
+  // Find search_results tool responses in messages to extract citations
+  const allResults: Array<{
+    index: number;
+    id: string;
+    title: string;
+    platform: string;
+    sourceUrl: string;
+    summary: string | null;
+    monitorName: string;
+  }> = [];
+
+  for (const msg of messages) {
+    if ("role" in msg && msg.role === "tool" && "content" in msg && typeof msg.content === "string") {
+      try {
+        const data = JSON.parse(msg.content);
+        if (data?.results && Array.isArray(data.results)) {
+          allResults.push(...data.results);
+        }
+      } catch {
+        // Not JSON or not results
+      }
+    }
+  }
+
+  return citedIndices
+    .filter((idx) => {
+      const r = allResults.find((r) => r.index === idx);
+      return !!r;
+    })
+    .slice(0, 8)
+    .map((idx) => {
+      const r = allResults.find((r) => r.index === idx)!;
+      return {
+        id: r.id,
+        title: r.title,
+        platform: r.platform,
+        sourceUrl: r.sourceUrl,
+        snippet: r.summary?.slice(0, 80) || r.title,
+        monitorName: r.monitorName,
+      };
+    });
 }

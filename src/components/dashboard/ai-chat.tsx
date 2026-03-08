@@ -19,9 +19,15 @@ import {
   AlertCircle,
   Bot,
   User,
+  AlertTriangle,
+  Wrench,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getPlatformBadgeColor, getPlatformDisplayName } from "@/lib/platform-utils";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 interface Citation {
   id: string;
@@ -32,47 +38,65 @@ interface Citation {
   monitorName?: string;
 }
 
+interface ToolUsed {
+  name: string;
+  label: string;
+}
+
+interface PendingConfirmation {
+  toolCallId: string;
+  toolName: string;
+  message: string;
+  params: Record<string, unknown>;
+  conversationState?: unknown;
+}
+
 interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
   citations?: Citation[];
+  toolsUsed?: ToolUsed[];
+  pendingConfirmation?: PendingConfirmation;
   isLoading?: boolean;
   error?: string;
   timestamp: Date;
 }
 
 interface AIChatProps {
-  /** Whether user has Pro access */
   isPro: boolean;
-  /** Suggested questions based on user's data */
   suggestedQuestions?: string[];
-  /** Monitor IDs to scope the search */
   monitorIds?: string[];
-  /** Audience IDs to scope the search */
   audienceIds?: string[];
 }
 
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
 const SUGGESTED_QUESTIONS = [
-  "What are the main complaints about [competitor]?",
-  "Summarize what people are saying about pricing",
-  "Find posts where someone is looking for a CRM alternative",
-  "What features do people request most?",
-  "Which platforms have the most engagement this week?",
+  "What are people saying about my brand?",
   "Show me high-intent leads from the last 7 days",
+  "Which platforms have the most negative sentiment?",
+  "Find posts where someone is looking for alternatives",
+  "Summarize my monitoring data for this week",
+  "Compare my monitors — which one is performing best?",
 ];
 
-/**
- * Citation Card - Shows a source reference with monitor name
- */
+const LOADING_MESSAGES = [
+  "Analyzing your data…",
+  "Searching across your monitors…",
+  "Looking through recent results…",
+  "Crunching the numbers…",
+];
+
+// ---------------------------------------------------------------------------
+// Citation Card
+// ---------------------------------------------------------------------------
+
 const CitationCard = memo(function CitationCard({ citation }: { citation: Citation }) {
   return (
-    <a
-      href={citation.sourceUrl}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="block"
-    >
+    <a href={citation.sourceUrl} target="_blank" rel="noopener noreferrer" className="block">
       <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
         <CardContent className="p-3">
           <div className="flex items-start gap-2">
@@ -101,30 +125,25 @@ const CitationCard = memo(function CitationCard({ citation }: { citation: Citati
   );
 });
 
-/**
- * Simple Markdown renderer for AI responses
- * Supports: **bold**, bullet points (• or -)
- */
+// ---------------------------------------------------------------------------
+// Markdown renderer
+// ---------------------------------------------------------------------------
+
 function renderMarkdown(text: string): React.ReactNode {
-  // Split by newlines to handle line-by-line
-  const lines = text.split('\n');
+  const lines = text.split("\n");
 
   return lines.map((line, lineIndex) => {
-    // Process bold text within the line
     const parts: React.ReactNode[] = [];
     let keyIndex = 0;
 
-    // Match **text** pattern
     const boldRegex = /\*\*([^*]+)\*\*/g;
     let lastIndex = 0;
     let match;
 
     while ((match = boldRegex.exec(line)) !== null) {
-      // Add text before the match
       if (match.index > lastIndex) {
         parts.push(line.slice(lastIndex, match.index));
       }
-      // Add bold text
       parts.push(
         <strong key={`bold-${lineIndex}-${keyIndex++}`} className="font-semibold">
           {match[1]}
@@ -133,17 +152,14 @@ function renderMarkdown(text: string): React.ReactNode {
       lastIndex = match.index + match[0].length;
     }
 
-    // Add remaining text after last match
     if (lastIndex < line.length) {
       parts.push(line.slice(lastIndex));
     }
 
-    // If no bold found, just use the line
     if (parts.length === 0) {
       parts.push(line);
     }
 
-    // Return with line break (except for last line)
     return (
       <span key={`line-${lineIndex}`}>
         {parts}
@@ -153,17 +169,20 @@ function renderMarkdown(text: string): React.ReactNode {
   });
 }
 
-/**
- * Message Bubble Component
- */
+// ---------------------------------------------------------------------------
+// Message Bubble
+// ---------------------------------------------------------------------------
+
 const MessageBubble = memo(function MessageBubble({
   message,
   onCopy,
   isCopied,
+  onConfirm,
 }: {
   message: ChatMessage;
   onCopy: (text: string) => void;
   isCopied: boolean;
+  onConfirm?: (confirmed: boolean) => void;
 }) {
   const isUser = message.role === "user";
 
@@ -188,20 +207,11 @@ const MessageBubble = memo(function MessageBubble({
         <div
           className={cn(
             "rounded-2xl px-4 py-3",
-            isUser
-              ? "bg-primary text-primary-foreground"
-              : "bg-muted"
+            isUser ? "bg-primary text-primary-foreground" : "bg-muted"
           )}
         >
           {message.isLoading ? (
-            <div className="flex items-center gap-2">
-              <div className="flex gap-1">
-                <span className="w-2 h-2 rounded-full bg-current animate-bounce" style={{ animationDelay: "0ms" }} />
-                <span className="w-2 h-2 rounded-full bg-current animate-bounce" style={{ animationDelay: "150ms" }} />
-                <span className="w-2 h-2 rounded-full bg-current animate-bounce" style={{ animationDelay: "300ms" }} />
-              </div>
-              <span className="text-sm">Thinking...</span>
-            </div>
+            <LoadingIndicator />
           ) : message.error ? (
             <div className="flex items-center gap-2 text-destructive">
               <AlertCircle className="h-4 w-4" />
@@ -211,6 +221,43 @@ const MessageBubble = memo(function MessageBubble({
             <div className="text-sm whitespace-pre-wrap">{renderMarkdown(message.content)}</div>
           )}
         </div>
+
+        {/* Pending confirmation */}
+        {!isUser && message.pendingConfirmation && onConfirm && (
+          <div className="mt-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 w-full">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              <p className="text-sm font-medium text-amber-500">Confirmation Required</p>
+            </div>
+            <p className="text-sm text-muted-foreground mb-3">
+              {message.pendingConfirmation.message}
+            </p>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                className="bg-amber-600 hover:bg-amber-700 text-white"
+                onClick={() => onConfirm(true)}
+              >
+                Yes, proceed
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => onConfirm(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Tools used badges */}
+        {!isUser && message.toolsUsed && message.toolsUsed.length > 0 && (
+          <div className="flex gap-1 mt-1.5 flex-wrap">
+            {message.toolsUsed.map((tool, i) => (
+              <Badge key={`${tool.name}-${i}`} variant="secondary" className="text-[10px] gap-1">
+                <Wrench className="h-2.5 w-2.5" />
+                {tool.label.replace("…", "")}
+              </Badge>
+            ))}
+          </div>
+        )}
 
         {/* Citations */}
         {!isUser && message.citations && message.citations.length > 0 && (
@@ -260,9 +307,36 @@ const MessageBubble = memo(function MessageBubble({
   );
 });
 
-/**
- * AI Chat Component - Chat with your data
- */
+// ---------------------------------------------------------------------------
+// Loading indicator with rotating messages
+// ---------------------------------------------------------------------------
+
+function LoadingIndicator() {
+  const [messageIndex, setMessageIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setMessageIndex((i) => (i + 1) % LOADING_MESSAGES.length);
+    }, 2500);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex gap-1">
+        <span className="w-2 h-2 rounded-full bg-current animate-bounce" style={{ animationDelay: "0ms" }} />
+        <span className="w-2 h-2 rounded-full bg-current animate-bounce" style={{ animationDelay: "150ms" }} />
+        <span className="w-2 h-2 rounded-full bg-current animate-bounce" style={{ animationDelay: "300ms" }} />
+      </div>
+      <span className="text-sm">{LOADING_MESSAGES[messageIndex]}</span>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// AI Chat Component
+// ---------------------------------------------------------------------------
+
 export function AIChat({
   isPro,
   suggestedQuestions = SUGGESTED_QUESTIONS,
@@ -276,6 +350,8 @@ export function AIChat({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Store the last pending confirmation for handling
+  const pendingConfirmRef = useRef<PendingConfirmation | null>(null);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -285,21 +361,16 @@ export function AIChat({
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
-  // Clean up copy timeout on unmount
   useEffect(() => {
     return () => {
-      if (copyTimeoutRef.current) {
-        clearTimeout(copyTimeoutRef.current);
-      }
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
     };
   }, []);
 
   const handleCopy = useCallback((text: string, messageId?: string) => {
     navigator.clipboard.writeText(text);
     if (messageId) {
-      if (copyTimeoutRef.current) {
-        clearTimeout(copyTimeoutRef.current);
-      }
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
       setCopiedMessageId(messageId);
       copyTimeoutRef.current = setTimeout(() => {
         setCopiedMessageId(null);
@@ -308,81 +379,171 @@ export function AIChat({
     }
   }, []);
 
-  const handleSubmit = useCallback(async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    if (!input.trim() || isLoading || !isPro) return;
+  const handleSubmit = useCallback(
+    async (e?: React.FormEvent) => {
+      e?.preventDefault();
+      if (!input.trim() || isLoading || !isPro) return;
 
-    const userMessage: ChatMessage = {
-      id: `user-${Date.now()}`,
-      role: "user",
-      content: input.trim(),
-      timestamp: new Date(),
-    };
+      const userMessage: ChatMessage = {
+        id: `user-${Date.now()}`,
+        role: "user",
+        content: input.trim(),
+        timestamp: new Date(),
+      };
 
-    const assistantMessage: ChatMessage = {
-      id: `assistant-${Date.now()}`,
-      role: "assistant",
-      content: "",
-      isLoading: true,
-      timestamp: new Date(),
-    };
+      const assistantMessage: ChatMessage = {
+        id: `assistant-${Date.now()}`,
+        role: "assistant",
+        content: "",
+        isLoading: true,
+        timestamp: new Date(),
+      };
 
-    setMessages((prev) => {
-      const updated = [...prev, userMessage, assistantMessage];
-      return updated.length > 50 ? updated.slice(-50) : updated;
-    });
-    setInput("");
-    setIsLoading(true);
-
-    try {
-      const response = await fetch("/api/ai/ask", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          question: userMessage.content,
-          monitorIds,
-          audienceIds,
-          conversationHistory: messages.slice(-6).map((m) => ({
-            role: m.role,
-            content: m.content,
-          })),
-        }),
+      setMessages((prev) => {
+        const updated = [...prev, userMessage, assistantMessage];
+        return updated.length > 50 ? updated.slice(-50) : updated;
       });
+      setInput("");
+      setIsLoading(true);
 
-      if (!response.ok) {
-        throw new Error("Failed to get response");
+      try {
+        const response = await fetch("/api/ai/ask", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            question: userMessage.content,
+            monitorIds,
+            audienceIds,
+            conversationHistory: messages.slice(-6).map((m) => ({
+              role: m.role,
+              content: m.content,
+            })),
+          }),
+        });
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.error || "Failed to get response");
+        }
+
+        const data = await response.json();
+
+        // Store pending confirmation if any
+        if (data.pendingConfirmation) {
+          pendingConfirmRef.current = data.pendingConfirmation;
+        }
+
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantMessage.id
+              ? {
+                  ...m,
+                  content: data.answer,
+                  citations: data.citations,
+                  toolsUsed: data.toolsUsed,
+                  pendingConfirmation: data.pendingConfirmation || undefined,
+                  isLoading: false,
+                }
+              : m
+          )
+        );
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : "Sorry, I couldn't process that request. Please try again.";
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantMessage.id
+              ? { ...m, error: errorMessage, isLoading: false }
+              : m
+          )
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [input, isLoading, isPro, monitorIds, audienceIds, messages]
+  );
+
+  const handleConfirm = useCallback(
+    async (confirmed: boolean) => {
+      const pending = pendingConfirmRef.current;
+      if (!pending) return;
+
+      pendingConfirmRef.current = null;
+
+      // Remove pending confirmation from the message
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.pendingConfirmation ? { ...m, pendingConfirmation: undefined } : m
+        )
+      );
+
+      if (!confirmed) {
+        const cancelMessage: ChatMessage = {
+          id: `assistant-cancel-${Date.now()}`,
+          role: "assistant",
+          content: "No problem — action cancelled.",
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, cancelMessage]);
+        return;
       }
 
-      const data = await response.json();
+      // Show loading for confirmed action
+      const loadingMessage: ChatMessage = {
+        id: `assistant-confirm-${Date.now()}`,
+        role: "assistant",
+        content: "",
+        isLoading: true,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, loadingMessage]);
+      setIsLoading(true);
 
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === assistantMessage.id
-            ? {
-                ...m,
-                content: data.answer,
-                citations: data.citations,
-                isLoading: false,
-              }
-            : m
-        )
-      );
-    } catch {
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === assistantMessage.id
-            ? {
-                ...m,
-                error: "Sorry, I couldn't process that request. Please try again.",
-                isLoading: false,
-              }
-            : m
-        )
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }, [input, isLoading, isPro, monitorIds, audienceIds, messages]);
+      try {
+        const response = await fetch("/api/ai/ask", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            question: "",
+            pendingConfirmation: {
+              toolCallId: pending.toolCallId,
+              toolName: pending.toolName,
+              confirmed: true,
+              params: pending.params,
+            },
+          }),
+        });
+
+        if (!response.ok) throw new Error("Failed to execute action");
+
+        const data = await response.json();
+
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === loadingMessage.id
+              ? {
+                  ...m,
+                  content: data.answer,
+                  toolsUsed: data.toolsUsed,
+                  isLoading: false,
+                }
+              : m
+          )
+        );
+      } catch {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === loadingMessage.id
+              ? { ...m, error: "Failed to complete the action. Please try again.", isLoading: false }
+              : m
+          )
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
 
   const handleSuggestedQuestion = useCallback((question: string) => {
     setInput(question);
@@ -391,6 +552,7 @@ export function AIChat({
 
   const handleClear = useCallback(() => {
     setMessages([]);
+    pendingConfirmRef.current = null;
   }, []);
 
   if (!isPro) {
@@ -404,7 +566,8 @@ export function AIChat({
         </CardHeader>
         <CardContent className="text-center">
           <p className="text-muted-foreground mb-4">
-            Ask questions about your data using natural language. Get insights, summaries, and find patterns across all your monitored conversations.
+            Ask questions about your data using natural language. Get insights, summaries, and find
+            patterns across all your monitored conversations.
           </p>
           <Button>Upgrade to Pro</Button>
         </CardContent>
@@ -423,7 +586,7 @@ export function AIChat({
             </div>
             <h3 className="text-lg font-semibold mb-2">Ask anything about your data</h3>
             <p className="text-sm text-muted-foreground max-w-md mb-6">
-              I can analyze your monitored conversations, find patterns, summarize feedback, and help you discover opportunities.
+              I can search your results, analyze trends, find leads, manage monitors, and more. Just ask in plain English.
             </p>
 
             {/* Suggested Questions */}
@@ -455,6 +618,7 @@ export function AIChat({
                 message={message}
                 onCopy={(text) => handleCopy(text, message.id)}
                 isCopied={copiedMessageId === message.id}
+                onConfirm={message.pendingConfirmation ? handleConfirm : undefined}
               />
             ))}
           </AnimatePresence>
@@ -477,7 +641,7 @@ export function AIChat({
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask about your data..."
+            placeholder="Ask anything — search results, create monitors, find leads…"
             disabled={isLoading}
             className="flex-1"
           />
@@ -486,16 +650,17 @@ export function AIChat({
           </Button>
         </form>
         <p className="text-[10px] text-muted-foreground text-center mt-2">
-          AI responses are generated based on your monitored conversations. Results may vary.
+          Kaulby AI can search, analyze, and take actions on your monitoring data.
         </p>
       </div>
     </div>
   );
 }
 
-/**
- * AI Chat Skeleton - Loading state
- */
+// ---------------------------------------------------------------------------
+// Skeleton
+// ---------------------------------------------------------------------------
+
 export function AIChatSkeleton() {
   return (
     <div className="flex flex-col h-full">
