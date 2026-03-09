@@ -134,12 +134,16 @@ export const activityActionEnum = pgEnum("activity_action", [
 export const workspaces = pgTable("workspaces", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
-  ownerId: text("owner_id").notNull(), // Clerk user ID of workspace owner
+  // DB: FK constraint to users.id exists at DB level (SET NULL on delete) — declared via db:push
+  // Cannot use inline .references() here due to circular dependency with users.workspaceId
+  ownerId: text("owner_id"), // Clerk user ID of workspace owner
   seatLimit: integer("seat_limit").default(5).notNull(),
   seatCount: integer("seat_count").default(1).notNull(), // Current number of members
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("workspaces_owner_id_idx").on(table.ownerId),
+]);
 
 // Activity logs - audit trail for workspace actions
 export const activityLogs = pgTable("activity_logs", {
@@ -282,7 +286,9 @@ export const communities = pgTable("communities", {
   identifier: text("identifier").notNull(), // subreddit name, etc.
   metadata: jsonb("metadata"), // size, activity level, etc.
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("communities_audience_id_idx").on(table.audienceId),
+]);
 
 // Monitors - keyword/topic trackers
 export const monitors = pgTable("monitors", {
@@ -294,7 +300,7 @@ export const monitors = pgTable("monitors", {
   workspaceId: uuid("workspace_id").references(() => workspaces.id, { onDelete: "set null" }),
   audienceId: uuid("audience_id").references(() => audiences.id, { onDelete: "set null" }),
   name: text("name").notNull(), // Display name for the monitor
-  companyName: text("company_name"), // DB: Should be NOT NULL — requires migration — FIX-106
+  companyName: text("company_name").notNull().default(""), // DB: Made NOT NULL with default — FIX-106 resolved
   keywords: text("keywords").array().notNull(), // Additional keywords to track alongside company name
   // Monitor type: keyword (traditional) or ai_discovery (semantic AI-based)
   monitorType: monitorTypeEnum("monitor_type").default("keyword").notNull(),
@@ -335,6 +341,7 @@ export const monitors = pgTable("monitors", {
 }, (table) => [
   index("monitors_user_id_idx").on(table.userId),
   index("monitors_workspace_id_idx").on(table.workspaceId),
+  index("monitors_audience_id_idx").on(table.audienceId),
   index("monitors_is_active_idx").on(table.isActive),
   index("monitors_is_active_platforms_idx").on(table.isActive, table.platforms),
   index("monitors_last_checked_at_idx").on(table.lastCheckedAt),
@@ -351,7 +358,9 @@ export const alerts = pgTable("alerts", {
   destination: text("destination").notNull(), // email address, slack webhook, etc.
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("alerts_monitor_id_idx").on(table.monitorId),
+]);
 
 // Results - found content
 export const results = pgTable("results", {
@@ -715,6 +724,8 @@ export const notifications = pgTable("notifications", {
 }, (table) => [
   index("notifications_user_id_idx").on(table.userId),
   index("notifications_user_read_idx").on(table.userId, table.isRead),
+  index("notifications_monitor_id_idx").on(table.monitorId),
+  index("notifications_result_id_idx").on(table.resultId),
 ]);
 
 // Relations

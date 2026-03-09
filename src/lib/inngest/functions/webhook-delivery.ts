@@ -183,7 +183,12 @@ export const processWebhookDelivery = inngest.createFunction(
       return { success: false, reason: "not_found" };
     }
 
-    if (delivery.status === "success") {
+    // Cast to fix Drizzle relational query type inference (webhook is always a single object from findFirst)
+    const typedDelivery = delivery as typeof delivery & {
+      webhook: typeof webhooks.$inferSelect;
+    };
+
+    if (typedDelivery.status === "success") {
       logger.info("Delivery already successful");
       return { success: true, reason: "already_delivered" };
     }
@@ -202,7 +207,7 @@ export const processWebhookDelivery = inngest.createFunction(
       return { success: false, reason: "max_attempts" };
     }
 
-    const webhook = delivery.webhook;
+    const webhook = typedDelivery.webhook;
 
     // Format payload based on webhook type (Slack/Discord/generic)
     const storedPayload = delivery.payload as WebhookPayload;
