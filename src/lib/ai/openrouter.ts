@@ -173,6 +173,62 @@ export async function jsonCompletion<T>(params: {
   }
 }
 
+// AI completion with tool calling support
+export async function completionWithTools(params: {
+  messages: OpenAI.ChatCompletionMessageParam[];
+  tools?: OpenAI.ChatCompletionTool[];
+  model?: string;
+  temperature?: number;
+  maxTokens?: number;
+}) {
+  const {
+    messages,
+    tools,
+    model = MODELS.primary,
+    temperature = 0.5,
+    maxTokens = 1024,
+  } = params;
+
+  const startTime = Date.now();
+
+  try {
+    const response = await getOpenRouter().chat.completions.create({
+      model,
+      messages,
+      temperature,
+      max_tokens: maxTokens,
+      ...(tools && tools.length > 0 ? { tools, tool_choice: "auto" as const } : {}),
+    });
+
+    const latencyMs = Date.now() - startTime;
+    const usage = response.usage;
+    const message = response.choices[0]?.message;
+
+    return {
+      message: message || { role: "assistant" as const, content: "" },
+      model,
+      promptTokens: usage?.prompt_tokens || 0,
+      completionTokens: usage?.completion_tokens || 0,
+      latencyMs,
+      cost: calculateCost(
+        model as keyof typeof MODEL_PRICING,
+        usage?.prompt_tokens || 0,
+        usage?.completion_tokens || 0
+      ),
+    };
+  } catch (error) {
+    // If primary fails, try fallback without tools (tools may be the issue)
+    if (model === MODELS.primary) {
+      logger.warn("Primary model with tools failed, trying fallback", { model });
+      return completionWithTools({
+        ...params,
+        model: MODELS.fallback,
+      });
+    }
+    throw error;
+  }
+}
+
 // Flush Langfuse events (call at end of request)
 export async function flushAI() {
   // Only flush if Langfuse is configured

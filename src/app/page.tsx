@@ -108,7 +108,7 @@ export default function HomePage() {
         <AnimatedSection className="py-12 md:py-16 px-4 border-y bg-muted/30">
           <div className="container mx-auto text-center">
             <TextReveal>
-              <p className="text-xs md:text-sm text-muted-foreground mb-6 md:mb-8">Monitor conversations across 16 major platforms</p>
+              <p className="text-xs md:text-sm text-muted-foreground mb-6 md:mb-8">Monitor conversations across 17 major platforms</p>
             </TextReveal>
             {/* Row 1: 6 platforms */}
             <div className="flex flex-wrap justify-center gap-6 md:gap-10 items-center mb-6">
@@ -131,39 +131,42 @@ export default function HomePage() {
                 <PlatformBadgeItem platform="youtube" name="YouTube" color="text-red-500" />
               </AnimatedBadge>
             </div>
-            {/* Row 2: 5 platforms */}
+            {/* Row 2: 6 platforms */}
             <div className="flex flex-wrap justify-center gap-6 md:gap-10 items-center mb-6">
               <AnimatedBadge delay={0.3}>
-                <PlatformBadgeItem platform="github" name="GitHub" color="text-gray-300" />
+                <PlatformBadgeItem platform="x" name="X (Twitter)" color="text-gray-300" />
               </AnimatedBadge>
               <AnimatedBadge delay={0.35}>
-                <PlatformBadgeItem platform="indiehackers" name="Indie Hackers" color="text-blue-500" />
+                <PlatformBadgeItem platform="github" name="GitHub" color="text-gray-300" />
               </AnimatedBadge>
               <AnimatedBadge delay={0.4}>
-                <PlatformBadgeItem platform="devto" name="Dev.to" color="text-violet-400" />
+                <PlatformBadgeItem platform="indiehackers" name="Indie Hackers" color="text-blue-500" />
               </AnimatedBadge>
               <AnimatedBadge delay={0.45}>
-                <PlatformBadgeItem platform="hashnode" name="Hashnode" color="text-blue-500" />
+                <PlatformBadgeItem platform="devto" name="Dev.to" color="text-violet-400" />
               </AnimatedBadge>
               <AnimatedBadge delay={0.5}>
+                <PlatformBadgeItem platform="hashnode" name="Hashnode" color="text-blue-500" />
+              </AnimatedBadge>
+              <AnimatedBadge delay={0.55}>
                 <PlatformBadgeItem platform="quora" name="Quora" color="text-red-600" />
               </AnimatedBadge>
             </div>
             {/* Row 3: 5 platforms */}
             <div className="flex flex-wrap justify-center gap-6 md:gap-10 items-center">
-              <AnimatedBadge delay={0.55}>
+              <AnimatedBadge delay={0.6}>
                 <PlatformBadgeItem platform="appstore" name="App Store" color="text-pink-500" />
               </AnimatedBadge>
-              <AnimatedBadge delay={0.6}>
+              <AnimatedBadge delay={0.65}>
                 <PlatformBadgeItem platform="playstore" name="Play Store" color="text-green-500" />
               </AnimatedBadge>
-              <AnimatedBadge delay={0.65}>
+              <AnimatedBadge delay={0.7}>
                 <PlatformBadgeItem platform="g2" name="G2" color="text-orange-600" />
               </AnimatedBadge>
-              <AnimatedBadge delay={0.7}>
+              <AnimatedBadge delay={0.75}>
                 <PlatformBadgeItem platform="yelp" name="Yelp" color="text-red-600" />
               </AnimatedBadge>
-              <AnimatedBadge delay={0.75}>
+              <AnimatedBadge delay={0.8}>
                 <PlatformBadgeItem platform="amazon" name="Amazon" color="text-amber-600" />
               </AnimatedBadge>
             </div>
