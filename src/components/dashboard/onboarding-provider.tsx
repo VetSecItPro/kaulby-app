@@ -78,11 +78,6 @@ export function OnboardingProvider({ children, isNewUser, userName, userPlan = "
     setShowTour(true);
   };
 
-  // Don't render onboarding until mounted to avoid hydration mismatch
-  if (!mounted) {
-    return <>{children}</>;
-  }
-
   return (
     <OnboardingContext.Provider
       value={{
@@ -95,17 +90,22 @@ export function OnboardingProvider({ children, isNewUser, userName, userPlan = "
       }}
     >
       {children}
-      <OnboardingWizard
-        isOpen={showOnboarding}
-        onClose={dismissOnboarding}
-        userName={userName}
-        userPlan={userPlan}
-      />
-      {/* Spotlight tour runs after wizard completes */}
-      <OnboardingTour
-        forceStart={showTour}
-        onComplete={() => setShowTour(false)}
-      />
+      {/* Don't render onboarding UI until mounted to avoid hydration mismatch */}
+      {mounted && (
+        <>
+          <OnboardingWizard
+            isOpen={showOnboarding}
+            onClose={dismissOnboarding}
+            userName={userName}
+            userPlan={userPlan}
+          />
+          {/* Spotlight tour runs after wizard completes */}
+          <OnboardingTour
+            forceStart={showTour}
+            onComplete={() => setShowTour(false)}
+          />
+        </>
+      )}
     </OnboardingContext.Provider>
   );
 }

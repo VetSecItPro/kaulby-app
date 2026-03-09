@@ -25,8 +25,14 @@ export async function getEffectiveUserId(): Promise<string | null> {
     return devUser?.id || null;
   }
 
-  const { userId } = await auth();
-  return userId;
+  try {
+    const { userId } = await auth();
+    return userId;
+  } catch (error) {
+    // auth() can fail if Clerk middleware is not detected (e.g., Inngest dev server)
+    console.warn("[dev-auth] auth() failed:", (error as Error).message);
+    return null;
+  }
 }
 
 /**
