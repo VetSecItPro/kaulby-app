@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { getEffectiveUserId } from "@/lib/dev-auth";
 import { db, userDetectionKeywords } from "@/lib/db";
 import { eq, and } from "drizzle-orm";
 import { getPlanLimits } from "@/lib/plans";
@@ -22,7 +22,7 @@ const updateKeywordsSchema = z.object({
  * If none exist, returns the defaults (unseeded).
  */
 export async function GET() {
-  const { userId } = await auth();
+  const userId = await getEffectiveUserId();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -86,7 +86,7 @@ export async function GET() {
  * Body: { category: string, keywords: string[], isActive?: boolean }
  */
 export async function PUT(request: NextRequest) {
-  const { userId } = await auth();
+  const userId = await getEffectiveUserId();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -158,7 +158,7 @@ export async function PUT(request: NextRequest) {
  * Seed all categories with defaults (first-time setup).
  */
 export async function POST() {
-  const { userId } = await auth();
+  const userId = await getEffectiveUserId();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

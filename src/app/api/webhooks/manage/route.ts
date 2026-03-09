@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { getEffectiveUserId } from "@/lib/dev-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { webhooks, users } from "@/lib/db/schema";
@@ -37,7 +37,7 @@ export const dynamic = "force-dynamic";
 // POST - Create new webhook
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
+    const userId = await getEffectiveUserId();
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
 // PUT - Update webhook
 export async function PUT(request: NextRequest) {
   try {
-    const { userId } = await auth();
+    const userId = await getEffectiveUserId();
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -183,7 +183,7 @@ export async function PUT(request: NextRequest) {
 // DELETE - Delete webhook
 export async function DELETE(request: NextRequest) {
   try {
-    const { userId } = await auth();
+    const userId = await getEffectiveUserId();
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

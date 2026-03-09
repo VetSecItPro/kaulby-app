@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { getEffectiveUserId } from "@/lib/dev-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { webhooks } from "@/lib/db/schema";
@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 // POST - Send test webhook
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
+    const userId = await getEffectiveUserId();
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

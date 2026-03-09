@@ -1,10 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Bookmark,
   Plus,
@@ -14,6 +21,7 @@ import {
   ThumbsUp,
   ThumbsDown,
   Minus,
+  ArrowUpDown,
   X,
 } from "lucide-react";
 import {
@@ -68,6 +76,15 @@ export function BookmarksView({ results, collections, bookmarkMap }: BookmarksVi
   const [newCollectionName, setNewCollectionName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [localCollections, setLocalCollections] = useState(collections);
+  const [platformFilter, setPlatformFilter] = useState<string | null>(null);
+  const [sentimentFilter, setSentimentFilter] = useState<string | null>(null);
+  const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
+
+  // Get unique platforms from results
+  const availablePlatforms = useMemo(() => {
+    const platforms = new Set(results.map((r) => r.platform));
+    return Array.from(platforms).sort();
+  }, [results]);
 
   const handleCreateCollection = async () => {
     if (!newCollectionName.trim()) return;
@@ -111,10 +128,26 @@ export function BookmarksView({ results, collections, bookmarkMap }: BookmarksVi
     }
   };
 
-  // Filter results by selected collection
-  const filteredResults = selectedCollection
-    ? results.filter((r) => bookmarkMap[r.id]?.collectionId === selectedCollection)
-    : results;
+  // Filter results by collection, platform, sentiment, then sort
+  const filteredResults = useMemo(() => {
+    let filtered = selectedCollection
+      ? results.filter((r) => bookmarkMap[r.id]?.collectionId === selectedCollection)
+      : results;
+
+    if (platformFilter) {
+      filtered = filtered.filter((r) => r.platform === platformFilter);
+    }
+    if (sentimentFilter) {
+      filtered = filtered.filter((r) => r.sentiment === sentimentFilter);
+    }
+
+    // Sort
+    return [...filtered].sort((a, b) => {
+      const dateA = new Date(a.createdAt).getTime();
+      const dateB = new Date(b.createdAt).getTime();
+      return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
+    });
+  }, [results, selectedCollection, bookmarkMap, platformFilter, sentimentFilter, sortOrder]);
 
   return (
     <div className="space-y-6">
@@ -187,6 +220,74 @@ export function BookmarksView({ results, collections, bookmarkMap }: BookmarksVi
 
         {/* Main content: Results */}
         <div className="flex-1 space-y-3">
+          {/* Filters row */}
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-sm text-muted-foreground shrink-0">
+              {filteredResults.length} result{filteredResults.length !== 1 ? "s" : ""}
+            </span>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {/* Platform filter — only show if 2+ platforms */}
+              {availablePlatforms.length > 1 && (
+                <Select
+                  value={platformFilter || "all"}
+                  onValueChange={(v) => setPlatformFilter(v === "all" ? null : v)}
+                >
+                  <SelectTrigger className="h-7 w-[130px] text-xs">
+                    <SelectValue placeholder="Platform" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All platforms</SelectItem>
+                    {availablePlatforms.map((p) => (
+                      <SelectItem key={p} value={p}>
+                        {getPlatformDisplayName(p)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+
+              {/* Sentiment filter */}
+              <Select
+                value={sentimentFilter || "all"}
+                onValueChange={(v) => setSentimentFilter(v === "all" ? null : v)}
+              >
+                <SelectTrigger className="h-7 w-[120px] text-xs">
+                  <SelectValue placeholder="Sentiment" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All sentiment</SelectItem>
+                  <SelectItem value="positive">Positive</SelectItem>
+                  <SelectItem value="neutral">Neutral</SelectItem>
+                  <SelectItem value="negative">Negative</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Sort toggle */}
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs gap-1"
+                onClick={() => setSortOrder((s) => (s === "desc" ? "asc" : "desc"))}
+              >
+                <ArrowUpDown className="h-3 w-3" />
+                {sortOrder === "desc" ? "Newest" : "Oldest"}
+              </Button>
+
+              {/* Clear */}
+              {(platformFilter || sentimentFilter) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs gap-1 text-muted-foreground"
+                  onClick={() => { setPlatformFilter(null); setSentimentFilter(null); }}
+                >
+                  <X className="h-3 w-3" />
+                  Clear
+                </Button>
+              )}
+            </div>
+          </div>
+
           {filteredResults.length === 0 ? (
             <Card className="border-dashed">
               <CardContent className="flex flex-col items-center justify-center py-12">

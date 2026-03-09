@@ -102,16 +102,22 @@ const ActionCard = memo(function ActionCard({
         alert && "border-amber-500/50 bg-amber-500/5"
       )}
     >
-      <CardContent className="p-4 flex flex-col flex-1">
+      <CardContent className="!pt-5 px-4 pb-4 sm:!pt-5 sm:px-5 sm:pb-5 flex flex-col flex-1">
         <div className="flex items-start justify-between mb-3">
-          <div className={cn("p-2 rounded-lg", iconBg)}>
-            <Icon className={cn("h-4 w-4", iconColor)} />
+          <div className="flex items-center gap-2.5">
+            <div className={cn("p-2 rounded-lg shrink-0", iconBg)}>
+              <Icon className={cn("h-4 w-4", iconColor)} />
+            </div>
+            <div>
+              <p className="font-semibold text-sm">{label}</p>
+              <p className="text-xs text-muted-foreground">{sublabel}</p>
+            </div>
           </div>
           {count > 0 && (
             <Badge
               variant="secondary"
               className={cn(
-                "text-xs",
+                "text-xs shrink-0",
                 alert && "bg-amber-500 text-black hover:bg-amber-600"
               )}
             >
@@ -119,9 +125,6 @@ const ActionCard = memo(function ActionCard({
             </Badge>
           )}
         </div>
-
-        <p className="font-semibold text-sm mb-0.5">{label}</p>
-        <p className="text-xs text-muted-foreground mb-3">{sublabel}</p>
 
         {/* Show top item preview if available - flex-1 to push button down */}
         <div className="flex-1 min-h-[48px]">
@@ -171,7 +174,7 @@ export const DashboardCards = memo(function DashboardCards({
       {/* Top Opportunity - Full width highlight */}
       {data.topOpportunity && (
         <Card className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-primary/20">
-          <CardContent className="p-4">
+          <CardContent className="!py-5 px-5">
             <div className="flex items-center gap-4">
               <div className="p-3 rounded-xl bg-primary/20 shrink-0">
                 <Zap className="h-6 w-6 text-primary" />
@@ -208,7 +211,7 @@ export const DashboardCards = memo(function DashboardCards({
       {/* Spike Alert - Full width if active */}
       {data.hasSpike && (
         <Card className="border-amber-500 bg-amber-500/10">
-          <CardContent className="p-4">
+          <CardContent className="!py-5 px-5">
             <div className="flex items-center gap-4">
               <div className="p-3 rounded-xl bg-amber-500/20 shrink-0">
                 <AlertTriangle className="h-6 w-6 text-amber-500" />
@@ -300,20 +303,23 @@ export const DashboardCards = memo(function DashboardCards({
 
         {/* 6. Unread Inbox */}
         <Card className="h-full flex flex-col transition-all hover:shadow-md">
-          <CardContent className="p-4 flex flex-col flex-1">
+          <CardContent className="!pt-5 px-4 pb-4 sm:!pt-5 sm:px-5 sm:pb-5 flex flex-col flex-1">
             <div className="flex items-start justify-between mb-3">
-              <div className="p-2 rounded-lg bg-blue-500/10">
-                <Inbox className="h-4 w-4 text-blue-500" />
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-lg bg-blue-500/10 shrink-0">
+                  <Inbox className="h-4 w-4 text-blue-500" />
+                </div>
+                <div>
+                  <p className="font-semibold text-sm">Unread Inbox</p>
+                  <p className="text-xs text-muted-foreground">Mentions awaiting review</p>
+                </div>
               </div>
               {data.unreadCount > 0 && (
-                <Badge variant="secondary" className="text-xs">
+                <Badge variant="secondary" className="text-xs shrink-0">
                   {data.unreadCount}
                 </Badge>
               )}
             </div>
-
-            <p className="font-semibold text-sm mb-0.5">Unread Inbox</p>
-            <p className="text-xs text-muted-foreground mb-3">Mentions awaiting review</p>
 
             <div className="flex-1 min-h-[48px]">
               <p className="text-3xl font-bold text-blue-500">{data.unreadCount}</p>
@@ -336,20 +342,23 @@ export const DashboardCards = memo(function DashboardCards({
         {/* Row 4 */}
         {/* 7. Today's Activity */}
         <Card className="h-full flex flex-col transition-all hover:shadow-md">
-          <CardContent className="p-4 flex flex-col flex-1">
+          <CardContent className="!pt-5 px-4 pb-4 sm:!pt-5 sm:px-5 sm:pb-5 flex flex-col flex-1">
             <div className="flex items-start justify-between mb-3">
-              <div className="p-2 rounded-lg bg-cyan-500/10">
-                <Calendar className="h-4 w-4 text-cyan-500" />
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-lg bg-cyan-500/10 shrink-0">
+                  <Calendar className="h-4 w-4 text-cyan-500" />
+                </div>
+                <div>
+                  <p className="font-semibold text-sm">Today&apos;s Activity</p>
+                  <p className="text-xs text-muted-foreground">New mentions from today</p>
+                </div>
               </div>
               {data.todayCount > 0 && (
-                <Badge variant="secondary" className="text-xs">
+                <Badge variant="secondary" className="text-xs shrink-0">
                   {data.todayCount}
                 </Badge>
               )}
             </div>
-
-            <p className="font-semibold text-sm mb-0.5">Today&apos;s Activity</p>
-            <p className="text-xs text-muted-foreground mb-3">New mentions from today</p>
 
             <div className="flex-1 min-h-[48px]">
               <p className="text-3xl font-bold text-cyan-500">{data.todayCount}</p>
@@ -371,15 +380,18 @@ export const DashboardCards = memo(function DashboardCards({
 
         {/* 8. Your Impact (Gamification) */}
         <Card className="h-full flex flex-col transition-all hover:shadow-md">
-          <CardContent className="p-4 flex flex-col flex-1">
+          <CardContent className="!pt-5 px-4 pb-4 sm:!pt-5 sm:px-5 sm:pb-5 flex flex-col flex-1">
             <div className="flex items-start justify-between mb-3">
-              <div className="p-2 rounded-lg bg-teal-500/10">
-                <Trophy className="h-4 w-4 text-teal-500" />
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-lg bg-teal-500/10 shrink-0">
+                  <Trophy className="h-4 w-4 text-teal-500" />
+                </div>
+                <div>
+                  <p className="font-semibold text-sm">Your Impact</p>
+                  <p className="text-xs text-muted-foreground">This week&apos;s activity</p>
+                </div>
               </div>
             </div>
-
-            <p className="font-semibold text-sm mb-0.5">Your Impact</p>
-            <p className="text-xs text-muted-foreground mb-3">This week&apos;s activity</p>
 
             <div className="flex-1 min-h-[48px] space-y-2">
               <div className="flex items-center justify-between">

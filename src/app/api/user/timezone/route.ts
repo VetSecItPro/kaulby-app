@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { getEffectiveUserId } from "@/lib/dev-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { db, users } from "@/lib/db";
 import { eq } from "drizzle-orm";
@@ -18,7 +18,7 @@ function isValidTimezone(tz: string): boolean {
 }
 
 export async function PATCH(request: NextRequest) {
-  const { userId } = await auth();
+  const userId = await getEffectiveUserId();
 
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

@@ -91,9 +91,10 @@ export function SupportForm() {
                   <SelectValue placeholder="What can we help with?" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="Bug Report">Bug Report</SelectItem>
                   <SelectItem value="Technical Issue">Technical Issue</SelectItem>
-                  <SelectItem value="Billing Question">Billing Question</SelectItem>
                   <SelectItem value="Feature Request">Feature Request</SelectItem>
+                  <SelectItem value="Billing Question">Billing Question</SelectItem>
                   <SelectItem value="Account Help">Account Help</SelectItem>
                   <SelectItem value="Platform/Integration">Platform / Integration</SelectItem>
                   <SelectItem value="General Question">General Question</SelectItem>

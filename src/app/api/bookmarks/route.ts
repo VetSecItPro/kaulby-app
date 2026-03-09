@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { getEffectiveUserId } from "@/lib/dev-auth";
 import { db, bookmarks, bookmarkCollections, results } from "@/lib/db";
 import { eq, and, desc } from "drizzle-orm";
 import { checkApiRateLimit } from "@/lib/rate-limit";
@@ -16,7 +16,7 @@ const createBookmarkSchema = z.object({
  * Returns all bookmarks for the authenticated user, optionally filtered by collection.
  */
 export async function GET(request: NextRequest) {
-  const { userId } = await auth();
+  const userId = await getEffectiveUserId();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
  * Bookmark a result. Body: { resultId: string, collectionId?: string, note?: string }
  */
 export async function POST(request: NextRequest) {
-  const { userId } = await auth();
+  const userId = await getEffectiveUserId();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

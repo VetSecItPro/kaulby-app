@@ -14,9 +14,11 @@ import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 
 // Rate limit tiers by operation type
+// Dashboard makes many parallel requests (monitors list, individual monitors, scan status, etc.)
+// so read limits need headroom for normal page loads without hitting 429s
 const API_RATE_LIMITS = {
-  read: { requests: 60, window: "1 m" as const },
-  write: { requests: 20, window: "1 m" as const },
+  read: { requests: 200, window: "1 m" as const },
+  write: { requests: 40, window: "1 m" as const },
   export: { requests: 5, window: "1 m" as const },
 };
 

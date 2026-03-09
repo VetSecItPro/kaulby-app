@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { getEffectiveUserId } from "@/lib/dev-auth";
 import { NextResponse } from "next/server";
 import { db, users } from "@/lib/db";
 import { eq } from "drizzle-orm";
@@ -7,7 +7,7 @@ import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
-  const { userId } = await auth();
+  const userId = await getEffectiveUserId();
 
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

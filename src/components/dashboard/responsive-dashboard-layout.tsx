@@ -4,6 +4,7 @@ import { ReactNode } from "react";
 import { MobileNav } from "@/components/mobile/mobile-nav";
 import { MobileHeader } from "@/components/mobile/mobile-header";
 import { Sidebar } from "./sidebar";
+import { DashboardFooter } from "./dashboard-footer";
 import type { WorkspaceRole } from "@/lib/permissions";
 
 interface ResponsiveDashboardLayoutProps {
@@ -51,11 +52,14 @@ export function ResponsiveDashboardLayout({
           dayPassExpiresAt={dayPassExpiresAt}
           workspaceRole={workspaceRole}
         />
-        <main className="flex-1 overflow-auto">
-          <div className="container py-6 px-4 md:px-8">
-            {children}
-          </div>
-        </main>
+        <div className="flex-1 flex flex-col overflow-auto">
+          <main className="flex-1">
+            <div className="container py-6 px-4 md:px-8">
+              {children}
+            </div>
+          </main>
+          <DashboardFooter />
+        </div>
       </div>
     </>
   );

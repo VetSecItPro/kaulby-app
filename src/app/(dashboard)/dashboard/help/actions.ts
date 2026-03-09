@@ -3,7 +3,7 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { getEffectiveUserId, isLocalDev } from "@/lib/dev-auth";
 import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
+import { users, feedback } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { Resend } from "resend";
 import { escapeHtml } from "@/lib/security";
@@ -61,7 +61,29 @@ export async function submitSupportTicket(data: SupportTicketData) {
     return { success: false, error: "Message is too long (max 5000 characters)" };
   }
 
+  // Map support form categories to feedback table categories
+  const categoryMap: Record<string, string> = {
+    "Bug Report": "bug",
+    "Technical Issue": "technical",
+    "Feature Request": "feature",
+    "Billing Question": "billing",
+    "Account Help": "other",
+    "Platform/Integration": "technical",
+    "General Question": "other",
+  };
+
   try {
+    // Save to feedback table for admin dashboard
+    await db.insert(feedback).values({
+      userId,
+      userEmail,
+      userName,
+      category: categoryMap[data.category] || "other",
+      subject: data.subject,
+      message: data.message,
+      status: "open",
+    });
+
     // Send email to support
     await getResend().emails.send({
       from: "Kaulby Support <support@kaulbyapp.com>",

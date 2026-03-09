@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { getEffectiveUserId } from "@/lib/dev-auth";
 import { NextResponse } from "next/server";
 import { db, audiences, audienceMonitors, monitors } from "@/lib/db";
 import { eq, and } from "drizzle-orm";
@@ -21,7 +21,7 @@ interface RouteParams {
  */
 export async function POST(request: Request, { params }: RouteParams) {
   try {
-    const { userId } = await auth();
+    const userId = await getEffectiveUserId();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -104,7 +104,7 @@ export async function POST(request: Request, { params }: RouteParams) {
  */
 export async function DELETE(request: Request, { params }: RouteParams) {
   try {
-    const { userId } = await auth();
+    const userId = await getEffectiveUserId();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

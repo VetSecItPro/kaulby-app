@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { getEffectiveUserId } from "@/lib/dev-auth";
 import { db } from "@/lib/db";
 import { errorLogs, users } from "@/lib/db/schema";
 import { eq, desc, and, gte, lte, or, ilike, count, sql } from "drizzle-orm";
@@ -10,7 +10,7 @@ import { checkApiRateLimit } from "@/lib/rate-limit";
  * Fetch error logs with filtering and pagination
  */
 export async function GET(request: NextRequest) {
-  const { userId } = await auth();
+  const userId = await getEffectiveUserId();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

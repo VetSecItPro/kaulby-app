@@ -5,7 +5,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { getEffectiveUserId } from "@/lib/dev-auth";
 import { db, monitors, results, sharedReports } from "@/lib/db";
 import { eq, and, gte, inArray, desc, sql } from "drizzle-orm";
 import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
@@ -20,7 +20,7 @@ interface ShareReportRequest {
 
 export async function POST(req: Request) {
   try {
-    const { userId } = await auth();
+    const userId = await getEffectiveUserId();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

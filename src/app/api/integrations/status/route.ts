@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { getEffectiveUserId } from "@/lib/dev-auth";
 import { db, users } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import { decryptIntegrationData } from "@/lib/encryption";
@@ -17,7 +17,7 @@ interface IntegrationStatus {
  * Returns connection status for all integrations (without exposing tokens).
  */
 export async function GET() {
-  const { userId } = await auth();
+  const userId = await getEffectiveUserId();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

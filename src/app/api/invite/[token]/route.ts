@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { getEffectiveUserId } from "@/lib/dev-auth";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { workspaces, workspaceInvites, users } from "@/lib/db/schema";
@@ -76,7 +76,7 @@ export async function POST(
   { params }: { params: Promise<{ token: string }> }
 ) {
   try {
-    const { userId } = await auth();
+    const userId = await getEffectiveUserId();
 
     if (!userId) {
       return NextResponse.json({ error: "Please sign in to accept this invite" }, { status: 401 });

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { getEffectiveUserId } from "@/lib/dev-auth";
 import { jsonCompletion, MODELS, flushAI } from "@/lib/ai/openrouter";
 import { logAiCall } from "@/lib/ai/log";
 import { getUserPlan } from "@/lib/limits";
@@ -40,7 +40,7 @@ const PLATFORM_GUIDELINES: Record<string, string> = {
 
 export async function POST(req: Request) {
   try {
-    const { userId } = await auth();
+    const userId = await getEffectiveUserId();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

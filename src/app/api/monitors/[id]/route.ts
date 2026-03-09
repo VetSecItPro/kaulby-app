@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { getEffectiveUserId } from "@/lib/dev-auth";
 import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { db } from "@/lib/db";
@@ -21,6 +21,7 @@ const updateMonitorSchema = z.object({
   companyName: z.string().min(1).max(200).optional(),
   keywords: z.array(z.string().max(200)).optional(),
   platforms: z.array(z.string()).min(1).optional(),
+  platformUrls: z.record(z.string(), z.string().max(500)).optional(),
   isActive: z.boolean().optional(),
   scheduleEnabled: z.boolean().optional(),
   scheduleStartHour: z.number().int().min(0).max(23).optional(),
@@ -29,6 +30,18 @@ const updateMonitorSchema = z.object({
   scheduleTimezone: z.string().max(100).optional(),
 });
 
+/** Sanitize platform URLs — allow https:// URLs and Google Place IDs */
+function sanitizePlatformUrls(platformUrls: Record<string, string>): Record<string, string> {
+  const sanitized: Record<string, string> = {};
+  for (const [platform, url] of Object.entries(platformUrls)) {
+    const trimmed = url.trim();
+    if (trimmed && (trimmed.startsWith("https://") || trimmed.startsWith("ChI"))) {
+      sanitized[platform] = trimmed.slice(0, 500);
+    }
+  }
+  return sanitized;
+}
+
 export const dynamic = "force-dynamic";
 
 export async function GET(
@@ -36,7 +49,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId } = await auth();
+    const userId = await getEffectiveUserId();
     const { id } = await params;
 
     if (!userId) {
@@ -75,7 +88,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId } = await auth();
+    const userId = await getEffectiveUserId();
     const { id } = await params;
 
     if (!userId) {
@@ -106,7 +119,7 @@ export async function PATCH(
         { status: 400 }
       );
     }
-    const { name, companyName, keywords, platforms, isActive,
+    const { name, companyName, keywords, platforms, platformUrls, isActive,
       scheduleEnabled, scheduleStartHour, scheduleEndHour, scheduleDays, scheduleTimezone } = parsed.data;
 
     // Validate platforms against canonical list
@@ -197,6 +210,11 @@ export async function PATCH(
         ...(scheduleEndHour !== undefined && { scheduleEndHour }),
         ...(scheduleDays !== undefined && { scheduleDays }),
         ...(scheduleTimezone !== undefined && { scheduleTimezone }),
+        ...(platformUrls !== undefined && {
+          platformUrls: Object.keys(sanitizePlatformUrls(platformUrls)).length > 0
+            ? sanitizePlatformUrls(platformUrls)
+            : null,
+        }),
         updatedAt: new Date(),
       })
       .where(and(eq(monitors.id, id), eq(monitors.userId, userId)))
@@ -224,7 +242,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId } = await auth();
+    const userId = await getEffectiveUserId();
     const { id } = await params;
 
     if (!userId) {

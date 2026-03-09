@@ -20,24 +20,24 @@ import { COMMON_TIMEZONES, WEEKDAYS } from "@/lib/monitor-schedule";
 // Team tier (17 platforms): + devto, hashnode, appstore, playstore, quora, g2, yelp, amazonreviews
 const ALL_PLATFORMS = [
   // Pro tier platforms (9)
-  { id: "reddit", name: "Reddit", description: "Track subreddits and discussions", tier: "free" },
-  { id: "hackernews", name: "Hacker News", description: "Tech and startup discussions", tier: "pro" },
-  { id: "indiehackers", name: "Indie Hackers", description: "Indie makers and solo founders", tier: "pro" },
-  { id: "producthunt", name: "Product Hunt", description: "Product launches and reviews", tier: "pro" },
-  { id: "googlereviews", name: "Google Reviews", description: "Business reviews on Google", tier: "pro" },
-  { id: "youtube", name: "YouTube", description: "Video comments and discussions", tier: "pro" },
-  { id: "github", name: "GitHub", description: "Issues and discussions", tier: "pro" },
-  { id: "trustpilot", name: "Trustpilot", description: "Customer reviews and ratings", tier: "pro" },
-  { id: "x", name: "X (Twitter)", description: "Posts and conversations on X", tier: "pro" },
+  { id: "reddit", name: "Reddit", description: "Track subreddits and discussions", tier: "free", needsUrl: false },
+  { id: "hackernews", name: "Hacker News", description: "Tech and startup discussions", tier: "pro", needsUrl: false },
+  { id: "indiehackers", name: "Indie Hackers", description: "Indie makers and solo founders", tier: "pro", needsUrl: false },
+  { id: "producthunt", name: "Product Hunt", description: "Product launches and reviews", tier: "pro", needsUrl: false },
+  { id: "googlereviews", name: "Google Reviews", description: "Business reviews on Google", tier: "pro", needsUrl: true, urlPlaceholder: "https://www.google.com/maps/place/... or Place ID", urlHelp: "Google Maps URL or Place ID (ChI...)" },
+  { id: "youtube", name: "YouTube", description: "Video comments and discussions", tier: "pro", needsUrl: true, urlPlaceholder: "https://www.youtube.com/watch?v=...", urlHelp: "YouTube video URL to monitor comments" },
+  { id: "github", name: "GitHub", description: "Issues and discussions", tier: "pro", needsUrl: false },
+  { id: "trustpilot", name: "Trustpilot", description: "Customer reviews and ratings", tier: "pro", needsUrl: true, urlPlaceholder: "https://www.trustpilot.com/review/example.com", urlHelp: "Trustpilot company review page URL" },
+  { id: "x", name: "X (Twitter)", description: "Posts and conversations on X", tier: "pro", needsUrl: false },
   // Team tier only platforms (8 more)
-  { id: "devto", name: "Dev.to", description: "Developer blog posts and discussions", tier: "team" },
-  { id: "hashnode", name: "Hashnode", description: "Tech blog network", tier: "team" },
-  { id: "appstore", name: "App Store", description: "iOS app reviews", tier: "team" },
-  { id: "playstore", name: "Play Store", description: "Android app reviews", tier: "team" },
-  { id: "quora", name: "Quora", description: "Q&A discussions", tier: "team" },
-  { id: "g2", name: "G2", description: "Software reviews and ratings", tier: "team" },
-  { id: "yelp", name: "Yelp", description: "Local business reviews", tier: "team" },
-  { id: "amazonreviews", name: "Amazon Reviews", description: "Product reviews on Amazon", tier: "team" },
+  { id: "devto", name: "Dev.to", description: "Developer blog posts and discussions", tier: "team", needsUrl: false },
+  { id: "hashnode", name: "Hashnode", description: "Tech blog network", tier: "team", needsUrl: false },
+  { id: "appstore", name: "App Store", description: "iOS app reviews", tier: "team", needsUrl: true, urlPlaceholder: "https://apps.apple.com/us/app/name/id123456", urlHelp: "App Store URL for your iOS app" },
+  { id: "playstore", name: "Play Store", description: "Android app reviews", tier: "team", needsUrl: true, urlPlaceholder: "https://play.google.com/store/apps/details?id=com.app", urlHelp: "Play Store URL for your Android app" },
+  { id: "quora", name: "Quora", description: "Q&A discussions", tier: "team", needsUrl: false },
+  { id: "g2", name: "G2", description: "Software reviews and ratings", tier: "team", needsUrl: true, urlPlaceholder: "https://www.g2.com/products/your-product/reviews", urlHelp: "G2 product reviews page URL" },
+  { id: "yelp", name: "Yelp", description: "Local business reviews", tier: "team", needsUrl: true, urlPlaceholder: "https://www.yelp.com/biz/business-name-city", urlHelp: "Yelp business page URL" },
+  { id: "amazonreviews", name: "Amazon Reviews", description: "Product reviews on Amazon", tier: "team", needsUrl: true, urlPlaceholder: "https://amazon.com/dp/B08N5WRWNW or ASIN", urlHelp: "Amazon product URL or ASIN (10-character code)" },
 ];
 
 interface EditMonitorFormProps {
@@ -57,6 +57,7 @@ export function EditMonitorForm({ monitorId, limits, userPlan }: EditMonitorForm
   const [keywordInput, setKeywordInput] = useState("");
   const [keywords, setKeywords] = useState<string[]>([]);
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
+  const [platformUrls, setPlatformUrls] = useState<Record<string, string>>({});
   const [isActive, setIsActive] = useState(true);
   const [error, setError] = useState("");
 
@@ -111,6 +112,7 @@ export function EditMonitorForm({ monitorId, limits, userPlan }: EditMonitorForm
         setCompanyName(data.monitor.companyName || "");
         setKeywords(data.monitor.keywords || []);
         setSelectedPlatforms(data.monitor.platforms);
+        setPlatformUrls(data.monitor.platformUrls || {});
         setIsActive(data.monitor.isActive);
         // Load schedule settings
         setScheduleEnabled(data.monitor.scheduleEnabled ?? false);
@@ -193,6 +195,7 @@ export function EditMonitorForm({ monitorId, limits, userPlan }: EditMonitorForm
           companyName: companyName.trim(),
           keywords, // Now optional
           platforms: selectedPlatforms,
+          platformUrls,
           isActive,
           // Schedule settings
           scheduleEnabled,
@@ -560,6 +563,48 @@ export function EditMonitorForm({ monitorId, limits, userPlan }: EditMonitorForm
                 })}
               </div>
             </div>
+
+            {/* Platform URLs - shown when URL-dependent platforms are selected */}
+            {(() => {
+              const urlPlatforms = ALL_PLATFORMS.filter(
+                (p) => p.needsUrl && selectedPlatforms.includes(p.id)
+              );
+              if (urlPlatforms.length === 0) return null;
+              return (
+                <div className="space-y-4 rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
+                  <div className="space-y-1">
+                    <Label className="flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4 text-amber-500" />
+                      Platform URLs Required
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      These platforms need specific page URLs to scan reviews and comments. Without them, scans will return no results.
+                    </p>
+                  </div>
+                  {urlPlatforms.map((platform) => (
+                    <div key={platform.id} className="space-y-1.5">
+                      <Label htmlFor={`${formId}-url-${platform.id}`} className="text-sm">
+                        {platform.name}
+                      </Label>
+                      <Input
+                        id={`${formId}-url-${platform.id}`}
+                        placeholder={platform.urlPlaceholder}
+                        value={platformUrls[platform.id] || ""}
+                        onChange={(e) =>
+                          setPlatformUrls((prev) => ({
+                            ...prev,
+                            [platform.id]: e.target.value,
+                          }))
+                        }
+                        autoComplete="off"
+                        className="dark-input placeholder:text-gray-400 hover:border-teal-500 focus:border-teal-500"
+                      />
+                      <p className="text-xs text-muted-foreground">{platform.urlHelp}</p>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
 
             {/* Error */}
             {error && (

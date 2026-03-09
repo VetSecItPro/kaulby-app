@@ -71,20 +71,40 @@ interface ResponsiveMonitorsProps {
   refreshInfo?: RefreshInfo;
 }
 
-// CSS-based responsive - renders both layouts, CSS handles visibility
-// This prevents hydration mismatch from JS device detection
+// Renders both layouts on SSR to avoid hydration mismatch,
+// then after mount switches to rendering only the active one.
+// This prevents duplicate API calls (scan status checks) from both components.
 export function ResponsiveMonitors({ monitors, refreshInfo }: ResponsiveMonitorsProps) {
-  return (
-    <>
-      {/* Mobile/Tablet view - hidden on lg and above */}
-      <div className="lg:hidden">
-        <MobileMonitors monitors={monitors} refreshInfo={refreshInfo} />
-      </div>
+  const [mounted, setMounted] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
 
-      {/* Desktop view - hidden below lg */}
-      <DesktopMonitors monitors={monitors} refreshInfo={refreshInfo} />
-    </>
-  );
+  useEffect(() => {
+    const mql = window.matchMedia("(min-width: 1024px)");
+    setIsDesktop(mql.matches);
+    setMounted(true);
+
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    mql.addEventListener("change", handler);
+    return () => mql.removeEventListener("change", handler);
+  }, []);
+
+  // SSR + first paint: render both with CSS visibility (no fetch duplication
+  // because useEffect-based fetches haven't fired yet on first render)
+  if (!mounted) {
+    return (
+      <>
+        <div className="lg:hidden">
+          <MobileMonitors monitors={monitors} refreshInfo={refreshInfo} />
+        </div>
+        <DesktopMonitors monitors={monitors} refreshInfo={refreshInfo} />
+      </>
+    );
+  }
+
+  // After mount: render only the active layout — prevents duplicate API calls
+  return isDesktop
+    ? <DesktopMonitors monitors={monitors} refreshInfo={refreshInfo} />
+    : <MobileMonitors monitors={monitors} refreshInfo={refreshInfo} />;
 }
 
 // Scan button component with loading state and cooldown handling

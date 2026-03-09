@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { getEffectiveUserId } from "@/lib/dev-auth";
 import { db, activityLogs, users } from "@/lib/db";
 import { eq, desc, and, lt } from "drizzle-orm";
 import { checkApiRateLimit } from "@/lib/rate-limit";
@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
+    const userId = await getEffectiveUserId();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
