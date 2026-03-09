@@ -14,47 +14,50 @@ const MAX_BATCH_SIZE = 10;
 
 // GET - Load messages for a conversation
 export async function GET(req: Request) {
-  const userId = await getEffectiveUserId();
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const userId = await getEffectiveUserId();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(req.url);
+    const conversationId = searchParams.get("conversationId");
+
+    if (!conversationId) {
+      return NextResponse.json({ error: "Missing conversationId" }, { status: 400 });
+    }
+
+    if (!isValidUuid(conversationId)) {
+      return NextResponse.json({ error: "Invalid conversationId" }, { status: 400 });
+    }
+
+    const conversation = await db.query.chatConversations.findFirst({
+      where: and(
+        eq(chatConversations.id, conversationId),
+        eq(chatConversations.userId, userId)
+      ),
+      columns: { id: true },
+    });
+
+    if (!conversation) {
+      return NextResponse.json({ error: "Conversation not found" }, { status: 404 });
+    }
+
+    const messages = await db.query.chatMessages.findMany({
+      where: eq(chatMessages.conversationId, conversationId),
+      orderBy: [asc(chatMessages.createdAt)],
+    });
+
+    return NextResponse.json({ messages });
+  } catch (error) {
+    console.error("Error loading messages:", error);
+    return NextResponse.json({ error: "Failed to load messages" }, { status: 500 });
   }
-
-  const { searchParams } = new URL(req.url);
-  const conversationId = searchParams.get("conversationId");
-
-  if (!conversationId) {
-    return NextResponse.json({ error: "Missing conversationId" }, { status: 400 });
-  }
-
-  // Validate UUID format
-  if (!isValidUuid(conversationId)) {
-    return NextResponse.json({ error: "Invalid conversationId" }, { status: 400 });
-  }
-
-  // Verify conversation belongs to authenticated user — prevents IDOR attacks
-  const conversation = await db.query.chatConversations.findFirst({
-    where: and(
-      eq(chatConversations.id, conversationId),
-      eq(chatConversations.userId, userId)
-    ),
-    columns: { id: true },
-  });
-
-  if (!conversation) {
-    // Return 404 (not 403) to avoid leaking existence of conversations
-    return NextResponse.json({ error: "Conversation not found" }, { status: 404 });
-  }
-
-  const messages = await db.query.chatMessages.findMany({
-    where: eq(chatMessages.conversationId, conversationId),
-    orderBy: [asc(chatMessages.createdAt)],
-  });
-
-  return NextResponse.json({ messages });
 }
 
 // POST - Save messages to a conversation
 export async function POST(req: Request) {
+  try {
   const userId = await getEffectiveUserId();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -155,4 +158,8 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json({ saved: inserted.length });
+  } catch (error) {
+    console.error("Error saving messages:", error);
+    return NextResponse.json({ error: "Failed to save messages" }, { status: 500 });
+  }
 }

@@ -165,24 +165,6 @@ export function PageTransition({ children, className }: PageTransitionProps) {
   );
 }
 
-// Hover animation wrapper
-interface HoverLiftProps {
-  children: ReactNode;
-  className?: string;
-}
-
-export function HoverLift({ children, className }: HoverLiftProps) {
-  return (
-    <motion.div
-      whileHover={{ y: -4, transition: { duration: 0.2 } }}
-      whileTap={{ scale: 0.98 }}
-      className={className}
-    >
-      {children}
-    </motion.div>
-  );
-}
-
 // Animated card wrapper
 interface AnimatedCardProps {
   children: ReactNode;
@@ -205,31 +187,6 @@ export function AnimatedCard({ children, className, delay = 0 }: AnimatedCardPro
     >
       {children}
     </motion.div>
-  );
-}
-
-// Counter animation for stats
-interface AnimatedNumberProps {
-  value: number;
-  duration?: number;
-  className?: string;
-}
-
-export function AnimatedNumber({ value, className }: AnimatedNumberProps) {
-  return (
-    <motion.span
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className={className}
-    >
-      <motion.span
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.3 }}
-      >
-        {value.toLocaleString()}
-      </motion.span>
-    </motion.span>
   );
 }
 

@@ -17,67 +17,66 @@ interface IntegrationStatus {
  * Returns connection status for all integrations (without exposing tokens).
  */
 export async function GET() {
-  const userId = await getEffectiveUserId();
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const userId = await getEffectiveUserId();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const rateLimit = await checkApiRateLimit(userId, "read");
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests" },
+        { status: 429, headers: { "Retry-After": String(rateLimit.retryAfter ?? 60) } }
+      );
+    }
+
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, userId),
+      columns: { integrations: true },
+    });
+
+    const integrations = (user?.integrations as Record<string, unknown>) || {};
+    const status: Record<string, IntegrationStatus> = {};
+
+    for (const provider of ["discord", "slack", "hubspot", "teams"] as const) {
+      const data = integrations[provider] as Record<string, unknown> | undefined;
+      if (!data || !data.connected) {
+        status[provider] = { connected: false };
+        continue;
+      }
+
+      const decrypted = decryptIntegrationData(data);
+
+      status[provider] = {
+        connected: true,
+        connectedAt: (data.connectedAt as string) || undefined,
+        accountName:
+          (data.guildName as string) ||
+          (data.teamName as string) ||
+          (data.portalId ? `Portal ${data.portalId}` : undefined) ||
+          (provider === "teams" ? "Microsoft Teams" : undefined) ||
+          undefined,
+      };
+
+      if (provider === "discord" && status[provider].connected) {
+        status[provider].channelConfigured = !!(data.channelId);
+      }
+
+      if (!decrypted.accessToken && provider !== "slack" && provider !== "teams") {
+        status[provider] = { connected: false };
+      }
+      if (provider === "slack" && !decrypted.accessToken && !decrypted.webhookUrl) {
+        status[provider] = { connected: false };
+      }
+      if (provider === "teams" && !decrypted.webhookUrl) {
+        status[provider] = { connected: false };
+      }
+    }
+
+    return NextResponse.json({ integrations: status });
+  } catch (error) {
+    console.error("Error fetching integration status:", error);
+    return NextResponse.json({ error: "Failed to fetch integration status" }, { status: 500 });
   }
-
-  const rateLimit = await checkApiRateLimit(userId, "read");
-  if (!rateLimit.allowed) {
-    return NextResponse.json(
-      { error: "Too many requests" },
-      { status: 429, headers: { "Retry-After": String(rateLimit.retryAfter ?? 60) } }
-    );
-  }
-
-  const user = await db.query.users.findFirst({
-    where: eq(users.id, userId),
-    columns: { integrations: true },
-  });
-
-  const integrations = (user?.integrations as Record<string, unknown>) || {};
-  const status: Record<string, IntegrationStatus> = {};
-
-  for (const provider of ["discord", "slack", "hubspot", "teams"] as const) {
-    const data = integrations[provider] as Record<string, unknown> | undefined;
-    if (!data || !data.connected) {
-      status[provider] = { connected: false };
-      continue;
-    }
-
-    // Decrypt to verify tokens are present and valid
-    const decrypted = decryptIntegrationData(data);
-
-    status[provider] = {
-      connected: true,
-      connectedAt: (data.connectedAt as string) || undefined,
-      // Return display-safe info only — never expose tokens
-      accountName:
-        (data.guildName as string) ||    // Discord
-        (data.teamName as string) ||     // Slack
-        (data.portalId ? `Portal ${data.portalId}` : undefined) || // HubSpot
-        (provider === "teams" ? "Microsoft Teams" : undefined) || // Teams
-        undefined,
-    };
-
-    // For Discord, indicate whether a channel has been configured for alerts
-    if (provider === "discord" && status[provider].connected) {
-      status[provider].channelConfigured = !!(data.channelId);
-    }
-
-    // If token is missing/corrupt, mark as disconnected
-    if (!decrypted.accessToken && provider !== "slack" && provider !== "teams") {
-      status[provider] = { connected: false };
-    }
-    // Slack uses webhookUrl instead of accessToken
-    if (provider === "slack" && !decrypted.accessToken && !decrypted.webhookUrl) {
-      status[provider] = { connected: false };
-    }
-    // Teams uses webhookUrl only (no OAuth tokens)
-    if (provider === "teams" && !decrypted.webhookUrl) {
-      status[provider] = { connected: false };
-    }
-  }
-
-  return NextResponse.json({ integrations: status });
 }

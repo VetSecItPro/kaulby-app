@@ -25,23 +25,23 @@ export function FaqAccordion({ faqs }: FaqAccordionProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-2">
-        {faqs.map((faq, index) => (
+        {faqs.map((faq, faqIndex) => (
           <div
-            key={index}
+            key={faq.question}
             className="border rounded-lg overflow-hidden"
           >
             <button
-              onClick={() => setOpenFaq(openFaq === index ? null : index)}
+              onClick={() => setOpenFaq(openFaq === faqIndex ? null : faqIndex)}
               className="w-full flex items-center justify-between p-4 text-left hover:bg-muted/50 transition-colors"
             >
               <span className="font-medium text-sm pr-4">{faq.question}</span>
-              {openFaq === index ? (
+              {openFaq === faqIndex ? (
                 <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
               ) : (
                 <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
               )}
             </button>
-            {openFaq === index && (
+            {openFaq === faqIndex && (
               <div className="px-4 pb-4 text-sm text-muted-foreground border-t bg-muted/30">
                 <p className="pt-3">{faq.answer}</p>
               </div>

@@ -13,27 +13,32 @@ interface RouteParams {
  * Remove a bookmark by result ID.
  */
 export async function DELETE(_request: Request, { params }: RouteParams) {
-  const userId = await getEffectiveUserId();
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const userId = await getEffectiveUserId();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const rateLimit = await checkApiRateLimit(userId, "write");
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: { "Retry-After": String(rateLimit.retryAfter ?? 60) } });
+    }
+
+    const { resultId } = await params;
+
+    const existing = await db.query.bookmarks.findFirst({
+      where: and(eq(bookmarks.userId, userId), eq(bookmarks.resultId, resultId)),
+    });
+
+    if (!existing) {
+      return NextResponse.json({ error: "Bookmark not found" }, { status: 404 });
+    }
+
+    await db.delete(bookmarks).where(eq(bookmarks.id, existing.id));
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Error deleting bookmark:", error);
+    return NextResponse.json({ error: "Failed to delete bookmark" }, { status: 500 });
   }
-
-  const rateLimit = await checkApiRateLimit(userId, "write");
-  if (!rateLimit.allowed) {
-    return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: { "Retry-After": String(rateLimit.retryAfter ?? 60) } });
-  }
-
-  const { resultId } = await params;
-
-  const existing = await db.query.bookmarks.findFirst({
-    where: and(eq(bookmarks.userId, userId), eq(bookmarks.resultId, resultId)),
-  });
-
-  if (!existing) {
-    return NextResponse.json({ error: "Bookmark not found" }, { status: 404 });
-  }
-
-  await db.delete(bookmarks).where(eq(bookmarks.id, existing.id));
-
-  return NextResponse.json({ success: true });
 }
