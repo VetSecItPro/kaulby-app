@@ -192,9 +192,11 @@ export async function POST(
 
     // Notify workspace owner
     try {
-      const owner = await db.query.users.findFirst({
-        where: eq(users.id, workspace.ownerId),
-      });
+      const owner = workspace.ownerId
+        ? await db.query.users.findFirst({
+            where: eq(users.id, workspace.ownerId),
+          })
+        : null;
 
       if (owner) {
         await sendInviteAcceptedEmail({

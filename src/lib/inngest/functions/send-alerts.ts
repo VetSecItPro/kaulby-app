@@ -103,7 +103,7 @@ export const sendAlert = inngest.createFunction(
     const { alertId, resultIds } = event.data;
 
     // Get alert configuration
-    const alert = await step.run("get-alert", async () => {
+    const alertRaw = await step.run("get-alert", async () => {
       return pooledDb.query.alerts.findFirst({
         where: eq(alerts.id, alertId),
         with: {
@@ -116,9 +116,14 @@ export const sendAlert = inngest.createFunction(
       });
     });
 
-    if (!alert || !alert.isActive) {
+    if (!alertRaw || !alertRaw.isActive) {
       return { skipped: true, reason: "Alert not found or inactive" };
     }
+
+    // Cast to fix Drizzle relational query type inference (monitor is always a single object from findFirst)
+    const alert = alertRaw as typeof alertRaw & {
+      monitor: typeof monitors.$inferSelect & { user: typeof users.$inferSelect | null };
+    };
 
     // Get the results
     const matchingResults = await step.run("get-results", async () => {
@@ -408,7 +413,7 @@ async function sendDigestForTimezone(
   step: DigestStep
 ) {
   // Get all users with email alerts for this frequency in this timezone
-  const usersWithAlerts: UserWithMonitors[] = await step.run(`get-users-${timezone.replace("/", "-")}`, async () => {
+  const usersWithAlerts = await step.run(`get-users-${timezone.replace("/", "-")}`, async () => {
     return pooledDb.query.users.findMany({
       where: eq(users.timezone, timezone),
       with: {
@@ -425,7 +430,7 @@ async function sendDigestForTimezone(
         },
       },
     });
-  });
+  }) as UserWithMonitors[];
 
   let digestsSent = 0;
   let skippedNoPlan = 0;

@@ -134,7 +134,9 @@ export const activityActionEnum = pgEnum("activity_action", [
 export const workspaces = pgTable("workspaces", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
-  ownerId: text("owner_id").references(() => users.id, { onDelete: "set null" }), // Clerk user ID of workspace owner
+  // DB: FK constraint to users.id exists at DB level (SET NULL on delete) — declared via db:push
+  // Cannot use inline .references() here due to circular dependency with users.workspaceId
+  ownerId: text("owner_id"), // Clerk user ID of workspace owner
   seatLimit: integer("seat_limit").default(5).notNull(),
   seatCount: integer("seat_count").default(1).notNull(), // Current number of members
   createdAt: timestamp("created_at").defaultNow().notNull(),
