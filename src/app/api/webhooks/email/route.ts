@@ -35,19 +35,20 @@ function extractEmail(input: string | string[] | undefined): string | undefined 
 
 export async function POST(request: NextRequest) {
   try {
-    // SECURITY (SEC-AUTH-001): Verify Resend webhook secret
+    // SECURITY (SEC-AUTH-001): Verify Resend webhook secret (mandatory)
     const webhookSecret = process.env.RESEND_WEBHOOK_SECRET;
-    if (webhookSecret) {
-      const signature = request.headers.get("resend-signature") || request.headers.get("x-resend-signature");
-      if (!signature || signature !== webhookSecret) {
-        return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
-      }
+    if (!webhookSecret) {
+      console.error("[email-webhook] RESEND_WEBHOOK_SECRET not configured");
+      return NextResponse.json({ error: "Webhook not configured" }, { status: 500 });
+    }
+    const signature = request.headers.get("resend-signature") || request.headers.get("x-resend-signature");
+    if (!signature || signature !== webhookSecret) {
+      return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
 
     const payload = await request.json();
 
-    // SECURITY: Log metadata only — FIX-011
-    console.log("Email webhook received:", { type: (payload as Record<string,unknown>)?.type });
+    // SECURITY: Metadata only — FIX-011
 
     // Resend wraps email data in "data" object
     const email = payload.data || payload;
@@ -72,11 +73,10 @@ export async function POST(request: NextRequest) {
     // Extract clean email for Reply-To
     const originalSenderEmail = extractEmail(from);
     // SECURITY (SEC-INJ-002): Sanitize log output to prevent log injection
-    console.log("Original sender extracted:", sanitizeForLog(originalSenderEmail ?? ""));
 
     // If body is missing, fetch full inbound email using Resend's receiving API
     if (!text && !html && email.email_id) {
-      console.log("Body missing, fetching inbound email:", sanitizeForLog(email.email_id));
+      console.warn("[email-webhook] Body missing, fetching:", sanitizeForLog(email.email_id));
       try {
         const response = await fetch(`https://api.resend.com/emails/receiving/${encodeURIComponent(email.email_id)}`, {
           headers: {
@@ -85,8 +85,7 @@ export async function POST(request: NextRequest) {
         });
         if (response.ok) {
           const fullEmail = await response.json();
-          // SECURITY: Log metadata only — FIX-011
-          console.log("Inbound email processed");
+          // Body fetched successfully
           text = fullEmail.text;
           html = fullEmail.html;
         } else {
@@ -97,7 +96,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log("Final fields:", { from: sanitizeForLog(from ?? ""), to: sanitizeForLog(String(to ?? "")), subject: sanitizeForLog(subject ?? ""), hasText: !!text, hasHtml: !!html });
+    // Fields extracted — proceeding to forward check
 
     // Only forward emails sent to support@kaulbyapp.com (prevents loops)
     const toAddresses = Array.isArray(to) ? to : [to];
@@ -106,7 +105,7 @@ export async function POST(request: NextRequest) {
     );
 
     if (!isForKaulby) {
-      console.log("Ignoring email not addressed to:", INBOUND_EMAIL);
+      // Not addressed to support inbox — skip forwarding
       return NextResponse.json({ received: true, forwarded: false });
     }
 
@@ -130,14 +129,14 @@ export async function POST(request: NextRequest) {
       ` : undefined,
     });
 
-    console.log("Forwarding with Reply-To:", sanitizeForLog(originalSenderEmail ?? ""));
+    // Email forwarded with Reply-To to original sender
 
     if (error) {
       console.error("Forward failed:", error);
       return NextResponse.json({ error: "Forward failed" }, { status: 500 });
     }
 
-    console.log("Forwarded to:", FORWARD_TO);
+    // Successfully forwarded
     return NextResponse.json({ received: true, forwarded: true });
 
   } catch (err) {

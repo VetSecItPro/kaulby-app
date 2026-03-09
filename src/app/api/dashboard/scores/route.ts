@@ -311,7 +311,7 @@ export async function GET() {
       reputationExplanation,
       reputationTrend,
     });
-    response.headers.set("Cache-Control", "private, max-age=300");
+    response.headers.set("Cache-Control", "private, max-age=300, stale-while-revalidate=600");
     return response;
   } catch (error) {
     console.error("Brand scores error:", error);

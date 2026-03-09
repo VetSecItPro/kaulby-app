@@ -4,7 +4,7 @@ import { memo, useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Menu, BarChart3, Lightbulb, Compass, Sparkles, Users, HelpCircle, CreditCard, ShieldCheck } from "lucide-react";
+import { Menu, BarChart3, Lightbulb, Sparkles, Users, HelpCircle, CreditCard, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -23,7 +23,7 @@ import { NotificationBell } from "@/components/dashboard/notification-bell";
 const menuItems = [
   { title: "Analytics", href: "/dashboard/analytics", icon: BarChart3, tourId: "analytics" },
   { title: "Insights", href: "/dashboard/insights", icon: Lightbulb, tourId: "insights" },
-  { title: "Discover", href: "/dashboard/discover", icon: Compass, tourId: "discover" },
+  // Discover page hidden for MVP — repurposing as "Market Pulse" in V2
   { title: "Ask Kaulby AI", href: "/dashboard/ask", icon: Sparkles, tourId: "ask-ai" },
   { title: "Audiences", href: "/dashboard/audiences", icon: Users, tourId: "audiences" },
   { title: "Help", href: "/dashboard/help", icon: HelpCircle, tourId: "help" },

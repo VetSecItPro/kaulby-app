@@ -12,7 +12,7 @@ import {
   uniqueIndex,
   primaryKey,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 
 // Enums
 export const subscriptionStatusEnum = pgEnum("subscription_status", [
@@ -398,6 +398,7 @@ export const results = pgTable("results", {
   batchAnalyzed: boolean("batch_analyzed").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
+  index("results_batch_analyzed_idx").on(table.batchAnalyzed),
   index("results_monitor_id_idx").on(table.monitorId),
   index("results_created_at_idx").on(table.createdAt),
   index("results_platform_idx").on(table.platform),
@@ -629,6 +630,7 @@ export const communityGrowth = pgTable("community_growth", {
   recordedAt: timestamp("recorded_at").defaultNow().notNull(),
 }, (table) => [
   index("community_growth_lookup_idx").on(table.platform, table.identifier, table.recordedAt),
+  uniqueIndex("community_growth_platform_identifier_date_idx").on(table.platform, table.identifier, sql`DATE(${table.recordedAt})`),
 ]);
 
 // Saved Searches - user-saved search queries (Phase 1)

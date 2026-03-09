@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
           // 1. User deleted their Clerk account but DB record remained
           // 2. User signed up again with the same email
           // Security note: We don't expose "email already exists" externally
-          console.log(`Linking existing user ${existingUser.id} to new Clerk ID ${id}`);
+          console.warn(`[clerk-webhook] Linking existing user ${existingUser.id} to new Clerk ID ${id}`);
 
           await db
             .update(users)
@@ -190,7 +190,7 @@ export async function POST(request: NextRequest) {
       }
 
       default:
-        console.log(`Unhandled event type: ${event.type}`);
+        // Unhandled Clerk event type — no action needed
     }
 
     return NextResponse.json({ received: true });

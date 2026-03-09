@@ -2,7 +2,7 @@ import { getEffectiveUserId } from "@/lib/dev-auth";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { workspaces, workspaceInvites, users } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { sendInviteAcceptedEmail } from "@/lib/email";
 import { findUserWithFallback } from "@/lib/auth-utils";
 import { checkApiRateLimit } from "@/lib/rate-limit";
@@ -131,30 +131,39 @@ export async function POST(
       );
     }
 
-    // Get workspace
-    const workspace = await db.query.workspaces.findFirst({
-      where: eq(workspaces.id, invite.workspaceId),
-    });
+    // FIX-112: All checks and mutations inside transaction to prevent race conditions.
+    // Status check + seat limit + all writes are atomic — prevents double-acceptance
+    // and concurrent seat limit bypass.
+    const workspace = await db.transaction(async (tx) => {
+      // Re-check invite status inside transaction (prevents double-acceptance race)
+      const freshInvite = await tx.query.workspaceInvites.findFirst({
+        where: eq(workspaceInvites.id, invite.id),
+        columns: { status: true },
+      });
 
-    if (!workspace) {
-      return NextResponse.json({ error: "Workspace not found" }, { status: 404 });
-    }
+      if (!freshInvite || freshInvite.status !== "pending") {
+        throw new Error("INVITE_ALREADY_USED");
+      }
 
-    // Check seat limit
-    if (workspace.seatCount >= workspace.seatLimit) {
-      return NextResponse.json(
-        { error: "This workspace has reached its seat limit. Contact the workspace owner." },
-        { status: 403 }
-      );
-    }
+      // Get workspace inside transaction
+      const ws = await tx.query.workspaces.findFirst({
+        where: eq(workspaces.id, invite.workspaceId),
+      });
 
-    // FIX-112: Use transaction for atomicity — all three updates succeed or none do
-    await db.transaction(async (tx) => {
+      if (!ws) {
+        throw new Error("WORKSPACE_NOT_FOUND");
+      }
+
+      // Check seat limit inside transaction
+      if (ws.seatCount >= ws.seatLimit) {
+        throw new Error("SEAT_LIMIT_REACHED");
+      }
+
       // Add user to workspace as editor (default role for new members)
       await tx
         .update(users)
         .set({
-          workspaceId: workspace.id,
+          workspaceId: ws.id,
           workspaceRole: "editor",
           updatedAt: new Date(),
         })
@@ -169,14 +178,16 @@ export async function POST(
         })
         .where(eq(workspaceInvites.id, invite.id));
 
-      // Update workspace seat count
+      // Use SQL increment to prevent stale count overwrites from concurrent requests
       await tx
         .update(workspaces)
         .set({
-          seatCount: workspace.seatCount + 1,
+          seatCount: sql`${workspaces.seatCount} + 1`,
           updatedAt: new Date(),
         })
-        .where(eq(workspaces.id, workspace.id));
+        .where(eq(workspaces.id, ws.id));
+
+      return ws;
     });
 
     // Notify workspace owner
@@ -205,6 +216,18 @@ export async function POST(
       },
     });
   } catch (error) {
+    // Handle transaction-thrown business logic errors
+    if (error instanceof Error) {
+      if (error.message === "INVITE_ALREADY_USED") {
+        return NextResponse.json({ error: "This invite has already been used" }, { status: 410 });
+      }
+      if (error.message === "WORKSPACE_NOT_FOUND") {
+        return NextResponse.json({ error: "Workspace not found" }, { status: 404 });
+      }
+      if (error.message === "SEAT_LIMIT_REACHED") {
+        return NextResponse.json({ error: "This workspace has reached its seat limit. Contact the workspace owner." }, { status: 403 });
+      }
+    }
     console.error("Error accepting invite:", error);
     return NextResponse.json({ error: "Failed to accept invite" }, { status: 500 });
   }

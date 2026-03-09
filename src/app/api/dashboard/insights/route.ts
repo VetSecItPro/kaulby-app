@@ -272,7 +272,7 @@ export async function GET() {
       // Gamification
       engagedThisWeek: engagedThisWeek[0]?.count || 0,
     });
-    response.headers.set("Cache-Control", "private, max-age=300");
+    response.headers.set("Cache-Control", "private, max-age=300, stale-while-revalidate=600");
     return response;
   } catch (error) {
     console.error("Dashboard insights error:", error);

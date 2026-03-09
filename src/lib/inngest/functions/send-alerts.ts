@@ -467,6 +467,7 @@ async function sendDigestForTimezone(
           isNull(results.lastSentInDigestAt)
         ),
         orderBy: (results, { desc }) => [desc(results.createdAt)],
+        limit: 5000, // Safety limit to prevent OOM on large digests
       });
     });
 

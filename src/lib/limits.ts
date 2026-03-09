@@ -275,9 +275,9 @@ export async function canViewAiAnalysis(
     };
   }
 
-  // Free tier: Only first result (index 0 when sorted oldest-first, or last when sorted newest-first)
-  // We show AI analysis on the FIRST result they ever got, to demonstrate value
-  const isFirstResult = resultIndex === totalResults - 1; // Assuming sorted newest-first
+  // Free tier: Show AI analysis on the NEWEST result (index 0 when sorted newest-first)
+  // This creates a teaser effect — users see analysis on fresh content and want more
+  const isFirstResult = resultIndex === 0;
 
   if (isFirstResult) {
     return {
@@ -506,7 +506,7 @@ async function getOrCreateUsageRecord(userId: string) {
   } else {
     // For free users, use calendar month
     periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+    periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
   }
 
   // Find existing usage record
