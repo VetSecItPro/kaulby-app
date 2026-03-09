@@ -10,39 +10,80 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, X, Loader2, Sparkles, Lock, AlertCircle, Clock, Wand2, Search, CheckCircle2, Zap, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, X, Loader2, Sparkles, Lock, AlertCircle, Clock, Wand2, Search, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
 import Link from "next/link";
 import { SearchQueryInput } from "@/components/search-query-input";
 import type { PlanLimits } from "@/lib/plans";
 import { COMMON_TIMEZONES, WEEKDAYS } from "@/lib/monitor-schedule";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
-// All 17 platforms with tier-based access
+// All 17 platforms with tier-based access and category tags for smart selection
 // Pro tier (9 platforms): reddit, hackernews, indiehackers, producthunt, googlereviews, youtube, github, trustpilot, x
 // Team tier (17 platforms): + devto, hashnode, appstore, playstore, quora, g2, yelp, amazonreviews
 const ALL_PLATFORMS = [
   // Pro tier platforms (9)
-  { id: "reddit", name: "Reddit", description: "Track subreddits and discussions", tier: "free", needsUrl: false },
-  { id: "hackernews", name: "Hacker News", description: "Tech and startup discussions", tier: "pro", needsUrl: false },
-  { id: "indiehackers", name: "Indie Hackers", description: "Indie makers and solo founders", tier: "pro", needsUrl: false },
-  { id: "producthunt", name: "Product Hunt", description: "Product launches and reviews", tier: "pro", needsUrl: false },
-  { id: "googlereviews", name: "Google Reviews", description: "Business reviews on Google", tier: "pro", needsUrl: true, urlPlaceholder: "https://www.google.com/maps/place/... or Place ID", urlHelp: "Google Maps URL or Place ID (ChI...)" },
-  { id: "youtube", name: "YouTube", description: "Video comments and discussions", tier: "pro", needsUrl: true, urlPlaceholder: "https://www.youtube.com/watch?v=...", urlHelp: "YouTube video URL to monitor comments" },
-  { id: "github", name: "GitHub", description: "Issues and discussions", tier: "pro", needsUrl: false },
-  { id: "trustpilot", name: "Trustpilot", description: "Customer reviews and ratings", tier: "pro", needsUrl: true, urlPlaceholder: "https://www.trustpilot.com/review/example.com", urlHelp: "Trustpilot company review page URL" },
-  { id: "x", name: "X (Twitter)", description: "Posts and conversations on X", tier: "pro", needsUrl: false },
+  { id: "reddit", name: "Reddit", description: "Track subreddits and discussions", tier: "free", needsUrl: false, categories: ["universal"] },
+  { id: "hackernews", name: "Hacker News", description: "Tech and startup discussions", tier: "pro", needsUrl: false, categories: ["tech", "saas"] },
+  { id: "indiehackers", name: "Indie Hackers", description: "Indie makers and solo founders", tier: "pro", needsUrl: false, categories: ["tech", "saas"] },
+  { id: "producthunt", name: "Product Hunt", description: "Product launches and reviews", tier: "pro", needsUrl: false, categories: ["tech", "saas", "ecommerce"] },
+  { id: "googlereviews", name: "Google Reviews", description: "Business reviews on Google", tier: "pro", needsUrl: true, urlPlaceholder: "https://www.google.com/maps/place/... or Place ID", urlHelp: "Google Maps URL or Place ID (ChI...)", categories: ["local", "restaurant", "services"] },
+  { id: "youtube", name: "YouTube", description: "Video comments and discussions", tier: "pro", needsUrl: true, urlPlaceholder: "https://www.youtube.com/watch?v=...", urlHelp: "YouTube video URL to monitor comments", categories: ["universal"] },
+  { id: "github", name: "GitHub", description: "Issues and discussions", tier: "pro", needsUrl: false, categories: ["tech", "saas"] },
+  { id: "trustpilot", name: "Trustpilot", description: "Customer reviews and ratings", tier: "pro", needsUrl: true, urlPlaceholder: "https://www.trustpilot.com/review/example.com", urlHelp: "Trustpilot company review page URL", categories: ["ecommerce", "services", "saas"] },
+  { id: "x", name: "X (Twitter)", description: "Posts and conversations on X", tier: "pro", needsUrl: false, categories: ["universal"] },
   // Team tier only platforms (8 more)
-  { id: "devto", name: "Dev.to", description: "Developer blog posts and discussions", tier: "team", needsUrl: false },
-  { id: "hashnode", name: "Hashnode", description: "Tech blog network", tier: "team", needsUrl: false },
-  { id: "appstore", name: "App Store", description: "iOS app reviews", tier: "team", needsUrl: true, urlPlaceholder: "https://apps.apple.com/us/app/name/id123456", urlHelp: "App Store URL for your iOS app" },
-  { id: "playstore", name: "Play Store", description: "Android app reviews", tier: "team", needsUrl: true, urlPlaceholder: "https://play.google.com/store/apps/details?id=com.app", urlHelp: "Play Store URL for your Android app" },
-  { id: "quora", name: "Quora", description: "Q&A discussions", tier: "team", needsUrl: false },
-  { id: "g2", name: "G2", description: "Software reviews and ratings", tier: "team", needsUrl: true, urlPlaceholder: "https://www.g2.com/products/your-product/reviews", urlHelp: "G2 product reviews page URL" },
-  { id: "yelp", name: "Yelp", description: "Local business reviews", tier: "team", needsUrl: true, urlPlaceholder: "https://www.yelp.com/biz/business-name-city", urlHelp: "Yelp business page URL" },
-  { id: "amazonreviews", name: "Amazon Reviews", description: "Product reviews on Amazon", tier: "team", needsUrl: true, urlPlaceholder: "https://amazon.com/dp/B08N5WRWNW or ASIN", urlHelp: "Amazon product URL or ASIN (10-character code)" },
+  { id: "devto", name: "Dev.to", description: "Developer blog posts and discussions", tier: "team", needsUrl: false, categories: ["tech"] },
+  { id: "hashnode", name: "Hashnode", description: "Tech blog network", tier: "team", needsUrl: false, categories: ["tech"] },
+  { id: "appstore", name: "App Store", description: "iOS app reviews", tier: "team", needsUrl: true, urlPlaceholder: "https://apps.apple.com/us/app/name/id123456", urlHelp: "App Store URL for your iOS app", categories: ["app"] },
+  { id: "playstore", name: "Play Store", description: "Android app reviews", tier: "team", needsUrl: true, urlPlaceholder: "https://play.google.com/store/apps/details?id=com.app", urlHelp: "Play Store URL for your Android app", categories: ["app"] },
+  { id: "quora", name: "Quora", description: "Q&A discussions", tier: "team", needsUrl: false, categories: ["universal"] },
+  { id: "g2", name: "G2", description: "Software reviews and ratings", tier: "team", needsUrl: true, urlPlaceholder: "https://www.g2.com/products/your-product/reviews", urlHelp: "G2 product reviews page URL", categories: ["saas"] },
+  { id: "yelp", name: "Yelp", description: "Local business reviews", tier: "team", needsUrl: true, urlPlaceholder: "https://www.yelp.com/biz/business-name-city", urlHelp: "Yelp business page URL", categories: ["local", "restaurant", "services"] },
+  { id: "amazonreviews", name: "Amazon Reviews", description: "Product reviews on Amazon", tier: "team", needsUrl: true, urlPlaceholder: "https://amazon.com/dp/B08N5WRWNW or ASIN", urlHelp: "Amazon product URL or ASIN (10-character code)", categories: ["ecommerce"] },
 ];
+
+// Smart platform suggestions based on company/brand name
+function suggestPlatforms(companyName: string, userPlan: string): string[] {
+  const name = companyName.toLowerCase().trim();
+  if (!name) return ["reddit"]; // Minimum default
+
+  // Keywords that signal business type
+  const localSignals = ["restaurant", "cafe", "coffee", "bar", "grill", "pizza", "bakery", "salon", "spa", "gym", "fitness", "dental", "clinic", "hotel", "repair", "plumbing", "cleaning", "landscaping", "roofing", "auto", "mechanic", "tacos", "mexican", "italian", "chinese", "thai", "sushi", "burger", "bbq", "diner"];
+  const techSignals = ["app", "saas", "software", "ai", "api", "cloud", "tech", "dev", "code", "platform", "tool", "analytics", "dashboard", "automation"];
+  const ecommerceSignals = ["shop", "store", "buy", "goods", "market", "retail", "commerce", "supply", "brand", "products"];
+  const appSignals = ["app", "mobile", "ios", "android"];
+
+  const isLocal = localSignals.some(s => name.includes(s));
+  const isTech = techSignals.some(s => name.includes(s));
+  const isEcommerce = ecommerceSignals.some(s => name.includes(s));
+  const isApp = appSignals.some(s => name.includes(s));
+
+  // Determine which categories to include
+  const categories = new Set<string>();
+  categories.add("universal"); // Always include universal platforms
+
+  if (isLocal) { categories.add("local"); categories.add("restaurant"); categories.add("services"); }
+  if (isTech) { categories.add("tech"); categories.add("saas"); }
+  if (isEcommerce) { categories.add("ecommerce"); }
+  if (isApp) { categories.add("app"); }
+
+  // If no specific signals detected, use a sensible general set
+  if (!isLocal && !isTech && !isEcommerce && !isApp) {
+    // General brand — include review platforms and discussion platforms
+    categories.add("services");
+    categories.add("ecommerce");
+  }
+
+  // Filter platforms by category and user plan
+  const available = ALL_PLATFORMS.filter(p => {
+    if (p.tier === "pro" && userPlan === "free") return false;
+    if (p.tier === "team" && userPlan !== "team") return false;
+    return p.categories.some(c => categories.has(c));
+  });
+
+  return available.map(p => p.id);
+}
 
 // Dynamic keyword suggestions based on monitor name
 function generateKeywordSuggestions(monitorName: string): string[] {
@@ -88,91 +129,17 @@ interface NewMonitorFormProps {
 
 type MonitorType = "keyword" | "ai_discovery";
 
-// Get default platforms for a user's plan
-function getDefaultPlatforms(userPlan: string): string[] {
-  if (userPlan === "team") {
-    return ALL_PLATFORMS.map((p) => p.id);
-  }
-  if (userPlan === "pro") {
-    return ALL_PLATFORMS.filter((p) => p.tier === "free" || p.tier === "pro").map((p) => p.id);
-  }
-  return ["reddit"];
-}
-
 export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
   const formId = useId();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [name, setName] = useState("");
   const [companyName, setCompanyName] = useState("");
-  const [showFullForm, setShowFullForm] = useState(false);
 
-  // Quick Create state
-  const [quickBrandName, setQuickBrandName] = useState("");
-  const [quickIsLoading, setQuickIsLoading] = useState(false);
-
-  const quickKeywordSuggestions = useMemo(
-    () => generateKeywordSuggestions(quickBrandName),
-    [quickBrandName]
-  );
-  const [quickSelectedKeywords, setQuickSelectedKeywords] = useState<string[]>([]);
-
-  const toggleQuickKeyword = (keyword: string) => {
-    setQuickSelectedKeywords((prev) =>
-      prev.includes(keyword) ? prev.filter((k) => k !== keyword) : prev.length < limits.keywordsPerMonitor ? [...prev, keyword] : prev
-    );
-  };
-
-  const handleQuickCreate = async () => {
-    if (!quickBrandName.trim()) {
-      toast.error("Please enter a brand or company name");
-      return;
-    }
-
-    setQuickIsLoading(true);
-    try {
-      const platforms = getDefaultPlatforms(userPlan);
-      const response = await fetch("/api/monitors", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: `${quickBrandName.trim()} Monitor`,
-          companyName: quickBrandName.trim(),
-          monitorType: "keyword",
-          keywords: quickSelectedKeywords,
-          platforms,
-          platformUrls: {},
-          scheduleEnabled: false,
-          scheduleStartHour: 9,
-          scheduleEndHour: 17,
-          scheduleDays: WEEKDAYS,
-          scheduleTimezone: "America/New_York",
-        }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Failed to create monitor");
-      }
-
-      toast.success("Monitor created! We'll start scanning shortly.", {
-        icon: <CheckCircle2 className="h-4 w-4" />,
-      });
-      setTimeout(() => {
-        router.push("/dashboard/monitors");
-        router.refresh();
-      }, 1500);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Something went wrong";
-      toast.error(message);
-    } finally {
-      setQuickIsLoading(false);
-    }
-  };
   const [keywordInput, setKeywordInput] = useState("");
   const [keywords, setKeywords] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(["reddit"]);
   const [platformUrls, setPlatformUrls] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
 
@@ -187,6 +154,9 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
   const [scheduleDays, setScheduleDays] = useState<number[]>(WEEKDAYS);
   const [scheduleTimezone, setScheduleTimezone] = useState("America/New_York");
 
+  // Track whether user has manually changed platforms
+  const [platformsManuallySet, setPlatformsManuallySet] = useState(false);
+
   const isPaidUser = userPlan !== "free";
   const isTeamUser = userPlan === "team";
   const keywordLimit = limits.keywordsPerMonitor;
@@ -195,14 +165,38 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
 
   // Check if a platform is locked based on user's tier
   const isPlatformLocked = (platformTier: string): boolean => {
-    if (platformTier === "free") return false; // Reddit - always available
-    if (platformTier === "pro") return !isPaidUser; // Pro platforms locked for free users
-    if (platformTier === "team") return !isTeamUser; // Team platforms locked for free and pro users
+    if (platformTier === "free") return false;
+    if (platformTier === "pro") return !isPaidUser;
+    if (platformTier === "team") return !isTeamUser;
     return true;
   };
 
   // Generate keyword suggestions based on company name
   const keywordSuggestions = useMemo(() => generateKeywordSuggestions(companyName || name), [companyName, name]);
+
+  // Smart platform suggestions when company name changes
+  const smartPlatformSuggestion = useMemo(() => suggestPlatforms(companyName, userPlan), [companyName, userPlan]);
+
+  const handleCompanyNameChange = (value: string) => {
+    setCompanyName(value);
+    // Auto-generate monitor name if user hasn't manually set one
+    if (!name || name === `${companyName} Monitor` || name === "Monitor") {
+      setName(value ? `${value} Monitor` : "");
+    }
+    // Auto-suggest platforms if user hasn't manually changed them
+    if (!platformsManuallySet && value.trim()) {
+      setSelectedPlatforms(suggestPlatforms(value, userPlan));
+    }
+  };
+
+  const handlePlatformToggle = (platformId: string, checked: boolean) => {
+    setPlatformsManuallySet(true);
+    if (checked) {
+      setSelectedPlatforms((prev) => [...prev, platformId]);
+    } else {
+      setSelectedPlatforms((prev) => prev.filter((p) => p !== platformId));
+    }
+  };
 
   const addKeyword = () => {
     if (isAtKeywordLimit) return;
@@ -235,10 +229,6 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
     e.preventDefault();
     setError("");
 
-    if (!name.trim()) {
-      setError("Please enter a monitor name");
-      return;
-    }
     if (!companyName.trim()) {
       setError("Please enter the company/brand name to monitor");
       return;
@@ -254,6 +244,9 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
       return;
     }
 
+    // Auto-fill monitor name if empty
+    const monitorName = name.trim() || `${companyName.trim()} Monitor`;
+
     setIsLoading(true);
 
     try {
@@ -261,15 +254,14 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: name.trim(),
+          name: monitorName,
           companyName: companyName.trim(),
-          monitorType, // keyword or ai_discovery
-          keywords: monitorType === "keyword" ? keywords : [], // Only for keyword mode
+          monitorType,
+          keywords: monitorType === "keyword" ? keywords : [],
           searchQuery: monitorType === "keyword" && searchQuery.trim() ? searchQuery.trim() : undefined,
           discoveryPrompt: monitorType === "ai_discovery" ? discoveryPrompt.trim() : undefined,
           platforms: selectedPlatforms,
-          platformUrls, // Platform-specific URLs (Google Reviews, Trustpilot, etc.)
-          // Schedule settings
+          platformUrls,
           scheduleEnabled,
           scheduleStartHour,
           scheduleEndHour,
@@ -286,7 +278,6 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
       toast.success("Monitor created! We'll start scanning shortly.", {
         icon: <CheckCircle2 className="h-4 w-4" />,
       });
-      // Give user a moment to see the success message
       setTimeout(() => {
         router.push("/dashboard/monitors");
         router.refresh();
@@ -321,109 +312,38 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">New Monitor</h1>
           <p className="text-sm sm:text-base text-muted-foreground">
-            Set up a new keyword monitor to track mentions.
+            Set up a keyword monitor to track mentions across platforms.
           </p>
         </div>
       </div>
 
-      {/* Quick Create Section */}
-      <Card className="border-teal-500/30 bg-teal-500/5">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Zap className="h-5 w-5 text-teal-500" />
-            <CardTitle>Quick Create</CardTitle>
-          </div>
-          <CardDescription>
-            Enter your brand name and create a monitor in seconds with sensible defaults.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor={`${formId}-quick-brand`}>Brand / Company Name</Label>
-            <Input
-              id={`${formId}-quick-brand`}
-              placeholder="e.g., Acme Corp, High Rise Coffee"
-              value={quickBrandName}
-              onChange={(e) => {
-                setQuickBrandName(e.target.value);
-                setQuickSelectedKeywords([]);
-              }}
-              autoComplete="off"
-              className="dark-input placeholder:text-gray-400 hover:border-teal-500 focus:border-teal-500 min-h-[44px]"
-            />
-          </div>
-
-          {/* Auto-suggested keywords */}
-          {quickBrandName.trim() && quickKeywordSuggestions.length > 0 && (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium text-muted-foreground">
-                  Suggested keywords (optional)
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {quickKeywordSuggestions.map((suggestion) => (
-                  <Badge
-                    key={suggestion}
-                    variant={quickSelectedKeywords.includes(suggestion) ? "default" : "outline"}
-                    className="cursor-pointer transition-colors hover:bg-primary hover:text-primary-foreground min-h-[36px] px-3 text-sm"
-                    onClick={() => toggleQuickKeyword(suggestion)}
-                  >
-                    {quickSelectedKeywords.includes(suggestion) ? "" : "+ "}
-                    {suggestion}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Quick create defaults info */}
-          <div className="text-xs text-muted-foreground space-y-1">
-            <p>
-              Defaults: {userPlan === "team" ? "All 17 platforms" : userPlan === "pro" ? "9 Pro platforms" : "Reddit"} | Keyword mode | Scans on your plan&apos;s schedule
-            </p>
-          </div>
-
-          <Button
-            onClick={handleQuickCreate}
-            disabled={quickIsLoading || !quickBrandName.trim()}
-            className="bg-teal-500 text-black hover:bg-teal-600 w-full sm:w-auto min-h-[44px]"
-          >
-            {quickIsLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            <Zap className="mr-2 h-4 w-4" />
-            Create Monitor
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* Divider with toggle to full form */}
-      <Collapsible open={showFullForm} onOpenChange={setShowFullForm}>
-        <CollapsibleTrigger asChild>
-          <button
-            type="button"
-            className="flex items-center gap-2 w-full justify-center py-3 min-h-[44px] text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            {showFullForm ? (
-              <ChevronUp className="h-4 w-4" />
-            ) : (
-              <ChevronDown className="h-4 w-4" />
-            )}
-            {showFullForm ? "Hide advanced options" : "Or customize everything below"}
-          </button>
-        </CollapsibleTrigger>
-
-        <CollapsibleContent>
       <form onSubmit={handleSubmit}>
         <Card>
           <CardHeader>
             <CardTitle>Monitor Details</CardTitle>
             <CardDescription>
-              Configure what you want to track across platforms.
+              Enter your brand name and select the platforms you want to monitor.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6 sm:space-y-6">
-            {/* Monitor Name */}
+            {/* Company/Brand Name — FIRST and most prominent */}
+            <div className="space-y-2">
+              <Label htmlFor={`${formId}-companyName`}>Company / Brand Name</Label>
+              <Input
+                id={`${formId}-companyName`}
+                placeholder="e.g., Alexander's Mexican Restaurant, Acme Corp"
+                value={companyName}
+                onChange={(e) => handleCompanyNameChange(e.target.value)}
+                autoComplete="off"
+                autoFocus
+                className="dark-input placeholder:text-gray-400 hover:border-teal-500 focus:border-teal-500 min-h-[44px] text-base"
+              />
+              <p className="text-xs text-muted-foreground">
+                The company or brand you want to monitor. We&apos;ll search for this name across selected platforms.
+              </p>
+            </div>
+
+            {/* Monitor Name — auto-filled, less prominent */}
             <div className="space-y-2">
               <Label htmlFor={`${formId}-name`}>Monitor Name</Label>
               <Input
@@ -439,21 +359,114 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
               </p>
             </div>
 
-            {/* Company/Brand Name */}
-            <div className="space-y-2">
-              <Label htmlFor={`${formId}-companyName`}>Company/Brand Name</Label>
-              <Input
-                id={`${formId}-companyName`}
-                placeholder="e.g., High Rise Coffee, Acme Corp"
-                value={companyName}
-                onChange={(e) => setCompanyName(e.target.value)}
-                autoComplete="off"
-                className="dark-input placeholder:text-gray-400 hover:border-teal-500 focus:border-teal-500 min-h-[44px]"
-              />
-              <p className="text-xs text-muted-foreground">
-                The company or brand you want to monitor. We&apos;ll search for this name across selected platforms.
-              </p>
+            {/* Platforms — shown prominently, auto-selected based on company name */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label>Platforms</Label>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {isTeamUser
+                      ? "All 17 platforms available"
+                      : isPaidUser
+                        ? "9 Pro platforms available • Upgrade to Team for all 17"
+                        : "Upgrade to Pro for 9 platforms or Team for all 17"}
+                  </p>
+                </div>
+                {companyName.trim() && !platformsManuallySet && selectedPlatforms.length > 0 && (
+                  <Badge variant="outline" className="text-xs gap-1 text-teal-400 border-teal-500/30">
+                    <Sparkles className="h-3 w-3" />
+                    Auto-selected for your business
+                  </Badge>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {ALL_PLATFORMS.map((platform) => {
+                  const isLocked = isPlatformLocked(platform.tier);
+                  const isSelected = selectedPlatforms.includes(platform.id);
+
+                  return (
+                    <label
+                      key={platform.id}
+                      htmlFor={`${formId}-platform-${platform.id}`}
+                      className={`flex items-center space-x-3 rounded-lg border p-4 min-h-[56px] transition-colors ${
+                        isLocked
+                          ? "opacity-60 cursor-not-allowed bg-muted/30"
+                          : "cursor-pointer hover:bg-muted/50 active:bg-muted/70"
+                      } ${isSelected ? "border-primary bg-primary/5" : ""}`}
+                    >
+                      <Checkbox
+                        id={`${formId}-platform-${platform.id}`}
+                        checked={isSelected}
+                        disabled={isLocked}
+                        className="h-5 w-5"
+                        onCheckedChange={(checked) => {
+                          if (!isLocked && typeof checked === "boolean") {
+                            handlePlatformToggle(platform.id, checked);
+                          }
+                        }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className={`font-medium text-sm ${isLocked ? "cursor-not-allowed" : "cursor-pointer"}`}>
+                            {platform.name}
+                          </span>
+                          {isLocked && (
+                            <div className="flex items-center gap-1">
+                              <Lock className="h-3 w-3 text-muted-foreground" />
+                              <Badge variant="outline" className="text-[10px] px-1 py-0">
+                                {platform.tier === "team" ? "Team" : "Pro"}
+                              </Badge>
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {platform.description}
+                        </p>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
             </div>
+
+            {/* Platform-specific URLs */}
+            {selectedPlatforms.some(p => ALL_PLATFORMS.find(ap => ap.id === p)?.needsUrl) && (
+              <div className="space-y-4 rounded-lg border p-4 bg-muted/30">
+                <div>
+                  <Label className="text-base">Platform URLs</Label>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Some platforms need a specific URL to monitor. Enter the URL for each platform below.
+                  </p>
+                </div>
+                <div className="space-y-4">
+                  {selectedPlatforms
+                    .filter(p => ALL_PLATFORMS.find(ap => ap.id === p)?.needsUrl)
+                    .map((platformId) => {
+                      const platform = ALL_PLATFORMS.find(ap => ap.id === platformId);
+                      if (!platform) return null;
+                      return (
+                        <div key={platformId} className="space-y-2">
+                          <Label htmlFor={`${formId}-url-${platformId}`} className="text-sm font-medium">
+                            {platform.name} URL
+                          </Label>
+                          <Input
+                            id={`${formId}-url-${platformId}`}
+                            placeholder={platform.urlPlaceholder}
+                            value={platformUrls[platformId] || ""}
+                            onChange={(e) => setPlatformUrls(prev => ({ ...prev, [platformId]: e.target.value }))}
+                            autoComplete="off"
+                            className="dark-input placeholder:text-gray-400 hover:border-teal-500 focus:border-teal-500"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            {platform.urlHelp}
+                          </p>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
 
             {/* Monitor Mode Selection (Pro/Team feature) */}
             <div className="space-y-3">
@@ -525,7 +538,7 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
                 </div>
                 <Textarea
                   id={`${formId}-discoveryPrompt`}
-                  placeholder="e.g., People who are frustrated with their current project management tool and looking for alternatives&#10;&#10;or&#10;&#10;Developers asking for recommendations on API testing tools"
+                  placeholder={"e.g., People who are frustrated with their current project management tool and looking for alternatives\n\nor\n\nDevelopers asking for recommendations on API testing tools"}
                   value={discoveryPrompt}
                   onChange={(e) => setDiscoveryPrompt(e.target.value)}
                   rows={4}
@@ -625,7 +638,7 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
                   <div className="flex flex-wrap gap-2">
                     {keywordSuggestions
                       .filter(s => !keywords.includes(s))
-                      .slice(0, keywordsRemaining) // Only show as many suggestions as remaining slots
+                      .slice(0, keywordsRemaining)
                       .map((suggestion) => (
                         <Badge
                           key={suggestion}
@@ -655,111 +668,6 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
                 isPro={isPaidUser}
               />
             </div>
-            )}
-
-            {/* Platforms */}
-            <div className="space-y-4">
-              <div>
-                <Label>Platforms</Label>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {isTeamUser
-                    ? "All 17 platforms available"
-                    : isPaidUser
-                      ? "9 Pro platforms available • Upgrade to Team for all 17"
-                      : "Upgrade to Pro for 9 platforms or Team for all 17"}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {ALL_PLATFORMS.map((platform) => {
-                  const isLocked = isPlatformLocked(platform.tier);
-                  const isSelected = selectedPlatforms.includes(platform.id);
-
-                  return (
-                    <label
-                      key={platform.id}
-                      htmlFor={`${formId}-platform-${platform.id}`}
-                      className={`flex items-center space-x-3 rounded-lg border p-4 min-h-[56px] transition-colors ${
-                        isLocked
-                          ? "opacity-60 cursor-not-allowed bg-muted/30"
-                          : "cursor-pointer hover:bg-muted/50 active:bg-muted/70"
-                      } ${isSelected ? "border-primary bg-primary/5" : ""}`}
-                    >
-                      <Checkbox
-                        id={`${formId}-platform-${platform.id}`}
-                        checked={isSelected}
-                        disabled={isLocked}
-                        className="h-5 w-5"
-                        onCheckedChange={(checked) => {
-                          if (!isLocked && typeof checked === "boolean") {
-                            if (checked && !isSelected) {
-                              setSelectedPlatforms((prev) => [...prev, platform.id]);
-                            } else if (!checked && isSelected) {
-                              setSelectedPlatforms((prev) => prev.filter((p) => p !== platform.id));
-                            }
-                          }
-                        }}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className={`font-medium text-sm ${isLocked ? "cursor-not-allowed" : "cursor-pointer"}`}>
-                            {platform.name}
-                          </span>
-                          {isLocked && (
-                            <div className="flex items-center gap-1">
-                              <Lock className="h-3 w-3 text-muted-foreground" />
-                              <Badge variant="outline" className="text-[10px] px-1 py-0">
-                                {platform.tier === "team" ? "Team" : "Pro"}
-                              </Badge>
-                            </div>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {platform.description}
-                        </p>
-                      </div>
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Platform-specific URLs */}
-            {selectedPlatforms.some(p => ALL_PLATFORMS.find(ap => ap.id === p)?.needsUrl) && (
-              <div className="space-y-4 rounded-lg border p-4 bg-muted/30">
-                <div>
-                  <Label className="text-base">Platform URLs</Label>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Some platforms require specific URLs to monitor. Enter the URL for each selected platform below.
-                  </p>
-                </div>
-                <div className="space-y-4">
-                  {selectedPlatforms
-                    .filter(p => ALL_PLATFORMS.find(ap => ap.id === p)?.needsUrl)
-                    .map((platformId) => {
-                      const platform = ALL_PLATFORMS.find(ap => ap.id === platformId);
-                      if (!platform) return null;
-                      return (
-                        <div key={platformId} className="space-y-2">
-                          <Label htmlFor={`${formId}-url-${platformId}`} className="text-sm font-medium">
-                            {platform.name} URL
-                          </Label>
-                          <Input
-                            id={`${formId}-url-${platformId}`}
-                            placeholder={platform.urlPlaceholder}
-                            value={platformUrls[platformId] || ""}
-                            onChange={(e) => setPlatformUrls(prev => ({ ...prev, [platformId]: e.target.value }))}
-                            autoComplete="off"
-                            className="dark-input placeholder:text-gray-400 hover:border-teal-500 focus:border-teal-500"
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            {platform.urlHelp}
-                          </p>
-                        </div>
-                      );
-                    })}
-                </div>
-              </div>
             )}
 
             {/* Schedule Settings */}
@@ -893,8 +801,6 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
           </CardContent>
         </Card>
       </form>
-        </CollapsibleContent>
-      </Collapsible>
     </div>
   );
 }
