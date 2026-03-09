@@ -141,7 +141,7 @@ export async function GET() {
       brands,
       lastChecked: checks[0]?.checkedAt.toISOString() ?? null,
     });
-    response.headers.set("Cache-Control", "private, max-age=600");
+    response.headers.set("Cache-Control", "private, max-age=600, stale-while-revalidate=1200");
     return response;
   } catch (error) {
     console.error("AI visibility API error:", error);

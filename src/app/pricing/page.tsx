@@ -162,24 +162,28 @@ export default function PricingPage() {
 
   // Fetch day pass status and current plan for signed-in users
   useEffect(() => {
-    if (isSignedIn) {
-      fetch("/api/user/day-pass")
-        .then((res) => res.json())
-        .then((data) => {
-          setDayPassStatus({
-            active: data.active,
-            expiresAt: data.expiresAt,
-          });
-        })
-        .catch(console.error);
+    if (!isSignedIn) return;
 
-      fetch("/api/user/subscription")
-        .then((res) => res.json())
-        .then((data) => {
-          setCurrentPlan(data.plan || "free");
-        })
-        .catch(() => setCurrentPlan("free"));
-    }
+    const controller = new AbortController();
+
+    fetch("/api/user/day-pass", { signal: controller.signal })
+      .then((res) => res.json())
+      .then((data) => {
+        setDayPassStatus({
+          active: data.active,
+          expiresAt: data.expiresAt,
+        });
+      })
+      .catch((err) => { if (err.name !== "AbortError") console.error(err); });
+
+    fetch("/api/user/subscription", { signal: controller.signal })
+      .then((res) => res.json())
+      .then((data) => {
+        setCurrentPlan(data.plan || "free");
+      })
+      .catch((err) => { if (err.name !== "AbortError") setCurrentPlan("free"); });
+
+    return () => controller.abort();
   }, [isSignedIn]);
 
   const handleDayPassPurchase = async () => {

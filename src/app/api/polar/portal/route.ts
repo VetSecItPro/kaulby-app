@@ -38,7 +38,7 @@ export async function POST() {
     if (!user?.polarCustomerId) {
       // No Polar customer ID - redirect to Polar dashboard for manual management
       // This can happen if the webhook hasn't processed yet or there's a sync issue
-      console.log("No polarCustomerId found for user:", userId);
+      console.warn("[polar-portal] No polarCustomerId for user:", userId);
       return NextResponse.json(
         {
           error: "No subscription found. Please contact support if you believe this is an error.",
@@ -49,7 +49,7 @@ export async function POST() {
     }
 
     // Create Polar customer session
-    console.log("Creating portal session for customer:", user.polarCustomerId);
+    // Portal session creation — no debug logging in production
     const session = await polar.customerSessions.create({
       customerId: user.polarCustomerId,
     });

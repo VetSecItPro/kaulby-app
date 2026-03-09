@@ -88,6 +88,9 @@ export async function PATCH(
     }
 
     // Check if the new role is assignable by the current user
+    if (!currentUser.workspaceRole) {
+      return NextResponse.json({ error: "Invalid user role" }, { status: 400 });
+    }
     const assignableRoles = getAssignableRoles(currentUser.workspaceRole as WorkspaceRole);
     if (!assignableRoles.includes(newRole as WorkspaceRole)) {
       return NextResponse.json(

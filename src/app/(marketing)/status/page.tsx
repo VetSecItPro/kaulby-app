@@ -111,23 +111,28 @@ export default function StatusPage() {
   const [lastChecked, setLastChecked] = useState<Date | null>(null);
   const [nextRefresh, setNextRefresh] = useState(30);
 
-  const fetchHealth = useCallback(async () => {
+  const fetchHealth = useCallback(async (signal?: AbortSignal) => {
     try {
-      const res = await fetch("/api/health", { cache: "no-store" });
+      const res = await fetch("/api/health", { cache: "no-store", signal });
       const data: HealthResponse = await res.json();
       setHealth(data);
       setError(null);
       setLastChecked(new Date());
       setNextRefresh(30);
-    } catch {
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return;
       setError("Unable to reach health endpoint");
     }
   }, []);
 
   useEffect(() => {
-    fetchHealth();
-    const interval = setInterval(fetchHealth, 30_000);
-    return () => clearInterval(interval);
+    const controller = new AbortController();
+    fetchHealth(controller.signal);
+    const interval = setInterval(() => fetchHealth(controller.signal), 30_000);
+    return () => {
+      controller.abort();
+      clearInterval(interval);
+    };
   }, [fetchHealth]);
 
   // Countdown timer
@@ -163,7 +168,7 @@ export default function StatusPage() {
         <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-6 text-center">
           <p className="text-red-400 font-medium">{error}</p>
           <button
-            onClick={fetchHealth}
+            onClick={() => fetchHealth()}
             className="mt-3 text-sm text-red-300 underline underline-offset-4 hover:text-red-200"
           >
             Retry
