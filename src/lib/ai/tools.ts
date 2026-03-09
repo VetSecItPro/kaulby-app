@@ -45,22 +45,10 @@ export const TOOL_METADATA: Record<string, ToolMeta> = {
   hide_result:     { category: "safe_write", label: "Hiding result…" },
   unhide_result:   { category: "safe_write", label: "Unhiding result…" },
   mark_viewed:     { category: "safe_write", label: "Marking as viewed…" },
-  // Dangerous writes
-  create_monitor: {
-    category: "dangerous_write",
-    label: "Creating monitor…",
-    confirmationMessage: "I'll create a new monitor with these settings. This will start scanning for mentions. Proceed?",
-  },
-  update_monitor: {
-    category: "dangerous_write",
-    label: "Updating monitor…",
-    confirmationMessage: "I'll update this monitor's settings. Proceed?",
-  },
-  pause_monitor: {
-    category: "dangerous_write",
-    label: "Pausing monitor…",
-    confirmationMessage: "I'll pause this monitor. It will stop scanning until resumed. Proceed?",
-  },
+  // Action writes — user asked for it, just do it
+  create_monitor:  { category: "safe_write", label: "Creating monitor…" },
+  update_monitor:  { category: "safe_write", label: "Updating monitor…" },
+  pause_monitor:   { category: "safe_write", label: "Pausing monitor…" },
   resume_monitor: {
     category: "safe_write",
     label: "Resuming monitor…",
@@ -364,21 +352,21 @@ export const AI_TOOLS: OpenAI.ChatCompletionTool[] = [
     type: "function",
     function: {
       name: "create_monitor",
-      description: "Create a new monitoring keyword tracker. Requires a name, company name, keywords, and platforms to scan.",
+      description: "Create a new monitoring keyword tracker. You MUST generate smart keywords yourself based on your knowledge of the company/product — never ask the user what keywords to use. Generate 8-12 diverse keywords covering: brand name, '[brand] alternative', '[brand] vs', common complaints, key features, competitor comparisons, and migration discussions. Pick platforms intelligently based on company type (SaaS→Reddit/HN/G2/X, Consumer→Reddit/AppStore/X, etc.).",
       parameters: {
         type: "object",
         properties: {
-          name: { type: "string", description: "Display name for the monitor" },
-          company_name: { type: "string", description: "The brand/company name to track" },
+          name: { type: "string", description: "Display name for the monitor (e.g., 'Stripe Monitoring')" },
+          company_name: { type: "string", description: "The brand/company/product name to track" },
           keywords: {
             type: "array",
             items: { type: "string" },
-            description: "Keywords to track (e.g., ['competitor name', 'product feature'])",
+            description: "8-12 smart keywords YOU generate based on your knowledge of the company. Include: brand name, '[brand] alternative', '[brand] vs [competitor]', '[brand] pricing', common pain points, key product features, industry terms.",
           },
           platforms: {
             type: "array",
             items: { type: "string", enum: [...platformValues] },
-            description: "Platforms to scan",
+            description: "Platforms to scan — pick intelligently based on company type. SaaS/Tech: reddit, hackernews, g2, producthunt, github, x, trustpilot. Consumer apps: reddit, appstore, playstore, x, youtube. Local business: googlereviews, yelp, reddit.",
           },
           search_query: { type: "string", description: "Optional advanced boolean search query" },
         },
@@ -390,7 +378,7 @@ export const AI_TOOLS: OpenAI.ChatCompletionTool[] = [
     type: "function",
     function: {
       name: "update_monitor",
-      description: "Update an existing monitor's settings (name, keywords, platforms, etc.).",
+      description: "Update an existing monitor's settings. When adding keywords, be additive — merge new keywords with existing ones unless the user explicitly wants to replace them. When the user says 'add competitor tracking' — generate relevant competitor keywords yourself.",
       parameters: {
         type: "object",
         properties: {
