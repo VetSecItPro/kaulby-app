@@ -7,7 +7,7 @@ import { webhookEvents } from "@/lib/db/schema";
 
 // PERF: Webhook processing may take longer than default 10s — FIX-016
 export const maxDuration = 60;
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { upsertContact, sendWelcomeEmail } from "@/lib/email";
 import { identifyUser } from "@/lib/posthog";
 
@@ -95,15 +95,58 @@ export async function POST(request: NextRequest) {
           // Security note: We don't expose "email already exists" externally
           console.warn(`[clerk-webhook] Linking existing user ${existingUser.id} to new Clerk ID ${id}`);
 
-          await db
-            .update(users)
-            .set({
-              id, // Update to new Clerk ID
-              name: name || existingUser.name, // Keep existing name if new one is empty
-              updatedAt: new Date(),
-            })
-            .where(eq(users.email, email));
+          // Can't just UPDATE the PK because child tables have FK constraints
+          // without ON UPDATE CASCADE. Must: create new row → migrate FKs → delete old row.
+          const oldId = existingUser.id;
 
+          // 1. Temporarily clear email on old row to avoid unique constraint conflict
+          await db.update(users).set({ email: `migrating-${oldId}@placeholder` }).where(eq(users.id, oldId));
+
+          // 2. Insert new user row with the new Clerk ID and all existing data
+          await db.execute(
+            sql`INSERT INTO users (id, email, name, subscription_status, subscription_id, created_at, updated_at,
+              current_period_start, current_period_end, is_admin, timezone, workspace_id, workspace_role,
+              is_founding_member, founding_member_number, founding_member_price_id, onboarding_completed,
+              day_pass_expires_at, day_pass_purchase_count, last_day_pass_purchased_at,
+              is_banned, banned_at, ban_reason, polar_customer_id, polar_subscription_id,
+              deletion_requested_at, integrations, last_active_at, reengagement_email_sent_at,
+              report_schedule, report_day, report_last_sent_at, digest_paused, trial_winback_sent_at,
+              report_branding, tos_accepted_at)
+            SELECT ${id}, ${email}, COALESCE(${name}, name), subscription_status, subscription_id, created_at, NOW(),
+              current_period_start, current_period_end, is_admin, timezone, workspace_id, workspace_role,
+              is_founding_member, founding_member_number, founding_member_price_id, onboarding_completed,
+              day_pass_expires_at, day_pass_purchase_count, last_day_pass_purchased_at,
+              is_banned, banned_at, ban_reason, polar_customer_id, polar_subscription_id,
+              deletion_requested_at, integrations, last_active_at, reengagement_email_sent_at,
+              report_schedule, report_day, report_last_sent_at, digest_paused, trial_winback_sent_at,
+              report_branding, tos_accepted_at
+            FROM users WHERE id = ${oldId}`
+          );
+
+          // 3. Migrate all FK references from old ID to new ID
+          const childTables = [
+            "activity_logs", "ai_logs", "ai_visibility_checks", "api_keys",
+            "audiences", "bookmark_collections", "bookmarks", "chat_conversations",
+            "email_delivery_failures", "email_events", "feedback", "monitors",
+            "notifications", "saved_searches", "shared_reports", "usage",
+            "user_detection_keywords", "webhooks",
+          ];
+          for (const table of childTables) {
+            await db.execute(
+              sql.raw(`UPDATE "${table}" SET user_id = '${id}' WHERE user_id = '${oldId}'`)
+            );
+          }
+          // Also update workspace_members if it exists
+          try {
+            await db.execute(
+              sql.raw(`UPDATE "workspace_members" SET user_id = '${id}' WHERE user_id = '${oldId}'`)
+            );
+          } catch { /* table may not exist */ }
+
+          // 4. Delete old user row
+          await db.delete(users).where(eq(users.id, oldId));
+
+          console.warn(`[clerk-webhook] Successfully migrated user ${oldId} → ${id}`);
           isNewUser = false;
         } else {
           // Create new user in database
