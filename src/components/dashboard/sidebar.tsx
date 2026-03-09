@@ -194,49 +194,51 @@ export function Sidebar({ isAdmin = false, subscriptionStatus = "free", hasActiv
 
   return (
     <div className="flex h-full w-64 flex-col border-r bg-muted/40">
-      {/* Logo */}
-      <div className="flex h-14 items-center border-b px-4">
-        <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
-          <div className="w-7 h-7 rounded-lg overflow-hidden bg-black flex items-center justify-center">
-            <Image
-              src="/logo.jpg"
-              alt="Kaulby"
-              width={28}
-              height={28}
-              className="object-cover w-full h-full"
-            />
+      {/* Logo + Notification */}
+      <div className="border-b px-4">
+        <div className="flex h-14 items-center">
+          <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
+            <div className="w-7 h-7 rounded-lg overflow-hidden bg-black flex items-center justify-center">
+              <Image
+                src="/logo.jpg"
+                alt="Kaulby"
+                width={28}
+                height={28}
+                className="object-cover w-full h-full"
+              />
+            </div>
+            <span className="text-xl gradient-text">Kaulby</span>
+          </Link>
+          <div className="ml-auto">
+            <NotificationBell />
           </div>
-          <span className="text-xl gradient-text">Kaulby</span>
-        </Link>
-        {/* Plan Badge */}
-        {planBadge.show && (
-          <span className={cn(
-            "ml-2 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide rounded-full",
-            planBadge.className
-          )}>
-            {planBadge.label}
-          </span>
-        )}
-        <div className="ml-auto">
-          <NotificationBell />
         </div>
-        {/* Day Pass Timer */}
-        {hasActiveDayPass && dayPassExpiresAt && (
-          <DayPassTimer expiresAt={dayPassExpiresAt} />
-        )}
-        {/* Workspace Role Badge - only for Team accounts */}
-        {subscriptionStatus === "team" && workspaceRole && (
-          <span
-            className={cn(
-              "ml-1 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide rounded-full",
-              workspaceRole === "owner"
-                ? "bg-gradient-to-r from-amber-300 to-yellow-400 text-black shadow-sm"
-                : "bg-slate-600 text-white"
-            )}
-          >
-            {workspaceRole === "owner" ? "Owner" : "Member"}
-          </span>
-        )}
+        {/* Badges row */}
+        <div className="flex items-center gap-1.5 pb-3 -mt-1">
+          {planBadge.show && (
+            <span className={cn(
+              "px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide rounded-full",
+              planBadge.className
+            )}>
+              {planBadge.label}
+            </span>
+          )}
+          {hasActiveDayPass && dayPassExpiresAt && (
+            <DayPassTimer expiresAt={dayPassExpiresAt} />
+          )}
+          {subscriptionStatus === "team" && workspaceRole && (
+            <span
+              className={cn(
+                "px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide rounded-full",
+                workspaceRole === "owner"
+                  ? "bg-gradient-to-r from-amber-300 to-yellow-400 text-black shadow-sm"
+                  : "bg-slate-600 text-white"
+              )}
+            >
+              {workspaceRole === "owner" ? "Owner" : "Member"}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Navigation */}

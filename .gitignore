@@ -67,7 +67,7 @@ kaulby-ai-roadmap.md
 .security-reports/
 .redteam-reports/
 .security-audit.json
-docs/
+/docs/
 
 # Test results (local only)
 kaulby-test-results.md

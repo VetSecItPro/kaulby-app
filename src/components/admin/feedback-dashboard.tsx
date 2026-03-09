@@ -22,6 +22,8 @@ import {
   ArrowLeft,
   AlertTriangle,
   CreditCard,
+  Mail,
+  User,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -225,7 +227,19 @@ export function FeedbackDashboard({ feedback, stats }: FeedbackDashboardProps) {
                         {item.message}
                       </p>
                       <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                        <span>{item.userName || item.userEmail || item.userId}</span>
+                        <span className="flex items-center gap-1">
+                          <User className="h-3 w-3" />
+                          {item.userName || "Unknown"}
+                        </span>
+                        {item.userEmail && (
+                          <a
+                            href={`mailto:${item.userEmail}?subject=Re: ${encodeURIComponent(item.subject)}`}
+                            className="flex items-center gap-1 text-primary hover:underline"
+                          >
+                            <Mail className="h-3 w-3" />
+                            {item.userEmail}
+                          </a>
+                        )}
                         <span>{timeAgo(item.createdAt)}</span>
                       </div>
                     </div>

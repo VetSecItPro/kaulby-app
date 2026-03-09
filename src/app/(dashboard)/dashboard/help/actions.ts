@@ -154,7 +154,6 @@ Reply directly to this email to respond to the user.
 
             <p style="color: #a1a1aa; margin: 0 0 24px 0; font-size: 14px; line-height: 1.6;">
               We've received your support request and will get back to you as soon as possible.
-              Our typical response time is within 24 hours.
             </p>
 
             <div style="background: #141414; padding: 16px; border-radius: 8px; margin-bottom: 16px;">
@@ -177,7 +176,6 @@ Reply directly to this email to respond to the user.
 Thanks for reaching out!
 
 We've received your support request and will get back to you as soon as possible.
-Our typical response time is within 24 hours.
 
 Your Request:
 ${data.subject}

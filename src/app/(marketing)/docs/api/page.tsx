@@ -495,8 +495,8 @@ data = response.json()`}</pre>
         <h2 className="text-2xl font-semibold mb-4">Need Help?</h2>
         <p className="text-muted-foreground">
           If you have questions about the API or need help with your integration, reach out to us at{" "}
-          <a href="mailto:support@kaulby.com" className="text-primary hover:underline">
-            support@kaulby.com
+          <a href="mailto:support@kaulbyapp.com" className="text-primary hover:underline">
+            support@kaulbyapp.com
           </a>
         </p>
       </section>

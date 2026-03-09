@@ -31,6 +31,7 @@
 - Competitor Comparisons: https://kaulbyapp.com/alternatives
 - Articles: https://kaulbyapp.com/articles
 - API Documentation: https://kaulbyapp.com/docs/api
+- Subreddit Directory: https://kaulbyapp.com/subreddits
 - Privacy Policy: https://kaulbyapp.com/privacy
 - Terms of Service: https://kaulbyapp.com/terms
 

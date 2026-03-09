@@ -41,7 +41,7 @@ export function SupportForm() {
       if (result.success) {
         setSubmitStatus({
           type: "success",
-          message: "Your message has been sent! We'll get back to you within 24 hours.",
+          message: "Your message has been sent! We'll get back to you.",
         });
         setFormState({ category: "", subject: "", message: "" });
       } else {
@@ -61,7 +61,7 @@ export function SupportForm() {
           Submit a Support Ticket
         </CardTitle>
         <CardDescription>
-          Describe your issue and we&apos;ll get back to you within 24 hours. Team customers receive priority support.
+          Describe your issue and we&apos;ll get back to you. Team customers receive priority support.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
