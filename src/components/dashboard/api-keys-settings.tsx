@@ -383,8 +383,8 @@ export function ApiKeysSettings({ subscriptionStatus }: ApiKeysSettingsProps) {
         <div className="pt-4 border-t">
           <p className="text-sm text-muted-foreground">
             Learn how to use the API in our{" "}
-            <a href="/dashboard/help#api-access" className="text-primary hover:underline">
-              documentation
+            <a href="/docs/api" className="text-primary hover:underline">
+              API documentation
             </a>
             .
           </p>
