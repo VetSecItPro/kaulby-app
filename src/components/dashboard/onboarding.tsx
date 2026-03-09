@@ -819,7 +819,7 @@ export function QuickStartGuide({ hasMonitors, hasResults, hasAlerts = false, on
         <div className="space-y-2">
           {steps.map((step, index) => (
             <div
-              key={index}
+              key={step.title}
               className={cn(
                 "flex items-center justify-between rounded-lg border p-3 transition-all",
                 step.completed ? "bg-green-50/50 border-green-200 dark:bg-green-900/10 dark:border-green-900/30" : "hover:bg-muted/50"

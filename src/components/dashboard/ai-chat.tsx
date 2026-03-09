@@ -262,8 +262,8 @@ const MessageBubble = memo(function MessageBubble({
         {/* Tools used badges */}
         {!isUser && message.toolsUsed && message.toolsUsed.length > 0 && (
           <div className="flex gap-1 mt-1.5 flex-wrap">
-            {message.toolsUsed.map((tool, i) => (
-              <Badge key={`${tool.name}-${i}`} variant="secondary" className="text-[10px] gap-1">
+            {message.toolsUsed.map((tool) => (
+              <Badge key={tool.name} variant="secondary" className="text-[10px] gap-1">
                 <Wrench className="h-2.5 w-2.5" />
                 {tool.label.replace("…", "")}
               </Badge>

@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
 
   try {
     // SECURITY (SEC-INTEG-008): Idempotency guard — skip duplicate webhook events
-    const eventId = (event.data?.id as string) || `${event.type}-${Date.now()}`;
+    const eventId = (event.data?.id as string) || createHmac("sha256", "polar-webhook").update(JSON.stringify(event)).digest("hex").slice(0, 32);
     try {
       await db.insert(webhookEvents).values({
         eventId,

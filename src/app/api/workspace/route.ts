@@ -113,29 +113,40 @@ export async function POST(request: Request) {
       );
     }
 
-    // Create workspace and update user in transaction
-    // Use user.id (database ID) instead of Clerk userId in case of ID mismatch
-    const [newWorkspace] = await db
-      .insert(workspaces)
-      .values({
-        name: name.trim().slice(0, 100),
-        ownerId: user.id,
-        seatLimit: 5,
-        seatCount: 1,
-      })
-      .returning();
+    // Create workspace and assign user atomically
+    const newWorkspace = await db.transaction(async (tx) => {
+      // Re-check user doesn't already have a workspace (prevent race)
+      const freshUser = await tx.query.users.findFirst({
+        where: eq(users.id, user.id),
+        columns: { workspaceId: true },
+      });
+      if (freshUser?.workspaceId) {
+        throw new Error("ALREADY_IN_WORKSPACE");
+      }
 
-    // Update user to be owner of workspace
-    await db
-      .update(users)
-      .set({
-        workspaceId: newWorkspace.id,
-        workspaceRole: "owner",
-        updatedAt: new Date(),
-      })
-      .where(eq(users.id, user.id));
+      const [ws] = await tx
+        .insert(workspaces)
+        .values({
+          name: name.trim().slice(0, 100),
+          ownerId: user.id,
+          seatLimit: 5,
+          seatCount: 1,
+        })
+        .returning();
 
-    // Log activity
+      await tx
+        .update(users)
+        .set({
+          workspaceId: ws.id,
+          workspaceRole: "owner",
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, user.id));
+
+      return ws;
+    });
+
+    // Log activity (outside transaction — non-critical)
     await logActivity({
       workspaceId: newWorkspace.id,
       userId: user.id,
@@ -147,6 +158,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ workspace: newWorkspace }, { status: 201 });
   } catch (error) {
+    if (error instanceof Error && error.message === "ALREADY_IN_WORKSPACE") {
+      return NextResponse.json({ error: "You are already in a workspace" }, { status: 400 });
+    }
     if (error instanceof BodyTooLargeError) {
       return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
     }

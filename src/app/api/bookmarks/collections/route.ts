@@ -65,6 +65,7 @@ export async function GET() {
  * Create a new bookmark collection. Body: { name: string, color?: string }
  */
 export async function POST(request: NextRequest) {
+  try {
   const userId = await getEffectiveUserId();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -91,29 +92,37 @@ export async function POST(request: NextRequest) {
   }
   const { name, color } = parsed.data;
 
-  // Limit collections per user (prevent abuse)
-  const existingCount = await db
-    .select({ count: count() })
-    .from(bookmarkCollections)
-    .where(eq(bookmarkCollections.userId, userId));
+  // Limit collections per user — atomic check+insert to prevent race condition
+  const collection = await db.transaction(async (tx) => {
+    const existingCount = await tx
+      .select({ count: count() })
+      .from(bookmarkCollections)
+      .where(eq(bookmarkCollections.userId, userId));
 
-  if ((existingCount[0]?.count || 0) >= 20) {
-    return NextResponse.json(
-      { error: "Maximum 20 collections allowed" },
-      { status: 400 }
-    );
-  }
+    if ((existingCount[0]?.count || 0) >= 20) {
+      throw new Error("COLLECTION_LIMIT_REACHED");
+    }
 
-  const [collection] = await db
-    .insert(bookmarkCollections)
-    .values({
-      userId,
-      name: name.trim(),
-      color: color || null,
-    })
-    .returning();
+    const [created] = await tx
+      .insert(bookmarkCollections)
+      .values({
+        userId,
+        name: name.trim(),
+        color: color || null,
+      })
+      .returning();
+
+    return created;
+  });
 
   return NextResponse.json({ collection }, { status: 201 });
+  } catch (error) {
+    if (error instanceof Error && error.message === "COLLECTION_LIMIT_REACHED") {
+      return NextResponse.json({ error: "Maximum 20 collections allowed" }, { status: 400 });
+    }
+    console.error("Error creating collection:", error);
+    return NextResponse.json({ error: "Failed to create collection" }, { status: 500 });
+  }
 }
 
 /**
