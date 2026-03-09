@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { getEffectiveUserId } from "@/lib/dev-auth";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { workspaces, users } from "@/lib/db/schema";
@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 // GET - Get current user's workspace
 export async function GET() {
   try {
-    const { userId } = await auth();
+    const userId = await getEffectiveUserId();
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -71,7 +71,7 @@ export async function GET() {
 // POST - Create a new workspace (Enterprise users only)
 export async function POST(request: Request) {
   try {
-    const { userId } = await auth();
+    const userId = await getEffectiveUserId();
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

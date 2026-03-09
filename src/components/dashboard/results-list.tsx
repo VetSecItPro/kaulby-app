@@ -179,7 +179,7 @@ export function ResultsList({ results, hasUnlimitedAi = true, highlightKeywords 
           <>
             {displayedResults.map((result, index) => (
               <ResultCard
-                key={result.id}
+                key={`${result.id}-${index}`}
                 result={result}
                 showHidden={filter === "hidden"}
                 isAiBlurred={!hasUnlimitedAi && index > 0}

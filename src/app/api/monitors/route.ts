@@ -251,6 +251,14 @@ export async function POST(request: Request) {
       })
       .returning();
 
+    // Trigger immediate first scan so the user gets initial results right away
+    const { inngest } = await import("@/lib/inngest/client");
+    await inngest.send({
+      name: "monitor/scan-now",
+      data: { monitorId: newMonitor.id, userId },
+    });
+    await db.update(monitors).set({ isScanning: true }).where(eq(monitors.id, newMonitor.id));
+
     // Track monitor creation with platform analytics
     captureEvent({
       distinctId: userId,

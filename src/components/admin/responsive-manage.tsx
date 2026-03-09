@@ -348,6 +348,26 @@ export function ResponsiveManage({
         </div>
       </Link>
 
+      {/* User Feedback */}
+      <Link href="/manage/feedback" className="block">
+        <Card className="transition-all hover:border-orange-500 hover:shadow-md cursor-pointer border-orange-500/30">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <MessageSquare className="h-5 w-5 text-orange-500" />
+                User Feedback
+              </CardTitle>
+              <Badge variant="outline" className="text-orange-500 border-orange-500">
+                New
+              </Badge>
+            </div>
+            <CardDescription>
+              Bug reports, feature requests, and support tickets from users
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </Link>
+
       {/* Business Metrics */}
       <Link href="/manage/business" className="block">
         <div className="transition-all hover:opacity-90 cursor-pointer">

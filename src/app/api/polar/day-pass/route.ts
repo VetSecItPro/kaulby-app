@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { getEffectiveUserId } from "@/lib/dev-auth";
 import { NextResponse } from "next/server";
 import { getPolarClient, DAY_PASS_PRODUCT_ID } from "@/lib/polar";
 import { db, users } from "@/lib/db";
@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
  */
 export async function POST() {
   try {
-    const { userId } = await auth();
+    const userId = await getEffectiveUserId();
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

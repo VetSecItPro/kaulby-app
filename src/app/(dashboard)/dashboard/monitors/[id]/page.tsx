@@ -1,7 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { monitors, results } from "@/lib/db/schema";
-import { eq, desc, and, count } from "drizzle-orm";
+import { eq, desc, asc, and, count, gte, SQL } from "drizzle-orm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,13 +12,35 @@ import { getUserPlan, getRefreshDelay } from "@/lib/limits";
 import { getPlanLimits } from "@/lib/plans";
 import { HiddenResultsBanner, RefreshDelayBanner, BlurredAiAnalysis } from "@/components/dashboard/upgrade-prompt";
 import { getEffectiveUserId, isLocalDev } from "@/lib/dev-auth";
+import { ResultsFilters } from "@/components/dashboard/results-filters";
+import { ALL_PLATFORMS, type Platform } from "@/lib/plans";
 
 interface MonitorPageProps {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{
+    page?: string;
+    platform?: string;
+    time?: string;
+    sort?: string;
+  }>;
 }
 
 const RESULTS_PER_PAGE = 20;
+
+/** Convert time range param to a Date threshold */
+function getTimeThreshold(timeRange: string): Date | null {
+  const now = new Date();
+  const days: Record<string, number> = {
+    "7d": 7,
+    "30d": 30,
+    "90d": 90,
+    "180d": 180,
+    "365d": 365,
+  };
+  const d = days[timeRange];
+  if (!d) return null;
+  return new Date(now.getTime() - d * 24 * 60 * 60 * 1000);
+}
 
 export default async function MonitorDetailPage({ params, searchParams }: MonitorPageProps) {
   const userId = await getEffectiveUserId();
@@ -43,6 +65,28 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
   const page = parseInt(resolvedSearchParams.page || "1", 10);
   const offset = (page - 1) * RESULTS_PER_PAGE;
 
+  // Parse filter params
+  const rawPlatform = resolvedSearchParams.platform;
+  const platformFilter = rawPlatform && ALL_PLATFORMS.includes(rawPlatform as Platform) && monitor.platforms.includes(rawPlatform as Platform)
+    ? (rawPlatform as Platform)
+    : null;
+  const timeRange = resolvedSearchParams.time || null;
+  const sortOrder = resolvedSearchParams.sort === "asc" ? "asc" as const : "desc" as const;
+
+  // Build where conditions
+  const conditions: SQL[] = [
+    eq(results.monitorId, monitor.id),
+  ];
+
+  if (platformFilter) {
+    conditions.push(eq(results.platform, platformFilter));
+  }
+
+  const timeThreshold = timeRange ? getTimeThreshold(timeRange) : null;
+  if (timeThreshold) {
+    conditions.push(gte(results.postedAt, timeThreshold));
+  }
+
   // Get user's plan and limits in parallel
   const [userPlan, refreshInfo] = await Promise.all([
     getUserPlan(userId),
@@ -50,18 +94,24 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
   ]);
   const planLimits = getPlanLimits(userPlan);
 
-  // Get results for this monitor with pagination
+  // Build sort
+  const orderBy = sortOrder === "asc" ? [asc(results.postedAt)] : [desc(results.postedAt)];
+
+  // Count conditions (exclude hidden for total)
+  const countConditions = [...conditions, eq(results.isHidden, false)];
+
+  // Get results for this monitor with pagination + filters
   const [monitorResults, totalCountResult] = await Promise.all([
     db.query.results.findMany({
-      where: eq(results.monitorId, monitor.id),
-      orderBy: [desc(results.createdAt)],
+      where: and(...conditions),
+      orderBy,
       limit: RESULTS_PER_PAGE,
       offset,
     }),
     db
       .select({ count: count() })
       .from(results)
-      .where(and(eq(results.monitorId, monitor.id), eq(results.isHidden, false))),
+      .where(and(...countConditions)),
   ]);
 
   const totalCount = totalCountResult[0]?.count || 0;
@@ -78,6 +128,17 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
     positive: <ThumbsUp className="h-4 w-4 text-green-500" />,
     negative: <ThumbsDown className="h-4 w-4 text-red-500" />,
     neutral: <Minus className="h-4 w-4 text-gray-500" />,
+  };
+
+  // Build pagination URL helper
+  const buildPageUrl = (p: number) => {
+    const params = new URLSearchParams();
+    if (p > 1) params.set("page", String(p));
+    if (platformFilter) params.set("platform", platformFilter);
+    if (timeRange) params.set("time", timeRange);
+    if (sortOrder !== "desc") params.set("sort", sortOrder);
+    const qs = params.toString();
+    return `/dashboard/monitors/${monitor.id}${qs ? `?${qs}` : ""}`;
   };
 
   return (
@@ -162,14 +223,24 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
 
       {/* Results List */}
       <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Results</h2>
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="text-xl font-semibold shrink-0">Results</h2>
+          <ResultsFilters
+            platforms={monitor.platforms}
+            activePlatform={platformFilter}
+            activeTimeRange={timeRange}
+            sortOrder={sortOrder}
+          />
+        </div>
 
         {visibleResults.length === 0 ? (
           <Card>
             <CardHeader>
-              <CardTitle>No results yet</CardTitle>
+              <CardTitle>No results{platformFilter || timeRange ? " match your filters" : " yet"}</CardTitle>
               <CardDescription>
-                This monitor is active and scanning. Results will appear here when mentions are found.
+                {platformFilter || timeRange
+                  ? "Try adjusting your filters to see more results."
+                  : "This monitor is active and scanning. Results will appear here when mentions are found."}
               </CardDescription>
             </CardHeader>
           </Card>
@@ -255,7 +326,7 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
             {totalPages > 1 && (
               <div className="flex justify-center gap-2">
                 {page > 1 && (
-                  <Link href={`/dashboard/monitors/${monitor.id}?page=${page - 1}`}>
+                  <Link href={buildPageUrl(page - 1)}>
                     <Button variant="outline">Previous</Button>
                   </Link>
                 )}
@@ -263,7 +334,7 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
                   Page {page} of {totalPages}
                 </span>
                 {page < totalPages && (
-                  <Link href={`/dashboard/monitors/${monitor.id}?page=${page + 1}`}>
+                  <Link href={buildPageUrl(page + 1)}>
                     <Button variant="outline">Next</Button>
                   </Link>
                 )}

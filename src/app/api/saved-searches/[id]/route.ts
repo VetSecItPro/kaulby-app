@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { getEffectiveUserId } from "@/lib/dev-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { savedSearches } from "@/lib/db/schema";
@@ -12,7 +12,7 @@ interface RouteParams {
 // PATCH - Update a saved search (name, or increment use count)
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
-    const { userId } = await auth();
+    const userId = await getEffectiveUserId();
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -99,7 +99,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 // DELETE - Remove a saved search
 export async function DELETE(_request: NextRequest, { params }: RouteParams) {
   try {
-    const { userId } = await auth();
+    const userId = await getEffectiveUserId();
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

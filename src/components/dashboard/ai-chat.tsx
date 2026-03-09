@@ -21,6 +21,11 @@ import {
   User,
   AlertTriangle,
   Wrench,
+  Plus,
+  Trash2,
+  PanelLeftClose,
+  PanelLeftOpen,
+  History,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getPlatformBadgeColor, getPlatformDisplayName } from "@/lib/platform-utils";
@@ -61,6 +66,13 @@ interface ChatMessage {
   isLoading?: boolean;
   error?: string;
   timestamp: Date;
+}
+
+interface Conversation {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface AIChatProps {
@@ -298,7 +310,7 @@ const MessageBubble = memo(function MessageBubble({
               )}
             </Button>
             <span className="text-[10px] text-muted-foreground">
-              {message.timestamp.toLocaleTimeString()}
+              {new Date(message.timestamp).toLocaleTimeString()}
             </span>
           </div>
         )}
@@ -334,6 +346,88 @@ function LoadingIndicator() {
 }
 
 // ---------------------------------------------------------------------------
+// Conversation Sidebar
+// ---------------------------------------------------------------------------
+
+function ConversationSidebar({
+  conversations,
+  activeId,
+  onSelect,
+  onNew,
+  onDelete,
+  collapsed,
+  onToggle,
+}: {
+  conversations: Conversation[];
+  activeId: string | null;
+  onSelect: (id: string) => void;
+  onNew: () => void;
+  onDelete: (id: string) => void;
+  collapsed: boolean;
+  onToggle: () => void;
+}) {
+  if (collapsed) {
+    return (
+      <div className="flex flex-col items-center py-3 gap-2 border-r w-12 shrink-0">
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onToggle}>
+          <PanelLeftOpen className="h-4 w-4" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onNew}>
+          <Plus className="h-4 w-4" />
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-56 border-r flex flex-col shrink-0">
+      <div className="flex items-center justify-between p-3 border-b">
+        <div className="flex items-center gap-1.5">
+          <History className="h-4 w-4 text-muted-foreground" />
+          <span className="text-xs font-medium">History</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onNew}>
+            <Plus className="h-3.5 w-3.5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onToggle}>
+            <PanelLeftClose className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </div>
+      <div className="flex-1 overflow-y-auto p-2 space-y-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {conversations.length === 0 ? (
+          <p className="text-xs text-muted-foreground text-center py-4">No conversations yet</p>
+        ) : (
+          conversations.map((conv) => (
+            <div
+              key={conv.id}
+              className={cn(
+                "group flex items-center gap-1 rounded-md px-2 py-1.5 cursor-pointer transition-colors",
+                activeId === conv.id ? "bg-muted" : "hover:bg-muted/50"
+              )}
+              onClick={() => onSelect(conv.id)}
+            >
+              <MessageSquare className="h-3 w-3 shrink-0 text-muted-foreground" />
+              <span className="text-xs truncate flex-1">{conv.title}</span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(conv.id);
+                }}
+                className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:bg-destructive/10 rounded"
+              >
+                <Trash2 className="h-3 w-3 text-muted-foreground" />
+              </button>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // AI Chat Component
 // ---------------------------------------------------------------------------
 
@@ -344,14 +438,62 @@ export function AIChat({
   audienceIds,
 }: AIChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [conversationsLoaded, setConversationsLoaded] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Store the last pending confirmation for handling
   const pendingConfirmRef = useRef<PendingConfirmation | null>(null);
+  // Track messages that have been saved to DB to avoid re-saving
+  const savedMessageCountRef = useRef(0);
+  // Skip the message-loading effect when we just created a conversation ourselves
+  const skipNextLoadRef = useRef(false);
+
+  // Load conversations list on mount
+  useEffect(() => {
+    if (!isPro) return;
+    fetch("/api/chat/conversations")
+      .then((res) => res.json())
+      .then((data) => {
+        setConversations(data.conversations || []);
+        setConversationsLoaded(true);
+      })
+      .catch(() => setConversationsLoaded(true));
+  }, [isPro]);
+
+  // Load messages when active conversation changes (but skip if we just created it)
+  useEffect(() => {
+    if (!activeConversationId) {
+      setMessages([]);
+      savedMessageCountRef.current = 0;
+      return;
+    }
+    // Skip loading from DB if we just created this conversation — messages are already in state
+    if (skipNextLoadRef.current) {
+      skipNextLoadRef.current = false;
+      return;
+    }
+    fetch(`/api/chat/messages?conversationId=${activeConversationId}`)
+      .then((res) => res.json())
+      .then((data) => {
+        const loaded: ChatMessage[] = (data.messages || []).map((m: { id: string; role: "user" | "assistant"; content: string; citations?: Citation[]; toolsUsed?: ToolUsed[]; createdAt: string }) => ({
+          id: m.id,
+          role: m.role,
+          content: m.content,
+          citations: m.citations || undefined,
+          toolsUsed: m.toolsUsed || undefined,
+          timestamp: new Date(m.createdAt),
+        }));
+        setMessages(loaded);
+        savedMessageCountRef.current = loaded.length;
+      })
+      .catch(() => {});
+  }, [activeConversationId]);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -379,15 +521,69 @@ export function AIChat({
     }
   }, []);
 
+  // Save new messages to DB
+  const saveMessages = useCallback(async (conversationId: string, newMessages: ChatMessage[]) => {
+    const unsaved = newMessages.filter(
+      (m) => !m.isLoading && !m.error
+    );
+    if (unsaved.length === 0) return;
+
+    try {
+      await fetch("/api/chat/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          conversationId,
+          messages: unsaved.map((m) => ({
+            role: m.role,
+            content: m.content,
+            citations: m.citations || null,
+            toolsUsed: m.toolsUsed || null,
+          })),
+        }),
+      });
+      savedMessageCountRef.current += unsaved.length;
+    } catch {
+      // Silent fail — messages still visible in UI
+    }
+  }, []);
+
+  // Create a new conversation
+  const createConversation = useCallback(async (firstMessage: string): Promise<string | null> => {
+    try {
+      const title = firstMessage.slice(0, 100) + (firstMessage.length > 100 ? "..." : "");
+      const res = await fetch("/api/chat/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to create conversation");
+      }
+      const { conversation } = await res.json();
+      setConversations((prev) => [conversation, ...prev]);
+      // Skip the useEffect that would wipe messages and reload from (empty) DB
+      skipNextLoadRef.current = true;
+      setActiveConversationId(conversation.id);
+      savedMessageCountRef.current = 0;
+      return conversation.id;
+    } catch {
+      return null;
+    }
+  }, []);
+
   const handleSubmit = useCallback(
     async (e?: React.FormEvent) => {
       e?.preventDefault();
       if (!input.trim() || isLoading || !isPro) return;
 
+      const userContent = input.trim();
+
       const userMessage: ChatMessage = {
         id: `user-${Date.now()}`,
         role: "user",
-        content: input.trim(),
+        content: userContent,
         timestamp: new Date(),
       };
 
@@ -401,17 +597,34 @@ export function AIChat({
 
       setMessages((prev) => {
         const updated = [...prev, userMessage, assistantMessage];
-        return updated.length > 50 ? updated.slice(-50) : updated;
+        return updated.length > 100 ? updated.slice(-100) : updated;
       });
       setInput("");
       setIsLoading(true);
+
+      // Create conversation if none active
+      let convId = activeConversationId;
+      if (!convId) {
+        convId = await createConversation(userContent);
+        if (!convId) {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMessage.id
+                ? { ...m, error: "Failed to create conversation. Please try again.", isLoading: false }
+                : m
+            )
+          );
+          setIsLoading(false);
+          return;
+        }
+      }
 
       try {
         const response = await fetch("/api/ai/ask", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            question: userMessage.content,
+            question: userContent,
             monitorIds,
             audienceIds,
             conversationHistory: messages.slice(-6).map((m) => ({
@@ -428,23 +641,30 @@ export function AIChat({
 
         const data = await response.json();
 
-        // Store pending confirmation if any
         if (data.pendingConfirmation) {
           pendingConfirmRef.current = data.pendingConfirmation;
         }
 
+        const completedAssistant: ChatMessage = {
+          ...assistantMessage,
+          content: data.answer,
+          citations: data.citations,
+          toolsUsed: data.toolsUsed,
+          pendingConfirmation: data.pendingConfirmation || undefined,
+          isLoading: false,
+        };
+
         setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantMessage.id
-              ? {
-                  ...m,
-                  content: data.answer,
-                  citations: data.citations,
-                  toolsUsed: data.toolsUsed,
-                  pendingConfirmation: data.pendingConfirmation || undefined,
-                  isLoading: false,
-                }
-              : m
+          prev.map((m) => (m.id === assistantMessage.id ? completedAssistant : m))
+        );
+
+        // Save both user + assistant messages to DB
+        await saveMessages(convId, [userMessage, completedAssistant]);
+
+        // Update conversation title in sidebar if it was the first message
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.id === convId ? { ...c, updatedAt: new Date().toISOString() } : c
           )
         );
       } catch (err) {
@@ -460,7 +680,7 @@ export function AIChat({
         setIsLoading(false);
       }
     },
-    [input, isLoading, isPro, monitorIds, audienceIds, messages]
+    [input, isLoading, isPro, monitorIds, audienceIds, messages, activeConversationId, createConversation, saveMessages]
   );
 
   const handleConfirm = useCallback(
@@ -470,7 +690,6 @@ export function AIChat({
 
       pendingConfirmRef.current = null;
 
-      // Remove pending confirmation from the message
       setMessages((prev) =>
         prev.map((m) =>
           m.pendingConfirmation ? { ...m, pendingConfirmation: undefined } : m
@@ -485,10 +704,12 @@ export function AIChat({
           timestamp: new Date(),
         };
         setMessages((prev) => [...prev, cancelMessage]);
+        if (activeConversationId) {
+          await saveMessages(activeConversationId, [cancelMessage]);
+        }
         return;
       }
 
-      // Show loading for confirmed action
       const loadingMessage: ChatMessage = {
         id: `assistant-confirm-${Date.now()}`,
         role: "assistant",
@@ -518,18 +739,20 @@ export function AIChat({
 
         const data = await response.json();
 
+        const completedMessage: ChatMessage = {
+          ...loadingMessage,
+          content: data.answer,
+          toolsUsed: data.toolsUsed,
+          isLoading: false,
+        };
+
         setMessages((prev) =>
-          prev.map((m) =>
-            m.id === loadingMessage.id
-              ? {
-                  ...m,
-                  content: data.answer,
-                  toolsUsed: data.toolsUsed,
-                  isLoading: false,
-                }
-              : m
-          )
+          prev.map((m) => (m.id === loadingMessage.id ? completedMessage : m))
         );
+
+        if (activeConversationId) {
+          await saveMessages(activeConversationId, [completedMessage]);
+        }
       } catch {
         setMessages((prev) =>
           prev.map((m) =>
@@ -542,7 +765,7 @@ export function AIChat({
         setIsLoading(false);
       }
     },
-    []
+    [activeConversationId, saveMessages]
   );
 
   const handleSuggestedQuestion = useCallback((question: string) => {
@@ -550,10 +773,31 @@ export function AIChat({
     inputRef.current?.focus();
   }, []);
 
-  const handleClear = useCallback(() => {
+  const handleNewConversation = useCallback(() => {
+    setActiveConversationId(null);
     setMessages([]);
+    savedMessageCountRef.current = 0;
     pendingConfirmRef.current = null;
+    inputRef.current?.focus();
   }, []);
+
+  const handleDeleteConversation = useCallback(async (id: string) => {
+    try {
+      await fetch("/api/chat/conversations", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      setConversations((prev) => prev.filter((c) => c.id !== id));
+      if (activeConversationId === id) {
+        setActiveConversationId(null);
+        setMessages([]);
+        savedMessageCountRef.current = 0;
+      }
+    } catch {
+      // Silent fail
+    }
+  }, [activeConversationId]);
 
   if (!isPro) {
     return (
@@ -576,82 +820,96 @@ export function AIChat({
   }
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Chat Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center p-8">
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center mb-4">
-              <MessageSquare className="h-8 w-8 text-white" />
-            </div>
-            <h3 className="text-lg font-semibold mb-2">Ask anything about your data</h3>
-            <p className="text-sm text-muted-foreground max-w-md mb-6">
-              I can search your results, analyze trends, find leads, manage monitors, and more. Just ask in plain English.
-            </p>
+    <div className="flex h-full">
+      {/* Conversation Sidebar */}
+      <ConversationSidebar
+        conversations={conversations}
+        activeId={activeConversationId}
+        onSelect={setActiveConversationId}
+        onNew={handleNewConversation}
+        onDelete={handleDeleteConversation}
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed((v) => !v)}
+      />
 
-            {/* Suggested Questions */}
-            <div className="space-y-2 w-full max-w-md">
-              <p className="text-xs text-muted-foreground font-medium flex items-center gap-1 justify-center">
-                <Lightbulb className="h-3 w-3" />
-                Try asking:
+      {/* Main Chat Area */}
+      <div className="flex flex-col flex-1 min-w-0">
+        {/* Chat Messages */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {messages.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center text-center p-8">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center mb-4">
+                <MessageSquare className="h-8 w-8 text-white" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">Ask anything about your data</h3>
+              <p className="text-sm text-muted-foreground max-w-md mb-6">
+                I can search your results, analyze trends, find leads, manage monitors, and more. Just ask in plain English.
               </p>
-              <div className="grid gap-2">
-                {suggestedQuestions.slice(0, 4).map((question, i) => (
-                  <Button
-                    key={i}
-                    variant="outline"
-                    className="justify-start text-left h-auto py-2 px-3 text-sm"
-                    onClick={() => handleSuggestedQuestion(question)}
-                  >
-                    <Sparkles className="h-3 w-3 mr-2 shrink-0 text-violet-500" />
-                    <span className="line-clamp-1">{question}</span>
-                  </Button>
-                ))}
+
+              {/* Suggested Questions */}
+              <div className="space-y-2 w-full max-w-md">
+                <p className="text-xs text-muted-foreground font-medium flex items-center gap-1 justify-center">
+                  <Lightbulb className="h-3 w-3" />
+                  Try asking:
+                </p>
+                <div className="grid gap-2">
+                  {suggestedQuestions.slice(0, 4).map((question, i) => (
+                    <Button
+                      key={i}
+                      variant="outline"
+                      className="justify-start text-left h-auto py-2 px-3 text-sm"
+                      onClick={() => handleSuggestedQuestion(question)}
+                    >
+                      <Sparkles className="h-3 w-3 mr-2 shrink-0 text-violet-500" />
+                      <span className="line-clamp-1">{question}</span>
+                    </Button>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-        ) : (
-          <AnimatePresence initial={false}>
-            {messages.map((message) => (
-              <MessageBubble
-                key={message.id}
-                message={message}
-                onCopy={(text) => handleCopy(text, message.id)}
-                isCopied={copiedMessageId === message.id}
-                onConfirm={message.pendingConfirmation ? handleConfirm : undefined}
-              />
-            ))}
-          </AnimatePresence>
-        )}
-        <div ref={messagesEndRef} />
-      </div>
+          ) : (
+            <AnimatePresence initial={false}>
+              {messages.map((message) => (
+                <MessageBubble
+                  key={message.id}
+                  message={message}
+                  onCopy={(text) => handleCopy(text, message.id)}
+                  isCopied={copiedMessageId === message.id}
+                  onConfirm={message.pendingConfirmation ? handleConfirm : undefined}
+                />
+              ))}
+            </AnimatePresence>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
 
-      {/* Input Area */}
-      <div className="border-t p-4 bg-background">
-        {messages.length > 0 && (
-          <div className="flex justify-end mb-2">
-            <Button variant="ghost" size="sm" onClick={handleClear} className="text-xs">
-              <RefreshCcw className="h-3 w-3 mr-1" />
-              Clear chat
+        {/* Input Area */}
+        <div className="border-t p-4 bg-background">
+          {messages.length > 0 && (
+            <div className="flex justify-end mb-2">
+              <Button variant="ghost" size="sm" onClick={handleNewConversation} className="text-xs">
+                <Plus className="h-3 w-3 mr-1" />
+                New chat
+              </Button>
+            </div>
+          )}
+          <form onSubmit={handleSubmit} className="flex gap-2">
+            <Input
+              ref={inputRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ask anything — search results, create monitors, find leads…"
+              disabled={isLoading}
+              className="flex-1"
+            />
+            <Button type="submit" disabled={!input.trim() || isLoading}>
+              <Send className="h-4 w-4" />
             </Button>
-          </div>
-        )}
-        <form onSubmit={handleSubmit} className="flex gap-2">
-          <Input
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask anything — search results, create monitors, find leads…"
-            disabled={isLoading}
-            className="flex-1"
-          />
-          <Button type="submit" disabled={!input.trim() || isLoading}>
-            <Send className="h-4 w-4" />
-          </Button>
-        </form>
-        <p className="text-[10px] text-muted-foreground text-center mt-2">
-          Kaulby AI can search, analyze, and take actions on your monitoring data.
-        </p>
+          </form>
+          <p className="text-[10px] text-muted-foreground text-center mt-2">
+            Kaulby AI can search, analyze, and take actions on your monitoring data.
+          </p>
+        </div>
       </div>
     </div>
   );

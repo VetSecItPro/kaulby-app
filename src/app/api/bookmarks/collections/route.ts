@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { getEffectiveUserId } from "@/lib/dev-auth";
 import { db, bookmarkCollections, bookmarks } from "@/lib/db";
 import { eq, and, count, desc } from "drizzle-orm";
 import { checkApiRateLimit } from "@/lib/rate-limit";
@@ -19,7 +19,7 @@ const deleteCollectionSchema = z.object({
  * Returns all bookmark collections for the authenticated user with bookmark counts.
  */
 export async function GET() {
-  const { userId } = await auth();
+  const userId = await getEffectiveUserId();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -65,7 +65,7 @@ export async function GET() {
  * Create a new bookmark collection. Body: { name: string, color?: string }
  */
 export async function POST(request: NextRequest) {
-  const { userId } = await auth();
+  const userId = await getEffectiveUserId();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
  * Bookmarks in the collection are NOT deleted — they become uncategorized.
  */
 export async function DELETE(request: NextRequest) {
-  const { userId } = await auth();
+  const userId = await getEffectiveUserId();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

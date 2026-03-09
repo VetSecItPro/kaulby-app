@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { getEffectiveUserId } from "@/lib/dev-auth";
 import { db, bookmarks } from "@/lib/db";
 import { eq, and } from "drizzle-orm";
 import { checkApiRateLimit } from "@/lib/rate-limit";
@@ -13,7 +13,7 @@ interface RouteParams {
  * Remove a bookmark by result ID.
  */
 export async function DELETE(_request: Request, { params }: RouteParams) {
-  const { userId } = await auth();
+  const userId = await getEffectiveUserId();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

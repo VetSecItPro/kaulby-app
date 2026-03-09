@@ -103,17 +103,8 @@ export default async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // SECURITY: Verified local development bypass
-  // Requires explicit opt-in via ALLOW_DEV_AUTH_BYPASS=true
-  // Only bypasses /dashboard and /api/ routes -- /manage (admin) always requires real auth
-  const isLocalDev = process.env.NODE_ENV === "development" &&
-                     process.env.ALLOW_DEV_AUTH_BYPASS === "true" &&
-                     !process.env.VERCEL &&
-                     !process.env.VERCEL_ENV;
-
-  if (isLocalDev && (pathname.startsWith("/dashboard") || pathname.startsWith("/api/"))) {
-    return NextResponse.next();
-  }
+  // NOTE: Dev auth bypass is handled at the route level via getEffectiveUserId(),
+  // NOT in middleware. Clerk middleware must always run so auth() works in API routes.
 
   // RT-002: CSRF — Verify Origin header on mutation requests to API routes.
   // Blocks cross-origin POST/PUT/PATCH/DELETE from malicious sites.
@@ -131,6 +122,10 @@ export default async function middleware(request: NextRequest) {
         "http://localhost:3001",
         "http://localhost:3002",
       ]);
+      // In development, allow any localhost port
+      if (process.env.NODE_ENV === "development" && origin.startsWith("http://localhost:")) {
+        allowedOrigins.add(origin);
+      }
       // Include Vercel preview/production URLs
       if (process.env.VERCEL_URL) {
         allowedOrigins.add(`https://${process.env.VERCEL_URL}`);

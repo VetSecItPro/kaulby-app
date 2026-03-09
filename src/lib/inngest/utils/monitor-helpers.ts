@@ -242,6 +242,17 @@ export async function triggerAiAnalysis(
 ): Promise<void> {
   if (newResultIds.length === 0) return;
 
+  // Create in-app notification for new results
+  await step.run(`notify-scan-${monitorId}`, async () => {
+    const { createScanNotification } = await import("./create-scan-notification");
+    await createScanNotification({
+      monitorId,
+      userId,
+      platform,
+      resultCount: newResultIds.length,
+    });
+  });
+
   await step.run(`trigger-analysis-${monitorId}`, async () => {
     if (newResultIds.length > AI_BATCH_CONFIG.BATCH_THRESHOLD) {
       await inngest.send({

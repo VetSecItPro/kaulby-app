@@ -268,19 +268,25 @@ async function searchRedditApify(
  */
 async function searchRedditPublic(
   subreddit: string,
-  limit: number = 50
+  limit: number = 50,
+  keywords: string[] = []
 ): Promise<RedditPost[]> {
   const maxRetries = 3;
   const baseDelayMs = 1000;
 
+  // Use Reddit's search endpoint when keywords are available (much more effective)
+  // Falls back to /new only when no keywords provided
+  const useSearch = keywords.length > 0;
+  const searchQuery = keywords.join(" OR ");
+  const url = useSearch
+    ? `https://www.reddit.com/r/${subreddit}/search.json?q=${encodeURIComponent(searchQuery)}&restrict_sr=on&sort=new&limit=${limit}`
+    : `https://www.reddit.com/r/${subreddit}/new.json?limit=${limit}`;
+
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    const response = await fetch(
-      `https://www.reddit.com/r/${subreddit}/new.json?limit=${limit}`,
-      {
-        headers: { "User-Agent": "Kaulby/1.0" },
-        signal: AbortSignal.timeout(30000),
-      }
-    );
+    const response = await fetch(url, {
+      headers: { "User-Agent": "Kaulby/1.0" },
+      signal: AbortSignal.timeout(30000),
+    });
 
     if (response.ok) {
       const data = await response.json();
@@ -396,7 +402,7 @@ export async function searchRedditResilient(
       const { data: posts, cached } = await cachedQuery<RedditPost[]>(
         "public:reddit",
         cacheParams,
-        () => searchRedditPublic(subreddit, limit),
+        () => searchRedditPublic(subreddit, limit, keywords),
         CACHE_TTL.REDDIT_HOT // Shorter TTL for public API since it's risky
       );
 

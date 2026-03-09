@@ -62,6 +62,8 @@ const IntegrationIcon = memo(function IntegrationIcon({ name, className }: { nam
     zapier: "bg-orange-400",
     slack: "bg-purple-500",
     discord: "bg-indigo-500",
+    "microsoft teams": "bg-blue-600",
+    teams: "bg-blue-600",
     webhook: "bg-gray-500",
   };
 
@@ -119,7 +121,7 @@ const IntegrationCard = memo(function IntegrationCard({
     <Card className={cn(
       integration.status === "coming_soon" && "opacity-60"
     )}>
-      <CardContent className="p-4">
+      <div className="p-4 sm:p-5">
         <div className="flex items-start gap-4">
           <IntegrationIcon name={integration.name} />
           <div className="flex-1 min-w-0">
@@ -208,7 +210,7 @@ const IntegrationCard = memo(function IntegrationCard({
             )}
           </div>
         </div>
-      </CardContent>
+      </div>
     </Card>
   );
 });
@@ -362,10 +364,19 @@ const WebhookConfigSection = memo(function WebhookConfigSection() {
           <CardTitle className="text-lg">Custom Webhook</CardTitle>
         </div>
         <CardDescription>
-          Send new results to any endpoint. Great for custom integrations.
+          Automatically send new monitoring results to any URL endpoint. Connect Kaulby to tools like Zapier, Make.com, n8n, your CRM, or any internal system that accepts webhooks.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        <div className="p-3 rounded-lg bg-muted/50 text-sm text-muted-foreground space-y-1.5">
+          <p className="font-medium text-foreground">Common use cases:</p>
+          <ul className="list-disc list-inside space-y-0.5 ml-1">
+            <li>Pipe mentions into your CRM as leads (Salesforce, HubSpot, Pipedrive)</li>
+            <li>Trigger Zapier/Make.com automations when new results arrive</li>
+            <li>Feed data into your analytics pipeline or data warehouse</li>
+            <li>Create support tickets automatically from negative mentions</li>
+          </ul>
+        </div>
         <div className="space-y-2">
           <Label htmlFor="webhook-url">Webhook URL</Label>
           <div className="flex gap-2">
@@ -388,7 +399,7 @@ const WebhookConfigSection = memo(function WebhookConfigSection() {
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            We&apos;ll send a POST request with result data in JSON format.
+            We&apos;ll send a POST request with result data in JSON format whenever new mentions are found.
           </p>
         </div>
       </CardContent>
@@ -554,20 +565,27 @@ export const DEFAULT_INTEGRATIONS: Integration[] = [
     name: "HubSpot",
     description: "Sync leads to HubSpot CRM. Create contacts and deals automatically.",
     icon: "hubspot",
-    status: "disconnected",
+    status: "coming_soon",
   },
   {
     id: "slack",
     name: "Slack",
-    description: "Get real-time alerts in your Slack channels.",
+    description: "Get real-time alerts in your Slack channels when new mentions are detected.",
     icon: "slack",
-    status: "disconnected",
+    status: "coming_soon",
   },
   {
     id: "discord",
     name: "Discord",
     description: "Get real-time alerts in your Discord server channels.",
     icon: "discord",
-    status: "disconnected",
+    status: "coming_soon",
+  },
+  {
+    id: "teams",
+    name: "Microsoft Teams",
+    description: "Receive formatted alerts in your Teams channels via incoming webhooks.",
+    icon: "teams",
+    status: "coming_soon",
   },
 ];

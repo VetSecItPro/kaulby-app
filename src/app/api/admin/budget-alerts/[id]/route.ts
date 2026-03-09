@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { getEffectiveUserId } from "@/lib/dev-auth";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { budgetAlerts, users } from "@/lib/db/schema";
@@ -23,7 +23,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId } = await auth();
+    const userId = await getEffectiveUserId();
     const { id } = await params;
 
     if (!userId) {
@@ -133,7 +133,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId } = await auth();
+    const userId = await getEffectiveUserId();
     const { id } = await params;
 
     if (!userId) {

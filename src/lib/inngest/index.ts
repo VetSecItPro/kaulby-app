@@ -41,6 +41,8 @@ export { onboardingFollowup } from "./functions/onboarding-followup";
 export { syncHubspotContacts } from "./functions/sync-hubspot-contacts";
 // AI Visibility
 export { checkAIVisibilityJob } from "./functions/ai-visibility";
+// Chat cleanup
+export { chatCleanup } from "./functions/chat-cleanup";
 
 // All functions for the Inngest handler
 import { monitorReddit } from "./functions/monitor-reddit";
@@ -84,6 +86,8 @@ import { onboardingFollowup } from "./functions/onboarding-followup";
 import { syncHubspotContacts } from "./functions/sync-hubspot-contacts";
 // AI Visibility
 import { checkAIVisibilityJob } from "./functions/ai-visibility";
+// Chat cleanup
+import { chatCleanup } from "./functions/chat-cleanup";
 
 export const functions = [
   monitorReddit,
@@ -140,4 +144,6 @@ export const functions = [
   syncHubspotContacts,
   // AI Visibility
   checkAIVisibilityJob,
+  // Chat cleanup
+  chatCleanup,
 ];

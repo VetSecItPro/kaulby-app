@@ -17,11 +17,11 @@ import {
   Users,
   BarChart3,
   Lightbulb,
-  Compass,
   Sparkles,
   Bookmark,
 } from "lucide-react";
 import type { WorkspaceRole } from "@/lib/permissions";
+import { NotificationBell } from "./notification-bell";
 
 const sidebarLinks = [
   {
@@ -66,12 +66,8 @@ const sidebarLinks = [
     icon: Lightbulb,
     tourId: "insights",
   },
-  {
-    title: "Discover",
-    href: "/dashboard/discover",
-    icon: Compass,
-    tourId: "discover",
-  },
+  // Discover page hidden for MVP — repurposing as "Market Pulse" in V2
+  // { title: "Discover", href: "/dashboard/discover", icon: Compass, tourId: "discover" },
   {
     title: "Ask Kaulby AI",
     href: "/dashboard/ask",
@@ -221,6 +217,9 @@ export function Sidebar({ isAdmin = false, subscriptionStatus = "free", hasActiv
             {planBadge.label}
           </span>
         )}
+        <div className="ml-auto">
+          <NotificationBell />
+        </div>
         {/* Day Pass Timer */}
         {hasActiveDayPass && dayPassExpiresAt && (
           <DayPassTimer expiresAt={dayPassExpiresAt} />

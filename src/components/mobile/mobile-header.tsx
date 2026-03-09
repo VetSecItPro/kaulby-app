@@ -17,6 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 import { UserButton, useUser } from "@clerk/nextjs";
 import type { WorkspaceRole } from "@/lib/permissions";
+import { NotificationBell } from "@/components/dashboard/notification-bell";
 
 // Navigation items not in the bottom nav
 const menuItems = [
@@ -188,7 +189,9 @@ export const MobileHeader = memo(function MobileHeader({
           )}
         </div>
 
-        {/* Menu Button */}
+        {/* Notification Bell + Menu */}
+        <div className="flex items-center gap-1">
+          <NotificationBell />
         <Sheet>
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon" className="rounded-full">
@@ -288,6 +291,7 @@ export const MobileHeader = memo(function MobileHeader({
             </div>
           </SheetContent>
         </Sheet>
+        </div>
       </div>
     </header>
   );

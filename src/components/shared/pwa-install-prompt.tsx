@@ -234,6 +234,23 @@ export function PWAInstallPrompt() {
 
           {/* Action buttons */}
           <div className="flex items-center gap-2 flex-shrink-0">
+            {isIOS ? (
+              <Link
+                href="/install"
+                className="bg-teal-500 hover:bg-teal-600 text-black px-5 py-2 rounded-full font-medium text-sm transition-colors"
+              >
+                How to Install
+              </Link>
+            ) : (
+              <button
+                onClick={handleInstall}
+                className="flex items-center gap-1.5 bg-teal-500 hover:bg-teal-600 text-black px-5 py-2 rounded-full font-medium text-sm transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                Install
+              </button>
+            )}
+
             <button
               onClick={dismiss}
               className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
@@ -241,23 +258,6 @@ export function PWAInstallPrompt() {
             >
               <X className="w-4 h-4" />
             </button>
-
-            {isIOS ? (
-              <Link
-                href="/install"
-                className="bg-teal-500 hover:bg-teal-600 text-black px-4 py-2 rounded-lg font-medium text-sm transition-colors"
-              >
-                How to Install
-              </Link>
-            ) : (
-              <button
-                onClick={handleInstall}
-                className="flex items-center gap-1.5 bg-teal-500 hover:bg-teal-600 text-black px-4 py-2 rounded-lg font-medium text-sm transition-colors"
-              >
-                <Download className="w-4 h-4" />
-                Install
-              </button>
-            )}
           </div>
         </div>
       </div>

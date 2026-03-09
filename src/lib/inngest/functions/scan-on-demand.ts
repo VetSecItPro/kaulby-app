@@ -463,14 +463,8 @@ async function scanHackerNewsForMonitor(monitor: MonitorData): Promise<number> {
   let count = 0;
 
   try {
-    // Fetch new stories
-    const response = await fetch("https://hacker-news.firebaseio.com/v0/newstories.json");
-    if (!response.ok) return 0;
-
-    const storyIds: number[] = await response.json();
-    const recentIds = storyIds.slice(0, 50);
-
-    // 1. Fetch stories and run content matching to determine which items to save
+    // Use HN Algolia Search API to actually search for keywords
+    // This is far more effective than scanning the 50 newest stories
     interface MatchedHNStory {
       sourceUrl: string;
       title: string;
@@ -480,36 +474,62 @@ async function scanHackerNewsForMonitor(monitor: MonitorData): Promise<number> {
       metadata: Record<string, unknown>;
     }
     const matchedItems: MatchedHNStory[] = [];
+    const seenIds = new Set<string>();
 
-    for (const id of recentIds) {
+    // Search for each keyword (or keyword group) via Algolia
+    const searchQueries = monitor.keywords.length > 0
+      ? monitor.keywords
+      : monitor.companyName ? [monitor.companyName] : [];
+
+    for (const keyword of searchQueries) {
       try {
-        const storyRes = await fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`);
-        if (!storyRes.ok) continue;
+        // Algolia HN Search API — free, no auth required, returns recent posts matching query
+        const searchUrl = new URL("https://hn.algolia.com/api/v1/search_by_date");
+        searchUrl.searchParams.set("query", keyword);
+        searchUrl.searchParams.set("tags", "(story,show_hn,ask_hn)");
+        searchUrl.searchParams.set("hitsPerPage", "20");
 
-        const story = await storyRes.json();
-        if (!story || story.deleted || story.dead) continue;
-
-        // Check for matches using unified matching function
-        const matchResult = await contentMatchesMonitor(
-          { title: story.title || "", body: story.text || "", author: story.by, platform: "hackernews" },
-          monitor
-        );
-
-        if (matchResult.isMatch) {
-          matchedItems.push({
-            sourceUrl: `https://news.ycombinator.com/item?id=${id}`,
-            title: story.title || "HN Discussion",
-            content: story.text || "",
-            author: story.by,
-            postedAt: story.time ? new Date(story.time * 1000) : new Date(),
-            metadata: {
-              hnId: id,
-              score: story.score,
-              descendants: story.descendants,
-            },
-          });
+        const response = await fetch(searchUrl.toString(), {
+          signal: AbortSignal.timeout(15000),
+        });
+        if (!response.ok) {
+          logger.warn("[HN] Algolia search failed", { keyword, status: response.status });
+          continue;
         }
-      } catch {
+
+        const data = await response.json();
+        const hits = data.hits || [];
+
+        logger.info("[HN] Algolia search results", { keyword, hitCount: hits.length });
+
+        for (const hit of hits) {
+          const storyId = hit.objectID;
+          if (seenIds.has(storyId)) continue;
+          seenIds.add(storyId);
+
+          // Check for matches using unified matching function
+          const matchResult = await contentMatchesMonitor(
+            { title: hit.title || "", body: hit.story_text || "", author: hit.author, platform: "hackernews" },
+            monitor
+          );
+
+          if (matchResult.isMatch) {
+            matchedItems.push({
+              sourceUrl: `https://news.ycombinator.com/item?id=${storyId}`,
+              title: hit.title || "HN Discussion",
+              content: hit.story_text || "",
+              author: hit.author,
+              postedAt: hit.created_at ? new Date(hit.created_at) : new Date(),
+              metadata: {
+                hnId: storyId,
+                score: hit.points,
+                descendants: hit.num_comments,
+              },
+            });
+          }
+        }
+      } catch (error) {
+        logger.warn("[HN] Keyword search failed", { keyword, error: error instanceof Error ? error.message : String(error) });
         continue;
       }
     }
@@ -904,6 +924,84 @@ async function scanQuoraForMonitor(monitor: MonitorData): Promise<number> {
   return count;
 }
 
+/** Process Product Hunt posts: match, deduplicate, insert, and trigger analysis */
+async function processProductHuntPosts(
+  posts: Array<{ name: string; tagline: string; description: string; url: string; votesCount: number; createdAt: string; user: { name: string }; id?: string }>,
+  monitor: MonitorData
+): Promise<number> {
+  let count = 0;
+
+  interface MatchedPHPost {
+    sourceUrl: string;
+    title: string;
+    content: string | null;
+    author: string | null;
+    postedAt: Date;
+    metadata: Record<string, unknown>;
+  }
+  const matchedItems: MatchedPHPost[] = [];
+
+  for (const post of posts) {
+    const matchResult = await contentMatchesMonitor(
+      { title: `${post.name} - ${post.tagline}`, body: post.description || "", author: post.user?.name, platform: "producthunt" },
+      monitor
+    );
+
+    if (matchResult.isMatch) {
+      matchedItems.push({
+        sourceUrl: post.url,
+        title: `${post.name} - ${post.tagline}`,
+        content: post.description || null,
+        author: post.user?.name || null,
+        postedAt: new Date(post.createdAt),
+        metadata: {
+          phId: post.id,
+          votesCount: post.votesCount,
+        },
+      });
+    }
+  }
+
+  if (matchedItems.length > 0) {
+    const matchedUrls = matchedItems.map(m => m.sourceUrl);
+    const existing = await pooledDb.query.results.findMany({
+      where: inArray(results.sourceUrl, matchedUrls),
+      columns: { sourceUrl: true },
+    });
+    const existingUrls = new Set(existing.map(r => r.sourceUrl));
+    const newItems = matchedItems.filter(m => !existingUrls.has(m.sourceUrl));
+
+    if (newItems.length > 0) {
+      const inserted = await pooledDb.insert(results).values(
+        newItems.map(item => ({
+          monitorId: monitor.id,
+          platform: "producthunt" as const,
+          sourceUrl: item.sourceUrl,
+          title: item.title,
+          content: item.content,
+          author: item.author,
+          postedAt: item.postedAt,
+          metadata: item.metadata,
+        }))
+      ).returning();
+
+      count += inserted.length;
+      await incrementResultsCount(monitor.userId, inserted.length);
+
+      if (inserted.length > 0) {
+        await inngest.send(
+          inserted.map(result => ({
+            name: "content/analyze" as const,
+            data: { resultId: result.id, userId: monitor.userId },
+          }))
+        );
+      }
+    }
+  }
+
+  return count;
+}
+
 // Product Hunt OAuth token cache (shared within this module)
 let phAccessToken: string | null = null;
 let phTokenExpiresAt: number = 0;
@@ -955,14 +1053,70 @@ async function getProductHuntAccessToken(): Promise<string | null> {
 }
 
 async function scanProductHuntForMonitor(monitor: MonitorData): Promise<number> {
-  // Get OAuth access token
+  let count = 0;
+
+  // Strategy: Use Serper to search Product Hunt if available, otherwise fall back to GraphQL API
+  const searchTerms = monitor.keywords.length > 0
+    ? monitor.keywords.slice(0, 5)
+    : monitor.companyName ? [monitor.companyName] : [];
+
+  // Try Serper-based search first (more effective, searches full PH history)
+  if (isSerperConfigured() && searchTerms.length > 0) {
+    try {
+      const allPosts: Array<{ name: string; tagline: string; description: string; url: string; votesCount: number; createdAt: string; user: { name: string } }> = [];
+
+      for (const term of searchTerms.slice(0, 3)) {
+        const query = `site:producthunt.com/posts "${term}"`;
+        const apiKey = process.env.SERPER_API_KEY!;
+        const response = await fetch("https://google.serper.dev/search", {
+          method: "POST",
+          signal: AbortSignal.timeout(15000),
+          headers: { "X-API-KEY": apiKey, "Content-Type": "application/json" },
+          body: JSON.stringify({ q: query, num: 20 }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const results_list = (data.organic || []) as Array<{ title: string; link: string; snippet: string; date?: string }>;
+          for (const r of results_list) {
+            if (r.link.includes("producthunt.com/posts/")) {
+              allPosts.push({
+                name: r.title.replace(/ - Product Hunt$/i, "").trim(),
+                tagline: r.snippet.slice(0, 200),
+                description: r.snippet,
+                url: r.link,
+                votesCount: 0,
+                createdAt: r.date || new Date().toISOString(),
+                user: { name: "Product Hunt" },
+              });
+            }
+          }
+        }
+      }
+
+      if (allPosts.length > 0) {
+        // Deduplicate by URL
+        const seen = new Set<string>();
+        const posts = allPosts.filter(p => {
+          if (seen.has(p.url)) return false;
+          seen.add(p.url);
+          return true;
+        });
+
+        // Process using same logic as GraphQL path below
+        return await processProductHuntPosts(posts, monitor);
+      }
+    } catch (error) {
+      logger.warn("[ProductHunt] Serper search failed, falling back to GraphQL", { error: error instanceof Error ? error.message : String(error) });
+    }
+  }
+
+  // Fallback: Use Product Hunt GraphQL API (fetches newest 50, filters locally)
   const accessToken = await getProductHuntAccessToken();
   if (!accessToken) {
     logger.info("[ProductHunt] OAuth authentication failed, skipping on-demand scan");
     return 0;
   }
-
-  let count = 0;
 
   try {
     const query = `
@@ -1003,82 +1157,7 @@ async function scanProductHuntForMonitor(monitor: MonitorData): Promise<number> 
     const data = await response.json();
     const posts = data.data?.posts?.edges?.map((e: { node: unknown }) => e.node) || [];
 
-    // 1. Run content matching to determine which items to save
-    interface MatchedPHPost {
-      sourceUrl: string;
-      title: string;
-      content: string | null;
-      author: string | null;
-      postedAt: Date;
-      metadata: Record<string, unknown>;
-    }
-    const matchedItems: MatchedPHPost[] = [];
-
-    for (const post of posts) {
-      // Check for matches using unified matching function
-      const matchResult = await contentMatchesMonitor(
-        { title: `${post.name} - ${post.tagline}`, body: post.description || "", author: post.user?.name, platform: "producthunt" },
-        monitor
-      );
-
-      if (matchResult.isMatch) {
-        matchedItems.push({
-          sourceUrl: post.url,
-          title: `${post.name} - ${post.tagline}`,
-          content: post.description || null,
-          author: post.user?.name || null,
-          postedAt: new Date(post.createdAt),
-          metadata: {
-            phId: post.id,
-            votesCount: post.votesCount,
-          },
-        });
-      }
-    }
-
-    if (matchedItems.length > 0) {
-      // 2. Batch check existence
-      const matchedUrls = matchedItems.map(m => m.sourceUrl);
-      const existing = await pooledDb.query.results.findMany({
-        where: inArray(results.sourceUrl, matchedUrls),
-        columns: { sourceUrl: true },
-      });
-      const existingUrls = new Set(existing.map(r => r.sourceUrl));
-
-      // 3. Filter to new items
-      const newItems = matchedItems.filter(m => !existingUrls.has(m.sourceUrl));
-
-      if (newItems.length > 0) {
-        // 4. Batch insert
-        const inserted = await pooledDb.insert(results).values(
-          newItems.map(item => ({
-            monitorId: monitor.id,
-            platform: "producthunt" as const,
-            sourceUrl: item.sourceUrl,
-            title: item.title,
-            content: item.content,
-            author: item.author,
-            postedAt: item.postedAt,
-            metadata: item.metadata,
-          }))
-        ).returning();
-
-        count += inserted.length;
-
-        // 5. Single batch usage increment
-        await incrementResultsCount(monitor.userId, inserted.length);
-
-        // 6. Batch send analysis events
-        if (inserted.length > 0) {
-          await inngest.send(
-            inserted.map(result => ({
-              name: "content/analyze" as const,
-              data: { resultId: result.id, userId: monitor.userId },
-            }))
-          );
-        }
-      }
-    }
+    count = await processProductHuntPosts(posts, monitor);
   } catch (error) {
     logger.error("[ProductHunt] Error in on-demand scan", { error: error instanceof Error ? error.message : String(error) });
   }
@@ -1098,13 +1177,46 @@ async function scanProductHuntForMonitor(monitor: MonitorData): Promise<number> 
 async function scanYouTubeForMonitor(monitor: MonitorData): Promise<number> {
   let count = 0;
 
-  // Keywords should be YouTube video URLs for this platform
+  const apiKey = process.env.YOUTUBE_API_KEY;
+  if (!apiKey) {
+    logger.debug("[YouTube] YOUTUBE_API_KEY not configured, skipping");
+    return 0;
+  }
+
+  // Collect video URLs: explicit URLs from keywords + search by keyword
   const videoUrls = monitor.keywords.filter(k =>
     k.includes("youtube.com") || k.includes("youtu.be")
   );
 
+  // If no explicit video URLs, search YouTube for videos matching keywords
   if (videoUrls.length === 0) {
-    logger.debug("[YouTube] No video URLs found in keywords, skipping");
+    const searchTerms = monitor.keywords.length > 0
+      ? monitor.keywords.slice(0, 3) // Limit to 3 keyword searches (100 units each)
+      : monitor.companyName ? [monitor.companyName] : [];
+
+    for (const term of searchTerms) {
+      try {
+        const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(term)}&type=video&order=date&maxResults=5&key=${apiKey}`;
+        const searchRes = await fetch(searchUrl, { signal: AbortSignal.timeout(15000) });
+        if (!searchRes.ok) {
+          logger.warn("[YouTube] Search API failed", { term, status: searchRes.status });
+          continue;
+        }
+        const searchData = await searchRes.json();
+        const videos = searchData.items || [];
+        for (const video of videos) {
+          if (video.id?.videoId) {
+            videoUrls.push(`https://www.youtube.com/watch?v=${video.id.videoId}`);
+          }
+        }
+      } catch (error) {
+        logger.warn("[YouTube] Search failed", { term, error: error instanceof Error ? error.message : String(error) });
+      }
+    }
+  }
+
+  if (videoUrls.length === 0) {
+    logger.debug("[YouTube] No videos found for keywords, skipping");
     return 0;
   }
 
@@ -1177,15 +1289,20 @@ async function scanYouTubeForMonitor(monitor: MonitorData): Promise<number> {
 async function scanG2ForMonitor(monitor: MonitorData): Promise<number> {
   let count = 0;
 
-  // Keywords should be G2 product URLs
-  const productUrls = monitor.keywords.filter(k => k.includes("g2.com"));
+  // Use G2 product URLs if provided, otherwise search by keywords/company name
+  const platformUrls = monitor.keywords.filter(k => k.includes("g2.com"));
+  const searchTerms = platformUrls.length > 0
+    ? platformUrls
+    : monitor.keywords.length > 0
+      ? monitor.keywords.slice(0, 5)
+      : monitor.companyName ? [monitor.companyName] : [];
 
-  if (productUrls.length === 0) {
-    logger.debug("[G2] No G2 product URLs found in keywords, skipping");
+  if (searchTerms.length === 0) {
+    logger.debug("[G2] No search terms available, skipping");
     return 0;
   }
 
-  for (const productUrl of productUrls) {
+  for (const productUrl of searchTerms) {
     try {
       const reviews = await searchG2Serper(productUrl, 30);
 
@@ -1263,15 +1380,20 @@ async function scanG2ForMonitor(monitor: MonitorData): Promise<number> {
 async function scanYelpForMonitor(monitor: MonitorData): Promise<number> {
   let count = 0;
 
-  // Keywords should be Yelp business URLs
-  const businessUrls = monitor.keywords.filter(k => k.includes("yelp.com"));
+  // Use Yelp business URLs if provided, otherwise search by keywords/company name
+  const platformUrls = monitor.keywords.filter(k => k.includes("yelp.com"));
+  const searchTerms = platformUrls.length > 0
+    ? platformUrls
+    : monitor.keywords.length > 0
+      ? monitor.keywords.slice(0, 5)
+      : monitor.companyName ? [monitor.companyName] : [];
 
-  if (businessUrls.length === 0) {
-    logger.debug("[Yelp] No Yelp business URLs found in keywords, skipping");
+  if (searchTerms.length === 0) {
+    logger.debug("[Yelp] No search terms available, skipping");
     return 0;
   }
 
-  for (const businessUrl of businessUrls) {
+  for (const businessUrl of searchTerms) {
     try {
       const reviews = await searchYelpSerper(businessUrl, 30);
 
@@ -1341,17 +1463,22 @@ async function scanYelpForMonitor(monitor: MonitorData): Promise<number> {
 async function scanAmazonReviewsForMonitor(monitor: MonitorData): Promise<number> {
   let count = 0;
 
-  // Keywords should be Amazon URLs or ASINs
-  const productUrls = monitor.keywords.filter(k =>
+  // Use Amazon URLs/ASINs if provided, otherwise search by keywords/company name
+  const platformUrls = monitor.keywords.filter(k =>
     k.includes("amazon.com") || k.includes("amazon.") || /^[A-Z0-9]{10}$/i.test(k)
   );
+  const searchTerms = platformUrls.length > 0
+    ? platformUrls
+    : monitor.keywords.length > 0
+      ? monitor.keywords.slice(0, 5)
+      : monitor.companyName ? [monitor.companyName] : [];
 
-  if (productUrls.length === 0) {
-    logger.debug("[Amazon] No Amazon product URLs/ASINs found in keywords, skipping");
+  if (searchTerms.length === 0) {
+    logger.debug("[Amazon] No search terms available, skipping");
     return 0;
   }
 
-  for (const productUrl of productUrls) {
+  for (const productUrl of searchTerms) {
     try {
       const reviews = await searchAmazonSerper(productUrl, 30);
 
@@ -1672,14 +1799,6 @@ async function scanIndieHackersForMonitor(monitor: MonitorData): Promise<number>
   let count = 0;
 
   try {
-    // Try to fetch the feed
-    const response = await fetch("https://www.indiehackers.com/feed.json", {
-      headers: {
-        "User-Agent": "Kaulby/1.0 (Community Monitoring Tool)",
-        "Accept": "application/json",
-      },
-    });
-
     interface FeedItem {
       id?: string;
       url?: string;
@@ -1691,11 +1810,66 @@ async function scanIndieHackersForMonitor(monitor: MonitorData): Promise<number>
       date_published?: string;
     }
 
-    let posts: FeedItem[] = [];
+    const posts: FeedItem[] = [];
 
-    if (response.ok) {
-      const data = await response.json();
-      posts = data.items || [];
+    // Strategy 1: Use Serper to search Indie Hackers by keyword (much more effective)
+    const searchTerms = monitor.keywords.length > 0
+      ? monitor.keywords.slice(0, 3)
+      : monitor.companyName ? [monitor.companyName] : [];
+
+    if (isSerperConfigured() && searchTerms.length > 0) {
+      const apiKey = process.env.SERPER_API_KEY!;
+      for (const term of searchTerms) {
+        try {
+          const query = `site:indiehackers.com "${term}"`;
+          const response = await fetch("https://google.serper.dev/search", {
+            method: "POST",
+            signal: AbortSignal.timeout(15000),
+            headers: { "X-API-KEY": apiKey, "Content-Type": "application/json" },
+            body: JSON.stringify({ q: query, num: 15 }),
+          });
+          if (response.ok) {
+            const data = await response.json();
+            for (const r of (data.organic || []) as Array<{ title: string; link: string; snippet: string; date?: string }>) {
+              if (r.link.includes("indiehackers.com")) {
+                posts.push({
+                  url: r.link,
+                  title: r.title.replace(/ - Indie Hackers$/i, "").trim(),
+                  content_text: r.snippet,
+                  date_published: r.date || new Date().toISOString(),
+                  author: { name: "Indie Hackers" },
+                });
+              }
+            }
+          }
+        } catch (error) {
+          logger.warn("[IndieHackers] Serper search failed for term", { term, error: error instanceof Error ? error.message : String(error) });
+        }
+      }
+    }
+
+    // Strategy 2: Also fetch the JSON feed for latest posts
+    try {
+      const feedResponse = await fetch("https://www.indiehackers.com/feed.json", {
+        headers: {
+          "User-Agent": "Kaulby/1.0 (Community Monitoring Tool)",
+          "Accept": "application/json",
+        },
+        signal: AbortSignal.timeout(15000),
+      });
+      if (feedResponse.ok) {
+        const data = await feedResponse.json();
+        const feedItems = (data.items || []) as FeedItem[];
+        // Deduplicate by URL
+        const existingUrls = new Set(posts.map(p => p.url));
+        for (const item of feedItems) {
+          if (item.url && !existingUrls.has(item.url)) {
+            posts.push(item);
+          }
+        }
+      }
+    } catch {
+      logger.debug("[IndieHackers] Feed fetch failed, continuing with Serper results");
     }
 
     // 1. Run content matching to determine which items to save

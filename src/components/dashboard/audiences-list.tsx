@@ -1,10 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,7 +22,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Users } from "lucide-react";
+import { Plus, Users, ArrowUpDown } from "lucide-react";
 import { toast } from "sonner";
 import { AudienceCard, NewAudienceCard, type AudienceStats } from "./audience-card";
 import { SuggestedCommunities } from "./suggested-communities";
@@ -31,10 +38,35 @@ interface AudiencesListProps {
   suggestions?: CommunitySuggestion[];
 }
 
+type SortField = "name" | "mentions" | "monitors" | "change";
+
 export function AudiencesList({ audiences, suggestions = [] }: AudiencesListProps) {
   const router = useRouter();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [sortField, setSortField] = useState<SortField>("mentions");
+  const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
+
+  const sortedAudiences = useMemo(() => {
+    return [...audiences].sort((a, b) => {
+      let cmp = 0;
+      switch (sortField) {
+        case "name":
+          cmp = a.name.localeCompare(b.name);
+          break;
+        case "mentions":
+          cmp = a.stats.totalMentions - b.stats.totalMentions;
+          break;
+        case "monitors":
+          cmp = a.stats.monitorCount - b.stats.monitorCount;
+          break;
+        case "change":
+          cmp = a.stats.mentionChange - b.stats.mentionChange;
+          break;
+      }
+      return sortOrder === "desc" ? -cmp : cmp;
+    });
+  }, [audiences, sortField, sortOrder]);
 
   const handleAddCommunity = (community: string) => {
     // Open Reddit in new tab for now - could be enhanced to add to monitor
@@ -78,6 +110,35 @@ export function AudiencesList({ audiences, suggestions = [] }: AudiencesListProp
         </Link>
       </div>
 
+      {/* Sort controls — only show if 2+ audiences */}
+      {audiences.length > 1 && (
+        <div className="flex items-center justify-end gap-2">
+          <Select
+            value={sortField}
+            onValueChange={(v) => setSortField(v as SortField)}
+          >
+            <SelectTrigger className="h-7 w-[140px] text-xs">
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="mentions">Mentions</SelectItem>
+              <SelectItem value="change">Trend</SelectItem>
+              <SelectItem value="monitors">Monitors</SelectItem>
+              <SelectItem value="name">Name</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs gap-1"
+            onClick={() => setSortOrder((s) => (s === "desc" ? "asc" : "desc"))}
+          >
+            <ArrowUpDown className="h-3 w-3" />
+            {sortOrder === "desc" ? "Highest" : "Lowest"}
+          </Button>
+        </div>
+      )}
+
       {/* Community Suggestions */}
       {suggestions.length > 0 && (
         <SuggestedCommunities
@@ -111,7 +172,7 @@ export function AudiencesList({ audiences, suggestions = [] }: AudiencesListProp
       {/* Audiences Grid - Using new enhanced AudienceCard */}
       {audiences.length > 0 && (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {audiences.map((audience) => (
+          {sortedAudiences.map((audience) => (
             <AudienceCard
               key={audience.id}
               id={audience.id}

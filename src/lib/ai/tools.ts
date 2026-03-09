@@ -1,12 +1,16 @@
 /**
  * Kaulby AI Tool Definitions and Executors
  *
- * Provides 25 tools for the AI assistant to read data, perform actions,
+ * Provides 47 tools for the AI assistant to read data, perform actions,
  * and analyze the user's monitoring data via OpenAI-compatible function calling.
  */
 import type OpenAI from "openai";
-import { db, results, monitors, audiences, audienceMonitors, alerts } from "@/lib/db";
-import { eq, and, desc, gte, inArray, count, sql, asc } from "drizzle-orm";
+import {
+  db, results, monitors, audiences, audienceMonitors, alerts,
+  bookmarks, bookmarkCollections, savedSearches, webhooks,
+  notifications, sharedReports, users,
+} from "@/lib/db";
+import { eq, and, desc, gte, inArray, count, sql, asc, isNull } from "drizzle-orm";
 import { getUserPlan, canCreateMonitor, checkKeywordsLimit, filterAllowedPlatforms, canTriggerManualScan } from "@/lib/limits";
 import { getPlanLimits, type Platform } from "@/lib/plans";
 import { logger } from "@/lib/logger";
@@ -57,11 +61,40 @@ export const TOOL_METADATA: Record<string, ToolMeta> = {
     category: "safe_write",
     label: "Triggering scan…",
   },
+  duplicate_monitor: { category: "safe_write", label: "Duplicating monitor…" },
   delete_monitor: {
     category: "dangerous_write",
     label: "Deleting monitor…",
     confirmationMessage: "This will permanently delete the monitor and ALL its results. This cannot be undone. Are you sure?",
   },
+  // Audience tools
+  create_audience:              { category: "safe_write", label: "Creating audience…" },
+  update_audience:              { category: "safe_write", label: "Updating audience…" },
+  delete_audience:              { category: "dangerous_write", label: "Deleting audience…", confirmationMessage: "This will permanently delete this audience group. Monitors within it will NOT be deleted. Continue?" },
+  add_monitor_to_audience:      { category: "safe_write", label: "Adding monitor to audience…" },
+  remove_monitor_from_audience: { category: "safe_write", label: "Removing monitor from audience…" },
+  // Bookmark tools
+  create_bookmark:              { category: "safe_write", label: "Bookmarking result…" },
+  list_bookmark_collections:    { category: "read", label: "Loading collections…" },
+  create_bookmark_collection:   { category: "safe_write", label: "Creating collection…" },
+  // Saved search tools
+  list_saved_searches:          { category: "read", label: "Loading saved searches…" },
+  create_saved_search:          { category: "safe_write", label: "Saving search…" },
+  delete_saved_search:          { category: "safe_write", label: "Deleting saved search…" },
+  // Webhook tools (Team tier)
+  list_webhooks:                { category: "read", label: "Loading webhooks…" },
+  create_webhook:               { category: "safe_write", label: "Creating webhook…" },
+  delete_webhook:               { category: "dangerous_write", label: "Deleting webhook…", confirmationMessage: "This will permanently delete this webhook. Continue?" },
+  // Notification tools
+  get_notifications:            { category: "read", label: "Loading notifications…" },
+  mark_notifications_read:      { category: "safe_write", label: "Marking notifications as read…" },
+  // Report tools
+  create_share_link:            { category: "safe_write", label: "Creating share link…" },
+  export_results_csv:           { category: "safe_write", label: "Exporting results…" },
+  // Integration tools
+  get_integrations_status:      { category: "read", label: "Checking integrations…" },
+  // AI tools
+  suggest_reply:                { category: "safe_write", label: "Generating reply suggestions…" },
 };
 
 // ---------------------------------------------------------------------------
@@ -368,6 +401,11 @@ export const AI_TOOLS: OpenAI.ChatCompletionTool[] = [
             items: { type: "string", enum: [...platformValues] },
             description: "Platforms to scan — pick intelligently based on company type. SaaS/Tech: reddit, hackernews, g2, producthunt, github, x, trustpilot. Consumer apps: reddit, appstore, playstore, x, youtube. Local business: googlereviews, yelp, reddit.",
           },
+          platform_urls: {
+            type: "object",
+            description: "URLs for platforms that require them. Keys are platform IDs, values are URLs. Required for: googlereviews (Google Maps URL or Place ID), youtube (video URL), trustpilot (trustpilot.com/review/... URL), appstore (apps.apple.com URL), playstore (play.google.com URL), g2 (g2.com/products/... URL), yelp (yelp.com/biz/... URL), amazonreviews (amazon.com product URL or ASIN).",
+            additionalProperties: { type: "string" },
+          },
           search_query: { type: "string", description: "Optional advanced boolean search query" },
         },
         required: ["name", "company_name", "keywords", "platforms"],
@@ -387,6 +425,7 @@ export const AI_TOOLS: OpenAI.ChatCompletionTool[] = [
           company_name: { type: "string", description: "New company name" },
           keywords: { type: "array", items: { type: "string" }, description: "New keywords list" },
           platforms: { type: "array", items: { type: "string", enum: [...platformValues] }, description: "New platforms list" },
+          platform_urls: { type: "object", description: "Platform-specific URLs (same format as create_monitor)", additionalProperties: { type: "string" } },
           search_query: { type: "string", description: "New search query (null to clear)" },
         },
         required: ["monitor_id"],
@@ -438,6 +477,20 @@ export const AI_TOOLS: OpenAI.ChatCompletionTool[] = [
   {
     type: "function",
     function: {
+      name: "duplicate_monitor",
+      description: "Duplicate an existing monitor with all its settings (keywords, platforms, etc). The new monitor starts fresh with no results.",
+      parameters: {
+        type: "object",
+        properties: {
+          monitor_id: { type: "string", description: "The monitor UUID to duplicate" },
+        },
+        required: ["monitor_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "delete_monitor",
       description: "Permanently delete a monitor and ALL its results. This action cannot be undone.",
       parameters: {
@@ -446,6 +499,301 @@ export const AI_TOOLS: OpenAI.ChatCompletionTool[] = [
           monitor_id: { type: "string", description: "The monitor UUID to delete" },
         },
         required: ["monitor_id"],
+      },
+    },
+  },
+  // ── Audience tools ────────────────────────────────────────────────────
+  {
+    type: "function",
+    function: {
+      name: "create_audience",
+      description: "Create an audience — a group/folder for organizing monitors by topic, project, or client.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Audience name (e.g., 'Competitor Tracking', 'Client: Acme Corp')" },
+          description: { type: "string", description: "Optional description" },
+          color: { type: "string", description: "Hex color (e.g., '#3B82F6')" },
+          icon: { type: "string", description: "Lucide icon name (e.g., 'target', 'users', 'zap')" },
+        },
+        required: ["name"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_audience",
+      description: "Update an audience's name, description, color, or icon.",
+      parameters: {
+        type: "object",
+        properties: {
+          audience_id: { type: "string", description: "The audience UUID" },
+          name: { type: "string", description: "New name" },
+          description: { type: "string", description: "New description (null to clear)" },
+          color: { type: "string", description: "New hex color" },
+          icon: { type: "string", description: "New Lucide icon name" },
+        },
+        required: ["audience_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_audience",
+      description: "Delete an audience group. Monitors in the audience will NOT be deleted.",
+      parameters: {
+        type: "object",
+        properties: {
+          audience_id: { type: "string", description: "The audience UUID to delete" },
+        },
+        required: ["audience_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "add_monitor_to_audience",
+      description: "Add a monitor to an audience group.",
+      parameters: {
+        type: "object",
+        properties: {
+          audience_id: { type: "string", description: "The audience UUID" },
+          monitor_id: { type: "string", description: "The monitor UUID to add" },
+        },
+        required: ["audience_id", "monitor_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "remove_monitor_from_audience",
+      description: "Remove a monitor from an audience group.",
+      parameters: {
+        type: "object",
+        properties: {
+          audience_id: { type: "string", description: "The audience UUID" },
+          monitor_id: { type: "string", description: "The monitor UUID to remove" },
+        },
+        required: ["audience_id", "monitor_id"],
+      },
+    },
+  },
+  // ── Bookmark tools ────────────────────────────────────────────────────
+  {
+    type: "function",
+    function: {
+      name: "create_bookmark",
+      description: "Bookmark a result with an optional note and collection assignment.",
+      parameters: {
+        type: "object",
+        properties: {
+          result_id: { type: "string", description: "The result UUID to bookmark" },
+          note: { type: "string", description: "Optional note about the bookmark" },
+          collection_id: { type: "string", description: "Optional collection UUID to file it under" },
+        },
+        required: ["result_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_bookmark_collections",
+      description: "List the user's bookmark collections with counts.",
+      parameters: { type: "object", properties: {}, required: [] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_bookmark_collection",
+      description: "Create a new bookmark collection for organizing saved results.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Collection name" },
+          color: { type: "string", description: "Hex color (e.g., '#10B981')" },
+        },
+        required: ["name"],
+      },
+    },
+  },
+  // ── Saved search tools ────────────────────────────────────────────────
+  {
+    type: "function",
+    function: {
+      name: "list_saved_searches",
+      description: "List the user's saved search queries.",
+      parameters: { type: "object", properties: {}, required: [] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_saved_search",
+      description: "Save a search query with filters for quick re-use.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Name for the saved search" },
+          query: { type: "string", description: "The search query string" },
+          filters: {
+            type: "object",
+            description: "Optional filters: { platforms?, sentiments?, categories?, dateRange? }",
+          },
+        },
+        required: ["name", "query"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_saved_search",
+      description: "Delete a saved search.",
+      parameters: {
+        type: "object",
+        properties: {
+          search_id: { type: "string", description: "The saved search UUID" },
+        },
+        required: ["search_id"],
+      },
+    },
+  },
+  // ── Webhook tools (Team tier) ─────────────────────────────────────────
+  {
+    type: "function",
+    function: {
+      name: "list_webhooks",
+      description: "List the user's webhook configurations. Requires Team plan.",
+      parameters: { type: "object", properties: {}, required: [] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_webhook",
+      description: "Create a webhook to receive real-time notifications when new results are found. Requires Team plan. URL must be public HTTPS.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Webhook name" },
+          url: { type: "string", description: "HTTPS webhook URL" },
+          events: {
+            type: "array",
+            items: { type: "string" },
+            description: "Events to subscribe to (default: ['new_result']). Options: new_result, crisis_alert, daily_digest",
+          },
+        },
+        required: ["name", "url"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_webhook",
+      description: "Delete a webhook configuration. Requires Team plan.",
+      parameters: {
+        type: "object",
+        properties: {
+          webhook_id: { type: "string", description: "The webhook UUID" },
+        },
+        required: ["webhook_id"],
+      },
+    },
+  },
+  // ── Notification tools ────────────────────────────────────────────────
+  {
+    type: "function",
+    function: {
+      name: "get_notifications",
+      description: "Get the user's unread notifications (alerts, crisis events, system messages).",
+      parameters: {
+        type: "object",
+        properties: {
+          limit: { type: "number", description: "Max notifications (default 20)" },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "mark_notifications_read",
+      description: "Mark specific notifications as read.",
+      parameters: {
+        type: "object",
+        properties: {
+          notification_ids: {
+            type: "array",
+            items: { type: "string" },
+            description: "List of notification UUIDs to mark as read",
+          },
+        },
+        required: ["notification_ids"],
+      },
+    },
+  },
+  // ── Report & export tools ─────────────────────────────────────────────
+  {
+    type: "function",
+    function: {
+      name: "create_share_link",
+      description: "Create a shareable public link for a monitoring report. Anyone with the link can view the report data.",
+      parameters: {
+        type: "object",
+        properties: {
+          title: { type: "string", description: "Report title" },
+          monitor_id: { type: "string", description: "Optional: scope report to a specific monitor" },
+          period_days: { type: "number", description: "Report period in days (7, 30, or 90). Default: 30" },
+          expires_in_days: { type: "number", description: "Optional: link expiry in days (1-365)" },
+        },
+        required: ["title"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "export_results_csv",
+      description: "Export monitoring results as a CSV file. Requires Pro+ plan. Returns a download URL.",
+      parameters: {
+        type: "object",
+        properties: {
+          monitor_id: { type: "string", description: "Optional: export results for a specific monitor only" },
+        },
+        required: [],
+      },
+    },
+  },
+  // ── Integration tools ─────────────────────────────────────────────────
+  {
+    type: "function",
+    function: {
+      name: "get_integrations_status",
+      description: "Check which third-party integrations (Slack, Discord, HubSpot, Microsoft Teams) are connected.",
+      parameters: { type: "object", properties: {}, required: [] },
+    },
+  },
+  // ── AI tools ──────────────────────────────────────────────────────────
+  {
+    type: "function",
+    function: {
+      name: "suggest_reply",
+      description: "Generate AI-powered reply suggestions for a specific result/post. Useful when the user wants help responding to a discussion. Requires Pro+ plan.",
+      parameters: {
+        type: "object",
+        properties: {
+          result_id: { type: "string", description: "The result UUID to generate replies for" },
+          product_context: { type: "string", description: "Optional context about the user's product to make the reply more relevant" },
+        },
+        required: ["result_id"],
       },
     },
   },
@@ -565,8 +913,58 @@ export async function executeTool(
         return await execSetMonitorActive(userId, params.monitor_id as string, true);
       case "trigger_scan":
         return await execTriggerScan(userId, params.monitor_id as string);
+      case "duplicate_monitor":
+        return await execDuplicateMonitor(userId, params.monitor_id as string);
       case "delete_monitor":
         return await execDeleteMonitor(userId, params.monitor_id as string);
+      // Audience tools
+      case "create_audience":
+        return await execCreateAudience(userId, params);
+      case "update_audience":
+        return await execUpdateAudience(userId, params);
+      case "delete_audience":
+        return await execDeleteAudience(userId, params.audience_id as string);
+      case "add_monitor_to_audience":
+        return await execAddMonitorToAudience(userId, params);
+      case "remove_monitor_from_audience":
+        return await execRemoveMonitorFromAudience(userId, params);
+      // Bookmark tools
+      case "create_bookmark":
+        return await execCreateBookmark(userId, params);
+      case "list_bookmark_collections":
+        return await execListBookmarkCollections(userId);
+      case "create_bookmark_collection":
+        return await execCreateBookmarkCollection(userId, params);
+      // Saved search tools
+      case "list_saved_searches":
+        return await execListSavedSearches(userId);
+      case "create_saved_search":
+        return await execCreateSavedSearch(userId, params);
+      case "delete_saved_search":
+        return await execDeleteSavedSearch(userId, params.search_id as string);
+      // Webhook tools
+      case "list_webhooks":
+        return await execListWebhooks(userId);
+      case "create_webhook":
+        return await execCreateWebhook(userId, params);
+      case "delete_webhook":
+        return await execDeleteWebhook(userId, params.webhook_id as string);
+      // Notification tools
+      case "get_notifications":
+        return await execGetNotifications(userId, params);
+      case "mark_notifications_read":
+        return await execMarkNotificationsRead(userId, params);
+      // Report tools
+      case "create_share_link":
+        return await execCreateShareLink(userId, params);
+      case "export_results_csv":
+        return await execExportResultsCsv(userId, params);
+      // Integration tools
+      case "get_integrations_status":
+        return await execGetIntegrationsStatus(userId);
+      // AI tools
+      case "suggest_reply":
+        return await execSuggestReply(userId, params);
       default:
         return { success: false, error: `Unknown tool: ${toolName}` };
     }
@@ -1117,22 +1515,44 @@ async function execCreateMonitor(userId: string, params: Record<string, unknown>
   const requestedPlatforms = (params.platforms as string[]) || ["reddit"];
   const allowedPlatforms = await filterAllowedPlatforms(userId, requestedPlatforms as Platform[]);
 
+  // Sanitize platform URLs if provided
+  let sanitizedPlatformUrls: Record<string, string> | null = null;
+  if (params.platform_urls && typeof params.platform_urls === "object") {
+    const urls = params.platform_urls as Record<string, string>;
+    const cleaned: Record<string, string> = {};
+    for (const [platform, url] of Object.entries(urls)) {
+      const trimmed = String(url).trim();
+      if (trimmed && (trimmed.startsWith("https://") || trimmed.startsWith("ChI"))) {
+        cleaned[platform] = trimmed.slice(0, 500);
+      }
+    }
+    if (Object.keys(cleaned).length > 0) sanitizedPlatformUrls = cleaned;
+  }
+
   const [newMonitor] = await db.insert(monitors).values({
     userId,
     name: (params.name as string).slice(0, 100),
     companyName: (params.company_name as string).slice(0, 100),
     keywords: keywords.slice(0, 20).map((k) => String(k).slice(0, 100)),
     platforms: allowedPlatforms as [Platform, ...Platform[]],
+    platformUrls: sanitizedPlatformUrls,
     searchQuery: params.search_query ? String(params.search_query).slice(0, 500) : null,
     isActive: true,
+    isScanning: true,
   }).returning({ id: monitors.id, name: monitors.name });
+
+  // Trigger immediate first scan so the user gets results right away
+  await inngest.send({
+    name: "monitor/scan-now",
+    data: { monitorId: newMonitor.id, userId },
+  });
 
   return {
     success: true,
     data: {
       id: newMonitor.id,
       name: newMonitor.name,
-      message: `Monitor "${newMonitor.name}" created. It will start scanning on the next cycle.`,
+      message: `Monitor "${newMonitor.name}" created and scanning now! Initial results will appear in a few minutes.`,
     },
   };
 }
@@ -1161,6 +1581,17 @@ async function execUpdateMonitor(userId: string, params: Record<string, unknown>
   }
   if (params.search_query !== undefined) {
     updates.searchQuery = params.search_query ? String(params.search_query).slice(0, 500) : null;
+  }
+  if (params.platform_urls && typeof params.platform_urls === "object") {
+    const urls = params.platform_urls as Record<string, string>;
+    const cleaned: Record<string, string> = {};
+    for (const [platform, url] of Object.entries(urls)) {
+      const trimmed = String(url).trim();
+      if (trimmed && (trimmed.startsWith("https://") || trimmed.startsWith("ChI"))) {
+        cleaned[platform] = trimmed.slice(0, 500);
+      }
+    }
+    updates.platformUrls = Object.keys(cleaned).length > 0 ? cleaned : null;
   }
 
   await db.update(monitors).set(updates).where(eq(monitors.id, monitorId));
@@ -1203,6 +1634,37 @@ async function execTriggerScan(userId: string, monitorId: string): Promise<ToolR
   };
 }
 
+async function execDuplicateMonitor(userId: string, monitorId: string): Promise<ToolResult> {
+  const monitor = await verifyMonitorOwnership(userId, monitorId);
+  if (!monitor) return { success: false, error: "Monitor not found or access denied." };
+
+  const canCreate = await canCreateMonitor(userId);
+  if (!canCreate.allowed) return { success: false, error: canCreate.message };
+
+  const [newMonitor] = await db.insert(monitors).values({
+    userId,
+    name: `${monitor.name} (Copy)`,
+    companyName: monitor.companyName,
+    keywords: monitor.keywords,
+    platforms: monitor.platforms,
+    searchQuery: monitor.searchQuery,
+    monitorType: monitor.monitorType,
+    isActive: true,
+    isScanning: true,
+  }).returning({ id: monitors.id, name: monitors.name });
+
+  // Trigger immediate first scan
+  await inngest.send({
+    name: "monitor/scan-now",
+    data: { monitorId: newMonitor.id, userId },
+  });
+
+  return {
+    success: true,
+    data: { id: newMonitor.id, name: newMonitor.name, message: `Duplicated "${monitor.name}" as "${newMonitor.name}". Scanning now!` },
+  };
+}
+
 async function execDeleteMonitor(userId: string, monitorId: string): Promise<ToolResult> {
   const monitor = await verifyMonitorOwnership(userId, monitorId);
   if (!monitor) return { success: false, error: "Monitor not found or access denied." };
@@ -1211,5 +1673,487 @@ async function execDeleteMonitor(userId: string, monitorId: string): Promise<Too
   return {
     success: true,
     data: { monitorId, name: monitor.name, message: `Monitor "${monitor.name}" and all its results have been permanently deleted.` },
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AUDIENCE TOOL EXECUTORS
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function verifyAudienceOwnership(userId: string, audienceId: string) {
+  return db.query.audiences.findFirst({
+    where: and(eq(audiences.id, audienceId), eq(audiences.userId, userId)),
+  });
+}
+
+async function execCreateAudience(userId: string, params: Record<string, unknown>): Promise<ToolResult> {
+  const name = String(params.name || "").slice(0, 100);
+  if (!name) return { success: false, error: "Audience name is required." };
+
+  const [audience] = await db.insert(audiences).values({
+    userId,
+    name,
+    description: params.description ? String(params.description).slice(0, 500) : null,
+    color: params.color ? String(params.color).slice(0, 7) : null,
+    icon: params.icon ? String(params.icon).slice(0, 50) : null,
+  }).returning({ id: audiences.id, name: audiences.name });
+
+  return { success: true, data: { id: audience.id, name: audience.name, message: `Audience "${audience.name}" created.` } };
+}
+
+async function execUpdateAudience(userId: string, params: Record<string, unknown>): Promise<ToolResult> {
+  const audienceId = params.audience_id as string;
+  const audience = await verifyAudienceOwnership(userId, audienceId);
+  if (!audience) return { success: false, error: "Audience not found or access denied." };
+
+  const updates: Record<string, unknown> = { updatedAt: new Date() };
+  if (params.name) updates.name = String(params.name).slice(0, 100);
+  if (params.description !== undefined) updates.description = params.description ? String(params.description).slice(0, 500) : null;
+  if (params.color !== undefined) updates.color = params.color ? String(params.color).slice(0, 7) : null;
+  if (params.icon !== undefined) updates.icon = params.icon ? String(params.icon).slice(0, 50) : null;
+
+  await db.update(audiences).set(updates).where(eq(audiences.id, audienceId));
+  return { success: true, data: { audienceId, updated: Object.keys(updates).filter((k) => k !== "updatedAt") } };
+}
+
+async function execDeleteAudience(userId: string, audienceId: string): Promise<ToolResult> {
+  const audience = await verifyAudienceOwnership(userId, audienceId);
+  if (!audience) return { success: false, error: "Audience not found or access denied." };
+
+  await db.delete(audiences).where(eq(audiences.id, audienceId));
+  return { success: true, data: { audienceId, name: audience.name, message: `Audience "${audience.name}" deleted. Monitors were preserved.` } };
+}
+
+async function execAddMonitorToAudience(userId: string, params: Record<string, unknown>): Promise<ToolResult> {
+  const audienceId = params.audience_id as string;
+  const monitorId = params.monitor_id as string;
+
+  const audience = await verifyAudienceOwnership(userId, audienceId);
+  if (!audience) return { success: false, error: "Audience not found or access denied." };
+
+  const monitor = await verifyMonitorOwnership(userId, monitorId);
+  if (!monitor) return { success: false, error: "Monitor not found or access denied." };
+
+  // Check if already added
+  const existing = await db.query.audienceMonitors.findFirst({
+    where: and(eq(audienceMonitors.audienceId, audienceId), eq(audienceMonitors.monitorId, monitorId)),
+  });
+  if (existing) return { success: true, data: { message: `"${monitor.name}" is already in "${audience.name}".` } };
+
+  await db.insert(audienceMonitors).values({ audienceId, monitorId });
+  return { success: true, data: { message: `Added "${monitor.name}" to audience "${audience.name}".` } };
+}
+
+async function execRemoveMonitorFromAudience(userId: string, params: Record<string, unknown>): Promise<ToolResult> {
+  const audienceId = params.audience_id as string;
+  const monitorId = params.monitor_id as string;
+
+  const audience = await verifyAudienceOwnership(userId, audienceId);
+  if (!audience) return { success: false, error: "Audience not found or access denied." };
+
+  await db.delete(audienceMonitors).where(
+    and(eq(audienceMonitors.audienceId, audienceId), eq(audienceMonitors.monitorId, monitorId))
+  );
+  return { success: true, data: { message: `Removed monitor from audience "${audience.name}".` } };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BOOKMARK TOOL EXECUTORS
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function execCreateBookmark(userId: string, params: Record<string, unknown>): Promise<ToolResult> {
+  const resultId = params.result_id as string;
+  const result = await verifyResultOwnership(userId, resultId);
+  if (!result) return { success: false, error: "Result not found or access denied." };
+
+  // Check for existing bookmark
+  const existing = await db.query.bookmarks.findFirst({
+    where: and(eq(bookmarks.userId, userId), eq(bookmarks.resultId, resultId)),
+  });
+
+  if (existing) {
+    // Update existing bookmark
+    const updates: Record<string, unknown> = {};
+    if (params.note !== undefined) updates.note = params.note ? String(params.note).slice(0, 1000) : null;
+    if (params.collection_id !== undefined) updates.collectionId = params.collection_id || null;
+    if (Object.keys(updates).length > 0) {
+      await db.update(bookmarks).set(updates).where(eq(bookmarks.id, existing.id));
+    }
+    return { success: true, data: { bookmarkId: existing.id, message: "Bookmark updated." } };
+  }
+
+  const [bookmark] = await db.insert(bookmarks).values({
+    userId,
+    resultId,
+    note: params.note ? String(params.note).slice(0, 1000) : null,
+    collectionId: params.collection_id ? String(params.collection_id) : null,
+  }).returning({ id: bookmarks.id });
+
+  // Also mark the result as saved
+  await db.update(results).set({ isSaved: true }).where(eq(results.id, resultId));
+
+  return { success: true, data: { bookmarkId: bookmark.id, message: `Bookmarked "${result.title.slice(0, 60)}".` } };
+}
+
+async function execListBookmarkCollections(userId: string): Promise<ToolResult> {
+  const collections = await db.query.bookmarkCollections.findMany({
+    where: eq(bookmarkCollections.userId, userId),
+    orderBy: [desc(bookmarkCollections.createdAt)],
+  });
+
+  const data = await Promise.all(
+    collections.map(async (c) => {
+      const [bookmarkCount] = await db.select({ count: count() }).from(bookmarks)
+        .where(and(eq(bookmarks.userId, userId), eq(bookmarks.collectionId, c.id)));
+      return { id: c.id, name: c.name, color: c.color, bookmarkCount: bookmarkCount.count };
+    })
+  );
+
+  // Get uncategorized count
+  const [uncategorized] = await db.select({ count: count() }).from(bookmarks)
+    .where(and(eq(bookmarks.userId, userId), isNull(bookmarks.collectionId)));
+
+  return { success: true, data: { collections: data, uncategorizedCount: uncategorized.count } };
+}
+
+async function execCreateBookmarkCollection(userId: string, params: Record<string, unknown>): Promise<ToolResult> {
+  const name = String(params.name || "").slice(0, 100);
+  if (!name) return { success: false, error: "Collection name is required." };
+
+  // Check limit (max 20)
+  const [existing] = await db.select({ count: count() }).from(bookmarkCollections)
+    .where(eq(bookmarkCollections.userId, userId));
+  if (existing.count >= 20) return { success: false, error: "Maximum 20 collections allowed." };
+
+  const [collection] = await db.insert(bookmarkCollections).values({
+    userId,
+    name,
+    color: params.color ? String(params.color).slice(0, 7) : null,
+  }).returning({ id: bookmarkCollections.id, name: bookmarkCollections.name });
+
+  return { success: true, data: { id: collection.id, name: collection.name, message: `Collection "${collection.name}" created.` } };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SAVED SEARCH TOOL EXECUTORS
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function execListSavedSearches(userId: string): Promise<ToolResult> {
+  const searches = await db.query.savedSearches.findMany({
+    where: eq(savedSearches.userId, userId),
+    orderBy: [desc(savedSearches.lastUsedAt), desc(savedSearches.createdAt)],
+    columns: { id: true, name: true, query: true, filters: true, useCount: true, lastUsedAt: true },
+  });
+
+  return { success: true, data: searches.map((s) => ({ ...s, lastUsedAt: s.lastUsedAt?.toISOString() ?? null })) };
+}
+
+async function execCreateSavedSearch(userId: string, params: Record<string, unknown>): Promise<ToolResult> {
+  const plan = await getUserPlan(userId);
+  const limits: Record<string, number> = { free: 3, pro: 20, team: 100 };
+  const maxSearches = limits[plan] || 3;
+
+  const [existing] = await db.select({ count: count() }).from(savedSearches)
+    .where(eq(savedSearches.userId, userId));
+  if (existing.count >= maxSearches) {
+    return { success: false, error: `Saved search limit reached (${maxSearches} on ${plan} plan).` };
+  }
+
+  const name = String(params.name || "").slice(0, 100);
+  const query = String(params.query || "").slice(0, 500);
+  if (!name || !query) return { success: false, error: "Name and query are required." };
+
+  const [search] = await db.insert(savedSearches).values({
+    userId,
+    name,
+    query,
+    filters: params.filters ? params.filters : null,
+  }).returning({ id: savedSearches.id, name: savedSearches.name });
+
+  return { success: true, data: { id: search.id, name: search.name, message: `Saved search "${search.name}" created.` } };
+}
+
+async function execDeleteSavedSearch(userId: string, searchId: string): Promise<ToolResult> {
+  const search = await db.query.savedSearches.findFirst({
+    where: and(eq(savedSearches.id, searchId), eq(savedSearches.userId, userId)),
+  });
+  if (!search) return { success: false, error: "Saved search not found or access denied." };
+
+  await db.delete(savedSearches).where(eq(savedSearches.id, searchId));
+  return { success: true, data: { message: `Deleted saved search "${search.name}".` } };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WEBHOOK TOOL EXECUTORS (Team tier only)
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function execListWebhooks(userId: string): Promise<ToolResult> {
+  const plan = await getUserPlan(userId);
+  if (plan !== "team") return { success: false, error: "Webhooks require a Team plan." };
+
+  const rows = await db.query.webhooks.findMany({
+    where: eq(webhooks.userId, userId),
+    columns: { id: true, name: true, url: true, events: true, isActive: true, createdAt: true },
+  });
+
+  return { success: true, data: rows.map((w) => ({ ...w, createdAt: w.createdAt.toISOString() })) };
+}
+
+async function execCreateWebhook(userId: string, params: Record<string, unknown>): Promise<ToolResult> {
+  const plan = await getUserPlan(userId);
+  if (plan !== "team") return { success: false, error: "Webhooks require a Team plan." };
+
+  const name = String(params.name || "").slice(0, 100);
+  const url = String(params.url || "");
+  if (!name || !url) return { success: false, error: "Name and URL are required." };
+
+  // Basic URL validation
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:") return { success: false, error: "Webhook URL must use HTTPS." };
+    // Block private IPs
+    const hostname = parsed.hostname;
+    if (hostname === "localhost" || hostname === "127.0.0.1" || hostname.startsWith("192.168.") || hostname.startsWith("10.")) {
+      return { success: false, error: "Webhook URL cannot point to private/local addresses." };
+    }
+  } catch {
+    return { success: false, error: "Invalid URL format." };
+  }
+
+  // Generate webhook secret
+  const secretBytes = new Uint8Array(32);
+  crypto.getRandomValues(secretBytes);
+  const secret = Array.from(secretBytes).map((b) => b.toString(16).padStart(2, "0")).join("");
+
+  const events = (params.events as string[]) || ["new_result"];
+
+  const [webhook] = await db.insert(webhooks).values({
+    userId,
+    name,
+    url,
+    secret,
+    events,
+    isActive: true,
+  }).returning({ id: webhooks.id, name: webhooks.name });
+
+  return { success: true, data: { id: webhook.id, name: webhook.name, message: `Webhook "${webhook.name}" created. Secret provided for HMAC verification.` } };
+}
+
+async function execDeleteWebhook(userId: string, webhookId: string): Promise<ToolResult> {
+  const plan = await getUserPlan(userId);
+  if (plan !== "team") return { success: false, error: "Webhooks require a Team plan." };
+
+  const webhook = await db.query.webhooks.findFirst({
+    where: and(eq(webhooks.id, webhookId), eq(webhooks.userId, userId)),
+  });
+  if (!webhook) return { success: false, error: "Webhook not found or access denied." };
+
+  await db.delete(webhooks).where(eq(webhooks.id, webhookId));
+  return { success: true, data: { message: `Webhook "${webhook.name}" deleted.` } };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// NOTIFICATION TOOL EXECUTORS
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function execGetNotifications(userId: string, params: Record<string, unknown>): Promise<ToolResult> {
+  const limit = Math.min(Number(params.limit) || 20, 50);
+
+  const rows = await db.query.notifications.findMany({
+    where: and(eq(notifications.userId, userId), eq(notifications.isRead, false)),
+    orderBy: [desc(notifications.createdAt)],
+    limit,
+    columns: { id: true, title: true, message: true, type: true, monitorId: true, isRead: true, createdAt: true },
+  });
+
+  return {
+    success: true,
+    data: {
+      notifications: rows.map((n) => ({ ...n, createdAt: n.createdAt.toISOString() })),
+      unreadCount: rows.length,
+    },
+  };
+}
+
+async function execMarkNotificationsRead(userId: string, params: Record<string, unknown>): Promise<ToolResult> {
+  const ids = (params.notification_ids as string[]) || [];
+  if (ids.length === 0) return { success: false, error: "No notification IDs provided." };
+  if (ids.length > 100) return { success: false, error: "Maximum 100 notifications per batch." };
+
+  await db.update(notifications)
+    .set({ isRead: true, readAt: new Date() })
+    .where(and(eq(notifications.userId, userId), inArray(notifications.id, ids)));
+
+  return { success: true, data: { updated: ids.length, message: `Marked ${ids.length} notification(s) as read.` } };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// REPORT & EXPORT TOOL EXECUTORS
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function execCreateShareLink(userId: string, params: Record<string, unknown>): Promise<ToolResult> {
+  const title = String(params.title || "").slice(0, 200);
+  if (!title) return { success: false, error: "Report title is required." };
+
+  const periodDays = Number(params.period_days) || 30;
+  const periodEnd = new Date();
+  const periodStart = new Date(Date.now() - periodDays * 24 * 60 * 60 * 1000);
+
+  // Verify monitor ownership if scoped
+  if (params.monitor_id) {
+    const monitor = await verifyMonitorOwnership(userId, params.monitor_id as string);
+    if (!monitor) return { success: false, error: "Monitor not found or access denied." };
+  }
+
+  // Build report data snapshot
+  const monitorIds = params.monitor_id
+    ? [params.monitor_id as string]
+    : await getUserMonitorIds(userId);
+
+  const [totalCount] = await db.select({ count: count() }).from(results)
+    .where(and(inArray(results.monitorId, monitorIds), gte(results.createdAt, periodStart), eq(results.isHidden, false)));
+
+  const sentimentCounts = await db
+    .select({ sentiment: results.sentiment, count: count() })
+    .from(results)
+    .where(and(inArray(results.monitorId, monitorIds), gte(results.createdAt, periodStart), eq(results.isHidden, false)))
+    .groupBy(results.sentiment);
+
+  // Generate share token
+  const tokenBytes = new Uint8Array(24);
+  crypto.getRandomValues(tokenBytes);
+  const shareToken = Array.from(tokenBytes).map((b) => b.toString(16).padStart(2, "0")).join("");
+
+  const expiresAt = params.expires_in_days
+    ? new Date(Date.now() + Number(params.expires_in_days) * 24 * 60 * 60 * 1000)
+    : null;
+
+  const [report] = await db.insert(sharedReports).values({
+    userId,
+    monitorId: params.monitor_id ? String(params.monitor_id) : null,
+    shareToken,
+    title,
+    periodStart,
+    periodEnd,
+    reportData: {
+      totalResults: totalCount.count,
+      sentimentBreakdown: Object.fromEntries(sentimentCounts.map((s) => [s.sentiment ?? "unknown", s.count])),
+      generatedAt: new Date().toISOString(),
+    },
+    expiresAt,
+    isActive: true,
+  }).returning({ id: sharedReports.id });
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://kaulbyapp.com";
+  const shareUrl = `${appUrl}/reports/shared/${shareToken}`;
+
+  return {
+    success: true,
+    data: {
+      id: report.id,
+      shareUrl,
+      expiresAt: expiresAt?.toISOString() ?? "Never",
+      message: `Share link created: ${shareUrl}`,
+    },
+  };
+}
+
+async function execExportResultsCsv(userId: string, params: Record<string, unknown>): Promise<ToolResult> {
+  const plan = await getUserPlan(userId);
+  if (plan === "free") return { success: false, error: "CSV export requires a Pro or Team plan." };
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://kaulbyapp.com";
+  const exportUrl = params.monitor_id
+    ? `${appUrl}/api/results/export?monitorId=${params.monitor_id}`
+    : `${appUrl}/api/results/export`;
+
+  return {
+    success: true,
+    data: {
+      message: "CSV export is available. Use the export link in your dashboard, or download directly from the URL below.",
+      exportUrl,
+      note: "The export includes up to 10,000 results with all metadata (title, platform, sentiment, lead score, etc.).",
+    },
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INTEGRATION TOOL EXECUTORS
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function execGetIntegrationsStatus(userId: string): Promise<ToolResult> {
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+    columns: { integrations: true },
+  });
+
+  if (!user) return { success: false, error: "User not found." };
+
+  const integrations = (user.integrations as Record<string, unknown>) || {};
+
+  // Build status without exposing tokens
+  const status: Record<string, { connected: boolean; connectedAt?: string }> = {};
+  for (const key of ["slack", "discord", "hubspot", "teams"]) {
+    const integration = integrations[key] as Record<string, unknown> | undefined;
+    status[key] = {
+      connected: !!integration?.accessToken || !!integration?.webhookUrl,
+      connectedAt: integration?.connectedAt ? String(integration.connectedAt) : undefined,
+    };
+  }
+
+  return { success: true, data: { integrations: status } };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AI TOOL EXECUTORS
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function execSuggestReply(userId: string, params: Record<string, unknown>): Promise<ToolResult> {
+  const plan = await getUserPlan(userId);
+  if (plan === "free") return { success: false, error: "Reply suggestions require a Pro or Team plan." };
+
+  const resultId = params.result_id as string;
+  const result = await verifyResultOwnership(userId, resultId);
+  if (!result) return { success: false, error: "Result not found or access denied." };
+
+  // Import completion lazily to avoid circular dependency
+  const { completion } = await import("@/lib/ai/openrouter");
+
+  const productContext = params.product_context ? String(params.product_context).slice(0, 200) : "";
+
+  const response = await completion({
+    messages: [
+      {
+        role: "system",
+        content: `You are a helpful assistant that generates reply suggestions for social media posts and forum discussions. Generate 3 reply suggestions with different tones: helpful, professional, and casual. Each reply should be concise (under 280 characters), authentic, and add value to the conversation. Never be spammy or overly promotional.${productContext ? ` The user's product context: ${productContext}` : ""}`,
+      },
+      {
+        role: "user",
+        content: `Generate 3 reply suggestions for this ${result.platform} post:\n\nTitle: ${result.title}\n${result.content ? `Content: ${result.content.slice(0, 500)}` : ""}\n${result.conversationCategory ? `Category: ${result.conversationCategory}` : ""}`,
+      },
+    ],
+    maxTokens: 512,
+    temperature: 0.7,
+  });
+
+  // Parse the response into structured suggestions
+  const lines = response.content.split("\n").filter((l) => l.trim());
+  const suggestions = lines
+    .filter((l) => l.match(/^[0-9*\-•]/) || l.match(/^(helpful|professional|casual)/i))
+    .slice(0, 3)
+    .map((text, i) => ({
+      text: text.replace(/^[0-9*\-•.\s]+/, "").replace(/^\*\*(helpful|professional|casual)\*\*:?\s*/i, "").trim(),
+      tone: (["helpful", "professional", "casual"] as const)[i] || "helpful",
+    }));
+
+  return {
+    success: true,
+    data: {
+      suggestions: suggestions.length > 0 ? suggestions : [
+        { text: response.content.slice(0, 280), tone: "helpful" },
+      ],
+      resultTitle: result.title.slice(0, 80),
+      platform: result.platform,
+    },
   };
 }

@@ -73,14 +73,13 @@ export default async function AskPage() {
   const isPro = userPlan === "pro" || userPlan === "team";
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col">
-      <div className="border-b px-6 py-4">
+    <div className="flex flex-col overflow-hidden -mx-4 -mt-4 -mb-20 lg:-mx-8 lg:-mt-6 lg:-mb-6 h-[calc(100dvh-3.5rem)] lg:h-screen">
+      <div className="border-b px-6 py-4 shrink-0">
         <h1 className="text-2xl font-bold">Ask Kaulby AI</h1>
         <p className="text-sm text-muted-foreground">
           Chat with your data using natural language
         </p>
       </div>
-
       <div className="flex-1 overflow-hidden">
         <AIChat
           isPro={isPro}

@@ -678,6 +678,25 @@ export const emailEvents = pgTable("email_events", {
   index("email_events_dedup_idx").on(table.emailId, table.eventType),
 ]);
 
+// User feedback - bug reports, feature requests, support tickets
+export const feedback = pgTable("feedback", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userEmail: text("user_email"),
+  userName: text("user_name"),
+  category: text("category").notNull(), // "bug" | "feature" | "technical" | "billing" | "other"
+  subject: text("subject").notNull(),
+  message: text("message").notNull(),
+  status: text("status").default("open").notNull(), // "open" | "in_progress" | "resolved" | "closed"
+  adminNotes: text("admin_notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("feedback_user_id_idx").on(table.userId),
+  index("feedback_status_idx").on(table.status),
+  index("feedback_created_at_idx").on(table.createdAt),
+]);
+
 // Notifications - in-app notification center
 export const notifications = pgTable("notifications", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -1033,6 +1052,56 @@ export const aiVisibilityChecksRelations = relations(aiVisibilityChecks, ({ one 
   }),
 }));
 
+// Chat Conversations - persistent AI chat history
+export const chatConversations = pgTable("chat_conversations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: text("title").notNull().default("New conversation"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("chat_conversations_user_id_idx").on(table.userId),
+  index("chat_conversations_updated_at_idx").on(table.updatedAt),
+]);
+
+export const chatConversationsRelations = relations(chatConversations, ({ one, many }) => ({
+  user: one(users, {
+    fields: [chatConversations.userId],
+    references: [users.id],
+  }),
+  messages: many(chatMessages),
+}));
+
+// Chat Messages - individual messages within a conversation
+export const chatMessageRoleEnum = pgEnum("chat_message_role", ["user", "assistant"]);
+
+export const chatMessages = pgTable("chat_messages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  conversationId: uuid("conversation_id").notNull().references(() => chatConversations.id, { onDelete: "cascade" }),
+  role: chatMessageRoleEnum("role").notNull(),
+  content: text("content").notNull(),
+  citations: jsonb("citations").$type<{
+    id: string;
+    title: string;
+    platform: string;
+    sourceUrl: string;
+    snippet: string;
+    monitorName?: string;
+  }[]>(),
+  toolsUsed: jsonb("tools_used").$type<{ name: string; label: string }[]>(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("chat_messages_conversation_id_idx").on(table.conversationId),
+  index("chat_messages_created_at_idx").on(table.createdAt),
+]);
+
+export const chatMessagesRelations = relations(chatMessages, ({ one }) => ({
+  conversation: one(chatConversations, {
+    fields: [chatMessages.conversationId],
+    references: [chatConversations.id],
+  }),
+}));
+
 // Type exports
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -1047,3 +1116,5 @@ export type Bookmark = typeof bookmarks.$inferSelect;
 export type EmailDeliveryFailure = typeof emailDeliveryFailures.$inferSelect;
 export type SharedReport = typeof sharedReports.$inferSelect;
 export type AIVisibilityCheck = typeof aiVisibilityChecks.$inferSelect;
+export type ChatConversation = typeof chatConversations.$inferSelect;
+export type ChatMessage = typeof chatMessages.$inferSelect;
