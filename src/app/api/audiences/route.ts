@@ -1,4 +1,4 @@
-import { getEffectiveUserId } from "@/lib/dev-auth";
+import { getEffectiveUserId, verifyUserInDb } from "@/lib/dev-auth";
 import { NextResponse } from "next/server";
 import { db, audiences } from "@/lib/db";
 import { z } from "zod";
@@ -42,10 +42,16 @@ export async function POST(request: Request) {
 
     const { name, description, color, icon } = parsed.data;
 
+    // Verify user exists in DB (handles Clerk ID mismatches)
+    const dbUserId = await verifyUserInDb(userId);
+    if (!dbUserId) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
     const [newAudience] = await db
       .insert(audiences)
       .values({
-        userId,
+        userId: dbUserId,
         name,
         description,
         color,

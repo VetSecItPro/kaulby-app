@@ -14,7 +14,7 @@ import { Platform, ALL_PLATFORMS } from "@/lib/plans";
 import { sanitizeMonitorInput, isValidKeyword } from "@/lib/security";
 import { captureEvent } from "@/lib/posthog";
 import { logError } from "@/lib/error-logger";
-import { getEffectiveUserId, isLocalDev as checkIsLocalDev } from "@/lib/dev-auth";
+import { getEffectiveUserId, verifyUserInDb, isLocalDev as checkIsLocalDev } from "@/lib/dev-auth";
 import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
 import { z } from "zod";
 
@@ -182,6 +182,12 @@ export async function POST(request: Request) {
     // In dev mode, auto-create user if not exists
     await ensureDevUserExists(userId);
 
+    // Verify user exists in DB (handles Clerk ID mismatches)
+    const dbUserId = await verifyUserInDb(userId);
+    if (!dbUserId) {
+      return NextResponse.json({ error: "User not found. Please sign out and sign back in." }, { status: 404 });
+    }
+
     const body = await parseJsonBody(request, 51200); // 50KB limit for monitor creation
 
     const parsed = createMonitorSchema.safeParse(body);
@@ -201,11 +207,11 @@ export async function POST(request: Request) {
     }
     const { sanitizedMonitorType, sanitizedDiscoveryPrompt, sanitizedKeywords } = validationResult.sanitizedData;
 
-    // Get user's plan
-    const plan = await getUserPlan(userId);
+    // Get user's plan (use dbUserId for DB lookups)
+    const plan = await getUserPlan(dbUserId);
 
     // Check monitor limits
-    const limitsCheck = await checkMonitorLimits(userId, plan, sanitizedKeywords, platforms);
+    const limitsCheck = await checkMonitorLimits(dbUserId, plan, sanitizedKeywords, platforms);
     if ("error" in limitsCheck) {
       const { error, upgradePrompt, status, current, limit } = limitsCheck;
       return NextResponse.json(
@@ -232,7 +238,7 @@ export async function POST(request: Request) {
     const [newMonitor] = await db
       .insert(monitors)
       .values({
-        userId,
+        userId: dbUserId,
         name: sanitizeMonitorInput(name),
         companyName: sanitizeMonitorInput(companyName),
         monitorType: sanitizedMonitorType,
@@ -255,7 +261,7 @@ export async function POST(request: Request) {
     const { inngest } = await import("@/lib/inngest/client");
     await inngest.send({
       name: "monitor/scan-now",
-      data: { monitorId: newMonitor.id, userId },
+      data: { monitorId: newMonitor.id, userId: dbUserId },
     });
     await db.update(monitors).set({ isScanning: true }).where(eq(monitors.id, newMonitor.id));
 
