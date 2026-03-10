@@ -4,17 +4,15 @@ import { logger } from "@/lib/logger";
 // Install with: pnpm add @polar-sh/sdk
 type PolarClient = {
   checkouts: {
-    custom: {
-      create: (params: {
-        productId: string;
-        customerEmail: string;
-        successUrl: string;
-        metadata?: Record<string, string>;
-      }) => Promise<{ id: string; url: string }>;
-    };
+    create: (params: {
+      products: string[];
+      customerEmail?: string;
+      successUrl?: string;
+      metadata?: Record<string, string>;
+    }) => Promise<{ id: string; url: string }>;
   };
   customerSessions: {
-    create: (params: { customerId: string }) => Promise<{ customerPortalUrl: string }>;
+    create: (params: { customerId: string; returnUrl?: string | null }) => Promise<{ customerPortalUrl: string }>;
   };
   subscriptions: {
     update: (params: {
@@ -24,6 +22,7 @@ type PolarClient = {
         cancelAtPeriodEnd?: boolean;
       };
     }) => Promise<{ id: string; status: string }>;
+    revoke: (params: { id: string }) => Promise<{ id: string; status: string }>;
   };
 };
 

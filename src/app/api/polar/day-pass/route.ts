@@ -52,8 +52,8 @@ export async function POST() {
     }
 
     // Create Polar checkout session for one-time payment
-    const checkout = await polar.checkouts.custom.create({
-      productId: DAY_PASS_PRODUCT_ID,
+    const checkout = await polar.checkouts.create({
+      products: [DAY_PASS_PRODUCT_ID],
       customerEmail: user.email,
       successUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?day_pass=success&provider=polar`,
       metadata: {
