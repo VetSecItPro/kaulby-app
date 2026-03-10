@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, memo } from "react";
+import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -465,7 +466,7 @@ export function IntegrationsSettings({
       {/* Pro requirement notice */}
       {!isPro && (
         <Card className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20">
-          <CardContent className="p-4 flex items-start gap-3">
+          <CardContent className="px-4 pt-5 pb-4 flex items-start gap-3">
             <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
             <div>
               <p className="font-medium text-amber-800 dark:text-amber-200">
@@ -474,8 +475,8 @@ export function IntegrationsSettings({
               <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
                 CRM integrations and custom webhooks are available on Pro and Team plans.
               </p>
-              <Button size="sm" className="mt-2">
-                Upgrade Now
+              <Button size="sm" className="mt-2" asChild>
+                <Link href="/pricing">Upgrade Now</Link>
               </Button>
             </div>
           </CardContent>
