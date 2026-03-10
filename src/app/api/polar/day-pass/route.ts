@@ -1,8 +1,6 @@
-import { getEffectiveUserId } from "@/lib/dev-auth";
 import { NextResponse } from "next/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { getPolarClient, DAY_PASS_PRODUCT_ID } from "@/lib/polar";
-import { db, users } from "@/lib/db";
-import { eq } from "drizzle-orm";
 
 import { checkApiRateLimit } from "@/lib/rate-limit";
 export const dynamic = "force-dynamic";
@@ -13,9 +11,10 @@ export const dynamic = "force-dynamic";
  */
 export async function POST() {
   try {
-    const userId = await getEffectiveUserId();
+    const { userId } = await auth();
+    const user = await currentUser();
 
-    if (!userId) {
+    if (!userId || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -41,20 +40,16 @@ export async function POST() {
       );
     }
 
-    // Get user's email - id is the Clerk user ID
-    const user = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: { email: true },
-    });
+    const customerEmail = user.emailAddresses[0]?.emailAddress;
 
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    if (!customerEmail) {
+      return NextResponse.json({ error: "No email address found" }, { status: 400 });
     }
 
     // Create Polar checkout session for one-time payment
     const checkout = await polar.checkouts.create({
       products: [DAY_PASS_PRODUCT_ID],
-      customerEmail: user.email,
+      customerEmail,
       successUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?day_pass=success&provider=polar`,
       metadata: {
         userId,
