@@ -93,9 +93,11 @@ export async function POST(request: NextRequest) {
     if (error instanceof BodyTooLargeError) {
       return NextResponse.json({ error: "Request body too large" }, { status: 413 });
     }
-    console.error("Polar checkout error:", error);
+    const errMsg = error instanceof Error ? error.message : String(error);
+    const errDetail = (error as { statusCode?: number; detail?: unknown })?.statusCode;
+    console.error("Polar checkout error:", { message: errMsg, statusCode: errDetail, error });
     return NextResponse.json(
-      { error: "Failed to create checkout session" },
+      { error: "Failed to create checkout session", detail: errMsg },
       { status: 500 }
     );
   }
