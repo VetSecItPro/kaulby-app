@@ -2,37 +2,35 @@
 
 import { SignUp } from "@clerk/nextjs";
 import Image from "next/image";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export default function SignUpPage() {
   const formRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
 
-  // Disable browser autofill on Clerk's sign-up form inputs
+  // Only render Clerk's form after client mount so our MutationObserver
+  // is ready to set autocomplete="off" before the browser can autofill.
+  useEffect(() => setMounted(true), []);
+
+  // Intercept Clerk's inputs as they appear and disable autofill
   useEffect(() => {
+    if (!mounted) return;
     const container = formRef.current;
     if (!container) return;
 
     function disableAutofill() {
-      const inputs = container!.querySelectorAll("input");
-      inputs.forEach((input) => {
+      container!.querySelectorAll("input").forEach((input) => {
         input.setAttribute("autocomplete", "off");
-        input.setAttribute("data-lpignore", "true"); // LastPass
-        input.setAttribute("data-1p-ignore", "true"); // 1Password
-        // Clear any browser-autofilled values on sign-up form
-        if (input.type === "password" || input.type === "email" || input.name?.includes("email")) {
-          input.value = "";
-          input.dispatchEvent(new Event("input", { bubbles: true }));
-        }
+        input.setAttribute("data-lpignore", "true");
+        input.setAttribute("data-1p-ignore", "true");
       });
     }
 
-    // Run immediately and observe for Clerk's lazy-loaded form
-    disableAutofill();
     const observer = new MutationObserver(disableAutofill);
     observer.observe(container, { childList: true, subtree: true });
 
     return () => observer.disconnect();
-  }, []);
+  }, [mounted]);
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-black px-4">
@@ -50,32 +48,38 @@ export default function SignUpPage() {
 
       {/* Sign Up Form */}
       <div className="animate-fade-up" ref={formRef}>
-        <SignUp
-          appearance={{
-            elements: {
-              rootBox: "mx-auto",
-              card: "bg-zinc-900/80 border border-zinc-800 shadow-2xl backdrop-blur-sm",
-              headerTitle: "text-white",
-              headerSubtitle: "text-zinc-400",
-              socialButtonsBlockButton: "bg-zinc-800 border-zinc-700 hover:bg-zinc-700 text-white",
-              socialButtonsBlockButtonText: "text-white",
-              dividerLine: "bg-zinc-700",
-              dividerText: "text-zinc-500",
-              formFieldLabel: "text-zinc-300",
-              formFieldInput: "bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500",
-              formButtonPrimary: "bg-teal-500 hover:bg-teal-600 text-black font-semibold",
-              footerActionLink: "text-teal-400 hover:text-teal-300",
-              identityPreviewText: "text-white",
-              identityPreviewEditButton: "text-teal-400",
-              footer: { display: "none" },
+        {mounted ? (
+          <SignUp
+            appearance={{
+              elements: {
+                rootBox: "mx-auto",
+                card: "bg-zinc-900/80 border border-zinc-800 shadow-2xl backdrop-blur-sm",
+                headerTitle: "text-white",
+                headerSubtitle: "text-zinc-400",
+                socialButtonsBlockButton: "bg-zinc-800 border-zinc-700 hover:bg-zinc-700 text-white",
+                socialButtonsBlockButtonText: "text-white",
+                dividerLine: "bg-zinc-700",
+                dividerText: "text-zinc-500",
+                formFieldLabel: "text-zinc-300",
+                formFieldInput: "bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500",
+                formButtonPrimary: "bg-teal-500 hover:bg-teal-600 text-black font-semibold",
+                footerActionLink: "text-teal-400 hover:text-teal-300",
+                identityPreviewText: "text-white",
+                identityPreviewEditButton: "text-teal-400",
+                footer: { display: "none" },
+              }
+            }}
+            fallback={
+              <div className="text-center p-8">
+                <p className="text-zinc-400">Loading sign up...</p>
+              </div>
             }
-          }}
-          fallback={
-            <div className="text-center p-8">
-              <p className="text-zinc-400">Loading sign up...</p>
-            </div>
-          }
-        />
+          />
+        ) : (
+          <div className="text-center p-8">
+            <p className="text-zinc-400">Loading sign up...</p>
+          </div>
+        )}
       </div>
     </main>
   );
