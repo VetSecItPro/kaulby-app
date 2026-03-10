@@ -20,7 +20,7 @@ export const ALL_PLATFORMS: Platform[] = [
 ];
 
 // Digest frequency types
-export type DigestFrequency = "weekly" | "daily" | "monthly" | "realtime";
+export type DigestFrequency = "weekly" | "daily" | "monthly" | "twice_daily";
 
 // Plan limits interface
 export interface PlanLimits {
@@ -174,7 +174,7 @@ export const PLANS: Record<"free" | "pro" | "team", PlanDefinition> = {
       "1-year history",
       "2-hour refresh cycle",
       "Comprehensive AI analysis",
-      "Real-time email alerts",
+      "Twice-daily email digests",
       "Webhooks",
       "3 team seats (+$20/user)",
       "Priority support",
@@ -188,7 +188,7 @@ export const PLANS: Record<"free" | "pro" | "team", PlanDefinition> = {
       resultsVisible: -1, // unlimited
       refreshDelayHours: 2, // 2-hour refresh
       platforms: ["reddit", "hackernews", "indiehackers", "producthunt", "googlereviews", "youtube", "github", "trustpilot", "x", "devto", "hashnode", "appstore", "playstore", "quora", "g2", "yelp", "amazonreviews"],
-      digestFrequencies: ["daily", "weekly", "monthly", "realtime"],
+      digestFrequencies: ["daily", "weekly", "monthly", "twice_daily"],
       aiFeatures: {
         sentiment: true,
         painPointCategories: true,

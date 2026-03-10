@@ -61,7 +61,7 @@ export type Platform =
   | "indiehackers" | "github" | "hashnode" | "x";
 
 // Digest frequency types
-export type DigestFrequency = "weekly" | "daily" | "realtime";
+export type DigestFrequency = "weekly" | "daily" | "twice_daily";
 
 // Plan limits interface
 export interface PlanLimits {
@@ -215,7 +215,7 @@ export const POLAR_PLANS: Record<"free" | "pro" | "team", PolarPlanDefinition> =
       "1-year history",
       "2-hour refresh cycle",
       "Comprehensive AI analysis",
-      "Real-time email alerts",
+      "Twice-daily email digests",
       "Webhooks",
       "3 team seats (+$20/user)",
       "Priority support",
@@ -229,7 +229,7 @@ export const POLAR_PLANS: Record<"free" | "pro" | "team", PolarPlanDefinition> =
       resultsVisible: -1,
       refreshDelayHours: 2,
       platforms: ["reddit", "hackernews", "indiehackers", "producthunt", "googlereviews", "youtube", "github", "trustpilot", "x", "devto", "hashnode", "appstore", "playstore", "quora", "g2", "yelp", "amazonreviews"],
-      digestFrequencies: ["daily", "weekly", "realtime"],
+      digestFrequencies: ["daily", "weekly", "twice_daily"],
       aiFeatures: {
         sentiment: true,
         painPointCategories: true,
