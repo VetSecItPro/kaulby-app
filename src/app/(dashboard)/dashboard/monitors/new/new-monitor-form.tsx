@@ -799,16 +799,16 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
             )}
 
             {/* Submit */}
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-              <Button type="submit" disabled={isLoading} className="bg-teal-500 text-black hover:bg-teal-600 w-full sm:w-auto min-h-[44px]">
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Create Monitor
-              </Button>
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 sm:gap-4">
               <Link href="/dashboard/monitors" className="w-full sm:w-auto">
                 <Button type="button" variant="outline" className="w-full sm:w-auto min-h-[44px]">
                   Cancel
                 </Button>
               </Link>
+              <Button type="submit" disabled={isLoading} className="bg-teal-500 text-black hover:bg-teal-600 w-full sm:w-auto min-h-[44px]">
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Create Monitor
+              </Button>
             </div>
           </CardContent>
         </Card>
