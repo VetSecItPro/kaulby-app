@@ -264,6 +264,9 @@ export default function SignUpPage() {
               <p className="text-red-400 text-sm">{error}</p>
             )}
 
+            {/* Clerk CAPTCHA widget — required for bot protection with custom flows */}
+            <div id="clerk-captcha" className="mb-2" />
+
             <button
               type="submit"
               disabled={submitting || !email || !password}
