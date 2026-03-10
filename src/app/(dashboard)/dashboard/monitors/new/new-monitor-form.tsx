@@ -46,7 +46,7 @@ const ALL_PLATFORMS = [
 // Smart platform suggestions based on company/brand name
 function suggestPlatforms(companyName: string, userPlan: string): string[] {
   const name = companyName.toLowerCase().trim();
-  if (!name) return ["reddit"]; // Minimum default
+  if (!name) return []; // No default — let user choose
 
   // Keywords that signal business type
   const localSignals = ["restaurant", "cafe", "coffee", "bar", "grill", "pizza", "bakery", "salon", "spa", "gym", "fitness", "dental", "clinic", "hotel", "repair", "plumbing", "cleaning", "landscaping", "roofing", "auto", "mechanic", "tacos", "mexican", "italian", "chinese", "thai", "sushi", "burger", "bbq", "diner"];
@@ -139,7 +139,7 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
   const [keywordInput, setKeywordInput] = useState("");
   const [keywords, setKeywords] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(["reddit"]);
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [platformUrls, setPlatformUrls] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
 
