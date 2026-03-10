@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { UserButton, useUser } from "@clerk/nextjs";
+import { UserButton, SignOutButton, useUser } from "@clerk/nextjs";
 import {
   LayoutDashboard,
   Radio,
@@ -19,6 +19,7 @@ import {
   Lightbulb,
   Sparkles,
   Bookmark,
+  LogOut,
 } from "lucide-react";
 import type { WorkspaceRole } from "@/lib/permissions";
 import { NotificationBell } from "./notification-bell";
@@ -309,7 +310,7 @@ export function Sidebar({ isAdmin = false, subscriptionStatus = "free", hasActiv
       )}
 
       {/* User Section */}
-      <div className="border-t p-4">
+      <div className="border-t p-4 space-y-3">
         <div className="flex items-center gap-3">
           {mounted ? (
             <UserButton
@@ -328,6 +329,12 @@ export function Sidebar({ isAdmin = false, subscriptionStatus = "free", hasActiv
             <span className="text-xs text-muted-foreground">Manage settings</span>
           </Link>
         </div>
+        <SignOutButton redirectUrl="/">
+          <button className="flex items-center gap-2 w-full px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition-colors">
+            <LogOut className="h-4 w-4" />
+            Sign out
+          </button>
+        </SignOutButton>
       </div>
     </div>
   );

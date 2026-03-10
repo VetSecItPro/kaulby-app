@@ -4,7 +4,7 @@ import { memo, useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Menu, BarChart3, Lightbulb, Sparkles, Users, HelpCircle, CreditCard, ShieldCheck } from "lucide-react";
+import { Menu, BarChart3, Lightbulb, Sparkles, Users, HelpCircle, CreditCard, ShieldCheck, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -15,7 +15,7 @@ import {
   SheetClose,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { UserButton, useUser } from "@clerk/nextjs";
+import { UserButton, SignOutButton, useUser } from "@clerk/nextjs";
 import type { WorkspaceRole } from "@/lib/permissions";
 import { NotificationBell } from "@/components/dashboard/notification-bell";
 
@@ -269,7 +269,7 @@ export const MobileHeader = memo(function MobileHeader({
             )}
 
             {/* User Section */}
-            <div className="absolute bottom-0 left-0 right-0 p-4 border-t bg-background safe-area-bottom">
+            <div className="absolute bottom-0 left-0 right-0 p-4 border-t bg-background safe-area-bottom space-y-3">
               <div className="flex items-center gap-3">
                 {mounted ? (
                   <UserButton
@@ -288,6 +288,12 @@ export const MobileHeader = memo(function MobileHeader({
                   <p className="text-xs text-muted-foreground">Manage profile</p>
                 </div>
               </div>
+              <SignOutButton redirectUrl="/">
+                <button className="flex items-center gap-2 w-full px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition-colors">
+                  <LogOut className="h-4 w-4" />
+                  Sign out
+                </button>
+              </SignOutButton>
             </div>
           </SheetContent>
         </Sheet>
