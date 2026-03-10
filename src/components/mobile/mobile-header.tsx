@@ -277,7 +277,7 @@ export const MobileHeader = memo(function MobileHeader({
               <div className="p-4">
                 <SheetClose asChild>
                   <Link
-                    href="/dashboard/settings"
+                    href="/pricing"
                     className="flex items-center justify-center gap-2 w-full py-3 px-4 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-500 text-black font-semibold transition-transform active:scale-[0.98]"
                   >
                     <CreditCard className="h-4 w-4" />

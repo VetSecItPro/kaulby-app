@@ -319,7 +319,7 @@ export function Sidebar({ isAdmin = false, subscriptionStatus = "free", hasActiv
       {subscriptionStatus !== "team" && (
         <div className="px-2 pb-2">
           <Link
-            href="/dashboard/settings"
+            href="/pricing"
             className="inline-flex w-fit items-center gap-2 rounded-full px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           >
             <CreditCard className="h-4 w-4" />

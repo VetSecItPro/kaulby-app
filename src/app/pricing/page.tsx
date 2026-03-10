@@ -406,9 +406,25 @@ export default function PricingPage() {
                     </Link>
                   ) : (
                     currentPlan === plan.key ? (
-                      <Button className="w-full" variant="outline" disabled>
-                        Current Plan
-                      </Button>
+                      plan.key === "free" ? (
+                        <Link href="/dashboard" className="w-full">
+                          <Button className="w-full" variant="outline">
+                            Continue with Free
+                            <ArrowRight className="h-4 w-4 ml-2" />
+                          </Button>
+                        </Link>
+                      ) : (
+                        <Button className="w-full" variant="outline" disabled>
+                          Current Plan
+                        </Button>
+                      )
+                    ) : plan.key === "free" ? (
+                      <Link href="/dashboard" className="w-full">
+                        <Button className="w-full" variant="outline">
+                          Continue with Free
+                          <ArrowRight className="h-4 w-4 ml-2" />
+                        </Button>
+                      </Link>
                     ) : (
                       <Button
                         className="w-full"
