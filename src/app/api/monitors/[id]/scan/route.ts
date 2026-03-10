@@ -137,6 +137,7 @@ export async function GET(
       columns: {
         id: true,
         isScanning: true,
+        scanProgress: true,
         lastManualScanAt: true,
         lastCheckedAt: true,
         newMatchCount: true,
@@ -153,6 +154,7 @@ export async function GET(
 
     return NextResponse.json({
       isScanning: monitor.isScanning,
+      scanProgress: monitor.scanProgress || null,
       lastManualScanAt: monitor.lastManualScanAt?.toISOString() || null,
       lastCheckedAt: monitor.lastCheckedAt?.toISOString() || null,
       newMatchCount: monitor.newMatchCount,

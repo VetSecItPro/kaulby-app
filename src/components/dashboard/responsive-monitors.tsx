@@ -120,15 +120,37 @@ function ScanButton({ monitorId, isActive, initialIsScanning, onScanComplete }: 
   const [canScan, setCanScan] = useState<boolean | null>(null); // null = loading
   const [cooldownText, setCooldownText] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [scanProgress, setScanProgress] = useState<{
+    step: string;
+    platformsTotal: number;
+    platformsCompleted: number;
+    platformResults: Record<string, number>;
+    currentPlatform: string | null;
+  } | null>(null);
+
+  const [pollInterval, setPollInterval] = useState(10000);
+
+  const [stopped, setStopped] = useState(false);
 
   // Check scan status on mount and periodically while scanning
   const checkScanStatus = useCallback(async () => {
     try {
       const response = await fetch(`/api/monitors/${monitorId}/scan`);
+      if (response.status === 429) {
+        setPollInterval(30000);
+        return;
+      }
+      if (response.status === 404) {
+        setStopped(true);
+        setIsScanning(false);
+        return;
+      }
       if (response.ok) {
+        setPollInterval(10000);
         const data = await response.json();
         setIsScanning(data.isScanning);
         setCanScan(data.canScan);
+        setScanProgress(data.scanProgress || null);
 
         if (!data.canScan && data.cooldownRemaining) {
           const hours = Math.floor(data.cooldownRemaining / (1000 * 60 * 60));
@@ -144,7 +166,6 @@ function ScanButton({ monitorId, isActive, initialIsScanning, onScanComplete }: 
         }
       }
     } catch {
-      // On error, allow scan attempt
       setCanScan(true);
     }
   }, [monitorId, initialIsScanning, onScanComplete]);
@@ -152,12 +173,12 @@ function ScanButton({ monitorId, isActive, initialIsScanning, onScanComplete }: 
   useEffect(() => {
     checkScanStatus();
 
-    // Poll while scanning
-    if (isScanning) {
-      const interval = setInterval(checkScanStatus, 3000);
+    // Poll while scanning (10s default, 30s on rate limit backoff)
+    if (isScanning && !stopped) {
+      const interval = setInterval(checkScanStatus, pollInterval);
       return () => clearInterval(interval);
     }
-  }, [isScanning, checkScanStatus]);
+  }, [isScanning, stopped, checkScanStatus, pollInterval]);
 
   const handleScan = async () => {
     if (!isActive || isScanning || !canScan) return;
@@ -225,17 +246,29 @@ function ScanButton({ monitorId, isActive, initialIsScanning, onScanComplete }: 
     );
   }
 
-  // Currently scanning
+  // Currently scanning — show progress
   if (isScanning) {
+    const progressText = scanProgress?.currentPlatform
+      ? `Scanning ${scanProgress.currentPlatform}... (${scanProgress.platformsCompleted}/${scanProgress.platformsTotal})`
+      : "Starting scan...";
+    const totalFound = scanProgress
+      ? Object.values(scanProgress.platformResults).reduce((sum, n) => sum + n, 0)
+      : 0;
+
     return (
-      <Button
-        size="sm"
-        disabled
-        className="bg-teal-500/70 text-black cursor-wait"
-      >
-        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-        Scanning...
-      </Button>
+      <div className="flex flex-col gap-1">
+        <Button
+          size="sm"
+          disabled
+          className="bg-teal-500/70 text-black cursor-wait"
+        >
+          <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+          {progressText}
+        </Button>
+        {totalFound > 0 && (
+          <span className="text-xs text-teal-400 pl-1">{totalFound} result{totalFound !== 1 ? "s" : ""} found</span>
+        )}
+      </div>
     );
   }
 
@@ -448,14 +481,13 @@ function DesktopMonitors({ monitors, refreshInfo }: ResponsiveMonitorsProps) {
   const handleBulkPause = async () => {
     setIsBulkPausing(true);
     try {
-      const promises = Array.from(selectedIds).map((id) =>
-        fetch(`/api/monitors/${id}`, {
+      for (const id of selectedIds) {
+        await fetch(`/api/monitors/${id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ isActive: false }),
-        })
-      );
-      await Promise.all(promises);
+        });
+      }
       toast.success(`${selectedIds.size} monitor${selectedIds.size > 1 ? "s" : ""} paused`);
       clearSelection();
       router.refresh();
@@ -469,14 +501,13 @@ function DesktopMonitors({ monitors, refreshInfo }: ResponsiveMonitorsProps) {
   const handleBulkResume = async () => {
     setIsBulkPausing(true);
     try {
-      const promises = Array.from(selectedIds).map((id) =>
-        fetch(`/api/monitors/${id}`, {
+      for (const id of selectedIds) {
+        await fetch(`/api/monitors/${id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ isActive: true }),
-        })
-      );
-      await Promise.all(promises);
+        });
+      }
       toast.success(`${selectedIds.size} monitor${selectedIds.size > 1 ? "s" : ""} resumed`);
       clearSelection();
       router.refresh();
@@ -490,11 +521,10 @@ function DesktopMonitors({ monitors, refreshInfo }: ResponsiveMonitorsProps) {
   const handleBulkDelete = async () => {
     setIsBulkDeleting(true);
     try {
-      const promises = Array.from(selectedIds).map((id) => {
+      for (const id of selectedIds) {
         tracking.monitorDeleted(id);
-        return fetch(`/api/monitors/${id}`, { method: "DELETE" });
-      });
-      await Promise.all(promises);
+        await fetch(`/api/monitors/${id}`, { method: "DELETE" });
+      }
       toast.success(`${selectedIds.size} monitor${selectedIds.size > 1 ? "s" : ""} deleted`);
       clearSelection();
       setShowBulkDeleteDialog(false);

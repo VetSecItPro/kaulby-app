@@ -220,11 +220,25 @@ function MonitorCard({ monitor }: { monitor: Monitor }) {
     }
   };
 
+  const [pollInterval, setPollInterval] = useState(10000);
+
+  const [stopped, setStopped] = useState(false);
+
   // Check scan status
   const checkScanStatus = useCallback(async () => {
     try {
       const response = await fetch(`/api/monitors/${monitor.id}/scan`);
+      if (response.status === 429) {
+        setPollInterval(30000);
+        return;
+      }
+      if (response.status === 404) {
+        setStopped(true);
+        setIsScanning(false);
+        return;
+      }
       if (response.ok) {
+        setPollInterval(10000);
         const data = await response.json();
         setIsScanning(data.isScanning);
         setCanScan(data.canScan);
@@ -246,11 +260,11 @@ function MonitorCard({ monitor }: { monitor: Monitor }) {
   useEffect(() => {
     checkScanStatus();
 
-    if (isScanning) {
-      const interval = setInterval(checkScanStatus, 3000);
+    if (isScanning && !stopped) {
+      const interval = setInterval(checkScanStatus, pollInterval);
       return () => clearInterval(interval);
     }
-  }, [isScanning, checkScanStatus]);
+  }, [isScanning, stopped, checkScanStatus, pollInterval]);
 
   const handleScan = async (e: React.MouseEvent) => {
     e.preventDefault();

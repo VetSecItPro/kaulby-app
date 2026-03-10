@@ -27,20 +27,20 @@ const ALL_PLATFORMS = [
   { id: "hackernews", name: "Hacker News", description: "Tech and startup discussions", tier: "pro", needsUrl: false, categories: ["tech", "saas"] },
   { id: "indiehackers", name: "Indie Hackers", description: "Indie makers and solo founders", tier: "pro", needsUrl: false, categories: ["tech", "saas"] },
   { id: "producthunt", name: "Product Hunt", description: "Product launches and reviews", tier: "pro", needsUrl: false, categories: ["tech", "saas", "ecommerce"] },
-  { id: "googlereviews", name: "Google Reviews", description: "Business reviews on Google", tier: "pro", needsUrl: true, urlPlaceholder: "https://www.google.com/maps/place/... or Place ID", urlHelp: "Google Maps URL or Place ID (ChI...)", categories: ["local", "restaurant", "services"] },
-  { id: "youtube", name: "YouTube", description: "Video comments and discussions", tier: "pro", needsUrl: true, urlPlaceholder: "https://www.youtube.com/watch?v=...", urlHelp: "YouTube video URL to monitor comments", categories: ["universal"] },
+  { id: "googlereviews", name: "Google Reviews", description: "Business reviews on Google", tier: "pro", needsUrl: true, urlPlaceholder: "https://www.google.com/maps/place/... or Place ID", urlHelp: "Search your business on Google Maps, click it, and copy the URL from your browser.", categories: ["local", "restaurant", "services"] },
+  { id: "youtube", name: "YouTube", description: "Video comments and discussions", tier: "pro", needsUrl: true, urlPlaceholder: "https://www.youtube.com/@channel or video URL", urlHelp: "Paste your YouTube channel URL or a specific video URL to monitor comments.", categories: ["universal"] },
   { id: "github", name: "GitHub", description: "Issues and discussions", tier: "pro", needsUrl: false, categories: ["tech", "saas"] },
-  { id: "trustpilot", name: "Trustpilot", description: "Customer reviews and ratings", tier: "pro", needsUrl: true, urlPlaceholder: "https://www.trustpilot.com/review/example.com", urlHelp: "Trustpilot company review page URL", categories: ["ecommerce", "services", "saas"] },
+  { id: "trustpilot", name: "Trustpilot", description: "Customer reviews and ratings", tier: "pro", needsUrl: true, urlPlaceholder: "https://www.trustpilot.com/review/example.com", urlHelp: "Go to trustpilot.com, search your business, and copy the review page URL.", categories: ["ecommerce", "services", "saas"] },
   { id: "x", name: "X (Twitter)", description: "Posts and conversations on X", tier: "pro", needsUrl: false, categories: ["universal"] },
   // Team tier only platforms (8 more)
   { id: "devto", name: "Dev.to", description: "Developer blog posts and discussions", tier: "team", needsUrl: false, categories: ["tech"] },
   { id: "hashnode", name: "Hashnode", description: "Tech blog network", tier: "team", needsUrl: false, categories: ["tech"] },
-  { id: "appstore", name: "App Store", description: "iOS app reviews", tier: "team", needsUrl: true, urlPlaceholder: "https://apps.apple.com/us/app/name/id123456", urlHelp: "App Store URL for your iOS app", categories: ["app"] },
-  { id: "playstore", name: "Play Store", description: "Android app reviews", tier: "team", needsUrl: true, urlPlaceholder: "https://play.google.com/store/apps/details?id=com.app", urlHelp: "Play Store URL for your Android app", categories: ["app"] },
+  { id: "appstore", name: "App Store", description: "iOS app reviews", tier: "team", needsUrl: true, urlPlaceholder: "https://apps.apple.com/us/app/name/id123456", urlHelp: "Open your app in the App Store, tap Share, and copy the link.", categories: ["app"] },
+  { id: "playstore", name: "Play Store", description: "Android app reviews", tier: "team", needsUrl: true, urlPlaceholder: "https://play.google.com/store/apps/details?id=com.app", urlHelp: "Open your app in Google Play, tap Share, and copy the link.", categories: ["app"] },
   { id: "quora", name: "Quora", description: "Q&A discussions", tier: "team", needsUrl: false, categories: ["universal"] },
-  { id: "g2", name: "G2", description: "Software reviews and ratings", tier: "team", needsUrl: true, urlPlaceholder: "https://www.g2.com/products/your-product/reviews", urlHelp: "G2 product reviews page URL", categories: ["saas"] },
-  { id: "yelp", name: "Yelp", description: "Local business reviews", tier: "team", needsUrl: true, urlPlaceholder: "https://www.yelp.com/biz/business-name-city", urlHelp: "Yelp business page URL", categories: ["local", "restaurant", "services"] },
-  { id: "amazonreviews", name: "Amazon Reviews", description: "Product reviews on Amazon", tier: "team", needsUrl: true, urlPlaceholder: "https://amazon.com/dp/B08N5WRWNW or ASIN", urlHelp: "Amazon product URL or ASIN (10-character code)", categories: ["ecommerce"] },
+  { id: "g2", name: "G2", description: "Software reviews and ratings", tier: "team", needsUrl: true, urlPlaceholder: "https://www.g2.com/products/your-product/reviews", urlHelp: "Search your product on g2.com and copy the reviews page URL.", categories: ["saas"] },
+  { id: "yelp", name: "Yelp", description: "Local business reviews", tier: "team", needsUrl: true, urlPlaceholder: "https://www.yelp.com/biz/business-name-city", urlHelp: "Search your business on yelp.com and copy the business page URL.", categories: ["local", "restaurant", "services"] },
+  { id: "amazonreviews", name: "Amazon Reviews", description: "Product reviews on Amazon", tier: "team", needsUrl: true, urlPlaceholder: "https://amazon.com/dp/B08N5WRWNW or ASIN", urlHelp: "Copy your product's Amazon URL, or find the ASIN in the product details section.", categories: ["ecommerce"] },
 ];
 
 // Smart platform suggestions based on company/brand name
@@ -244,6 +244,16 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
       return;
     }
 
+    // Validate required platform URLs
+    const missingUrls = selectedPlatforms
+      .filter(p => ALL_PLATFORMS.find(ap => ap.id === p)?.needsUrl)
+      .filter(p => !platformUrls[p]?.trim());
+    if (missingUrls.length > 0) {
+      const names = missingUrls.map(p => ALL_PLATFORMS.find(ap => ap.id === p)?.name).join(", ");
+      setError(`Please provide a URL for: ${names}`);
+      return;
+    }
+
     // Auto-fill monitor name if empty
     const monitorName = name.trim() || `${companyName.trim()} Monitor`;
 
@@ -434,9 +444,9 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
             {selectedPlatforms.some(p => ALL_PLATFORMS.find(ap => ap.id === p)?.needsUrl) && (
               <div className="space-y-4 rounded-lg border p-4 bg-muted/30">
                 <div>
-                  <Label className="text-base">Platform URLs</Label>
+                  <Label className="text-base">Platform URLs <span className="text-red-400 text-sm">(required)</span></Label>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Some platforms need a specific URL to monitor. Enter the URL for each platform below.
+                    These platforms need a direct URL to fetch reviews. Enter the URL for each below.
                   </p>
                 </div>
                 <div className="space-y-4">
@@ -445,10 +455,11 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
                     .map((platformId) => {
                       const platform = ALL_PLATFORMS.find(ap => ap.id === platformId);
                       if (!platform) return null;
+                      const isEmpty = !platformUrls[platformId]?.trim();
                       return (
                         <div key={platformId} className="space-y-2">
                           <Label htmlFor={`${formId}-url-${platformId}`} className="text-sm font-medium">
-                            {platform.name} URL
+                            {platform.name} URL <span className="text-red-400">*</span>
                           </Label>
                           <Input
                             id={`${formId}-url-${platformId}`}
@@ -456,7 +467,8 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
                             value={platformUrls[platformId] || ""}
                             onChange={(e) => setPlatformUrls(prev => ({ ...prev, [platformId]: e.target.value }))}
                             autoComplete="off"
-                            className="dark-input placeholder:text-gray-400 hover:border-teal-500 focus:border-teal-500"
+                            required
+                            className={`dark-input placeholder:text-gray-400 hover:border-teal-500 focus:border-teal-500 ${isEmpty ? "border-amber-500/50" : ""}`}
                           />
                           <p className="text-xs text-muted-foreground">
                             {platform.urlHelp}
