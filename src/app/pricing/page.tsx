@@ -117,7 +117,7 @@ const plans: Plan[] = [
       { text: "1-year history" },
       { text: "2-hour refresh cycle" },
       { text: "Comprehensive AI analysis" },
-      { text: "Real-time email alerts" },
+      { text: "Twice-daily email digests" },
       { text: "Webhooks" },
       { text: "3 team seats (+$20/user)" },
       { text: "API access" },
@@ -139,7 +139,7 @@ const featureComparison = [
   { feature: "AI sentiment analysis", free: true, pro: true, team: true },
   { feature: "AI pain point detection", free: false, pro: true, team: true },
   { feature: "Comprehensive AI analysis", free: false, pro: false, team: true },
-  { feature: "Email digests", free: false, pro: "Daily", team: "Real-time" },
+  { feature: "Email digests", free: false, pro: "Daily", team: "Twice daily" },
   { feature: "Slack/Discord alerts", free: false, pro: true, team: true },
   { feature: "Webhooks", free: false, pro: false, team: true },
   { feature: "CSV export", free: false, pro: true, team: true },
@@ -274,7 +274,7 @@ export default function PricingPage() {
               Simple, transparent pricing
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Start free and upgrade when you need real-time monitoring and full AI insights.
+              Start free and upgrade when you need advanced monitoring and full AI insights.
             </p>
             <p className="text-sm text-primary font-medium mt-4">
               First 1,000 Founding Members lock in Pro or Team price forever
@@ -589,7 +589,7 @@ export default function PricingPage() {
             { question: "How is Kaulby different from Brand24?", answer: "Kaulby focuses on community monitoring with AI-powered pain point detection and sentiment analysis across 17 platforms, starting at $29/mo. Brand24 starts at $99/mo and focuses on broader social media monitoring." },
             { question: "What replaced GummySearch?", answer: "Kaulby is the best GummySearch alternative. It covers Reddit plus 16 additional platforms, includes AI-powered analysis, and offers a free tier. Visit kaulbyapp.com/gummysearch for migration details." },
             { question: "What is the Day Pass?", answer: "The Day Pass gives you full Pro access for 24 hours with a one-time $10 payment. Perfect for quick research without committing to a subscription." },
-            { question: "How often are results refreshed?", answer: "Free plans refresh once per day. Pro plans refresh every 4 hours. Team plans refresh every 2 hours with real-time email alerts." },
+            { question: "How often are results refreshed?", answer: "Free plans refresh once per day. Pro plans refresh every 4 hours. Team plans refresh every 2 hours with twice-daily email digests." },
             { question: "Is my data secure?", answer: "Yes. We use industry-standard encryption, are GDPR compliant, and you can export or delete your data at any time." },
             { question: "What is the Founding Members program?", answer: "The first 1,000 Pro and Team subscribers become Founding Members and lock in their current price forever, even when prices increase." },
             { question: "What happens when I hit my monitor or keyword limit?", answer: "Your existing monitors keep working normally. You won't be able to create new monitors or add more keywords until you upgrade. We'll prompt you to upgrade when you reach your limit." },
@@ -655,7 +655,7 @@ export default function PricingPage() {
                 <AccordionTrigger>How often are results refreshed?</AccordionTrigger>
                 <AccordionContent>
                   Free plans refresh once per day. Pro plans refresh every 4 hours (6x faster).
-                  Team plans refresh every 2 hours (12x faster than free) with real-time email alerts.
+                  Team plans refresh every 2 hours (12x faster than free) with twice-daily email digests.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="day-pass">

@@ -88,7 +88,7 @@ export const USE_CASES: UseCaseData[] = [
       {
         question: "How quickly will I be notified of new mentions?",
         answer:
-          "Scan frequency depends on your plan: every 24 hours (Free), every 4 hours (Pro), or every 2 hours (Team). Team plans also include real-time email alerts.",
+          "Scan frequency depends on your plan: every 24 hours (Free), every 4 hours (Pro), or every 2 hours (Team). Team plans also include twice-daily email digests.",
       },
       {
         question: "Can I track misspellings of my brand name?",

@@ -120,7 +120,7 @@ describe("plans", () => {
       expect(limits.digestFrequencies).toContain("daily");
       expect(limits.digestFrequencies).toContain("weekly");
       expect(limits.digestFrequencies).toContain("monthly");
-      expect(limits.digestFrequencies).toContain("realtime");
+      expect(limits.digestFrequencies).toContain("twice_daily");
     });
   });
 
