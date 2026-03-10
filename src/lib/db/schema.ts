@@ -320,6 +320,14 @@ export const monitors = pgTable("monitors", {
   // Manual scan tracking
   lastManualScanAt: timestamp("last_manual_scan_at"), // When the user last triggered a manual scan
   isScanning: boolean("is_scanning").default(false).notNull(), // Whether a scan is currently in progress
+  scanProgress: jsonb("scan_progress").$type<{
+    step: string;
+    platformsTotal: number;
+    platformsCompleted: number;
+    platformResults: Record<string, number>;
+    currentPlatform: string | null;
+    startedAt: string;
+  }>(), // Live progress for scan stepper UI
   // Batch AI analysis - for cost-efficient analysis of large volumes (>50 results)
   batchAnalysis: jsonb("batch_analysis"), // Stores BatchSummaryResult from batch-summary.ts
   lastBatchAnalyzedAt: timestamp("last_batch_analyzed_at"), // When batch analysis was last run

@@ -27,9 +27,9 @@ const ACTORS = {
   playStore: "neatrat/google-play-store-reviews-scraper", // Free tier available
   quora: "jupri/quora-scraper", // Note: requires paid rental
   // NEW PLATFORMS (Phase 2)
-  youtube: "streamers/youtube-comment-scraper", // Video comments
-  g2: "epctex/g2-scraper", // Software reviews
-  yelp: "maxcopell/yelp-scraper", // Local business reviews
+  youtube: "streamers/youtube-comments-scraper", // Video comments (note: YouTube scanner uses official API, not this)
+  g2: "powerai/g2-product-reviews-scraper", // Software reviews
+  yelp: "tri_angle/yelp-review-scraper", // Local business reviews (75+ reviews per run)
   amazonReviews: "junglee/amazon-reviews-scraper", // Product reviews
 } as const;
 
@@ -257,24 +257,92 @@ export async function fetchGoogleReviews(
   placeUrlOrId: string,
   maxReviews: number = 50
 ): Promise<GoogleReviewItem[]> {
+  // Resolve Google share links (share.google/*) to actual Maps URLs
+  let resolvedUrl = placeUrlOrId;
+  if (placeUrlOrId.includes("share.google")) {
+    try {
+      const resolved = await resolveGoogleShareLink(placeUrlOrId);
+      if (resolved) {
+        resolvedUrl = resolved;
+      } else {
+        // If we can't resolve, try as a search term instead
+        resolvedUrl = placeUrlOrId;
+      }
+    } catch {
+      // Fall through with original URL
+    }
+  }
+
   // Check if it's a Place ID (starts with ChI)
-  const isPlaceId = placeUrlOrId.startsWith("ChI");
+  const isPlaceId = resolvedUrl.startsWith("ChI");
 
   const input = isPlaceId
     ? {
-        placeIds: [placeUrlOrId],
+        placeIds: [resolvedUrl],
         maxReviews,
         reviewsSort: "newest",
         language: "en",
       }
     : {
-        startUrls: [{ url: placeUrlOrId }],
+        startUrls: [{ url: resolvedUrl }],
         maxReviews,
         reviewsSort: "newest",
         language: "en",
       };
 
   return runActor<GoogleReviewItem>(ACTORS.googleReviews, input);
+}
+
+/**
+ * Resolve a Google share link (share.google/*) to the actual Google Maps URL.
+ * These short links redirect through multiple hops to the final Maps URL.
+ */
+async function resolveGoogleShareLink(shareUrl: string): Promise<string | null> {
+  try {
+    // Follow redirects manually to get the final URL
+    const response = await fetch(shareUrl, {
+      method: "HEAD",
+      redirect: "follow",
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; Kaulby/1.0)",
+      },
+    });
+
+    const finalUrl = response.url;
+
+    // Check if we ended up at a Maps URL
+    if (finalUrl.includes("google.com/maps")) {
+      return finalUrl;
+    }
+
+    // Sometimes the redirect gives us a goo.gl or other intermediate
+    // Try a GET request to follow JS redirects
+    const getResponse = await fetch(shareUrl, {
+      redirect: "follow",
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; Kaulby/1.0)",
+      },
+    });
+
+    const html = await getResponse.text();
+
+    // Look for Maps URL in the response body (meta refresh or JS redirect)
+    const mapsUrlMatch = html.match(/https:\/\/www\.google\.com\/maps\/place\/[^"'\s<>]+/);
+    if (mapsUrlMatch) {
+      return mapsUrlMatch[0];
+    }
+
+    // Look for a Place ID in the response
+    const placeIdMatch = html.match(/ChI[a-zA-Z0-9_-]+/);
+    if (placeIdMatch) {
+      return placeIdMatch[0]; // Return Place ID, fetchGoogleReviews handles it
+    }
+
+    return null;
+  } catch (error) {
+    console.error("[GoogleReviews] Failed to resolve share link:", error);
+    return null;
+  }
 }
 
 /**
@@ -360,7 +428,22 @@ export async function fetchPlayStoreReviews(
     sortBy: "newest",
   };
 
-  return runActor<PlayStoreReviewItem>(ACTORS.playStore, input);
+  // Actor (neatrat/google-play-store-reviews-scraper) returns fields with different names
+  // than our PlayStoreReviewItem interface. Map them here.
+  const rawResults = await runActor<Record<string, unknown>>(ACTORS.playStore, input);
+
+  return rawResults.map((raw) => ({
+    reviewId: String(raw.reviewId || raw.id || `playstore-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
+    userName: String(raw.userName || raw.reviewer || raw.author || "Play Store User"),
+    text: String(raw.text || raw.body || raw.content || raw.review || ""),
+    score: Number(raw.score || raw.rating || raw.stars || 0),
+    date: String(raw.date || raw.at || raw.reviewCreatedVersion || new Date().toISOString()),
+    thumbsUpCount: raw.thumbsUpCount != null ? Number(raw.thumbsUpCount) : (raw.thumbsUp != null ? Number(raw.thumbsUp) : undefined),
+    replyText: raw.replyText != null ? String(raw.replyText) : (raw.developerComment != null ? String(raw.developerComment) : undefined),
+    replyDate: raw.replyDate != null ? String(raw.replyDate) : undefined,
+    appVersion: raw.appVersion != null ? String(raw.appVersion) : (raw.version != null ? String(raw.version) : undefined),
+    url: raw.url != null ? String(raw.url) : undefined,
+  }));
 }
 
 /**
@@ -486,31 +569,37 @@ export async function fetchG2Reviews(
  * @param businessUrl - Yelp business page URL (e.g., https://www.yelp.com/biz/restaurant-name-city)
  * @param maxReviews - Maximum number of reviews to fetch (default 50)
  *
- * Uses maxcopell/yelp-scraper actor
+ * Uses tri_angle/yelp-review-scraper actor
+ * Output fields: id, businessName, businessUrl, businessAddress, date, rating,
+ *   text, language, photoUrls, reviewerName, reviewerUrl, reviewerReviewCount, reviewerLocation
  */
 export async function fetchYelpReviews(
   businessUrl: string,
   maxReviews: number = 50
 ): Promise<YelpReviewItem[]> {
+  // Strip query params from Yelp URLs (actor only needs the path)
+  const cleanUrl = businessUrl.includes("?")
+    ? businessUrl.split("?")[0]
+    : businessUrl;
+
   const input = {
-    startUrls: [{ url: businessUrl }],
+    startUrls: [{ url: cleanUrl }],
     maxItems: maxReviews,
-    scrapeReviews: true,
   };
 
   const items = await runActor<Record<string, unknown>>(ACTORS.yelp, input);
 
   return items.map((item) => ({
-    reviewId: String(item.reviewId || item.id || ""),
+    reviewId: String(item.id || item.reviewId || ""),
     text: String(item.text || item.comment || ""),
     rating: Number(item.rating || item.stars || 0),
     date: String(item.date || item.publishedDate || ""),
-    author: String(item.author || item.userName || ""),
-    authorLocation: item.authorLocation ? String(item.authorLocation) : undefined,
+    author: String(item.reviewerName || item.author || item.userName || ""),
+    authorLocation: (item.reviewerLocation || item.authorLocation) ? String(item.reviewerLocation || item.authorLocation) : undefined,
     businessName: item.businessName ? String(item.businessName) : undefined,
     businessUrl: item.businessUrl ? String(item.businessUrl) : businessUrl,
-    photos: Array.isArray(item.photos) ? item.photos.map(String) : undefined,
-    url: item.url ? String(item.url) : undefined,
+    photos: Array.isArray(item.photoUrls) ? item.photoUrls.map(String) : Array.isArray(item.photos) ? item.photos.map(String) : undefined,
+    url: item.reviewerUrl ? String(item.reviewerUrl) : item.url ? String(item.url) : undefined,
   }));
 }
 

@@ -82,6 +82,16 @@ export interface YelpReviewItem {
   url?: string;
 }
 
+export interface GoogleReviewSerperItem {
+  reviewId: string;
+  name: string;
+  text: string;
+  stars: number;
+  publishedAtDate: string;
+  reviewUrl: string;
+  placeId?: string;
+}
+
 export interface QuoraAnswerItem {
   questionId: string;
   questionTitle: string;
@@ -93,6 +103,17 @@ export interface QuoraAnswerItem {
   upvotes?: number;
   views?: number;
   answerUrl?: string;
+}
+
+export interface AppStoreSerperItem {
+  id: string;
+  title: string;
+  text: string;
+  rating: number;
+  date: string;
+  userName: string;
+  appId?: string;
+  url?: string;
 }
 
 export interface AmazonReviewItem {
@@ -482,6 +503,146 @@ function transformToAmazonReview(
     verifiedPurchase: false, // Can't determine from search results
     productName,
     productAsin,
+    url: result.link,
+  };
+}
+
+// ============================================================================
+// GOOGLE REVIEWS via Serper
+// ============================================================================
+
+/**
+ * Search Google Reviews via Google Search (Serper)
+ *
+ * For URL-based monitoring: extracts place name and searches Google Maps reviews
+ * For keyword monitoring: searches Google Maps for business reviews
+ */
+export async function searchGoogleReviewsSerper(
+  placeUrlOrKeyword: string,
+  limit: number = 20
+): Promise<GoogleReviewSerperItem[]> {
+  let query: string;
+  if (placeUrlOrKeyword.includes("google.com/maps") || placeUrlOrKeyword.startsWith("ChI")) {
+    // Extract place name from Google Maps URL or use Place ID
+    const nameMatch = placeUrlOrKeyword.match(/place\/([^/]+)/);
+    const placeName = nameMatch?.[1]?.replace(/\+/g, " ").replace(/%20/g, " ") || placeUrlOrKeyword;
+    query = `site:google.com/maps "${placeName}" reviews`;
+  } else {
+    query = `site:google.com/maps "${placeUrlOrKeyword}" reviews`;
+  }
+
+  const { data: results, cached } = await cachedQuery<SerperOrganicResult[]>(
+    "serper:googlereviews",
+    { query, limit },
+    () => searchSerper(query, limit),
+    CACHE_TTL.REVIEWS
+  );
+
+  if (cached) {
+    logger.debug("[GoogleReviews] Serper cache hit", { query });
+  }
+
+  return results
+    .filter((r) => r.link.includes("google.com/maps"))
+    .map((r) => transformToGoogleReview(r));
+}
+
+function transformToGoogleReview(result: SerperOrganicResult): GoogleReviewSerperItem {
+  const ratingMatch = result.title.match(/(\d(?:\.\d)?)\s*(?:star|\/5)/i) ||
+    result.snippet.match(/(\d(?:\.\d)?)\s*(?:star|\/5)/i) ||
+    result.snippet.match(/Rating:\s*(\d(?:\.\d)?)/i);
+  const stars = ratingMatch ? parseFloat(ratingMatch[1]) : 0;
+
+  // Extract place ID from URL if present
+  const placeIdMatch = result.link.match(/place_id[=:]([^&/]+)/i) ||
+    result.link.match(/(ChI[a-zA-Z0-9_-]+)/);
+  const placeId = placeIdMatch?.[1];
+
+  return {
+    reviewId: generateId(result.link, "goog"),
+    name: "Google User",
+    text: result.snippet,
+    stars,
+    publishedAtDate: result.date || new Date().toISOString(),
+    reviewUrl: result.link,
+    placeId,
+  };
+}
+
+// ============================================================================
+// APP STORE via Serper
+// ============================================================================
+
+/**
+ * Search App Store reviews via Google Search (Serper)
+ *
+ * Searches Google's index of apps.apple.com review pages.
+ * Returns review snippets with ratings when extractable.
+ *
+ * Primary for App Store since Apify actors require paid plan.
+ */
+export async function searchAppStoreSerper(
+  appUrlOrName: string,
+  limit: number = 20
+): Promise<AppStoreSerperItem[]> {
+  let query: string;
+  let appId: string | undefined;
+
+  if (appUrlOrName.includes("apps.apple.com")) {
+    // Extract app ID from URL: .../id123456789
+    const idMatch = appUrlOrName.match(/id(\d+)/);
+    appId = idMatch?.[1];
+    // Extract app name from URL path
+    const nameMatch = appUrlOrName.match(/\/app\/([^/]+)\//);
+    const appName = nameMatch?.[1]?.replace(/-/g, " ") || "";
+    query = `site:apps.apple.com "${appName}" reviews`;
+  } else {
+    // Treat as app name search
+    query = `site:apps.apple.com "${appUrlOrName}" reviews`;
+  }
+
+  const { data: results, cached } = await cachedQuery<SerperOrganicResult[]>(
+    "serper:appstore",
+    { query, limit },
+    () => searchSerper(query, limit),
+    CACHE_TTL.REVIEWS
+  );
+
+  if (cached) {
+    logger.debug("[AppStore] Serper cache hit", { query });
+  }
+
+  return results
+    .filter((r) => r.link.includes("apps.apple.com"))
+    .map((r) => transformToAppStoreReview(r, appId));
+}
+
+function transformToAppStoreReview(
+  result: SerperOrganicResult,
+  appId?: string
+): AppStoreSerperItem {
+  // Try to extract rating from title or snippet (e.g., "4.7 out of 5")
+  const ratingMatch = result.title.match(/(\d(?:\.\d)?)\s*(?:out of|\/)\s*5/i) ||
+    result.snippet.match(/(\d(?:\.\d)?)\s*(?:out of|\/)\s*5/i);
+  const rating = ratingMatch ? parseFloat(ratingMatch[1]) : 0;
+
+  // Extract app ID from URL if not provided
+  if (!appId) {
+    const idMatch = result.link.match(/id(\d+)/);
+    appId = idMatch?.[1];
+  }
+
+  return {
+    id: generateId(result.link, "appstore"),
+    title: result.title
+      .replace(/\s*-\s*(?:Ratings & Reviews|App Store).*$/i, "")
+      .replace(/\s*-\s*Apple$/i, "")
+      .trim(),
+    text: result.snippet,
+    rating,
+    date: result.date || new Date().toISOString(),
+    userName: "App Store User",
+    appId,
     url: result.link,
   };
 }

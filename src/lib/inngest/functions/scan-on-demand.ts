@@ -1,10 +1,11 @@
 import { inngest } from "../client";
 import { pooledDb } from "@/lib/db";
-import { monitors, results } from "@/lib/db/schema";
+import { monitors, results, audiences } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { incrementResultsCount, getUserPlan, canAccessPlatformWithPlan } from "@/lib/limits";
 import {
   fetchGoogleReviews,
+  fetchYelpReviews,
   fetchAppStoreReviews,
   fetchPlayStoreReviews,
   isApifyConfigured,
@@ -13,12 +14,15 @@ import {
   fetchYouTubeCommentsApi,
   isYouTubeApiConfigured,
 } from "@/lib/youtube";
+import { fetchAppStoreRss } from "@/lib/appstore-rss";
 import {
   searchTrustpilotSerper,
   searchG2Serper,
   searchYelpSerper,
   searchQuoraSerper,
   searchAmazonSerper,
+  searchGoogleReviewsSerper,
+  searchAppStoreSerper,
   isSerperConfigured,
 } from "@/lib/serper";
 import { findRelevantSubredditsCached } from "@/lib/ai";
@@ -64,27 +68,58 @@ export const scanOnDemand = inngest.createFunction(
       return { error: "Unauthorized" };
     }
 
-    // Mark as scanning
+    // Pre-fetch user plan once instead of per-platform DB lookup
+    const userPlan = await step.run("get-user-plan", async () => {
+      return getUserPlan(userId);
+    });
+
+    // Calculate accessible platforms for progress tracking
+    const accessiblePlatforms = monitor.platforms.filter(p => canAccessPlatformWithPlan(userPlan, p));
+
+    // Mark as scanning with initial progress
     await step.run("mark-scanning", async () => {
       await pooledDb
         .update(monitors)
-        .set({ isScanning: true })
+        .set({
+          isScanning: true,
+          scanProgress: {
+            step: "scanning",
+            platformsTotal: accessiblePlatforms.length,
+            platformsCompleted: 0,
+            platformResults: {},
+            currentPlatform: accessiblePlatforms[0] || null,
+            startedAt: new Date().toISOString(),
+          },
+        })
         .where(eq(monitors.id, monitorId));
     });
 
     let totalResults = 0;
     const platformResults: Record<string, number> = {};
-
-    // Pre-fetch user plan once instead of per-platform DB lookup
-    const userPlan = await step.run("get-user-plan", async () => {
-      return getUserPlan(userId);
-    });
+    let platformsCompleted = 0;
 
     try {
       // Scan each platform configured for this monitor
       for (const platform of monitor.platforms) {
         // Check platform access using pre-fetched plan (no DB hit)
         if (!canAccessPlatformWithPlan(userPlan, platform)) continue;
+
+        // Update progress: current platform
+        await step.run(`progress-${platform}-${monitorId}`, async () => {
+          await pooledDb
+            .update(monitors)
+            .set({
+              scanProgress: {
+                step: "scanning",
+                platformsTotal: accessiblePlatforms.length,
+                platformsCompleted,
+                platformResults,
+                currentPlatform: platform,
+                startedAt: new Date().toISOString(),
+              },
+            })
+            .where(eq(monitors.id, monitorId));
+        });
 
         let platformCount = 0;
 
@@ -102,7 +137,7 @@ export const scanOnDemand = inngest.createFunction(
             break;
 
           case "googlereviews":
-            if (isApifyConfigured()) {
+            if (isSerperConfigured() || isApifyConfigured()) {
               platformCount = await step.run(`scan-googlereviews-${monitorId}`, async () => {
                 return scanGoogleReviewsForMonitor(monitor);
               });
@@ -118,11 +153,10 @@ export const scanOnDemand = inngest.createFunction(
             break;
 
           case "appstore":
-            if (isApifyConfigured()) {
-              platformCount = await step.run(`scan-appstore-${monitorId}`, async () => {
-                return scanAppStoreForMonitor(monitor);
-              });
-            }
+            // Always runs — Apple RSS is free (no API key needed), Serper/Apify are fallbacks
+            platformCount = await step.run(`scan-appstore-${monitorId}`, async () => {
+              return scanAppStoreForMonitor(monitor);
+            });
             break;
 
           case "playstore":
@@ -164,7 +198,7 @@ export const scanOnDemand = inngest.createFunction(
             break;
 
           case "yelp":
-            if (isSerperConfigured()) {
+            if (isSerperConfigured() || isApifyConfigured()) {
               platformCount = await step.run(`scan-yelp-${monitorId}`, async () => {
                 return scanYelpForMonitor(monitor);
               });
@@ -212,6 +246,7 @@ export const scanOnDemand = inngest.createFunction(
 
         platformResults[platform] = platformCount;
         totalResults += platformCount;
+        platformsCompleted++;
       }
 
       // Update monitor stats and mark scan complete
@@ -220,6 +255,14 @@ export const scanOnDemand = inngest.createFunction(
           .update(monitors)
           .set({
             isScanning: false,
+            scanProgress: {
+              step: "complete",
+              platformsTotal: accessiblePlatforms.length,
+              platformsCompleted: accessiblePlatforms.length,
+              platformResults,
+              currentPlatform: null,
+              startedAt: new Date().toISOString(),
+            },
             lastManualScanAt: new Date(),
             lastCheckedAt: new Date(),
             newMatchCount: totalResults,
@@ -239,7 +282,7 @@ export const scanOnDemand = inngest.createFunction(
       await step.run("reset-scanning-on-error", async () => {
         await pooledDb
           .update(monitors)
-          .set({ isScanning: false })
+          .set({ isScanning: false, scanProgress: null })
           .where(eq(monitors.id, monitorId));
       });
 
@@ -257,6 +300,7 @@ interface MonitorData {
   userId: string;
   companyName: string | null;
   keywords: string[];
+  platformUrls: Record<string, string> | null;
   audienceId: string | null;
   monitorType: "keyword" | "ai_discovery";
   discoveryPrompt: string | null;
@@ -332,7 +376,7 @@ async function scanRedditForMonitor(monitor: MonitorData): Promise<number> {
   // First, check for user-defined audience
   if (monitor.audienceId) {
     const audience = await pooledDb.query.audiences.findFirst({
-      where: eq(monitors.id, monitor.audienceId),
+      where: eq(audiences.id, monitor.audienceId),
       with: { communities: true },
     });
     if (audience?.communities) {
@@ -587,16 +631,37 @@ async function scanHackerNewsForMonitor(monitor: MonitorData): Promise<number> {
 async function scanGoogleReviewsForMonitor(monitor: MonitorData): Promise<number> {
   let count = 0;
 
-  // Use keywords as business URLs/names, or companyName as fallback
-  const searchTerms = monitor.keywords.length > 0
-    ? monitor.keywords
-    : monitor.companyName
-      ? [monitor.companyName]
-      : [];
+  // Use platformUrls.googlereviews if provided, then company name, then keywords
+  // For Google Reviews, company name is more useful than keywords for finding the business
+  const configuredUrl = monitor.platformUrls?.googlereviews;
+  const searchTerms: string[] = [];
+  if (configuredUrl) {
+    searchTerms.push(configuredUrl);
+    // Also add company name as fallback in case share link resolution fails
+    if (monitor.companyName && configuredUrl.includes("share.google")) {
+      searchTerms.push(monitor.companyName);
+    }
+  } else if (monitor.companyName) {
+    searchTerms.push(monitor.companyName);
+  } else if (monitor.keywords.length > 0) {
+    searchTerms.push(...monitor.keywords);
+  }
 
   for (const term of searchTerms) {
     try {
-      const reviews = await fetchGoogleReviews(term, 20);
+      // Apify first (gets actual review content), Serper fallback (discovery only)
+      let reviews: Array<{ reviewId: string; name: string; text: string; stars: number; publishedAtDate: string; reviewUrl: string; placeId?: string }> = [];
+
+      if (isApifyConfigured()) {
+        logger.info("[GoogleReviews] Using Apify", { term });
+        reviews = await fetchGoogleReviews(term, 20);
+      }
+      if (reviews.length === 0 && isSerperConfigured()) {
+        logger.info("[GoogleReviews] Apify returned 0, trying Serper", { term });
+        reviews = await searchGoogleReviewsSerper(term, 20);
+      }
+
+      if (reviews.length === 0) continue;
 
       // Batch check for existing results
       const urls = reviews.map(review => review.reviewUrl || `google-${review.reviewId}`);
@@ -657,11 +722,15 @@ async function scanGoogleReviewsForMonitor(monitor: MonitorData): Promise<number
 async function scanTrustpilotForMonitor(monitor: MonitorData): Promise<number> {
   let count = 0;
 
-  const searchTerms = monitor.keywords.length > 0
-    ? monitor.keywords
-    : monitor.companyName
-      ? [monitor.companyName]
-      : [];
+  // Use platformUrls.trustpilot if provided, then keywords, then company name
+  const configuredUrl = monitor.platformUrls?.trustpilot;
+  const searchTerms = configuredUrl
+    ? [configuredUrl]
+    : monitor.keywords.length > 0
+      ? monitor.keywords
+      : monitor.companyName
+        ? [monitor.companyName]
+        : [];
 
   for (const term of searchTerms) {
     try {
@@ -726,11 +795,50 @@ async function scanTrustpilotForMonitor(monitor: MonitorData): Promise<number> {
 async function scanAppStoreForMonitor(monitor: MonitorData): Promise<number> {
   let count = 0;
 
-  const appIds = monitor.keywords.length > 0 ? monitor.keywords : [];
+  // Use platformUrls.appstore if provided, then company name, then keywords
+  const configuredUrl = monitor.platformUrls?.appstore;
+  const searchTerms = configuredUrl
+    ? [configuredUrl]
+    : monitor.companyName
+      ? [monitor.companyName]
+      : monitor.keywords.length > 0
+        ? monitor.keywords
+        : [];
 
-  for (const appId of appIds) {
+  for (const appRef of searchTerms) {
     try {
-      const reviews = await fetchAppStoreReviews(appId, 20);
+      // Apple RSS primary (free, official, full review data), Serper fallback, Apify last resort
+      let reviews: Array<{ id: string; title: string; text: string; rating: number; date: string; userName: string; version?: string; appId?: string; url?: string }> = [];
+
+      // Try Apple RSS feed first (free, returns up to 50 reviews with full data)
+      logger.info("[AppStore] Trying Apple RSS feed", { appRef });
+      const rssResults = await fetchAppStoreRss(appRef, 20);
+      if (rssResults.length > 0) {
+        reviews = rssResults;
+      }
+
+      // Serper fallback (keyword-based discovery)
+      if (reviews.length === 0 && isSerperConfigured()) {
+        logger.info("[AppStore] RSS returned 0, trying Serper", { appRef });
+        const serperResults = await searchAppStoreSerper(appRef, 20);
+        reviews = serperResults;
+      }
+
+      // Apify last resort (requires paid plan)
+      if (reviews.length === 0 && isApifyConfigured()) {
+        logger.info("[AppStore] Serper returned 0, trying Apify", { appRef });
+        try {
+          const apifyResults = await fetchAppStoreReviews(appRef, 20);
+          reviews = apifyResults;
+        } catch (apifyError) {
+          logger.warn("[AppStore] Apify fallback failed (may need paid plan)", {
+            appRef,
+            error: apifyError instanceof Error ? apifyError.message : String(apifyError),
+          });
+        }
+      }
+
+      if (reviews.length === 0) continue;
 
       // Batch check for existing results
       const urls = reviews.map(review => review.url || `appstore-${review.id}`);
@@ -781,7 +889,7 @@ async function scanAppStoreForMonitor(monitor: MonitorData): Promise<number> {
         }
       }
     } catch (error) {
-      logger.error("[AppStore] Error scanning", { appId, error: error instanceof Error ? error.message : String(error) });
+      logger.error("[AppStore] Error scanning", { appRef, error: error instanceof Error ? error.message : String(error) });
     }
   }
 
@@ -791,7 +899,9 @@ async function scanAppStoreForMonitor(monitor: MonitorData): Promise<number> {
 async function scanPlayStoreForMonitor(monitor: MonitorData): Promise<number> {
   let count = 0;
 
-  const appIds = monitor.keywords.length > 0 ? monitor.keywords : [];
+  // Use platformUrls.playstore if provided, then keywords
+  const configuredUrl = monitor.platformUrls?.playstore;
+  const appIds = configuredUrl ? [configuredUrl] : monitor.keywords.length > 0 ? monitor.keywords : [];
 
   for (const appId of appIds) {
     try {
@@ -1183,10 +1293,11 @@ async function scanYouTubeForMonitor(monitor: MonitorData): Promise<number> {
     return 0;
   }
 
-  // Collect video URLs: explicit URLs from keywords + search by keyword
-  const videoUrls = monitor.keywords.filter(k =>
-    k.includes("youtube.com") || k.includes("youtu.be")
-  );
+  // Collect video URLs: platformUrls.youtube, then keywords containing youtube URLs
+  const configuredYoutubeUrl = monitor.platformUrls?.youtube;
+  const videoUrls = configuredYoutubeUrl
+    ? [configuredYoutubeUrl, ...monitor.keywords.filter(k => k.includes("youtube.com") || k.includes("youtu.be"))]
+    : monitor.keywords.filter(k => k.includes("youtube.com") || k.includes("youtu.be"));
 
   // If no explicit video URLs, search YouTube for videos matching keywords
   if (videoUrls.length === 0) {
@@ -1284,18 +1395,21 @@ async function scanYouTubeForMonitor(monitor: MonitorData): Promise<number> {
 /**
  * Scan G2 for software reviews matching monitor keywords.
  * Keywords should contain G2 product page URLs.
- * Uses Apify actor: epctex/g2-scraper
+ * Uses Apify actor: powerai/g2-product-reviews-scraper
  */
 async function scanG2ForMonitor(monitor: MonitorData): Promise<number> {
   let count = 0;
 
-  // Use G2 product URLs if provided, otherwise search by keywords/company name
-  const platformUrls = monitor.keywords.filter(k => k.includes("g2.com"));
-  const searchTerms = platformUrls.length > 0
-    ? platformUrls
-    : monitor.keywords.length > 0
-      ? monitor.keywords.slice(0, 5)
-      : monitor.companyName ? [monitor.companyName] : [];
+  // Use platformUrls.g2 if provided, then keywords containing g2.com, then company name
+  const configuredG2Url = monitor.platformUrls?.g2;
+  const g2KeywordUrls = monitor.keywords.filter(k => k.includes("g2.com"));
+  const searchTerms = configuredG2Url
+    ? [configuredG2Url]
+    : g2KeywordUrls.length > 0
+      ? g2KeywordUrls
+      : monitor.keywords.length > 0
+        ? monitor.keywords.slice(0, 5)
+        : monitor.companyName ? [monitor.companyName] : [];
 
   if (searchTerms.length === 0) {
     logger.debug("[G2] No search terms available, skipping");
@@ -1375,18 +1489,21 @@ async function scanG2ForMonitor(monitor: MonitorData): Promise<number> {
 /**
  * Scan Yelp for business reviews matching monitor keywords.
  * Keywords should contain Yelp business page URLs.
- * Uses Apify actor: maxcopell/yelp-scraper
+ * Uses Apify actor: tri_angle/yelp-review-scraper
  */
 async function scanYelpForMonitor(monitor: MonitorData): Promise<number> {
   let count = 0;
 
-  // Use Yelp business URLs if provided, otherwise search by keywords/company name
-  const platformUrls = monitor.keywords.filter(k => k.includes("yelp.com"));
-  const searchTerms = platformUrls.length > 0
-    ? platformUrls
-    : monitor.keywords.length > 0
-      ? monitor.keywords.slice(0, 5)
-      : monitor.companyName ? [monitor.companyName] : [];
+  // Use platformUrls.yelp if provided, then keywords containing yelp.com, then company name
+  const configuredUrl = monitor.platformUrls?.yelp;
+  const keywordUrls = monitor.keywords.filter(k => k.includes("yelp.com"));
+  const searchTerms = configuredUrl
+    ? [configuredUrl]
+    : keywordUrls.length > 0
+      ? keywordUrls
+      : monitor.keywords.length > 0
+        ? monitor.keywords.slice(0, 5)
+        : monitor.companyName ? [monitor.companyName] : [];
 
   if (searchTerms.length === 0) {
     logger.debug("[Yelp] No search terms available, skipping");
@@ -1395,7 +1512,20 @@ async function scanYelpForMonitor(monitor: MonitorData): Promise<number> {
 
   for (const businessUrl of searchTerms) {
     try {
-      const reviews = await searchYelpSerper(businessUrl, 30);
+      // Use Apify for direct Yelp URLs (gets actual review content), Serper for keyword search
+      const isDirectUrl = businessUrl.includes("yelp.com");
+      let reviews: Array<{ reviewId: string; text: string; rating: number; date: string; author: string; authorLocation?: string; businessName?: string; photos?: string[]; url?: string }> = [];
+
+      if (isDirectUrl && isApifyConfigured()) {
+        logger.info("[Yelp] Using Apify for direct URL", { businessUrl });
+        reviews = await fetchYelpReviews(businessUrl, 30);
+      }
+      if (reviews.length === 0 && isSerperConfigured()) {
+        logger.info("[Yelp] Using Serper", { businessUrl });
+        reviews = await searchYelpSerper(businessUrl, 30);
+      }
+
+      if (reviews.length === 0) continue;
 
       // Batch check for existing results
       const urls = reviews.map(review => review.url || `yelp-${review.reviewId}`);
@@ -1463,15 +1593,18 @@ async function scanYelpForMonitor(monitor: MonitorData): Promise<number> {
 async function scanAmazonReviewsForMonitor(monitor: MonitorData): Promise<number> {
   let count = 0;
 
-  // Use Amazon URLs/ASINs if provided, otherwise search by keywords/company name
-  const platformUrls = monitor.keywords.filter(k =>
+  // Use platformUrls.amazonreviews if provided, then keywords containing amazon.com, then company name
+  const configuredAmazonUrl = monitor.platformUrls?.amazonreviews;
+  const amazonKeywordUrls = monitor.keywords.filter(k =>
     k.includes("amazon.com") || k.includes("amazon.") || /^[A-Z0-9]{10}$/i.test(k)
   );
-  const searchTerms = platformUrls.length > 0
-    ? platformUrls
-    : monitor.keywords.length > 0
-      ? monitor.keywords.slice(0, 5)
-      : monitor.companyName ? [monitor.companyName] : [];
+  const searchTerms = configuredAmazonUrl
+    ? [configuredAmazonUrl]
+    : amazonKeywordUrls.length > 0
+      ? amazonKeywordUrls
+      : monitor.keywords.length > 0
+        ? monitor.keywords.slice(0, 5)
+        : monitor.companyName ? [monitor.companyName] : [];
 
   if (searchTerms.length === 0) {
     logger.debug("[Amazon] No search terms available, skipping");
