@@ -1,7 +1,39 @@
+"use client";
+
 import { SignUp } from "@clerk/nextjs";
 import Image from "next/image";
+import { useEffect, useRef } from "react";
 
 export default function SignUpPage() {
+  const formRef = useRef<HTMLDivElement>(null);
+
+  // Disable browser autofill on Clerk's sign-up form inputs
+  useEffect(() => {
+    const container = formRef.current;
+    if (!container) return;
+
+    function disableAutofill() {
+      const inputs = container!.querySelectorAll("input");
+      inputs.forEach((input) => {
+        input.setAttribute("autocomplete", "off");
+        input.setAttribute("data-lpignore", "true"); // LastPass
+        input.setAttribute("data-1p-ignore", "true"); // 1Password
+        // Clear any browser-autofilled values on sign-up form
+        if (input.type === "password" || input.type === "email" || input.name?.includes("email")) {
+          input.value = "";
+          input.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+      });
+    }
+
+    // Run immediately and observe for Clerk's lazy-loaded form
+    disableAutofill();
+    const observer = new MutationObserver(disableAutofill);
+    observer.observe(container, { childList: true, subtree: true });
+
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-black px-4">
       {/* Logo */}
@@ -17,7 +49,7 @@ export default function SignUpPage() {
       </div>
 
       {/* Sign Up Form */}
-      <div className="animate-fade-up">
+      <div className="animate-fade-up" ref={formRef}>
         <SignUp
           appearance={{
             elements: {
