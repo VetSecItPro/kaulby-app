@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { UserButton, useUser } from "@clerk/nextjs";
+import { UserButton, SignOutButton, useUser } from "@clerk/nextjs";
 import {
   LayoutDashboard,
   Radio,
@@ -19,6 +19,7 @@ import {
   Lightbulb,
   Sparkles,
   Bookmark,
+  LogOut,
 } from "lucide-react";
 import type { WorkspaceRole } from "@/lib/permissions";
 import { NotificationBell } from "./notification-bell";
@@ -241,6 +242,25 @@ export function Sidebar({ isAdmin = false, subscriptionStatus = "free", hasActiv
         </div>
       </div>
 
+      {/* User Section */}
+      <div className="border-b px-4 py-3">
+        <div className="flex items-center gap-3">
+          {mounted ? (
+            <UserButton
+              afterSignOutUrl="/"
+              appearance={{
+                elements: {
+                  avatarBox: "h-8 w-8"
+                }
+              }}
+            />
+          ) : (
+            <div className="h-8 w-8 rounded-full bg-muted animate-pulse" />
+          )}
+          <span className="text-sm font-medium truncate max-w-[140px]">{displayName}</span>
+        </div>
+      </div>
+
       {/* Navigation */}
       <div className="flex-1 overflow-auto py-4">
         <nav className="grid gap-1 px-2">
@@ -308,26 +328,14 @@ export function Sidebar({ isAdmin = false, subscriptionStatus = "free", hasActiv
         </div>
       )}
 
-      {/* User Section */}
-      <div className="border-t p-4">
-        <div className="flex items-center gap-3">
-          {mounted ? (
-            <UserButton
-              afterSignOutUrl="/"
-              appearance={{
-                elements: {
-                  avatarBox: "h-8 w-8"
-                }
-              }}
-            />
-          ) : (
-            <div className="h-8 w-8 rounded-full bg-muted animate-pulse" />
-          )}
-          <Link href="/dashboard/settings" className="flex flex-col hover:opacity-80 transition-opacity">
-            <span className="text-sm font-medium truncate max-w-[140px]">{displayName}</span>
-            <span className="text-xs text-muted-foreground">Manage settings</span>
-          </Link>
-        </div>
+      {/* Sign Out */}
+      <div className="border-t px-2 py-2">
+        <SignOutButton redirectUrl="/">
+          <button className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground rounded-full hover:bg-muted transition-colors">
+            <LogOut className="h-4 w-4" />
+            Sign out
+          </button>
+        </SignOutButton>
       </div>
     </div>
   );

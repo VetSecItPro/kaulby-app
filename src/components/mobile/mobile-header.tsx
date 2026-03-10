@@ -4,7 +4,7 @@ import { memo, useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Menu, BarChart3, Lightbulb, Sparkles, Users, HelpCircle, CreditCard, ShieldCheck } from "lucide-react";
+import { Menu, BarChart3, Lightbulb, Sparkles, Users, HelpCircle, CreditCard, ShieldCheck, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -15,7 +15,7 @@ import {
   SheetClose,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { UserButton, useUser } from "@clerk/nextjs";
+import { UserButton, SignOutButton, useUser } from "@clerk/nextjs";
 import type { WorkspaceRole } from "@/lib/permissions";
 import { NotificationBell } from "@/components/dashboard/notification-bell";
 
@@ -212,6 +212,25 @@ export const MobileHeader = memo(function MobileHeader({
               </div>
             </SheetHeader>
 
+            {/* User Section */}
+            <div className="px-4 py-3 border-b">
+              <div className="flex items-center gap-3">
+                {mounted ? (
+                  <UserButton
+                    afterSignOutUrl="/"
+                    appearance={{
+                      elements: {
+                        avatarBox: "h-9 w-9"
+                      }
+                    }}
+                  />
+                ) : (
+                  <div className="h-9 w-9 rounded-full bg-muted animate-pulse" />
+                )}
+                <span className="text-sm font-medium truncate">{displayName}</span>
+              </div>
+            </div>
+
             {/* Navigation Links */}
             <nav className="flex flex-col gap-1 p-3">
               {menuItems.map((item) => {
@@ -268,26 +287,14 @@ export const MobileHeader = memo(function MobileHeader({
               </div>
             )}
 
-            {/* User Section */}
-            <div className="absolute bottom-0 left-0 right-0 p-4 border-t bg-background safe-area-bottom">
-              <div className="flex items-center gap-3">
-                {mounted ? (
-                  <UserButton
-                    afterSignOutUrl="/"
-                    appearance={{
-                      elements: {
-                        avatarBox: "h-10 w-10"
-                      }
-                    }}
-                  />
-                ) : (
-                  <div className="h-10 w-10 rounded-full bg-muted animate-pulse" />
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{displayName}</p>
-                  <p className="text-xs text-muted-foreground">Manage profile</p>
-                </div>
-              </div>
+            {/* Sign Out */}
+            <div className="absolute bottom-0 left-0 right-0 p-3 border-t bg-background safe-area-bottom">
+              <SignOutButton redirectUrl="/">
+                <button className="flex items-center gap-3 w-full px-4 py-3 text-sm text-muted-foreground hover:text-foreground rounded-xl hover:bg-muted transition-colors">
+                  <LogOut className="h-5 w-5" />
+                  Sign out
+                </button>
+              </SignOutButton>
             </div>
           </SheetContent>
         </Sheet>
