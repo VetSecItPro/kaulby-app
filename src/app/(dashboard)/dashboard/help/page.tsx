@@ -65,7 +65,7 @@ const faqs = [
   },
   {
     question: "Can multiple people on my team access Kaulby?",
-    answer: "Team plan includes 5 seats with shared access to all monitors and results. Additional members are $15/user/month. Each member can set their own notification preferences while sharing the same monitoring data.",
+    answer: "Team plan includes 3 seats with shared access to all monitors and results. Additional members are $20/user/month. Each member can set their own notification preferences while sharing the same monitoring data.",
   },
 ];
 
@@ -1471,7 +1471,7 @@ export default function HelpPage() {
 
             <div className="p-4 rounded-lg bg-muted/50">
               <p className="text-sm text-muted-foreground">
-                <strong>Seats:</strong> Team plan includes 5 seats. Additional members are $15/user/month. Remove members anytime from the Team settings.
+                <strong>Seats:</strong> Team plan includes 3 seats. Additional members are $20/user/month. Remove members anytime from the Team settings.
               </p>
             </div>
           </CardContent>

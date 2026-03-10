@@ -217,7 +217,7 @@ export const POLAR_PLANS: Record<"free" | "pro" | "team", PolarPlanDefinition> =
       "Comprehensive AI analysis",
       "Real-time email alerts",
       "Webhooks",
-      "5 team seats (+$15/user)",
+      "3 team seats (+$20/user)",
       "Priority support",
       "API access",
     ],
@@ -254,6 +254,19 @@ export type PolarPlanKey = keyof typeof POLAR_PLANS;
 
 // Day Pass product ID for one-time purchase
 export const DAY_PASS_PRODUCT_ID = process.env.POLAR_DAY_PASS_PRODUCT_ID || "";
+
+// Get team seat add-on product ID based on billing interval
+export function getTeamSeatProductId(interval: BillingInterval): string | null {
+  return interval === "annual"
+    ? process.env.POLAR_TEAM_SEAT_ANNUAL_PRODUCT_ID || null
+    : process.env.POLAR_TEAM_SEAT_MONTHLY_PRODUCT_ID || null;
+}
+
+// Check if a product ID is for a team seat add-on
+export function isTeamSeatProduct(productId: string): boolean {
+  return productId === process.env.POLAR_TEAM_SEAT_MONTHLY_PRODUCT_ID ||
+         productId === process.env.POLAR_TEAM_SEAT_ANNUAL_PRODUCT_ID;
+}
 
 // Map Polar product ID to plan key (handles both monthly and annual)
 // IMPORTANT: Read env vars at runtime to avoid module load order issues

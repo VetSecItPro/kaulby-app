@@ -3,7 +3,8 @@ import { createHmac, timingSafeEqual } from "crypto";
 import { db, users } from "@/lib/db";
 import { webhookEvents } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
-import { getPlanFromProductId, PolarPlanKey } from "@/lib/polar";
+import { getPlanFromProductId, PolarPlanKey, isTeamSeatProduct } from "@/lib/polar";
+import { workspaces } from "@/lib/db/schema";
 
 // PERF: Webhook processing may take longer than default 10s — FIX-016
 export const maxDuration = 60;
@@ -159,6 +160,33 @@ export async function POST(request: NextRequest) {
           });
 
           console.log(`Day pass activated for user ${userId} via Polar webhook`);
+          break;
+        }
+
+        // Handle Team Seat add-on purchase
+        if (metadata?.type === "team_seat") {
+          const workspaceId = metadata.workspaceId;
+          if (workspaceId) {
+            // Increment seat limit by 1 atomically
+            await db
+              .update(workspaces)
+              .set({
+                seatLimit: sql`${workspaces.seatLimit} + 1`,
+              })
+              .where(and(eq(workspaces.id, workspaceId), eq(workspaces.ownerId, userId)));
+
+            captureEvent({
+              distinctId: userId,
+              event: "team_seat_purchased",
+              properties: {
+                provider: "polar",
+                workspaceId,
+                checkoutId: eventData.id as string,
+              },
+            });
+
+            logger.info(`Team seat added for workspace ${workspaceId} by user ${userId}`);
+          }
           break;
         }
 

@@ -318,7 +318,7 @@ const competitorData: Record<string, {
       },
       {
         question: "How much does Sprout Social cost vs Kaulby?",
-        answer: "Sprout Social starts at $249/month per user. Kaulby offers: Free tier (1 monitor), Pro at $29/month (10 monitors), Team at $79/month (30 monitors, 5 users). For a team of 3, Sprout Social costs $747/month; Kaulby Team costs $79/month.",
+        answer: "Sprout Social starts at $249/month per user. Kaulby offers: Free tier (1 monitor), Pro at $29/month (10 monitors), Team at $79/month (30 monitors, 3 users). For a team of 3, Sprout Social costs $747/month; Kaulby Team costs $79/month.",
       },
       {
         question: "Does Kaulby have sentiment analysis like Sprout Social?",

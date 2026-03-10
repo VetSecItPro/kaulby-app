@@ -132,7 +132,7 @@ describe("GET /api/workspace", () => {
       id: "ws_1",
       name: "Acme Team",
       ownerId: "user_1",
-      seatLimit: 5,
+      seatLimit: 3,
       seatCount: 2,
     });
     mockDbQuery.users.findMany.mockResolvedValue([
@@ -229,7 +229,7 @@ describe("POST /api/workspace", () => {
           id: "ws_new",
           name: "My Team",
           ownerId: "user_1",
-          seatLimit: 5,
+          seatLimit: 3,
           seatCount: 1,
         }]),
       }),
