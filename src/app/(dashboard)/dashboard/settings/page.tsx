@@ -149,7 +149,7 @@ async function SettingsContent() {
         "2-hour refresh cycle",
         "Comprehensive AI analysis",
         "Webhooks + API access",
-        "5 team seats (+$15/user)",
+        "3 team seats (+$20/user)",
       ],
       current: subscriptionStatus === "team",
     },

@@ -176,7 +176,7 @@ export const PLANS: Record<"free" | "pro" | "team", PlanDefinition> = {
       "Comprehensive AI analysis",
       "Real-time email alerts",
       "Webhooks",
-      "5 team seats (+$15/user)",
+      "3 team seats (+$20/user)",
       "Priority support",
       "API access",
     ],

@@ -81,7 +81,7 @@ async function main() {
         .values({
           name: "Owner's Test Workspace",
           ownerId: john.id,
-          seatLimit: 5,
+          seatLimit: 3,
           seatCount: 1,
         })
         .returning();

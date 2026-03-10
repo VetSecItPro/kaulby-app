@@ -116,6 +116,7 @@ export function TeamSettings({ subscriptionStatus }: TeamSettingsProps) {
   const [activityCursor, setActivityCursor] = useState<string | null>(null);
   const [hasMoreActivity, setHasMoreActivity] = useState(false);
   const [loadingActivity, setLoadingActivity] = useState(false);
+  const [buyingSeat, setBuyingSeat] = useState(false);
 
   const isEnterprise = subscriptionStatus === "team";
 
@@ -399,7 +400,7 @@ export function TeamSettings({ subscriptionStatus }: TeamSettingsProps) {
             <div>
               <h3 className="font-medium">No Workspace Yet</h3>
               <p className="text-sm text-muted-foreground mt-1">
-                Create a workspace and invite up to 5 team members
+                Create a workspace and invite up to 3 team members
               </p>
             </div>
 
@@ -632,12 +633,46 @@ export function TeamSettings({ subscriptionStatus }: TeamSettingsProps) {
           </div>
         )}
 
-        {/* Seat limit reached */}
+        {/* Seat limit reached — buy extra seat */}
         {permissions.canInviteMembers(role) && workspace.seatCount >= workspace.seatLimit && (
-          <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+          <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20 space-y-3">
             <p className="text-sm text-amber-600 dark:text-amber-400">
-              You&apos;ve reached your seat limit. Contact support to add more seats (+$15/user).
+              You&apos;ve reached your seat limit ({workspace.seatLimit} seats).
             </p>
+            <div className="flex items-center gap-3">
+              <Button
+                size="sm"
+                className="bg-amber-500 hover:bg-amber-600 text-black"
+                disabled={buyingSeat}
+                onClick={async () => {
+                  setBuyingSeat(true);
+                  try {
+                    const res = await fetch("/api/polar/seat-addon", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ billingInterval: "monthly" }),
+                    });
+                    const data = await res.json();
+                    if (data.url) {
+                      window.location.href = data.url;
+                    } else {
+                      toast.error(data.error || "Failed to start checkout");
+                    }
+                  } catch {
+                    toast.error("Something went wrong. Please try again.");
+                  } finally {
+                    setBuyingSeat(false);
+                  }
+                }}
+              >
+                {buyingSeat ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing...</>
+                ) : (
+                  "Add Seat — $20/mo"
+                )}
+              </Button>
+              <span className="text-xs text-muted-foreground">per additional member</span>
+            </div>
           </div>
         )}
 

@@ -129,7 +129,7 @@ export async function POST(request: Request) {
         .values({
           name: name.trim().slice(0, 100),
           ownerId: user.id,
-          seatLimit: 5,
+          seatLimit: 3,
           seatCount: 1,
         })
         .returning();

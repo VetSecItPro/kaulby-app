@@ -119,7 +119,7 @@ const plans: Plan[] = [
       { text: "Comprehensive AI analysis" },
       { text: "Real-time email alerts" },
       { text: "Webhooks" },
-      { text: "5 team seats (+$15/user)" },
+      { text: "3 team seats (+$20/user)" },
       { text: "API access" },
     ],
     cta: "Sign Up for Team",
@@ -144,7 +144,7 @@ const featureComparison = [
   { feature: "Webhooks", free: false, pro: false, team: true },
   { feature: "CSV export", free: false, pro: true, team: true },
   { feature: "API access", free: false, pro: false, team: true },
-  { feature: "Team seats", free: "-", pro: "1", team: "5 (+$15/user)" },
+  { feature: "Team seats", free: "-", pro: "1", team: "3 (+$20/user)" },
 ];
 
 export default function PricingPage() {
