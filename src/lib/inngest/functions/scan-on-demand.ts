@@ -1691,8 +1691,11 @@ async function scanGitHubForMonitor(monitor: MonitorData): Promise<number> {
   }
 
   try {
-    // Search issues for each keyword
-    for (const keyword of monitor.keywords.slice(0, 5)) {
+    // Search issues for each keyword (fall back to company name)
+    const ghKeywords = monitor.keywords.length > 0
+      ? monitor.keywords.slice(0, 5)
+      : monitor.companyName ? [monitor.companyName] : [];
+    for (const keyword of ghKeywords) {
       const query = encodeURIComponent(`${keyword} in:title,body type:issue`);
       const response = await fetch(
         `https://api.github.com/search/issues?q=${query}&sort=created&order=desc&per_page=30`,
@@ -1798,7 +1801,10 @@ async function scanHashnodeForMonitor(monitor: MonitorData): Promise<number> {
   let count = 0;
 
   try {
-    for (const keyword of monitor.keywords.slice(0, 5)) {
+    const hashnodeKeywords = monitor.keywords.length > 0
+      ? monitor.keywords.slice(0, 5)
+      : monitor.companyName ? [monitor.companyName] : [];
+    for (const keyword of hashnodeKeywords) {
       const query = `
         query SearchPosts($query: String!) {
           searchPostsOfFeed(first: 20, filter: { query: $query }) {
@@ -2096,7 +2102,10 @@ async function scanDevToForMonitor(monitor: MonitorData): Promise<number> {
   const seenIds = new Set<number>();
 
   try {
-    for (const keyword of monitor.keywords.slice(0, 5)) {
+    const devtoKeywords = monitor.keywords.length > 0
+      ? monitor.keywords.slice(0, 5)
+      : monitor.companyName ? [monitor.companyName] : [];
+    for (const keyword of devtoKeywords) {
       // Search by tag
       const response = await fetch(
         `https://dev.to/api/articles?tag=${encodeURIComponent(keyword)}&per_page=30&state=fresh`,
@@ -2226,7 +2235,15 @@ async function scanXForMonitor(monitor: MonitorData): Promise<number> {
   let count = 0;
 
   try {
-    const searchResult = await searchX(monitor.keywords, 50);
+    // Use keywords if available, fall back to company name for search
+    const searchKeywords = monitor.keywords.length > 0
+      ? monitor.keywords
+      : monitor.companyName
+        ? [monitor.companyName]
+        : [];
+    if (searchKeywords.length === 0) return 0;
+
+    const searchResult = await searchX(searchKeywords, 50);
 
     if (searchResult.error) {
       logger.warn("[X] Search warning", { monitorId: monitor.id, error: searchResult.error });
