@@ -25,12 +25,15 @@ async function getDetailedBusinessMetrics() {
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
   // Subscription breakdown with Polar data
+  // NOTE: Admin users (isAdmin=true) are excluded from all counts to avoid inflating metrics
+  const notAdmin = eq(users.isAdmin, false);
   const [currentSubs, paidUsersRaw, lastMonthSubs, monthlySignups, dailySignups] = await Promise.all([
     db.select({
       status: users.subscriptionStatus,
       count: count(),
     })
     .from(users)
+    .where(notAdmin)
     .groupBy(users.subscriptionStatus),
 
     // Fetch per-user billing period data to detect annual vs monthly billing
@@ -40,7 +43,7 @@ async function getDetailedBusinessMetrics() {
       currentPeriodEnd: users.currentPeriodEnd,
     })
     .from(users)
-    .where(sql`${users.polarSubscriptionId} IS NOT NULL`),
+    .where(and(sql`${users.polarSubscriptionId} IS NOT NULL`, notAdmin)),
 
     // NOTE: lastMonthSubs uses current subscription status for historical comparison.
     // This is fundamentally imprecise -- users may have changed plans since last month.
