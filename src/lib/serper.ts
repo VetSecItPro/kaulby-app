@@ -605,7 +605,7 @@ export async function searchGoogleReviewsSerper(
           snippet?: string;
           rating?: number;
           date?: string;
-          user?: string;
+          user?: { name?: string } | string;
           link?: string;
         }>;
       };
@@ -617,15 +617,18 @@ export async function searchGoogleReviewsSerper(
 
       logger.info("[GoogleReviews] Fetched reviews via Reviews API", { cid, count: reviewsData.reviews.length });
 
-      return reviewsData.reviews.map((review) => ({
-        reviewId: generateId(review.link || `${cid}-${review.date}-${review.user}`, "goog"),
-        name: review.user || "Google User",
-        text: review.snippet || "",
-        stars: review.rating || 0,
-        publishedAtDate: review.date || new Date().toISOString(),
-        reviewUrl: review.link || `https://www.google.com/maps?cid=${cid}`,
-        placeId: cid,
-      }));
+      return reviewsData.reviews.map((review) => {
+        const userName = typeof review.user === "object" ? review.user?.name : review.user;
+        return {
+          reviewId: generateId(review.link || `${cid}-${review.date}-${userName}`, "goog"),
+          name: userName || "Google User",
+          text: review.snippet || "",
+          stars: review.rating || 0,
+          publishedAtDate: review.date || new Date().toISOString(),
+          reviewUrl: review.link || `https://www.google.com/maps?cid=${cid}`,
+          placeId: cid,
+        };
+      });
     },
     CACHE_TTL.REVIEWS
   );
