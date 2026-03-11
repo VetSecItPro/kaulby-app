@@ -170,7 +170,7 @@ export default function ErrorLogsPage() {
       setStats(data.stats);
       setTrends(data.trends || null);
       setPagination(data.pagination);
-    } catch (error) {
+    } catch {
       toast.error("Failed to fetch errors");
     } finally {
       setLoading(false);
@@ -197,7 +197,7 @@ export default function ErrorLogsPage() {
         const updated = await response.json();
         setSelectedError(updated);
       }
-    } catch (error) {
+    } catch {
       toast.error("Failed to update error status");
     } finally {
       setUpdating(false);
@@ -220,7 +220,7 @@ export default function ErrorLogsPage() {
       const updated = await response.json();
       setSelectedError(updated);
       fetchErrors();
-    } catch (error) {
+    } catch {
       toast.error("Failed to save notes");
     } finally {
       setUpdating(false);
@@ -240,7 +240,7 @@ export default function ErrorLogsPage() {
       setShowDetails(false);
       setSelectedError(null);
       fetchErrors();
-    } catch (error) {
+    } catch {
       toast.error("Failed to delete error log");
     }
   };

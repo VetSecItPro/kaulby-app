@@ -273,7 +273,6 @@ export async function searchG2Serper(
     const productMatch = productUrlOrKeyword.match(
       /g2\.com\/products\/([^/]+)/
     );
-    const product = productMatch?.[1]?.replace(/-/g, " ") || productUrlOrKeyword;
     query = `site:g2.com/products/${productMatch?.[1] || ""} reviews`;
   } else {
     query = `site:g2.com "${productUrlOrKeyword}" reviews`;

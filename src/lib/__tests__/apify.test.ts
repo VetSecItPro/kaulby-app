@@ -782,13 +782,20 @@ describe("apify", () => {
           }),
       });
 
-      // Start the function (it will begin polling and hit setTimeout)
+      // Start the function and immediately attach a rejection handler
+      // to prevent the unhandled rejection before advancing timers
       const promise = fetchGoogleReviews("ChIJtest", 50);
+      // Attach a no-op catch to prevent unhandled rejection during timer advancement
+      const safePromise = promise.catch(() => {});
 
       // Advance past the 120s timeout — fake timers handle both
       // Date.now() and setTimeout so the polling loop runs to completion instantly
       await vi.advanceTimersByTimeAsync(130000);
 
+      // Wait for the safe promise to settle
+      await safePromise;
+
+      // Now verify the original promise rejected with the expected error
       await expect(promise).rejects.toThrow("Actor run timed out");
 
       vi.useRealTimers();

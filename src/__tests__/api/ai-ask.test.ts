@@ -54,6 +54,7 @@ vi.mock("@/lib/ai/rate-limit", () => ({
 
 vi.mock("@/lib/ai/openrouter", () => ({
   completion: (...args: unknown[]) => mockCompletion(...args),
+  completionWithTools: (...args: unknown[]) => mockCompletion(...args),
   flushAI: () => mockFlushAI(),
   MODELS: { primary: "primary", premium: "premium" },
 }));
@@ -70,6 +71,8 @@ vi.mock("drizzle-orm", () => ({
   and: vi.fn(),
   inArray: vi.fn(),
   gte: vi.fn(),
+  relations: vi.fn(),
+  sql: vi.fn(),
 }));
 
 // --- Imports ---
@@ -183,10 +186,16 @@ describe("POST /api/ai/ask", () => {
       },
     ]);
     mockCompletion.mockResolvedValue({
-      content: "Here's what I found [1]",
+      message: {
+        role: "assistant",
+        content: "Here's what I found [1]",
+        tool_calls: undefined,
+      },
       model: "primary",
       promptTokens: 100,
       completionTokens: 50,
+      cost: 0.001,
+      latencyMs: 500,
     });
 
     const res = await POST(makeRequest("POST", "/api/ai/ask", validBody));

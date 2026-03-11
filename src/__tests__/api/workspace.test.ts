@@ -21,6 +21,7 @@ const {
         findFirst: vi.fn(),
       },
       users: {
+        findFirst: vi.fn(),
         findMany: vi.fn(),
       },
     },
@@ -50,6 +51,14 @@ vi.mock("@/lib/db", () => ({
     query: mockDbQuery,
     insert: () => mockDbInsert(),
     update: () => mockDbUpdate(),
+    transaction: async (fn: (tx: unknown) => Promise<unknown>) => {
+      const tx = {
+        query: mockDbQuery,
+        insert: () => mockDbInsert(),
+        update: () => mockDbUpdate(),
+      };
+      return fn(tx);
+    },
   },
   workspaces: { id: "id", ownerId: "owner_id" },
   users: { id: "id", workspaceId: "workspace_id" },
@@ -62,6 +71,8 @@ vi.mock("@/lib/db/schema", () => ({
 
 vi.mock("drizzle-orm", () => ({
   eq: vi.fn(),
+  relations: vi.fn(),
+  sql: vi.fn(),
 }));
 
 // --- Imports ---
@@ -223,6 +234,9 @@ describe("POST /api/workspace", () => {
       subscriptionStatus: "team",
       workspaceId: null,
     });
+    // tx.query.users.findFirst for race condition check (returns user without workspace)
+    mockDbQuery.users.findFirst.mockResolvedValue({ workspaceId: null });
+    // tx.insert(workspaces).values().returning()
     mockDbInsert.mockReturnValue({
       values: vi.fn().mockReturnValue({
         returning: vi.fn().mockResolvedValue([{
@@ -234,6 +248,7 @@ describe("POST /api/workspace", () => {
         }]),
       }),
     });
+    // tx.update(users).set().where()
     mockDbUpdate.mockReturnValue({
       set: vi.fn().mockReturnValue({
         where: vi.fn().mockResolvedValue(undefined),

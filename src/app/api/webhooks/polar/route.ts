@@ -3,7 +3,7 @@ import { createHmac, timingSafeEqual } from "crypto";
 import { db, users } from "@/lib/db";
 import { webhookEvents } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
-import { getPlanFromProductId, PolarPlanKey, isTeamSeatProduct } from "@/lib/polar";
+import { getPlanFromProductId, PolarPlanKey } from "@/lib/polar";
 import { workspaces } from "@/lib/db/schema";
 
 // PERF: Webhook processing may take longer than default 10s — FIX-016
@@ -159,7 +159,7 @@ export async function POST(request: NextRequest) {
             },
           });
 
-          console.log(`Day pass activated for user ${userId} via Polar webhook`);
+          logger.info(`Day pass activated for user ${userId} via Polar webhook`);
           break;
         }
 
@@ -471,7 +471,7 @@ export async function POST(request: NextRequest) {
       }
 
       default:
-        console.log(`Unhandled Polar event type: ${event.type}`);
+        logger.info(`Unhandled Polar event type: ${event.type}`);
     }
 
     return NextResponse.json({ received: true });

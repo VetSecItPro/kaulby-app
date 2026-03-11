@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { results, monitors, users } from "@/lib/db/schema";
-import { count, desc, sql, gte, eq } from "drizzle-orm";
+import { count, desc, gte, eq } from "drizzle-orm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {

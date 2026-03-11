@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { emailEvents } from "@/lib/db/schema";
-import { count, sql, gte, desc } from "drizzle-orm";
+import { sql, gte, desc } from "drizzle-orm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {

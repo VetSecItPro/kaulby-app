@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { feedback } from "@/lib/db/schema";
-import { desc, eq, sql } from "drizzle-orm";
+import { desc, sql } from "drizzle-orm";
 import { getEffectiveUserId } from "@/lib/dev-auth";
 import { redirect } from "next/navigation";
 import { FeedbackDashboard } from "@/components/admin/feedback-dashboard";

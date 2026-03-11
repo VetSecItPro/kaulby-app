@@ -39,6 +39,8 @@ vi.mock("@/lib/db", () => ({
 
 vi.mock("drizzle-orm", () => ({
   eq: vi.fn(),
+  relations: vi.fn(),
+  sql: vi.fn(),
 }));
 
 vi.mock("@/lib/email", () => ({

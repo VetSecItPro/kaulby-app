@@ -12,7 +12,6 @@ import {
   MessageSquare,
   Sparkles,
   ExternalLink,
-  RefreshCcw,
   Copy,
   Check,
   Lightbulb,
@@ -444,7 +443,7 @@ export function AIChat({
   const [isLoading, setIsLoading] = useState(false);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [conversationsLoaded, setConversationsLoaded] = useState(false);
+  const [, setConversationsLoaded] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);

@@ -13,7 +13,6 @@ import {
   Webhook,
   Users,
   Search,
-  TrendingUp,
   AlertTriangle,
   Award,
   Share2,

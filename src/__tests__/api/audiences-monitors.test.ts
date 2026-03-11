@@ -22,7 +22,7 @@ vi.mock("@/lib/db", () => ({
   monitors: { id: "id", userId: "user_id" },
   audienceMonitors: { audienceId: "audience_id", monitorId: "monitor_id" },
 }));
-vi.mock("drizzle-orm", () => ({ eq: vi.fn(), and: vi.fn(), inArray: vi.fn() }));
+vi.mock("drizzle-orm", () => ({ eq: vi.fn(), and: vi.fn(), inArray: vi.fn(), relations: vi.fn(), sql: vi.fn() }));
 
 import { POST, DELETE } from "@/app/api/audiences/[id]/monitors/route";
 import { NextRequest } from "next/server";

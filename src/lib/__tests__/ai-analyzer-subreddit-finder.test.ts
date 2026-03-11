@@ -9,6 +9,10 @@ vi.mock("@/lib/ai/openrouter", () => ({
   jsonCompletion: (...args: unknown[]) => mockJsonCompletion(...args),
 }));
 
+vi.mock("@/lib/ai/log", () => ({
+  logAiCall: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock("@/lib/logger", () => ({
   logger: {
     debug: vi.fn(),
@@ -51,6 +55,7 @@ describe("ai/analyzers/subreddit-finder", () => {
     });
 
     mockJsonCompletion.mockResolvedValue({
+      meta: { model: "test", promptTokens: 10, completionTokens: 10, cost: 0.001, latencyMs: 100 },
       data: {
         subreddits: [
           { name: "Entrepreneur", relevance: "high", reason: "Business discussions" },
@@ -96,6 +101,7 @@ describe("ai/analyzers/subreddit-finder", () => {
     });
 
     mockJsonCompletion.mockResolvedValue({
+      meta: { model: "test", promptTokens: 10, completionTokens: 10, cost: 0.001, latencyMs: 100 },
       data: { subreddits: [] },
     });
 
@@ -114,6 +120,7 @@ describe("ai/analyzers/subreddit-finder", () => {
     });
 
     mockJsonCompletion.mockResolvedValue({
+      meta: { model: "test", promptTokens: 10, completionTokens: 10, cost: 0.001, latencyMs: 100 },
       data: {
         subreddits: [
           { name: "technology", relevance: "high", reason: "Tech focus" },
@@ -135,6 +142,7 @@ describe("ai/analyzers/subreddit-finder", () => {
     });
 
     mockJsonCompletion.mockResolvedValue({
+      meta: { model: "test", promptTokens: 10, completionTokens: 10, cost: 0.001, latencyMs: 100 },
       data: {
         subreddits: [
           { name: "high1", relevance: "high", reason: "Perfect fit" },
@@ -211,6 +219,7 @@ describe("ai/analyzers/subreddit-finder", () => {
       });
 
     mockJsonCompletion.mockResolvedValue({
+      meta: { model: "test", promptTokens: 10, completionTokens: 10, cost: 0.001, latencyMs: 100 },
       data: { subreddits: [] },
     });
 
@@ -228,6 +237,7 @@ describe("ai/analyzers/subreddit-finder", () => {
     });
 
     mockJsonCompletion.mockResolvedValue({
+      meta: { model: "test", promptTokens: 10, completionTokens: 10, cost: 0.001, latencyMs: 100 },
       data: {
         subreddits: [{ name: "cached", relevance: "high", reason: "Test" }],
       },
@@ -259,6 +269,7 @@ describe("ai/analyzers/subreddit-finder", () => {
     });
 
     mockJsonCompletion.mockResolvedValue({
+      meta: { model: "test", promptTokens: 10, completionTokens: 10, cost: 0.001, latencyMs: 100 },
       data: {
         subreddits: Array.from({ length: 10 }, (_, i) => ({
           name: `aisub${i}`,

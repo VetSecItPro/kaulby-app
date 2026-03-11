@@ -2,7 +2,6 @@
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useCallback } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -65,7 +64,6 @@ export function ResultsFilters({
   const hasActiveFilters = activePlatform || activeTimeRange;
 
   const clearFilters = () => {
-    const params = new URLSearchParams();
     router.push(pathname);
   };
 

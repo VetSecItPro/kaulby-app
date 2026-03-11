@@ -1,7 +1,7 @@
 import { inngest } from "../client";
 import { logger } from "@/lib/logger";
 import { pooledDb } from "@/lib/db";
-import { monitors, audiences } from "@/lib/db/schema";
+import { audiences } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { findRelevantSubredditsCached } from "@/lib/ai";
 import { contentMatchesMonitor } from "@/lib/content-matcher";

@@ -33,6 +33,8 @@ vi.mock("@/lib/db", () => ({
 vi.mock("drizzle-orm", () => ({
   eq: vi.fn(),
   and: vi.fn(),
+  relations: vi.fn(),
+  sql: vi.fn(),
 }));
 
 // --- Imports ---

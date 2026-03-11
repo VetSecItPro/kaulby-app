@@ -15,6 +15,9 @@ const {
       audiences: {
         findFirst: vi.fn(),
       },
+      users: {
+        findFirst: vi.fn(),
+      },
     },
     mockDbInsert: vi.fn(),
     mockDbUpdate: vi.fn(),
@@ -37,8 +40,8 @@ vi.mock("@/lib/db", () => ({
   },
   audiences: { id: "id", userId: "user_id" },
 }));
-vi.mock("@/lib/db/schema", () => ({ audiences: { id: "id", userId: "user_id" } }));
-vi.mock("drizzle-orm", () => ({ eq: vi.fn(), and: vi.fn() }));
+vi.mock("@/lib/db/schema", () => ({ audiences: { id: "id", userId: "user_id" }, users: { id: "id", email: "email", isAdmin: "is_admin" } }));
+vi.mock("drizzle-orm", () => ({ eq: vi.fn(), and: vi.fn(), relations: vi.fn(), sql: vi.fn() }));
 
 import { POST } from "@/app/api/audiences/route";
 import { PATCH, DELETE } from "@/app/api/audiences/[id]/route";
@@ -71,6 +74,8 @@ describe("POST /api/audiences", () => {
 
   it("creates audience successfully", async () => {
     mockAuth.mockResolvedValue({ userId: "user_1" });
+    // verifyUserInDb calls db.query.users.findFirst
+    mockDbQuery.users.findFirst.mockResolvedValue({ id: "user_1" });
     mockDbInsert.mockReturnValue({
       values: vi.fn().mockReturnValue({
         returning: vi.fn().mockResolvedValue([{ id: "aud_1", name: "Test", userId: "user_1" }]),
