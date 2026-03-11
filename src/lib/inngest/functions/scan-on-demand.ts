@@ -1,7 +1,7 @@
 import { inngest } from "../client";
 import { pooledDb } from "@/lib/db";
 import { monitors, results, audiences } from "@/lib/db/schema";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { incrementResultsCount, getUserPlan, canAccessPlatformWithPlan } from "@/lib/limits";
 import {
   fetchGoogleReviews,
@@ -457,7 +457,7 @@ async function scanRedditForMonitor(monitor: MonitorData): Promise<number> {
       // 2. Batch check existence
       const matchedUrls = matchedItems.map(m => m.sourceUrl);
       const existing = await pooledDb.query.results.findMany({
-        where: inArray(results.sourceUrl, matchedUrls),
+        where: and(eq(results.monitorId, monitor.id), inArray(results.sourceUrl, matchedUrls)),
         columns: { sourceUrl: true },
       });
       const existingUrls = new Set(existing.map(r => r.sourceUrl));
@@ -582,7 +582,7 @@ async function scanHackerNewsForMonitor(monitor: MonitorData): Promise<number> {
       // 2. Batch check existence
       const matchedUrls = matchedItems.map(m => m.sourceUrl);
       const existing = await pooledDb.query.results.findMany({
-        where: inArray(results.sourceUrl, matchedUrls),
+        where: and(eq(results.monitorId, monitor.id), inArray(results.sourceUrl, matchedUrls)),
         columns: { sourceUrl: true },
       });
       const existingUrls = new Set(existing.map(r => r.sourceUrl));
@@ -666,7 +666,7 @@ async function scanGoogleReviewsForMonitor(monitor: MonitorData): Promise<number
       // Batch check for existing results
       const urls = reviews.map(review => review.reviewUrl || `google-${review.reviewId}`);
       const existing = await pooledDb.query.results.findMany({
-        where: inArray(results.sourceUrl, urls),
+        where: and(eq(results.monitorId, monitor.id), inArray(results.sourceUrl, urls)),
         columns: { sourceUrl: true },
       });
       const existingUrls = new Set(existing.map(r => r.sourceUrl));
@@ -739,7 +739,7 @@ async function scanTrustpilotForMonitor(monitor: MonitorData): Promise<number> {
       // Batch check for existing results
       const urls = reviews.map(review => review.url || `trustpilot-${review.id}`);
       const existing = await pooledDb.query.results.findMany({
-        where: inArray(results.sourceUrl, urls),
+        where: and(eq(results.monitorId, monitor.id), inArray(results.sourceUrl, urls)),
         columns: { sourceUrl: true },
       });
       const existingUrls = new Set(existing.map(r => r.sourceUrl));
@@ -843,7 +843,7 @@ async function scanAppStoreForMonitor(monitor: MonitorData): Promise<number> {
       // Batch check for existing results
       const urls = reviews.map(review => review.url || `appstore-${review.id}`);
       const existing = await pooledDb.query.results.findMany({
-        where: inArray(results.sourceUrl, urls),
+        where: and(eq(results.monitorId, monitor.id), inArray(results.sourceUrl, urls)),
         columns: { sourceUrl: true },
       });
       const existingUrls = new Set(existing.map(r => r.sourceUrl));
@@ -910,7 +910,7 @@ async function scanPlayStoreForMonitor(monitor: MonitorData): Promise<number> {
       // Batch check for existing results
       const urls = reviews.map(review => review.url || `playstore-${review.reviewId}`);
       const existing = await pooledDb.query.results.findMany({
-        where: inArray(results.sourceUrl, urls),
+        where: and(eq(results.monitorId, monitor.id), inArray(results.sourceUrl, urls)),
         columns: { sourceUrl: true },
       });
       const existingUrls = new Set(existing.map(r => r.sourceUrl));
@@ -980,7 +980,7 @@ async function scanQuoraForMonitor(monitor: MonitorData): Promise<number> {
       // Batch check for existing results
       const urls = answers.map(answer => answer.answerUrl || answer.questionUrl || `quora-${answer.questionId}-${answer.answerId || "q"}`);
       const existing = await pooledDb.query.results.findMany({
-        where: inArray(results.sourceUrl, urls),
+        where: and(eq(results.monitorId, monitor.id), inArray(results.sourceUrl, urls)),
         columns: { sourceUrl: true },
       });
       const existingUrls = new Set(existing.map(r => r.sourceUrl));
@@ -1075,7 +1075,7 @@ async function processProductHuntPosts(
   if (matchedItems.length > 0) {
     const matchedUrls = matchedItems.map(m => m.sourceUrl);
     const existing = await pooledDb.query.results.findMany({
-      where: inArray(results.sourceUrl, matchedUrls),
+      where: and(eq(results.monitorId, monitor.id), inArray(results.sourceUrl, matchedUrls)),
       columns: { sourceUrl: true },
     });
     const existingUrls = new Set(existing.map(r => r.sourceUrl));
@@ -1338,7 +1338,7 @@ async function scanYouTubeForMonitor(monitor: MonitorData): Promise<number> {
       // Batch check for existing results
       const urls = comments.map(comment => `https://www.youtube.com/watch?v=${comment.videoId}&lc=${comment.commentId}`);
       const existing = await pooledDb.query.results.findMany({
-        where: inArray(results.sourceUrl, urls),
+        where: and(eq(results.monitorId, monitor.id), inArray(results.sourceUrl, urls)),
         columns: { sourceUrl: true },
       });
       const existingUrls = new Set(existing.map(r => r.sourceUrl));
@@ -1423,7 +1423,7 @@ async function scanG2ForMonitor(monitor: MonitorData): Promise<number> {
       // Batch check for existing results
       const urls = reviews.map(review => review.url || `g2-${review.reviewId}`);
       const existing = await pooledDb.query.results.findMany({
-        where: inArray(results.sourceUrl, urls),
+        where: and(eq(results.monitorId, monitor.id), inArray(results.sourceUrl, urls)),
         columns: { sourceUrl: true },
       });
       const existingUrls = new Set(existing.map(r => r.sourceUrl));
@@ -1530,7 +1530,7 @@ async function scanYelpForMonitor(monitor: MonitorData): Promise<number> {
       // Batch check for existing results
       const urls = reviews.map(review => review.url || `yelp-${review.reviewId}`);
       const existing = await pooledDb.query.results.findMany({
-        where: inArray(results.sourceUrl, urls),
+        where: and(eq(results.monitorId, monitor.id), inArray(results.sourceUrl, urls)),
         columns: { sourceUrl: true },
       });
       const existingUrls = new Set(existing.map(r => r.sourceUrl));
@@ -1618,7 +1618,7 @@ async function scanAmazonReviewsForMonitor(monitor: MonitorData): Promise<number
       // Batch check for existing results
       const urls = reviews.map(review => review.url || `amazon-${review.reviewId}`);
       const existing = await pooledDb.query.results.findMany({
-        where: inArray(results.sourceUrl, urls),
+        where: and(eq(results.monitorId, monitor.id), inArray(results.sourceUrl, urls)),
         columns: { sourceUrl: true },
       });
       const existingUrls = new Set(existing.map(r => r.sourceUrl));
@@ -1744,7 +1744,7 @@ async function scanGitHubForMonitor(monitor: MonitorData): Promise<number> {
         // 2. Batch check existence
         const matchedUrls = matchedItems.map(m => m.sourceUrl);
         const existing = await pooledDb.query.results.findMany({
-          where: inArray(results.sourceUrl, matchedUrls),
+          where: and(eq(results.monitorId, monitor.id), inArray(results.sourceUrl, matchedUrls)),
           columns: { sourceUrl: true },
         });
         const existingUrls = new Set(existing.map(r => r.sourceUrl));
@@ -1881,7 +1881,7 @@ async function scanHashnodeForMonitor(monitor: MonitorData): Promise<number> {
         // 2. Batch check existence
         const matchedUrls = matchedItems.map(m => m.sourceUrl);
         const existing = await pooledDb.query.results.findMany({
-          where: inArray(results.sourceUrl, matchedUrls),
+          where: and(eq(results.monitorId, monitor.id), inArray(results.sourceUrl, matchedUrls)),
           columns: { sourceUrl: true },
         });
         const existingUrls = new Set(existing.map(r => r.sourceUrl));
@@ -2047,7 +2047,7 @@ async function scanIndieHackersForMonitor(monitor: MonitorData): Promise<number>
       // 2. Batch check existence
       const matchedUrls = matchedItems.map(m => m.sourceUrl);
       const existing = await pooledDb.query.results.findMany({
-        where: inArray(results.sourceUrl, matchedUrls),
+        where: and(eq(results.monitorId, monitor.id), inArray(results.sourceUrl, matchedUrls)),
         columns: { sourceUrl: true },
       });
       const existingUrls = new Set(existing.map(r => r.sourceUrl));
@@ -2178,7 +2178,7 @@ async function scanDevToForMonitor(monitor: MonitorData): Promise<number> {
         // 2. Batch check existence
         const matchedUrls = matchedItems.map(m => m.sourceUrl);
         const existing = await pooledDb.query.results.findMany({
-          where: inArray(results.sourceUrl, matchedUrls),
+          where: and(eq(results.monitorId, monitor.id), inArray(results.sourceUrl, matchedUrls)),
           columns: { sourceUrl: true },
         });
         const existingUrls = new Set(existing.map(r => r.sourceUrl));
@@ -2279,7 +2279,7 @@ async function scanXForMonitor(monitor: MonitorData): Promise<number> {
       // Batch check for existing results
       const urls = matchedItems.map(m => m.sourceUrl);
       const existing = await pooledDb.query.results.findMany({
-        where: inArray(results.sourceUrl, urls),
+        where: and(eq(results.monitorId, monitor.id), inArray(results.sourceUrl, urls)),
         columns: { sourceUrl: true },
       });
       const existingUrls = new Set(existing.map(r => r.sourceUrl));

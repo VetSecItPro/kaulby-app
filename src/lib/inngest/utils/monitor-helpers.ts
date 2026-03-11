@@ -199,7 +199,7 @@ export async function saveNewResults<T>(params: {
       // Batch check for existing results
       const urls = items.map(getSourceUrl);
       const existing = await pooledDb.query.results.findMany({
-        where: inArray(results.sourceUrl, urls),
+        where: and(eq(results.monitorId, monitorId), inArray(results.sourceUrl, urls)),
         columns: { sourceUrl: true },
       });
       const existingUrls = new Set(existing.map((r) => r.sourceUrl));
