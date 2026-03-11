@@ -647,16 +647,7 @@ async function scanGoogleReviewsForMonitor(monitor: MonitorData): Promise<number
     searchTerms.push(...monitor.keywords);
   }
 
-  logger.info("[GoogleReviews] Scanner started", {
-    monitorId: monitor.id,
-    companyName: monitor.companyName,
-    searchTerms,
-    hasApify: isApifyConfigured(),
-    hasSerper: isSerperConfigured(),
-  });
-
   if (searchTerms.length === 0) {
-    logger.warn("[GoogleReviews] No search terms available", { monitorId: monitor.id });
     return 0;
   }
 
@@ -665,19 +656,21 @@ async function scanGoogleReviewsForMonitor(monitor: MonitorData): Promise<number
       // Apify first (gets actual review content), Serper fallback (discovery only)
       let reviews: Array<{ reviewId: string; name: string; text: string; stars: number; publishedAtDate: string; reviewUrl: string; placeId?: string }> = [];
 
-      if (isApifyConfigured()) {
+      // Only use Apify when term is a URL or Place ID (starts with ChI) —
+      // plain company names cause Apify to timeout (120s) on invalid URLs
+      const isUrl = term.startsWith("http") || term.includes("google.com") || term.includes("share.google");
+      const isPlaceId = term.startsWith("ChI");
+      const canUseApify = isApifyConfigured() && (isUrl || isPlaceId);
+
+      if (canUseApify) {
         try {
-          logger.info("[GoogleReviews] Using Apify", { term });
           reviews = await fetchGoogleReviews(term, 20);
-          logger.info("[GoogleReviews] Apify returned", { term, count: reviews.length });
         } catch (apifyError) {
-          logger.warn("[GoogleReviews] Apify failed, will try Serper", { term, error: apifyError instanceof Error ? apifyError.message : String(apifyError) });
+          logger.warn("[GoogleReviews] Apify failed, falling back to Serper", { term, error: apifyError instanceof Error ? apifyError.message : String(apifyError) });
         }
       }
       if (reviews.length === 0 && isSerperConfigured()) {
-        logger.info("[GoogleReviews] Trying Serper", { term });
         reviews = await searchGoogleReviewsSerper(term, 20);
-        logger.info("[GoogleReviews] Serper returned", { term, count: reviews.length });
       }
 
       if (reviews.length === 0) continue;
