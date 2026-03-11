@@ -64,6 +64,8 @@ vi.mock("@/lib/db", () => ({
 vi.mock("drizzle-orm", () => ({
   eq: (...args: unknown[]) => args,
   and: (...args: unknown[]) => args,
+  relations: vi.fn(),
+  sql: vi.fn(),
 }));
 
 // --- Import after mocks ---

@@ -110,10 +110,18 @@ export function OnboardingProvider({ children, isNewUser, userName, userPlan = "
   );
 }
 
+// Safe default for SSR — during server rendering the provider context isn't
+// hydrated yet, so we return a no-op default instead of throwing.
+const SSR_DEFAULT: OnboardingContextType = {
+  showOnboarding: false,
+  setShowOnboarding: () => {},
+  dismissOnboarding: () => {},
+  resetOnboarding: () => {},
+  hasCompletedOnboarding: true,
+  startTour: () => {},
+};
+
 export function useOnboarding() {
   const context = useContext(OnboardingContext);
-  if (context === undefined) {
-    throw new Error("useOnboarding must be used within an OnboardingProvider");
-  }
-  return context;
+  return context ?? SSR_DEFAULT;
 }

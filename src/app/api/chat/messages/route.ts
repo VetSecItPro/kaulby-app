@@ -5,8 +5,6 @@ import { eq, and, asc } from "drizzle-orm";
 import { getEffectiveUserId } from "@/lib/dev-auth";
 import { isValidUuid } from "@/lib/security";
 
-// Max messages per conversation to prevent abuse
-const MAX_MESSAGES_PER_CONVERSATION = 200;
 // Max content length per message (characters)
 const MAX_MESSAGE_LENGTH = 10_000;
 // Max messages per save request

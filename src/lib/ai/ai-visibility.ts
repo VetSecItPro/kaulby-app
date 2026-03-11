@@ -6,7 +6,7 @@
  * vs secondary mention) and identifies competitors.
  */
 
-import { completion, MODELS, calculateCost } from "./openrouter";
+import { completion, MODELS } from "./openrouter";
 import { createTrace } from "./langfuse";
 import { logger } from "@/lib/logger";
 

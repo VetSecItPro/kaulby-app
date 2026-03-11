@@ -99,3 +99,4 @@ ARCHITECTURE.md
 .test-ship-quarantine.json
 .test-audit.json
 .perf-reports/
+.smoketest-reports/

@@ -6,6 +6,7 @@ const {
   mockAuth,
   mockCheckApiRateLimit,
   mockGetEffectiveUserId,
+  mockVerifyUserInDb,
   mockCanCreateMonitor,
   mockCheckKeywordsLimit,
   mockGetUserPlan,
@@ -20,6 +21,7 @@ const {
     mockAuth: vi.fn(),
     mockCheckApiRateLimit: vi.fn(),
     mockGetEffectiveUserId: vi.fn(),
+    mockVerifyUserInDb: vi.fn(),
     mockCanCreateMonitor: vi.fn(),
     mockCheckKeywordsLimit: vi.fn(),
     mockGetUserPlan: vi.fn(),
@@ -50,6 +52,7 @@ vi.mock("@/lib/rate-limit", () => ({
 
 vi.mock("@/lib/dev-auth", () => ({
   getEffectiveUserId: () => mockGetEffectiveUserId(),
+  verifyUserInDb: (...args: unknown[]) => mockVerifyUserInDb(...args),
   isLocalDev: () => false,
 }));
 
@@ -69,6 +72,7 @@ vi.mock("@/lib/plans", () => ({
 vi.mock("@/lib/security", () => ({
   sanitizeMonitorInput: (s: string) => s.trim(),
   isValidKeyword: (k: string) => k.length > 0,
+  sanitizeForLog: (s: string) => s,
 }));
 
 vi.mock("@/lib/posthog", () => ({
@@ -102,6 +106,16 @@ vi.mock("@/lib/db/schema", () => ({
 vi.mock("drizzle-orm", () => ({
   eq: vi.fn(),
   and: vi.fn(),
+  relations: vi.fn(),
+  sql: vi.fn(),
+}));
+
+vi.mock("@/lib/inngest/client", () => ({
+  inngest: { send: vi.fn().mockResolvedValue(undefined) },
+}));
+
+vi.mock("@/lib/logger", () => ({
+  logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() },
 }));
 
 // --- Imports after mocks ---
@@ -128,6 +142,18 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockCheckApiRateLimit.mockResolvedValue({ allowed: true });
   mockGetUpgradePrompt.mockReturnValue({ description: "Upgrade", url: "/pricing" });
+  // Default: verifyUserInDb returns the same userId
+  mockVerifyUserInDb.mockImplementation((id: string) => Promise.resolve(id));
+  // Default: getEffectiveUserId returns null (unauthenticated)
+  mockGetEffectiveUserId.mockResolvedValue(null);
+  // Default: db.update for isScanning flag
+  mockDbUpdate.mockReturnValue({
+    set: vi.fn().mockReturnValue({
+      where: vi.fn().mockReturnValue({
+        returning: vi.fn().mockResolvedValue([]),
+      }),
+    }),
+  });
 });
 
 // ==========================================
@@ -241,7 +267,7 @@ describe("POST /api/monitors", () => {
 // ==========================================
 describe("GET /api/monitors/[id]", () => {
   it("returns 401 when not authenticated", async () => {
-    mockAuth.mockResolvedValue({ userId: null });
+    mockGetEffectiveUserId.mockResolvedValue(null);
     const res = await getMonitor(
       makeRequest("GET", "/api/monitors/mon_1"),
       makeRouteContext("mon_1")
@@ -250,7 +276,7 @@ describe("GET /api/monitors/[id]", () => {
   });
 
   it("returns 429 when rate limited", async () => {
-    mockAuth.mockResolvedValue({ userId: "user_1" });
+    mockGetEffectiveUserId.mockResolvedValue("user_1");
     mockCheckApiRateLimit.mockResolvedValue({ allowed: false, retryAfter: 30 });
     const res = await getMonitor(
       makeRequest("GET", "/api/monitors/mon_1"),
@@ -260,7 +286,7 @@ describe("GET /api/monitors/[id]", () => {
   });
 
   it("returns 404 when monitor not found", async () => {
-    mockAuth.mockResolvedValue({ userId: "user_1" });
+    mockGetEffectiveUserId.mockResolvedValue("user_1");
     mockDbQuery.monitors.findFirst.mockResolvedValue(null);
     const res = await getMonitor(
       makeRequest("GET", "/api/monitors/mon_1"),
@@ -270,7 +296,7 @@ describe("GET /api/monitors/[id]", () => {
   });
 
   it("returns monitor when found and owned", async () => {
-    mockAuth.mockResolvedValue({ userId: "user_1" });
+    mockGetEffectiveUserId.mockResolvedValue("user_1");
     const mockMonitor = { id: "mon_1", name: "Test", userId: "user_1" };
     mockDbQuery.monitors.findFirst.mockResolvedValue(mockMonitor);
     const res = await getMonitor(
@@ -289,7 +315,7 @@ describe("GET /api/monitors/[id]", () => {
 // ==========================================
 describe("PATCH /api/monitors/[id]", () => {
   it("returns 401 when not authenticated", async () => {
-    mockAuth.mockResolvedValue({ userId: null });
+    mockGetEffectiveUserId.mockResolvedValue(null);
     const res = await patchMonitor(
       makeRequest("PATCH", "/api/monitors/mon_1", { name: "Updated" }),
       makeRouteContext("mon_1")
@@ -298,7 +324,7 @@ describe("PATCH /api/monitors/[id]", () => {
   });
 
   it("returns 404 when monitor not found (ownership check)", async () => {
-    mockAuth.mockResolvedValue({ userId: "user_1" });
+    mockGetEffectiveUserId.mockResolvedValue("user_1");
     mockDbQuery.monitors.findFirst.mockResolvedValue(null);
     const res = await patchMonitor(
       makeRequest("PATCH", "/api/monitors/mon_1", { name: "Updated" }),
@@ -308,7 +334,7 @@ describe("PATCH /api/monitors/[id]", () => {
   });
 
   it("returns 400 for invalid name", async () => {
-    mockAuth.mockResolvedValue({ userId: "user_1" });
+    mockGetEffectiveUserId.mockResolvedValue("user_1");
     mockDbQuery.monitors.findFirst.mockResolvedValue({ id: "mon_1", userId: "user_1", platforms: ["reddit"] });
     const res = await patchMonitor(
       makeRequest("PATCH", "/api/monitors/mon_1", { name: "" }),
@@ -318,7 +344,7 @@ describe("PATCH /api/monitors/[id]", () => {
   });
 
   it("updates monitor successfully", async () => {
-    mockAuth.mockResolvedValue({ userId: "user_1" });
+    mockGetEffectiveUserId.mockResolvedValue("user_1");
     mockDbQuery.monitors.findFirst.mockResolvedValue({ id: "mon_1", userId: "user_1", platforms: ["reddit"] });
     mockGetUserPlan.mockResolvedValue("pro");
     mockDbUpdate.mockReturnValue({
@@ -343,7 +369,7 @@ describe("PATCH /api/monitors/[id]", () => {
 // ==========================================
 describe("DELETE /api/monitors/[id]", () => {
   it("returns 401 when not authenticated", async () => {
-    mockAuth.mockResolvedValue({ userId: null });
+    mockGetEffectiveUserId.mockResolvedValue(null);
     const res = await deleteMonitor(
       makeRequest("DELETE", "/api/monitors/mon_1"),
       makeRouteContext("mon_1")
@@ -352,7 +378,7 @@ describe("DELETE /api/monitors/[id]", () => {
   });
 
   it("returns 404 when monitor not found", async () => {
-    mockAuth.mockResolvedValue({ userId: "user_1" });
+    mockGetEffectiveUserId.mockResolvedValue("user_1");
     mockDbQuery.monitors.findFirst.mockResolvedValue(null);
     const res = await deleteMonitor(
       makeRequest("DELETE", "/api/monitors/mon_1"),
@@ -362,7 +388,7 @@ describe("DELETE /api/monitors/[id]", () => {
   });
 
   it("deletes monitor successfully", async () => {
-    mockAuth.mockResolvedValue({ userId: "user_1" });
+    mockGetEffectiveUserId.mockResolvedValue("user_1");
     mockDbQuery.monitors.findFirst.mockResolvedValue({ id: "mon_1", userId: "user_1" });
     mockDbDelete.mockReturnValue({
       where: vi.fn().mockResolvedValue(undefined),

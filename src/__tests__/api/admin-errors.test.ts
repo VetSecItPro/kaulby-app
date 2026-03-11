@@ -61,6 +61,7 @@ vi.mock("drizzle-orm", () => ({
   or: vi.fn(),
   ilike: vi.fn(),
   count: vi.fn(() => "COUNT(*)"),
+  relations: vi.fn(),
   sql: Object.assign(
     function sql() {
       return "SQL_EXPRESSION";
@@ -159,6 +160,28 @@ describe("GET /api/admin/errors", () => {
       }),
     });
 
+    // Hourly trend query
+    mockDbSelect.mockReturnValueOnce({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          groupBy: vi.fn().mockReturnValue({
+            orderBy: vi.fn().mockResolvedValue([]),
+          }),
+        }),
+      }),
+    });
+
+    // Daily trend query
+    mockDbSelect.mockReturnValueOnce({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          groupBy: vi.fn().mockReturnValue({
+            orderBy: vi.fn().mockResolvedValue([]),
+          }),
+        }),
+      }),
+    });
+
     const res = await GET(makeRequest("GET", "/api/admin/errors?page=1&limit=50"));
     expect(res.status).toBe(200);
     const json = await res.json();
@@ -195,6 +218,28 @@ describe("GET /api/admin/errors", () => {
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockReturnValue({
           groupBy: vi.fn().mockResolvedValue([]),
+        }),
+      }),
+    });
+
+    // Hourly trend query
+    mockDbSelect.mockReturnValueOnce({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          groupBy: vi.fn().mockReturnValue({
+            orderBy: vi.fn().mockResolvedValue([]),
+          }),
+        }),
+      }),
+    });
+
+    // Daily trend query
+    mockDbSelect.mockReturnValueOnce({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          groupBy: vi.fn().mockReturnValue({
+            orderBy: vi.fn().mockResolvedValue([]),
+          }),
         }),
       }),
     });

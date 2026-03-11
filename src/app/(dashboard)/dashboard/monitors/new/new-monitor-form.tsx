@@ -174,8 +174,6 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
   // Generate keyword suggestions based on company name
   const keywordSuggestions = useMemo(() => generateKeywordSuggestions(companyName || name), [companyName, name]);
 
-  // Smart platform suggestions when company name changes
-  const smartPlatformSuggestion = useMemo(() => suggestPlatforms(companyName, userPlan), [companyName, userPlan]);
 
   const handleCompanyNameChange = (value: string) => {
     setCompanyName(value);

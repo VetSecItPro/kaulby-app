@@ -38,7 +38,7 @@ vi.mock("@/lib/db", () => ({
   users: {},
 }));
 
-vi.mock("drizzle-orm", () => ({ eq: vi.fn() }));
+vi.mock("drizzle-orm", () => ({ eq: vi.fn(), relations: vi.fn(), sql: vi.fn() }));
 
 vi.mock("@/lib/integrations/discord", () => ({
   listGuildTextChannels: (...args: unknown[]) => mockListGuildTextChannels(...args),

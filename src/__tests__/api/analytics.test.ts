@@ -57,6 +57,7 @@ vi.mock("drizzle-orm", () => ({
   inArray: vi.fn(),
   gte: vi.fn(),
   and: vi.fn(),
+  relations: vi.fn(),
   sql: Object.assign(
     function sql() {
       return { as: vi.fn(() => "SQL_FIELD") };
@@ -116,12 +117,13 @@ describe("GET /api/analytics", () => {
 // ==========================================
 describe("GET /api/analytics/share-of-voice", () => {
   it("returns 401 when not authenticated", async () => {
-    mockAuth.mockResolvedValue({ userId: null });
+    mockGetEffectiveUserId.mockResolvedValue(null);
     const res = await GET_SHARE_OF_VOICE(makeRequest("GET", "/api/analytics/share-of-voice"));
     expect(res.status).toBe(401);
   });
 
   it("returns 403 when user is not team", async () => {
+    mockGetEffectiveUserId.mockResolvedValue("user_1");
     mockGetUserPlan.mockResolvedValue("pro");
     const res = await GET_SHARE_OF_VOICE(makeRequest("GET", "/api/analytics/share-of-voice"));
     expect(res.status).toBe(403);

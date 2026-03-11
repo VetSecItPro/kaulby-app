@@ -4,11 +4,9 @@ import { db, userDetectionKeywords } from "@/lib/db";
 import { eq, and } from "drizzle-orm";
 import { getPlanLimits } from "@/lib/plans";
 import { getUserPlan } from "@/lib/limits";
-import { DETECTION_CATEGORIES, type DetectionCategory } from "@/lib/detection-defaults";
+import { DETECTION_CATEGORIES } from "@/lib/detection-defaults";
 import { checkApiRateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
-
-const VALID_CATEGORIES = DETECTION_CATEGORIES.map((c) => c.category);
 
 const updateKeywordsSchema = z.object({
   category: z.enum(["pain_point", "solution_request", "advice_request", "money_talk", "hot_discussion"]),

@@ -36,6 +36,16 @@ vi.mock("@/lib/db", () => ({
     update: () => mockUpdate(),
     delete: () => mockDelete(),
     select: () => mockSelect(),
+    transaction: async (fn: (tx: unknown) => Promise<unknown>) => {
+      // Provide a tx object that has the same methods as db
+      const tx = {
+        select: () => mockSelect(),
+        insert: () => mockInsert(),
+        update: () => mockUpdate(),
+        delete: () => mockDelete(),
+      };
+      return fn(tx);
+    },
   },
   bookmarks: { userId: "user_id", resultId: "result_id", collectionId: "collection_id", createdAt: "created_at", id: "id" },
   bookmarkCollections: { id: "id", userId: "user_id", createdAt: "created_at" },

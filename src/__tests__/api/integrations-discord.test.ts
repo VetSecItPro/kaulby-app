@@ -23,7 +23,7 @@ vi.mock("@/lib/db", () => ({
   },
   users: {}
 }));
-vi.mock("drizzle-orm", () => ({ eq: vi.fn() }));
+vi.mock("drizzle-orm", () => ({ eq: vi.fn(), relations: vi.fn(), sql: vi.fn() }));
 vi.mock("@/lib/integrations/discord", () => ({
   isDiscordConfigured: vi.fn(() => true),
   getAuthorizationUrl: vi.fn((state: string) => `https://discord.com/oauth2/authorize?state=${state}`),

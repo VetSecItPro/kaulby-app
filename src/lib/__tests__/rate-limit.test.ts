@@ -17,9 +17,14 @@ async function loadModule() {
   return import("../rate-limit");
 }
 
+// The actual rate limits defined in the source code
+const ACTUAL_WRITE_LIMIT = 40;
+
 describe("rate-limit", () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    // Reset module registry to clear in-memory store state between tests
+    vi.resetModules();
   });
 
   describe("checkApiRateLimit (in-memory fallback)", () => {
@@ -41,17 +46,17 @@ describe("rate-limit", () => {
       expect(result.allowed).toBe(true);
     });
 
-    it("blocks after exceeding the write limit of 20", async () => {
+    it("blocks after exceeding the write limit of 40", async () => {
       const { checkApiRateLimit } = await loadModule();
       const userId = "user-write-exceed";
 
-      // Use up all 20 write requests
-      for (let i = 0; i < 20; i++) {
+      // Use up all 40 write requests
+      for (let i = 0; i < ACTUAL_WRITE_LIMIT; i++) {
         const r = await checkApiRateLimit(userId, "write");
         expect(r.allowed).toBe(true);
       }
 
-      // 21st should be blocked
+      // Next should be blocked
       const blocked = await checkApiRateLimit(userId, "write");
       expect(blocked.allowed).toBe(false);
       expect(blocked.retryAfter).toBeGreaterThan(0);
@@ -75,7 +80,7 @@ describe("rate-limit", () => {
       const userId = "user-reset-test";
 
       // Exhaust write limit
-      for (let i = 0; i < 20; i++) {
+      for (let i = 0; i < ACTUAL_WRITE_LIMIT; i++) {
         await checkApiRateLimit(userId, "write");
       }
       const blocked = await checkApiRateLimit(userId, "write");
@@ -92,7 +97,7 @@ describe("rate-limit", () => {
       const { checkApiRateLimit } = await loadModule();
 
       // Exhaust write limit for user A
-      for (let i = 0; i < 20; i++) {
+      for (let i = 0; i < ACTUAL_WRITE_LIMIT; i++) {
         await checkApiRateLimit("user-A-indep", "write");
       }
       const blockedA = await checkApiRateLimit("user-A-indep", "write");
@@ -108,7 +113,7 @@ describe("rate-limit", () => {
       const userId = "user-type-indep";
 
       // Exhaust write limit
-      for (let i = 0; i < 20; i++) {
+      for (let i = 0; i < ACTUAL_WRITE_LIMIT; i++) {
         await checkApiRateLimit(userId, "write");
       }
       const blockedWrite = await checkApiRateLimit(userId, "write");

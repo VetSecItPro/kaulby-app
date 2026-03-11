@@ -20,8 +20,6 @@ import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
-const validMonitorTypes = ["keyword", "ai_discovery"];
-
 const createMonitorSchema = z.object({
   name: z.string().min(1).max(200),
   companyName: z.string().min(1).max(200),

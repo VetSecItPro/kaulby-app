@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { monitors, users, results } from "@/lib/db/schema";
-import { count, desc, sql, eq, and, gte, isNull, inArray } from "drizzle-orm";
+import { count, desc, sql, eq, and, inArray } from "drizzle-orm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -12,7 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import Link from "next/link";
-import { ArrowLeft, Radio, Activity, AlertCircle, AlertTriangle, Clock, Calendar } from "lucide-react";
+import { ArrowLeft, Radio, Activity, AlertCircle, AlertTriangle, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getPlatformDisplayName } from "@/lib/platform-utils";
 
