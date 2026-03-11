@@ -692,20 +692,29 @@ async function scanGoogleReviewsForMonitor(monitor: MonitorData): Promise<number
       if (newReviews.length > 0) {
         // Batch insert all new results
         const inserted = await pooledDb.insert(results).values(
-          newReviews.map(review => ({
-            monitorId: monitor.id,
-            platform: "googlereviews" as const,
-            sourceUrl: review.reviewUrl || `google-${review.reviewId}`,
-            title: `${review.stars}-star review`,
-            content: review.text,
-            author: review.name,
-            postedAt: review.publishedAtDate ? new Date(review.publishedAtDate) : new Date(),
-            metadata: {
-              googleReviewId: review.reviewId,
-              rating: review.stars,
-              placeId: review.placeId,
-            },
-          }))
+          newReviews.map(review => {
+            // review.name can be a string or an object { name, thumbnail, ... } from Serper
+            const authorName = typeof review.name === "string"
+              ? review.name
+              : (review.name as { name?: string })?.name || "Anonymous";
+            // publishedAtDate can be relative ("2 weeks ago") — parse or use current date
+            const parsedDate = review.publishedAtDate ? new Date(review.publishedAtDate) : new Date();
+            const postedAt = isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
+            return {
+              monitorId: monitor.id,
+              platform: "googlereviews" as const,
+              sourceUrl: review.reviewUrl || `google-${review.reviewId}`,
+              title: `${review.stars}-star review`,
+              content: review.text,
+              author: authorName,
+              postedAt,
+              metadata: {
+                googleReviewId: review.reviewId,
+                rating: review.stars,
+                placeId: review.placeId,
+              },
+            };
+          })
         ).returning();
 
         count += inserted.length;
