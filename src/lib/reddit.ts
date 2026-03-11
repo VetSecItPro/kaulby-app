@@ -94,8 +94,12 @@ async function searchRedditSerper(
 
   try {
     // Search for Reddit posts in the specific subreddit
-    const searchQuery = keywords.length > 0
-      ? `site:reddit.com/r/${subreddit} ${keywords.join(" OR ")}`
+    // Include all search terms: keywords + company name (passed as first element when present)
+    const searchTerms = keywords.length > 0
+      ? keywords.map(k => k.includes(" ") ? `"${k}"` : k).join(" OR ")
+      : "";
+    const searchQuery = searchTerms
+      ? `site:reddit.com/r/${subreddit} ${searchTerms}`
       : `site:reddit.com/r/${subreddit}`;
 
     const response = await fetch("https://google.serper.dev/search", {

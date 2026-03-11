@@ -511,61 +511,170 @@ function transformToAmazonReview(
 // ============================================================================
 
 /**
- * Search Google Reviews via Google Search (Serper)
+ * Search Google Reviews via Serper Maps + Reviews API
  *
- * For URL-based monitoring: extracts place name and searches Google Maps reviews
- * For keyword monitoring: searches Google Maps for business reviews
+ * Two-step approach:
+ * 1. Use Serper Maps API to find the business and get its CID
+ * 2. Use Serper Reviews API to fetch actual review content
+ *
+ * This replaces the old approach of searching Google's web index,
+ * which only returned listing snippets, not actual reviews.
  */
 export async function searchGoogleReviewsSerper(
   placeUrlOrKeyword: string,
   limit: number = 20
 ): Promise<GoogleReviewSerperItem[]> {
-  let query: string;
-  if (placeUrlOrKeyword.includes("google.com/maps") || placeUrlOrKeyword.startsWith("ChI")) {
-    // Extract place name from Google Maps URL or use Place ID
-    const nameMatch = placeUrlOrKeyword.match(/place\/([^/]+)/);
-    const placeName = nameMatch?.[1]?.replace(/\+/g, " ").replace(/%20/g, " ") || placeUrlOrKeyword;
-    query = `site:google.com/maps "${placeName}" reviews`;
-  } else {
-    query = `site:google.com/maps "${placeUrlOrKeyword}" reviews`;
+  const apiKey = process.env.SERPER_API_KEY;
+  if (!apiKey) {
+    throw new Error("SERPER_API_KEY not configured");
   }
 
-  const { data: results, cached } = await cachedQuery<SerperOrganicResult[]>(
-    "serper:googlereviews",
+  // Extract search query from URL or use as-is
+  let searchQuery: string;
+  if (placeUrlOrKeyword.includes("google.com/maps") || placeUrlOrKeyword.startsWith("ChI")) {
+    const nameMatch = placeUrlOrKeyword.match(/place\/([^/]+)/);
+    searchQuery = nameMatch?.[1]?.replace(/\+/g, " ").replace(/%20/g, " ") || placeUrlOrKeyword;
+  } else {
+    searchQuery = placeUrlOrKeyword;
+  }
+
+  // Step 1: Find the business via Serper Maps API to get its CID
+  const { data: cid, cached: cidCached } = await cachedQuery<string | null>(
+    "serper:googlereviews:cid",
+    { query: searchQuery },
+    async () => {
+      const mapsResponse = await fetch("https://google.serper.dev/maps", {
+        method: "POST",
+        signal: AbortSignal.timeout(15000),
+        headers: {
+          "X-API-KEY": apiKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ q: searchQuery }),
+      });
+
+      if (!mapsResponse.ok) {
+        logger.warn("[GoogleReviews] Serper Maps API error", { status: mapsResponse.status });
+        return null;
+      }
+
+      const mapsData = await mapsResponse.json() as { places?: Array<{ cid?: string; title?: string; address?: string }> };
+      const place = mapsData.places?.[0];
+      if (!place?.cid) {
+        logger.warn("[GoogleReviews] No CID found for query", { searchQuery, placesCount: mapsData.places?.length });
+        return null;
+      }
+
+      logger.info("[GoogleReviews] Found place via Maps API", { searchQuery, cid: place.cid, title: place.title });
+      return place.cid;
+    },
+    CACHE_TTL.REVIEWS
+  );
+
+  if (cidCached) {
+    logger.debug("[GoogleReviews] CID cache hit", { searchQuery });
+  }
+
+  if (!cid) {
+    // Fallback: try web search approach if Maps API didn't find the business
+    return searchGoogleReviewsFallback(searchQuery, limit);
+  }
+
+  // Step 2: Fetch actual reviews via Serper Reviews API
+  const { data: reviews, cached: reviewsCached } = await cachedQuery<GoogleReviewSerperItem[]>(
+    "serper:googlereviews:reviews",
+    { cid, limit },
+    async () => {
+      const reviewsResponse = await fetch("https://google.serper.dev/reviews", {
+        method: "POST",
+        signal: AbortSignal.timeout(15000),
+        headers: {
+          "X-API-KEY": apiKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ cid, num: Math.min(limit, 100) }),
+      });
+
+      if (!reviewsResponse.ok) {
+        logger.warn("[GoogleReviews] Serper Reviews API error", { status: reviewsResponse.status, cid });
+        return [];
+      }
+
+      const reviewsData = await reviewsResponse.json() as {
+        reviews?: Array<{
+          snippet?: string;
+          rating?: number;
+          date?: string;
+          user?: string;
+          link?: string;
+        }>;
+      };
+
+      if (!reviewsData.reviews || reviewsData.reviews.length === 0) {
+        logger.warn("[GoogleReviews] No reviews returned for CID", { cid });
+        return [];
+      }
+
+      logger.info("[GoogleReviews] Fetched reviews via Reviews API", { cid, count: reviewsData.reviews.length });
+
+      return reviewsData.reviews.map((review) => ({
+        reviewId: generateId(review.link || `${cid}-${review.date}-${review.user}`, "goog"),
+        name: review.user || "Google User",
+        text: review.snippet || "",
+        stars: review.rating || 0,
+        publishedAtDate: review.date || new Date().toISOString(),
+        reviewUrl: review.link || `https://www.google.com/maps?cid=${cid}`,
+        placeId: cid,
+      }));
+    },
+    CACHE_TTL.REVIEWS
+  );
+
+  if (reviewsCached) {
+    logger.debug("[GoogleReviews] Reviews cache hit", { cid });
+  }
+
+  return reviews;
+}
+
+/**
+ * Fallback: search Google's web index for Maps review pages.
+ * Less accurate than the Maps+Reviews API approach but works as a last resort.
+ */
+async function searchGoogleReviewsFallback(
+  searchQuery: string,
+  limit: number
+): Promise<GoogleReviewSerperItem[]> {
+  const query = `site:google.com/maps "${searchQuery}" reviews`;
+
+  const { data: results } = await cachedQuery<SerperOrganicResult[]>(
+    "serper:googlereviews:fallback",
     { query, limit },
     () => searchSerper(query, limit),
     CACHE_TTL.REVIEWS
   );
 
-  if (cached) {
-    logger.debug("[GoogleReviews] Serper cache hit", { query });
-  }
-
   return results
     .filter((r) => r.link.includes("google.com/maps"))
-    .map((r) => transformToGoogleReview(r));
-}
+    .map((r) => {
+      const ratingMatch = r.title.match(/(\d(?:\.\d)?)\s*(?:star|\/5)/i) ||
+        r.snippet.match(/(\d(?:\.\d)?)\s*(?:star|\/5)/i) ||
+        r.snippet.match(/Rating:\s*(\d(?:\.\d)?)/i);
+      const stars = ratingMatch ? parseFloat(ratingMatch[1]) : 0;
 
-function transformToGoogleReview(result: SerperOrganicResult): GoogleReviewSerperItem {
-  const ratingMatch = result.title.match(/(\d(?:\.\d)?)\s*(?:star|\/5)/i) ||
-    result.snippet.match(/(\d(?:\.\d)?)\s*(?:star|\/5)/i) ||
-    result.snippet.match(/Rating:\s*(\d(?:\.\d)?)/i);
-  const stars = ratingMatch ? parseFloat(ratingMatch[1]) : 0;
+      const placeIdMatch = r.link.match(/place_id[=:]([^&/]+)/i) ||
+        r.link.match(/(ChI[a-zA-Z0-9_-]+)/);
 
-  // Extract place ID from URL if present
-  const placeIdMatch = result.link.match(/place_id[=:]([^&/]+)/i) ||
-    result.link.match(/(ChI[a-zA-Z0-9_-]+)/);
-  const placeId = placeIdMatch?.[1];
-
-  return {
-    reviewId: generateId(result.link, "goog"),
-    name: "Google User",
-    text: result.snippet,
-    stars,
-    publishedAtDate: result.date || new Date().toISOString(),
-    reviewUrl: result.link,
-    placeId,
-  };
+      return {
+        reviewId: generateId(r.link, "goog"),
+        name: "Google User",
+        text: r.snippet,
+        stars,
+        publishedAtDate: r.date || new Date().toISOString(),
+        reviewUrl: r.link,
+        placeId: placeIdMatch?.[1],
+      };
+    });
 }
 
 // ============================================================================

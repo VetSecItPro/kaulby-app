@@ -2,7 +2,6 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode, useTransition } from "react";
 import { OnboardingWizard } from "./onboarding";
-import { OnboardingTour } from "@/components/onboarding/onboarding-tour";
 import { completeOnboarding, resetOnboarding as resetOnboardingAction } from "@/app/(dashboard)/dashboard/actions";
 
 interface OnboardingContextType {
@@ -11,7 +10,6 @@ interface OnboardingContextType {
   dismissOnboarding: () => void;
   resetOnboarding: () => void;
   hasCompletedOnboarding: boolean;
-  startTour: () => void;
 }
 
 const OnboardingContext = createContext<OnboardingContextType | undefined>(undefined);
@@ -25,7 +23,6 @@ interface OnboardingProviderProps {
 
 export function OnboardingProvider({ children, isNewUser, userName, userPlan = "free" }: OnboardingProviderProps) {
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [showTour, setShowTour] = useState(false);
   // isNewUser from server is the source of truth (derived from database onboardingCompleted)
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(!isNewUser);
   const [mounted, setMounted] = useState(false);
@@ -59,8 +56,6 @@ export function OnboardingProvider({ children, isNewUser, userName, userPlan = "
     startTransition(async () => {
       await completeOnboarding();
     });
-    // Start the spotlight tour after a short delay
-    setTimeout(() => setShowTour(true), 500);
   };
 
   const handleResetOnboarding = () => {
@@ -72,12 +67,6 @@ export function OnboardingProvider({ children, isNewUser, userName, userPlan = "
     });
   };
 
-  const handleStartTour = () => {
-    // Clear tour completion from localStorage and start
-    localStorage.removeItem("kaulby_onboarding_completed");
-    setShowTour(true);
-  };
-
   return (
     <OnboardingContext.Provider
       value={{
@@ -86,25 +75,17 @@ export function OnboardingProvider({ children, isNewUser, userName, userPlan = "
         dismissOnboarding,
         hasCompletedOnboarding,
         resetOnboarding: handleResetOnboarding,
-        startTour: handleStartTour,
       }}
     >
       {children}
       {/* Don't render onboarding UI until mounted to avoid hydration mismatch */}
       {mounted && (
-        <>
-          <OnboardingWizard
-            isOpen={showOnboarding}
-            onClose={dismissOnboarding}
-            userName={userName}
-            userPlan={userPlan}
-          />
-          {/* Spotlight tour runs after wizard completes */}
-          <OnboardingTour
-            forceStart={showTour}
-            onComplete={() => setShowTour(false)}
-          />
-        </>
+        <OnboardingWizard
+          isOpen={showOnboarding}
+          onClose={dismissOnboarding}
+          userName={userName}
+          userPlan={userPlan}
+        />
       )}
     </OnboardingContext.Provider>
   );
@@ -118,7 +99,6 @@ const SSR_DEFAULT: OnboardingContextType = {
   dismissOnboarding: () => {},
   resetOnboarding: () => {},
   hasCompletedOnboarding: true,
-  startTour: () => {},
 };
 
 export function useOnboarding() {

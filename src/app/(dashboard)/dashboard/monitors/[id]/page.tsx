@@ -11,6 +11,7 @@ import { getPlatformDisplayName } from "@/lib/platform-utils";
 import { getUserPlan, getRefreshDelay } from "@/lib/limits";
 import { getPlanLimits } from "@/lib/plans";
 import { HiddenResultsBanner, RefreshDelayBanner, BlurredAiAnalysis } from "@/components/dashboard/upgrade-prompt";
+import { ScanButton } from "@/components/dashboard/scan-button";
 import { getEffectiveUserId, isLocalDev } from "@/lib/dev-auth";
 import { ResultsFilters } from "@/components/dashboard/results-filters";
 import { ALL_PLATFORMS, type Platform } from "@/lib/plans";
@@ -163,7 +164,11 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          <ScanButton
+            monitorId={monitor.id}
+            isActive={monitor.isActive}
+          />
           <Link href={`/dashboard/monitors/${monitor.id}/edit`}>
             <Button className="bg-teal-500 text-black hover:bg-teal-600">
               Edit

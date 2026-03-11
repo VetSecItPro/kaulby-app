@@ -61,7 +61,7 @@ export const monitorG2 = inngest.createFunction(
         continue;
       }
 
-      // Get product URL from platformUrls or keywords
+      // Get product URL from platformUrls, keywords, or companyName
       let productUrl: string | null = null;
       const platformUrls = monitor.platformUrls as Record<string, string> | null;
       if (platformUrls?.g2) {
@@ -69,6 +69,9 @@ export const monitorG2 = inngest.createFunction(
       } else if (monitor.keywords && monitor.keywords.length > 0) {
         const g2Url = monitor.keywords.find((k) => k.includes("g2.com"));
         if (g2Url) productUrl = g2Url;
+      }
+      if (!productUrl && monitor.companyName) {
+        productUrl = monitor.companyName;
       }
       if (!productUrl) continue;
 
