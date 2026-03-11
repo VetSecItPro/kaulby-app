@@ -30,25 +30,21 @@ const sidebarLinks = [
     href: "/dashboard",
     icon: LayoutDashboard,
     exact: true,
-    tourId: "overview",
   },
   {
     title: "Monitors",
     href: "/dashboard/monitors",
     icon: Radio,
-    tourId: "monitors",
   },
   {
     title: "Audiences",
     href: "/dashboard/audiences",
     icon: Users,
-    tourId: "audiences",
   },
   {
     title: "Results",
     href: "/dashboard/results",
     icon: MessageSquare,
-    tourId: "results",
   },
   {
     title: "Bookmarks",
@@ -59,33 +55,28 @@ const sidebarLinks = [
     title: "Analytics",
     href: "/dashboard/analytics",
     icon: BarChart3,
-    tourId: "analytics",
   },
   {
     title: "Insights",
     href: "/dashboard/insights",
     icon: Lightbulb,
-    tourId: "insights",
   },
   // Discover page hidden for MVP — repurposing as "Market Pulse" in V2
-  // { title: "Discover", href: "/dashboard/discover", icon: Compass, tourId: "discover" },
+  // { title: "Discover", href: "/dashboard/discover", icon: Compass },
   {
     title: "Ask Kaulby AI",
     href: "/dashboard/ask",
     icon: Sparkles,
-    tourId: "ask-ai",
   },
   {
     title: "Settings",
     href: "/dashboard/settings",
     icon: Settings,
-    tourId: "settings",
   },
   {
     title: "Help",
     href: "/dashboard/help",
     icon: HelpCircle,
-    tourId: "help",
   },
 ];
 
@@ -277,7 +268,6 @@ export function Sidebar({ isAdmin = false, subscriptionStatus = "free", hasActiv
                 prefetch={false}
                 onMouseEnter={() => handleMouseEnter(link.href)}
                 onMouseLeave={handleMouseLeave}
-                data-tour={link.tourId}
                 className={cn(
                   "inline-flex w-fit items-center gap-2 rounded-full px-3 py-1.5 text-sm transition-colors",
                   isActive

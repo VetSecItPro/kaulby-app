@@ -18,72 +18,30 @@ import { SearchQueryInput } from "@/components/search-query-input";
 import type { PlanLimits } from "@/lib/plans";
 import { COMMON_TIMEZONES, WEEKDAYS } from "@/lib/monitor-schedule";
 
-// All 17 platforms with tier-based access and category tags for smart selection
+// All 17 platforms with tier-based access
 // Pro tier (9 platforms): reddit, hackernews, indiehackers, producthunt, googlereviews, youtube, github, trustpilot, x
 // Team tier (17 platforms): + devto, hashnode, appstore, playstore, quora, g2, yelp, amazonreviews
 const ALL_PLATFORMS = [
   // Pro tier platforms (9)
-  { id: "reddit", name: "Reddit", description: "Track subreddits and discussions", tier: "free", needsUrl: false, categories: ["universal"] },
-  { id: "hackernews", name: "Hacker News", description: "Tech and startup discussions", tier: "pro", needsUrl: false, categories: ["tech", "saas"] },
-  { id: "indiehackers", name: "Indie Hackers", description: "Indie makers and solo founders", tier: "pro", needsUrl: false, categories: ["tech", "saas"] },
-  { id: "producthunt", name: "Product Hunt", description: "Product launches and reviews", tier: "pro", needsUrl: false, categories: ["tech", "saas", "ecommerce"] },
-  { id: "googlereviews", name: "Google Reviews", description: "Business reviews on Google", tier: "pro", needsUrl: true, urlPlaceholder: "https://www.google.com/maps/place/... or Place ID", urlHelp: "Search your business on Google Maps, click it, and copy the URL from your browser.", categories: ["local", "restaurant", "services"] },
-  { id: "youtube", name: "YouTube", description: "Video comments and discussions", tier: "pro", needsUrl: true, urlPlaceholder: "https://www.youtube.com/@channel or video URL", urlHelp: "Paste your YouTube channel URL or a specific video URL to monitor comments.", categories: ["universal"] },
-  { id: "github", name: "GitHub", description: "Issues and discussions", tier: "pro", needsUrl: false, categories: ["tech", "saas"] },
-  { id: "trustpilot", name: "Trustpilot", description: "Customer reviews and ratings", tier: "pro", needsUrl: true, urlPlaceholder: "https://www.trustpilot.com/review/example.com", urlHelp: "Go to trustpilot.com, search your business, and copy the review page URL.", categories: ["ecommerce", "services", "saas"] },
-  { id: "x", name: "X (Twitter)", description: "Posts and conversations on X", tier: "pro", needsUrl: false, categories: ["universal"] },
+  { id: "reddit", name: "Reddit", description: "Track subreddits and discussions", tier: "free", needsUrl: false },
+  { id: "hackernews", name: "Hacker News", description: "Tech and startup discussions", tier: "pro", needsUrl: false },
+  { id: "indiehackers", name: "Indie Hackers", description: "Indie makers and solo founders", tier: "pro", needsUrl: false },
+  { id: "producthunt", name: "Product Hunt", description: "Product launches and reviews", tier: "pro", needsUrl: false },
+  { id: "googlereviews", name: "Google Reviews", description: "Business reviews on Google", tier: "pro", needsUrl: false, optionalUrl: true, urlPlaceholder: "https://www.google.com/maps/place/... or Place ID", urlHelp: "Optional — paste your Google Maps URL for more accurate results, or we'll search by company name." },
+  { id: "youtube", name: "YouTube", description: "Video comments and discussions", tier: "pro", needsUrl: true, urlPlaceholder: "https://www.youtube.com/@channel or video URL", urlHelp: "Paste your YouTube channel URL or a specific video URL to monitor comments." },
+  { id: "github", name: "GitHub", description: "Issues and discussions", tier: "pro", needsUrl: false },
+  { id: "trustpilot", name: "Trustpilot", description: "Customer reviews and ratings", tier: "pro", needsUrl: false, optionalUrl: true, urlPlaceholder: "https://www.trustpilot.com/review/example.com", urlHelp: "Optional — paste your Trustpilot page URL for exact results, or we'll search by company name." },
+  { id: "x", name: "X (Twitter)", description: "Posts and conversations on X", tier: "pro", needsUrl: false },
   // Team tier only platforms (8 more)
-  { id: "devto", name: "Dev.to", description: "Developer blog posts and discussions", tier: "team", needsUrl: false, categories: ["tech"] },
-  { id: "hashnode", name: "Hashnode", description: "Tech blog network", tier: "team", needsUrl: false, categories: ["tech"] },
-  { id: "appstore", name: "App Store", description: "iOS app reviews", tier: "team", needsUrl: true, urlPlaceholder: "https://apps.apple.com/us/app/name/id123456", urlHelp: "Open your app in the App Store, tap Share, and copy the link.", categories: ["app"] },
-  { id: "playstore", name: "Play Store", description: "Android app reviews", tier: "team", needsUrl: true, urlPlaceholder: "https://play.google.com/store/apps/details?id=com.app", urlHelp: "Open your app in Google Play, tap Share, and copy the link.", categories: ["app"] },
-  { id: "quora", name: "Quora", description: "Q&A discussions", tier: "team", needsUrl: false, categories: ["universal"] },
-  { id: "g2", name: "G2", description: "Software reviews and ratings", tier: "team", needsUrl: true, urlPlaceholder: "https://www.g2.com/products/your-product/reviews", urlHelp: "Search your product on g2.com and copy the reviews page URL.", categories: ["saas"] },
-  { id: "yelp", name: "Yelp", description: "Local business reviews", tier: "team", needsUrl: true, urlPlaceholder: "https://www.yelp.com/biz/business-name-city", urlHelp: "Search your business on yelp.com and copy the business page URL.", categories: ["local", "restaurant", "services"] },
-  { id: "amazonreviews", name: "Amazon Reviews", description: "Product reviews on Amazon", tier: "team", needsUrl: true, urlPlaceholder: "https://amazon.com/dp/B08N5WRWNW or ASIN", urlHelp: "Copy your product's Amazon URL, or find the ASIN in the product details section.", categories: ["ecommerce"] },
+  { id: "devto", name: "Dev.to", description: "Developer blog posts and discussions", tier: "team", needsUrl: false },
+  { id: "hashnode", name: "Hashnode", description: "Tech blog network", tier: "team", needsUrl: false },
+  { id: "appstore", name: "App Store", description: "iOS app reviews", tier: "team", needsUrl: true, urlPlaceholder: "https://apps.apple.com/us/app/name/id123456", urlHelp: "Open your app in the App Store, tap Share, and copy the link." },
+  { id: "playstore", name: "Play Store", description: "Android app reviews", tier: "team", needsUrl: true, urlPlaceholder: "https://play.google.com/store/apps/details?id=com.app", urlHelp: "Open your app in Google Play, tap Share, and copy the link." },
+  { id: "quora", name: "Quora", description: "Q&A discussions", tier: "team", needsUrl: false },
+  { id: "g2", name: "G2", description: "Software reviews and ratings", tier: "team", needsUrl: false, optionalUrl: true, urlPlaceholder: "https://www.g2.com/products/your-product/reviews", urlHelp: "Optional — paste your G2 product URL for exact results, or we'll search by company name." },
+  { id: "yelp", name: "Yelp", description: "Local business reviews", tier: "team", needsUrl: false, optionalUrl: true, urlPlaceholder: "https://www.yelp.com/biz/business-name-city", urlHelp: "Optional — paste your Yelp page URL for exact results, or we'll search by company name." },
+  { id: "amazonreviews", name: "Amazon Reviews", description: "Product reviews on Amazon", tier: "team", needsUrl: true, urlPlaceholder: "https://amazon.com/dp/B08N5WRWNW or ASIN", urlHelp: "Copy your product's Amazon URL, or find the ASIN in the product details section." },
 ];
-
-// Smart platform suggestions based on company/brand name
-function suggestPlatforms(companyName: string, userPlan: string): string[] {
-  const name = companyName.toLowerCase().trim();
-  if (!name) return []; // No default — let user choose
-
-  // Keywords that signal business type
-  const localSignals = ["restaurant", "cafe", "coffee", "bar", "grill", "pizza", "bakery", "salon", "spa", "gym", "fitness", "dental", "clinic", "hotel", "repair", "plumbing", "cleaning", "landscaping", "roofing", "auto", "mechanic", "tacos", "mexican", "italian", "chinese", "thai", "sushi", "burger", "bbq", "diner"];
-  const techSignals = ["app", "saas", "software", "ai", "api", "cloud", "tech", "dev", "code", "platform", "tool", "analytics", "dashboard", "automation"];
-  const ecommerceSignals = ["shop", "store", "buy", "goods", "market", "retail", "commerce", "supply", "brand", "products"];
-  const appSignals = ["app", "mobile", "ios", "android"];
-
-  const isLocal = localSignals.some(s => name.includes(s));
-  const isTech = techSignals.some(s => name.includes(s));
-  const isEcommerce = ecommerceSignals.some(s => name.includes(s));
-  const isApp = appSignals.some(s => name.includes(s));
-
-  // Determine which categories to include
-  const categories = new Set<string>();
-  categories.add("universal"); // Always include universal platforms
-
-  if (isLocal) { categories.add("local"); categories.add("restaurant"); categories.add("services"); }
-  if (isTech) { categories.add("tech"); categories.add("saas"); }
-  if (isEcommerce) { categories.add("ecommerce"); }
-  if (isApp) { categories.add("app"); }
-
-  // If no specific signals detected, use a sensible general set
-  if (!isLocal && !isTech && !isEcommerce && !isApp) {
-    // General brand — include review platforms and discussion platforms
-    categories.add("services");
-    categories.add("ecommerce");
-  }
-
-  // Filter platforms by category and user plan
-  const available = ALL_PLATFORMS.filter(p => {
-    if (p.tier === "pro" && userPlan === "free") return false;
-    if (p.tier === "team" && userPlan !== "team") return false;
-    return p.categories.some(c => categories.has(c));
-  });
-
-  return available.map(p => p.id);
-}
 
 // Dynamic keyword suggestions based on monitor name
 function generateKeywordSuggestions(monitorName: string): string[] {
@@ -154,9 +112,6 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
   const [scheduleDays, setScheduleDays] = useState<number[]>(WEEKDAYS);
   const [scheduleTimezone, setScheduleTimezone] = useState("America/New_York");
 
-  // Track whether user has manually changed platforms
-  const [platformsManuallySet, setPlatformsManuallySet] = useState(false);
-
   const isPaidUser = userPlan !== "free";
   const isTeamUser = userPlan === "team";
   const keywordLimit = limits.keywordsPerMonitor;
@@ -181,14 +136,10 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
     if (!name || name === `${companyName} Monitor` || name === "Monitor") {
       setName(value ? `${value} Monitor` : "");
     }
-    // Auto-suggest platforms if user hasn't manually changed them
-    if (!platformsManuallySet && value.trim()) {
-      setSelectedPlatforms(suggestPlatforms(value, userPlan));
-    }
+    // Don't auto-select platforms — let users choose explicitly
   };
 
   const handlePlatformToggle = (platformId: string, checked: boolean) => {
-    setPlatformsManuallySet(true);
     if (checked) {
       setSelectedPlatforms((prev) => [...prev, platformId]);
     } else {
@@ -380,12 +331,6 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
                         : "Upgrade to Pro for 9 platforms or Team for all 17"}
                   </p>
                 </div>
-                {companyName.trim() && !platformsManuallySet && selectedPlatforms.length > 0 && (
-                  <Badge variant="outline" className="text-xs gap-1 text-teal-400 border-teal-500/30">
-                    <Sparkles className="h-3 w-3" />
-                    Auto-selected for your business
-                  </Badge>
-                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -438,26 +383,33 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
               </div>
             </div>
 
-            {/* Platform-specific URLs */}
-            {selectedPlatforms.some(p => ALL_PLATFORMS.find(ap => ap.id === p)?.needsUrl) && (
+            {/* Platform-specific URLs (required + optional) */}
+            {selectedPlatforms.some(p => {
+              const ap = ALL_PLATFORMS.find(a => a.id === p);
+              return ap?.needsUrl || ap?.optionalUrl;
+            }) && (
               <div className="space-y-4 rounded-lg border p-4 bg-muted/30">
                 <div>
-                  <Label className="text-base">Platform URLs <span className="text-red-400 text-sm">(required)</span></Label>
+                  <Label className="text-base">Platform URLs</Label>
                   <p className="text-xs text-muted-foreground mt-1">
-                    These platforms need a direct URL to fetch reviews. Enter the URL for each below.
+                    Provide URLs for more accurate results. Required for some platforms, optional for others.
                   </p>
                 </div>
                 <div className="space-y-4">
                   {selectedPlatforms
-                    .filter(p => ALL_PLATFORMS.find(ap => ap.id === p)?.needsUrl)
+                    .filter(p => {
+                      const ap = ALL_PLATFORMS.find(a => a.id === p);
+                      return ap?.needsUrl || ap?.optionalUrl;
+                    })
                     .map((platformId) => {
                       const platform = ALL_PLATFORMS.find(ap => ap.id === platformId);
                       if (!platform) return null;
+                      const isRequired = platform.needsUrl;
                       const isEmpty = !platformUrls[platformId]?.trim();
                       return (
                         <div key={platformId} className="space-y-2">
                           <Label htmlFor={`${formId}-url-${platformId}`} className="text-sm font-medium">
-                            {platform.name} URL <span className="text-red-400">*</span>
+                            {platform.name} URL {isRequired ? <span className="text-red-400">*</span> : <span className="text-muted-foreground font-normal">(optional)</span>}
                           </Label>
                           <Input
                             id={`${formId}-url-${platformId}`}
@@ -465,8 +417,8 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
                             value={platformUrls[platformId] || ""}
                             onChange={(e) => setPlatformUrls(prev => ({ ...prev, [platformId]: e.target.value }))}
                             autoComplete="off"
-                            required
-                            className={`dark-input placeholder:text-gray-400 hover:border-teal-500 focus:border-teal-500 ${isEmpty ? "border-amber-500/50" : ""}`}
+                            required={isRequired}
+                            className={`dark-input placeholder:text-gray-400 hover:border-teal-500 focus:border-teal-500 ${isRequired && isEmpty ? "border-amber-500/50" : ""}`}
                           />
                           <p className="text-xs text-muted-foreground">
                             {platform.urlHelp}

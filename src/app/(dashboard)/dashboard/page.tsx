@@ -52,7 +52,7 @@ export default async function DashboardPage() {
             Monitor conversations about your brand across the web.
           </p>
         </div>
-        <Link href="/dashboard/monitors/new" data-tour="create-monitor">
+        <Link href="/dashboard/monitors/new">
           <Button className="gap-2 w-full sm:w-auto">
             <PlusCircle className="h-4 w-4" />
             New Monitor

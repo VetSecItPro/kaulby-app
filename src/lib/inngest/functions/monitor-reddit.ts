@@ -91,10 +91,16 @@ export const monitorReddit = inngest.createFunction(
         return ["AskReddit", "smallbusiness", "Entrepreneur", "business"];
       });
 
+      // Build search terms: company name (quoted for exact match) + additional keywords
+      const searchTerms = [
+        ...(monitor.companyName ? [monitor.companyName] : []),
+        ...monitor.keywords,
+      ];
+
       for (const subreddit of subreddits) {
         // Use resilient Reddit search (Serper -> Apify -> Public JSON) with caching
         const searchResult = await step.run(`fetch-${monitor.id}-${subreddit}`, async () => {
-          return searchRedditResilient(subreddit, monitor.keywords, 50);
+          return searchRedditResilient(subreddit, searchTerms, 50);
         });
 
         if (searchResult.error) {

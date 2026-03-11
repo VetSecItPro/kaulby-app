@@ -61,7 +61,7 @@ export const monitorYelp = inngest.createFunction(
         continue;
       }
 
-      // Get business URL from platformUrls or keywords
+      // Get business URL from platformUrls, keywords, or companyName
       let businessUrl: string | null = null;
       const platformUrls = monitor.platformUrls as Record<string, string> | null;
       if (platformUrls?.yelp) {
@@ -69,6 +69,9 @@ export const monitorYelp = inngest.createFunction(
       } else if (monitor.keywords && monitor.keywords.length > 0) {
         const yelpUrl = monitor.keywords.find((k) => k.includes("yelp.com"));
         if (yelpUrl) businessUrl = yelpUrl;
+      }
+      if (!businessUrl && monitor.companyName) {
+        businessUrl = monitor.companyName;
       }
       if (!businessUrl) continue;
 

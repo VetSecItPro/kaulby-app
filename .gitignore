@@ -6,6 +6,7 @@ TODO.md
 .db/
 *.plan.md
 .*-reports/
+kaulby-improve.md
 
 # dependencies
 /node_modules

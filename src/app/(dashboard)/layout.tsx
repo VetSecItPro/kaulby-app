@@ -13,25 +13,6 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // SECURITY: Only allow dev bypass on verified local development
-  // This is defense-in-depth - middleware also protects this route
-  const isLocalDev = process.env.NODE_ENV === "development" &&
-                     !process.env.VERCEL &&
-                     !process.env.VERCEL_ENV;
-
-  // In verified local dev, provide easy testing setup
-  if (isLocalDev) {
-    return (
-      <ResponsiveDashboardLayout isAdmin={true} subscriptionStatus="team">
-        <RoutePreloader />
-        <ServiceWorkerRegister />
-        <DashboardClientWrapper isNewUser={false} userName="Dev User">
-          {children}
-        </DashboardClientWrapper>
-      </ResponsiveDashboardLayout>
-    );
-  }
-
   const { userId } = await auth();
 
   if (!userId) {

@@ -1,6 +1,7 @@
 import { inngest } from "../client";
 import { logger } from "@/lib/logger";
 import { fetchGoogleReviews, isApifyConfigured, type GoogleReviewItem } from "@/lib/apify";
+import { searchGoogleReviewsSerper, isSerperConfigured } from "@/lib/serper";
 import {
   getActiveMonitors,
   prefetchPlans,
@@ -37,8 +38,8 @@ export const monitorGoogleReviews = inngest.createFunction(
   async ({ step: _step }) => {
     const step = _step as unknown as MonitorStep;
 
-    if (!isApifyConfigured()) {
-      return { message: "Apify API key not configured, skipping Google Reviews monitoring" };
+    if (!isApifyConfigured() && !isSerperConfigured()) {
+      return { message: "Neither Apify nor Serper configured, skipping Google Reviews monitoring" };
     }
 
     const googleMonitors = await getActiveMonitors("googlereviews", step);
@@ -60,7 +61,7 @@ export const monitorGoogleReviews = inngest.createFunction(
         continue;
       }
 
-      // Get business URL from platformUrls, keywords, or companyName
+      // Get business URL from platformUrls or keywords
       let businessUrl: string | null = null;
       const platformUrls = monitor.platformUrls as Record<string, string> | null;
       if (platformUrls?.googlereviews) {
@@ -71,18 +72,41 @@ export const monitorGoogleReviews = inngest.createFunction(
         );
         if (googleUrl) businessUrl = googleUrl;
       }
-      // Fallback: Use companyName as search term
-      if (!businessUrl && monitor.companyName) {
-        businessUrl = `https://www.google.com/maps/search/${encodeURIComponent(monitor.companyName)}`;
-      }
-      if (!businessUrl) continue;
 
-      // Fetch reviews (platform-specific)
-      const reviews = await step.run(`fetch-reviews-${monitor.id}-${businessUrl.slice(0, 20)}`, async () => {
+      // Determine if we have a direct place URL/ID (Apify can handle) or just a company name (Serper search)
+      const hasDirectUrl = !!businessUrl;
+      const searchTerm = monitor.companyName || "";
+      if (!hasDirectUrl && !searchTerm) continue;
+
+      // Fetch reviews: Apify for direct URLs, Serper for company name search
+      const reviews = await step.run(`fetch-reviews-${monitor.id}-${(businessUrl || searchTerm).slice(0, 20)}`, async () => {
+        // Strategy 1: Direct URL/Place ID → use Apify (most accurate)
+        if (hasDirectUrl) {
+          try {
+            const apifyResults = await fetchGoogleReviews(businessUrl!, 20);
+            if (apifyResults.length > 0) return apifyResults;
+          } catch (error) {
+            logger.warn("[GoogleReviews] Apify failed, falling back to Serper", { businessUrl, error: error instanceof Error ? error.message : String(error) });
+          }
+        }
+
+        // Strategy 2: Company name search or Apify fallback → use Serper
+        const query = hasDirectUrl ? businessUrl! : searchTerm;
         try {
-          return await fetchGoogleReviews(businessUrl!, 20);
+          const serperResults = await searchGoogleReviewsSerper(query, 20);
+          // Map Serper results to GoogleReviewItem format
+          return serperResults.map((r) => ({
+            reviewId: r.reviewId,
+            name: r.name,
+            text: r.text,
+            stars: r.stars,
+            publishedAtDate: r.publishedAtDate,
+            reviewUrl: r.reviewUrl,
+            reviewerUrl: undefined,
+            placeId: r.placeId,
+          })) as GoogleReviewItem[];
         } catch (error) {
-          logger.error("[GoogleReviews] Error fetching reviews", { businessUrl, error: error instanceof Error ? error.message : String(error) });
+          logger.error("[GoogleReviews] All fetch methods failed", { query, error: error instanceof Error ? error.message : String(error) });
           return [] as GoogleReviewItem[];
         }
       });
