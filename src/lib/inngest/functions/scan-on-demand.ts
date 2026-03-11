@@ -653,11 +653,15 @@ async function scanGoogleReviewsForMonitor(monitor: MonitorData): Promise<number
       let reviews: Array<{ reviewId: string; name: string; text: string; stars: number; publishedAtDate: string; reviewUrl: string; placeId?: string }> = [];
 
       if (isApifyConfigured()) {
-        logger.info("[GoogleReviews] Using Apify", { term });
-        reviews = await fetchGoogleReviews(term, 20);
+        try {
+          logger.info("[GoogleReviews] Using Apify", { term });
+          reviews = await fetchGoogleReviews(term, 20);
+        } catch (apifyError) {
+          logger.warn("[GoogleReviews] Apify failed, will try Serper", { term, error: apifyError instanceof Error ? apifyError.message : String(apifyError) });
+        }
       }
       if (reviews.length === 0 && isSerperConfigured()) {
-        logger.info("[GoogleReviews] Apify returned 0, trying Serper", { term });
+        logger.info("[GoogleReviews] Trying Serper", { term });
         reviews = await searchGoogleReviewsSerper(term, 20);
       }
 
