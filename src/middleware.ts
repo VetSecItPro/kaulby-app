@@ -92,13 +92,14 @@ export default async function middleware(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
-  // CRITICAL: Skip Clerk entirely for webhook routes - they use their own auth
+  // CRITICAL: Skip Clerk entirely for webhook/inngest/API-key routes - they use their own auth
   // This must happen BEFORE Clerk middleware to prevent 307 redirects
+  // NOTE: /api/polar routes are NOT skipped here — they need Clerk middleware
+  // to run so auth() works in checkout routes (they're in isPublicRoute so no auth required)
   if (
     pathname.startsWith("/api/webhooks") ||
     pathname.startsWith("/api/inngest") ||
-    pathname.startsWith("/api/v1") ||
-    pathname.startsWith("/api/polar")
+    pathname.startsWith("/api/v1")
   ) {
     return NextResponse.next();
   }
@@ -108,7 +109,8 @@ export default async function middleware(request: NextRequest) {
 
   // RT-002: CSRF — Verify Origin header on mutation requests to API routes.
   // Blocks cross-origin POST/PUT/PATCH/DELETE from malicious sites.
-  // Webhook/inngest/v1/polar routes are excluded above (they use their own auth).
+  // Webhook/inngest/v1 routes are excluded above (they use their own auth).
+  // Polar routes go through Clerk (public route) so auth() context is available.
   if (
     pathname.startsWith("/api/") &&
     ["POST", "PUT", "PATCH", "DELETE"].includes(request.method)
