@@ -158,7 +158,7 @@ export const monitorIndieHackers = inngest.createFunction(
     timeouts: { finish: "14m" },
     concurrency: { limit: 5 },
   },
-  { cron: "*/30 * * * *" }, // Every 30 minutes (less frequent due to scraping)
+  { cron: "0 */2 * * *" }, // Every 2 hours (matches fastest plan tier)
   async ({ step: _step }) => {
     const step = _step as unknown as MonitorStep;
 
