@@ -14,9 +14,21 @@ interface ScanButtonProps {
   size?: "sm" | "default";
 }
 
+/** Format milliseconds as "Xh Ym Zs" countdown */
+function formatCountdown(ms: number): string {
+  if (ms <= 0) return "0s";
+  const hours = Math.floor(ms / (1000 * 60 * 60));
+  const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((ms % (1000 * 60)) / 1000);
+  if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+  if (minutes > 0) return `${minutes}m ${seconds}s`;
+  return `${seconds}s`;
+}
+
 export function ScanButton({ monitorId, isActive, initialIsScanning, onScanComplete, size = "sm" }: ScanButtonProps) {
   const [isScanning, setIsScanning] = useState(initialIsScanning || false);
   const [canScan, setCanScan] = useState<boolean | null>(null); // null = loading
+  const [cooldownEndsAt, setCooldownEndsAt] = useState<number | null>(null); // timestamp ms
   const [cooldownText, setCooldownText] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [scanProgress, setScanProgress] = useState<{
@@ -30,6 +42,26 @@ export function ScanButton({ monitorId, isActive, initialIsScanning, onScanCompl
   // Rate limit backoff
   const [pollInterval, setPollInterval] = useState(10000);
   const [stopped, setStopped] = useState(false);
+
+  // Live countdown timer — ticks every second while cooldown is active
+  useEffect(() => {
+    if (!cooldownEndsAt || canScan) return;
+
+    const tick = () => {
+      const remaining = cooldownEndsAt - Date.now();
+      if (remaining <= 0) {
+        setCooldownText(null);
+        setCooldownEndsAt(null);
+        setCanScan(true);
+        return;
+      }
+      setCooldownText(formatCountdown(remaining));
+    };
+
+    tick(); // immediate first tick
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [cooldownEndsAt, canScan]);
 
   // Check scan status on mount and periodically while scanning
   const checkScanStatus = useCallback(async () => {
@@ -51,11 +83,10 @@ export function ScanButton({ monitorId, isActive, initialIsScanning, onScanCompl
         setCanScan(data.canScan);
         setScanProgress(data.scanProgress || null);
 
-        if (data.cooldownRemaining) {
-          const hours = Math.floor(data.cooldownRemaining / (1000 * 60 * 60));
-          const minutes = Math.floor((data.cooldownRemaining % (1000 * 60 * 60)) / (1000 * 60));
-          setCooldownText(hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`);
+        if (data.cooldownRemaining && data.cooldownRemaining > 0) {
+          setCooldownEndsAt(Date.now() + data.cooldownRemaining);
         } else {
+          setCooldownEndsAt(null);
           setCooldownText(null);
         }
 
@@ -93,9 +124,10 @@ export function ScanButton({ monitorId, isActive, initialIsScanning, onScanCompl
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
         if (response.status === 429) {
-          const hours = Math.floor(data.cooldownRemaining / (1000 * 60 * 60));
-          const minutes = Math.floor((data.cooldownRemaining % (1000 * 60 * 60)) / (1000 * 60));
-          setCooldownText(hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`);
+          if (data.cooldownRemaining) {
+            setCooldownEndsAt(Date.now() + data.cooldownRemaining);
+          }
+          setCanScan(false);
           setIsScanning(false);
         } else {
           const errorMsg = data.error || "Failed to start scan";
