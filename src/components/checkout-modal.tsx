@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -30,19 +30,25 @@ export function CheckoutModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Reset state when modal opens/closes
+  useEffect(() => {
+    if (open) {
+      setLoading(false);
+      setError(null);
+    }
+  }, [open]);
+
   const handleCheckout = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const polarPlan = plan;
-
       const response = await fetch("/api/polar/checkout", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ plan: polarPlan, billingInterval }),
+        body: JSON.stringify({ plan, billingInterval }),
       });
 
       if (!response.ok) {
@@ -55,6 +61,8 @@ export function CheckoutModal({
       // Redirect to Polar checkout
       if (data.url) {
         window.location.href = data.url;
+        // Reset loading after a delay in case redirect is slow
+        setTimeout(() => setLoading(false), 5000);
       } else {
         throw new Error("No checkout URL received");
       }
