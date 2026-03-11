@@ -605,8 +605,11 @@ export async function searchGoogleReviewsSerper(
           snippet?: string;
           rating?: number;
           date?: string;
-          user?: { name?: string } | string;
+          isoDate?: string;
+          id?: string;
+          user?: { name?: string; thumbnail?: string } | string;
           link?: string;
+          likes?: number;
         }>;
       };
 
@@ -620,11 +623,11 @@ export async function searchGoogleReviewsSerper(
       return reviewsData.reviews.map((review) => {
         const userName = typeof review.user === "object" ? review.user?.name : review.user;
         return {
-          reviewId: generateId(review.link || `${cid}-${review.date}-${userName}`, "goog"),
+          reviewId: generateId(review.link || review.id || `${cid}-${review.date}-${userName}`, "goog"),
           name: userName || "Google User",
           text: review.snippet || "",
           stars: review.rating || 0,
-          publishedAtDate: review.date || new Date().toISOString(),
+          publishedAtDate: review.isoDate || review.date || new Date().toISOString(),
           reviewUrl: review.link || `https://www.google.com/maps?cid=${cid}`,
           placeId: cid,
         };
