@@ -647,6 +647,19 @@ async function scanGoogleReviewsForMonitor(monitor: MonitorData): Promise<number
     searchTerms.push(...monitor.keywords);
   }
 
+  logger.info("[GoogleReviews] Scanner started", {
+    monitorId: monitor.id,
+    companyName: monitor.companyName,
+    searchTerms,
+    hasApify: isApifyConfigured(),
+    hasSerper: isSerperConfigured(),
+  });
+
+  if (searchTerms.length === 0) {
+    logger.warn("[GoogleReviews] No search terms available", { monitorId: monitor.id });
+    return 0;
+  }
+
   for (const term of searchTerms) {
     try {
       // Apify first (gets actual review content), Serper fallback (discovery only)
@@ -656,6 +669,7 @@ async function scanGoogleReviewsForMonitor(monitor: MonitorData): Promise<number
         try {
           logger.info("[GoogleReviews] Using Apify", { term });
           reviews = await fetchGoogleReviews(term, 20);
+          logger.info("[GoogleReviews] Apify returned", { term, count: reviews.length });
         } catch (apifyError) {
           logger.warn("[GoogleReviews] Apify failed, will try Serper", { term, error: apifyError instanceof Error ? apifyError.message : String(apifyError) });
         }
@@ -663,6 +677,7 @@ async function scanGoogleReviewsForMonitor(monitor: MonitorData): Promise<number
       if (reviews.length === 0 && isSerperConfigured()) {
         logger.info("[GoogleReviews] Trying Serper", { term });
         reviews = await searchGoogleReviewsSerper(term, 20);
+        logger.info("[GoogleReviews] Serper returned", { term, count: reviews.length });
       }
 
       if (reviews.length === 0) continue;
