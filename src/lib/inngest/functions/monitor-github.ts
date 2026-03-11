@@ -2,7 +2,7 @@ import { inngest } from "../client";
 import { logger } from "@/lib/logger";
 import { pooledDb } from "@/lib/db";
 import { results } from "@/lib/db/schema";
-import { inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { incrementResultsCount } from "@/lib/limits";
 import { contentMatchesMonitor } from "@/lib/content-matcher";
 import {
@@ -241,7 +241,7 @@ export const monitorGitHub = inngest.createFunction(
           if (allUrls.length === 0) return;
 
           const existing = await pooledDb.query.results.findMany({
-            where: inArray(results.sourceUrl, allUrls),
+            where: and(eq(results.monitorId, monitor.id), inArray(results.sourceUrl, allUrls)),
             columns: { sourceUrl: true },
           });
           const existingUrls = new Set(existing.map(r => r.sourceUrl));
