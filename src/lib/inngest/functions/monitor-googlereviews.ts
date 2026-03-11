@@ -34,7 +34,7 @@ export const monitorGoogleReviews = inngest.createFunction(
     timeouts: { finish: "14m" },
     concurrency: { limit: 5 },
   },
-  { cron: "0 * * * *" }, // Every hour
+  { cron: "0 */2 * * *" }, // Every 2 hours (matches fastest plan tier)
   async ({ step: _step }) => {
     const step = _step as unknown as MonitorStep;
 
