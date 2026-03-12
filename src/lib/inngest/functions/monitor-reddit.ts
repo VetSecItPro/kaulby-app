@@ -5,7 +5,7 @@ import { audiences } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { findRelevantSubredditsCached } from "@/lib/ai";
 import { contentMatchesMonitor } from "@/lib/content-matcher";
-import { searchRedditResilient } from "@/lib/reddit";
+import { searchRedditResilient, searchRedditSiteWide } from "@/lib/reddit";
 import {
   getActiveMonitors,
   prefetchPlans,
@@ -156,6 +156,50 @@ export const monitorReddit = inngest.createFunction(
           totalResults += count;
           monitorMatchCount += count;
           newResultIds.push(...ids);
+        }
+      }
+
+      // Fallback: if subreddit-specific searches found nothing, try site-wide Reddit search
+      if (monitorMatchCount === 0 && searchTerms.length > 0) {
+        const siteWideResult = await step.run(`reddit-sitewide-${monitor.id}`, async () => {
+          return searchRedditSiteWide(searchTerms, 50);
+        });
+
+        if (siteWideResult.posts.length > 0) {
+          logger.info("[Reddit] Site-wide fallback found posts", { count: siteWideResult.posts.length, monitorId: monitor.id });
+
+          const siteWideMatches = siteWideResult.posts.filter((post) => {
+            const matchResult = contentMatchesMonitor(
+              { title: post.title, body: post.selftext, author: post.author, subreddit: post.subreddit },
+              { companyName: monitor.companyName, keywords: monitor.keywords, searchQuery: monitor.searchQuery }
+            );
+            return matchResult.matches;
+          });
+
+          if (siteWideMatches.length > 0) {
+            const { count: swCount, ids: swIds } = await saveNewResults({
+              items: siteWideMatches,
+              monitorId: monitor.id,
+              userId: monitor.userId,
+              getSourceUrl: (post) => post.url || `https://reddit.com${post.permalink}`,
+              mapToResult: (post) => ({
+                monitorId: monitor.id,
+                platform: "reddit" as const,
+                sourceUrl: post.url || `https://reddit.com${post.permalink}`,
+                title: post.title,
+                content: post.selftext,
+                author: post.author,
+                postedAt: new Date(post.created_utc * 1000),
+                metadata: { subreddit: post.subreddit, score: post.score, numComments: post.num_comments, source: "sitewide-fallback" },
+              }),
+              step,
+              stepSuffix: "sitewide",
+            });
+
+            totalResults += swCount;
+            monitorMatchCount += swCount;
+            newResultIds.push(...swIds);
+          }
         }
       }
 

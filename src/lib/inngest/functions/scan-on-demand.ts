@@ -26,7 +26,7 @@ import {
   isSerperConfigured,
 } from "@/lib/serper";
 import { findRelevantSubredditsCached } from "@/lib/ai";
-import { searchRedditResilient } from "@/lib/reddit";
+import { searchRedditResilient, searchRedditSiteWide } from "@/lib/reddit";
 import { searchX } from "./monitor-x";
 import { logger } from "@/lib/logger";
 
@@ -497,6 +497,65 @@ async function scanRedditForMonitor(monitor: MonitorData): Promise<number> {
       }
     } catch (error) {
       logger.error("[Reddit] Error scanning subreddit", { subreddit, error: error instanceof Error ? error.message : String(error) });
+    }
+  }
+
+  // Fallback: if subreddit-specific searches found nothing, try site-wide Reddit search
+  if (count === 0) {
+    const searchTerms = [
+      ...(monitor.companyName ? [monitor.companyName] : []),
+      ...monitor.keywords,
+    ];
+
+    if (searchTerms.length > 0) {
+      try {
+        const siteWideResult = await searchRedditSiteWide(searchTerms, 50);
+
+        if (siteWideResult.posts.length > 0) {
+          logger.info("[Reddit] Site-wide fallback found posts", { count: siteWideResult.posts.length });
+
+          for (const post of siteWideResult.posts) {
+            const matchResult = await contentMatchesMonitor(
+              { title: post.title, body: post.selftext, author: post.author, platform: "reddit" },
+              monitor
+            );
+
+            if (!matchResult.isMatch) continue;
+
+            const sourceUrl = post.url || `https://reddit.com${post.permalink}`;
+            const existing = await pooledDb.query.results.findMany({
+              where: and(eq(results.monitorId, monitor.id), eq(results.sourceUrl, sourceUrl)),
+              columns: { id: true },
+            });
+            if (existing.length > 0) continue;
+
+            const inserted = await pooledDb.insert(results).values({
+              monitorId: monitor.id,
+              platform: "reddit" as const,
+              sourceUrl,
+              title: post.title,
+              content: post.selftext,
+              author: post.author,
+              postedAt: new Date(post.created_utc * 1000),
+              metadata: { subreddit: post.subreddit, score: post.score, numComments: post.num_comments, source: "sitewide-fallback" },
+            }).returning();
+
+            count += inserted.length;
+            await incrementResultsCount(monitor.userId, inserted.length);
+
+            if (inserted.length > 0) {
+              await inngest.send(
+                inserted.map(result => ({
+                  name: "content/analyze" as const,
+                  data: { resultId: result.id, userId: monitor.userId },
+                }))
+              );
+            }
+          }
+        }
+      } catch (error) {
+        logger.error("[Reddit] Site-wide fallback failed", { error: error instanceof Error ? error.message : String(error) });
+      }
     }
   }
 
@@ -2126,36 +2185,47 @@ async function scanDevToForMonitor(monitor: MonitorData): Promise<number> {
     const devtoKeywords = monitor.keywords.length > 0
       ? monitor.keywords.slice(0, 5)
       : monitor.companyName ? [monitor.companyName] : [];
+
+    interface DevToArticle {
+      id: number;
+      title: string;
+      description?: string;
+      body_markdown?: string;
+      user: { username: string; name?: string };
+      url: string;
+      published_at?: string;
+      created_at: string;
+      positive_reactions_count?: number;
+      comments_count?: number;
+      reading_time_minutes?: number;
+      tags?: string[];
+    }
+
+    const fetchDevToArticles = async (url: string): Promise<DevToArticle[]> => {
+      const resp = await fetch(url, {
+        headers: { "User-Agent": "Kaulby/1.0", "Accept": "application/json" },
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!resp.ok) return [];
+      return resp.json();
+    };
+
     for (const keyword of devtoKeywords) {
-      // Search by tag
-      const response = await fetch(
-        `https://dev.to/api/articles?tag=${encodeURIComponent(keyword)}&per_page=30&state=fresh`,
-        {
-          headers: {
-            "User-Agent": "Kaulby/1.0",
-            "Accept": "application/json",
-          },
-        }
+      // Primary: full-text search (works with multi-word phrases)
+      const searchArticles = await fetchDevToArticles(
+        `https://dev.to/api/articles?search=${encodeURIComponent(keyword)}&per_page=30`
       );
 
-      if (!response.ok) continue;
+      // Secondary: tag search for single-word terms only
+      const isSingleWord = !keyword.includes(" ");
+      const tagArticles = isSingleWord
+        ? await fetchDevToArticles(
+            `https://dev.to/api/articles?tag=${encodeURIComponent(keyword.toLowerCase())}&per_page=30&state=fresh`
+          )
+        : [];
 
-      interface DevToArticle {
-        id: number;
-        title: string;
-        description?: string;
-        body_markdown?: string;
-        user: { username: string; name?: string };
-        url: string;
-        published_at?: string;
-        created_at: string;
-        positive_reactions_count?: number;
-        comments_count?: number;
-        reading_time_minutes?: number;
-        tags?: string[];
-      }
-
-      const articles: DevToArticle[] = await response.json();
+      // Combine both result sets
+      const articles: DevToArticle[] = [...searchArticles, ...tagArticles];
 
       // 1. Run content matching to determine which items to save
       interface MatchedDevToArticle {
