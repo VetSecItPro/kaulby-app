@@ -47,9 +47,9 @@ export async function searchX(
   try {
     const searchQuery = keywords.join(" OR ");
 
-    // Calculate date range: search last 7 days
+    // Calculate date range: search last 14 days for better coverage
     const toDate = new Date().toISOString().split("T")[0];
-    const fromDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+    const fromDate = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000)
       .toISOString()
       .split("T")[0];
 

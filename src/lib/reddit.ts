@@ -438,3 +438,66 @@ export async function searchRedditResilient(
     error: "All Reddit providers temporarily unavailable (circuit breakers open)",
   };
 }
+
+/**
+ * Site-wide Reddit search via Serper (no subreddit restriction).
+ *
+ * Used as a fallback when subreddit-specific searches return 0 results.
+ * Searches across ALL of Reddit for the given keywords.
+ */
+export async function searchRedditSiteWide(
+  keywords: string[],
+  limit: number = 50
+): Promise<RedditSearchResult> {
+  const apiKey = process.env.SERPER_API_KEY;
+  if (!apiKey) {
+    return { posts: [], source: "serper", error: "Serper not configured" };
+  }
+
+  try {
+    const searchTerms = keywords
+      .map(k => k.includes(" ") ? `"${k}"` : k)
+      .join(" OR ");
+    const searchQuery = `site:reddit.com ${searchTerms}`;
+
+    const { data: posts, cached } = await cachedQuery<RedditPost[]>(
+      "serper:reddit-sitewide",
+      { keywords: keywords.map(k => k.toLowerCase()).sort(), limit },
+      async () => {
+        const response = await fetch("https://google.serper.dev/search", {
+          method: "POST",
+          signal: AbortSignal.timeout(30000),
+          headers: {
+            "X-API-KEY": apiKey,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            q: searchQuery,
+            num: Math.min(limit, 100),
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Serper error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return (data.organic || []).map((result: {
+          link: string;
+          title: string;
+          snippet: string;
+        }) => transformSerperResult(result, "unknown"));
+      },
+      CACHE_TTL.REDDIT_SEARCH
+    );
+
+    if (cached) {
+      logger.debug("[Reddit] Site-wide cache hit");
+    }
+
+    return { posts, source: "serper" };
+  } catch (error) {
+    logger.error("[Reddit] Site-wide search failed", { error: error instanceof Error ? error.message : String(error) });
+    return { posts: [], source: "serper", error: error instanceof Error ? error.message : "Site-wide search failed" };
+  }
+}

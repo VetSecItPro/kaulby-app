@@ -38,63 +38,53 @@ interface DevToArticle {
  * Search Dev.to articles via their public API
  * API is free and doesn't require authentication for read operations
  * Rate limit: 30 requests per minute
+ *
+ * Strategy:
+ * 1. Full-text search via /api/articles?search= (finds articles by title/body)
+ * 2. Tag-based search for single-word keywords (finds articles tagged with the term)
+ * 3. Deduplicates across both approaches
  */
 async function searchDevTo(keywords: string[], maxResults: number = 50): Promise<DevToArticle[]> {
   const articles: DevToArticle[] = [];
   const seenIds = new Set<number>();
 
+  const addArticles = (data: DevToArticle[]) => {
+    for (const article of data) {
+      if (!seenIds.has(article.id)) {
+        seenIds.add(article.id);
+        articles.push(article);
+      }
+    }
+  };
+
+  const fetchArticles = async (url: string): Promise<DevToArticle[]> => {
+    const response = await fetch(url, {
+      headers: { "User-Agent": "Kaulby/1.0", "Accept": "application/json" },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!response.ok) return [];
+    return response.json();
+  };
+
   try {
-    for (const keyword of keywords.slice(0, 5)) { // Limit keywords for rate limits
-      const response = await fetch(
-        `https://dev.to/api/articles?tag=${encodeURIComponent(keyword)}&per_page=${Math.min(maxResults, 30)}&state=fresh`,
-        {
-          headers: {
-            "User-Agent": "Kaulby/1.0",
-            "Accept": "application/json",
-          },
-        }
+    for (const keyword of keywords.slice(0, 5)) {
+      // Primary: full-text search (works with multi-word phrases like "Act Now Education")
+      const searchData = await fetchArticles(
+        `https://dev.to/api/articles?search=${encodeURIComponent(keyword)}&per_page=${Math.min(maxResults, 30)}`
       );
+      addArticles(searchData);
 
-      if (response.ok) {
-        const data: DevToArticle[] = await response.json();
-        for (const article of data) {
-          if (!seenIds.has(article.id)) {
-            seenIds.add(article.id);
-            articles.push(article);
-          }
-        }
-      } else {
-        logger.warn("[Dev.to] Search failed for tag", { keyword, status: response.status });
+      // Secondary: tag search for single-word terms (e.g., "devops", "react")
+      // Multi-word phrases aren't valid Dev.to tags, so skip them
+      const isSingleWord = !keyword.includes(" ");
+      if (isSingleWord) {
+        const tagData = await fetchArticles(
+          `https://dev.to/api/articles?tag=${encodeURIComponent(keyword.toLowerCase())}&per_page=${Math.min(maxResults, 30)}&state=fresh`
+        );
+        addArticles(tagData);
       }
 
-      // Also search by query string
-      const searchResponse = await fetch(
-        `https://dev.to/api/articles?per_page=${Math.min(maxResults, 30)}`,
-        {
-          headers: {
-            "User-Agent": "Kaulby/1.0",
-            "Accept": "application/json",
-          },
-        }
-      );
-
-      if (searchResponse.ok) {
-        const searchData: DevToArticle[] = await searchResponse.json();
-        for (const article of searchData) {
-          // Filter by keyword in title or description
-          const matchesKeyword =
-            article.title.toLowerCase().includes(keyword.toLowerCase()) ||
-            article.description?.toLowerCase().includes(keyword.toLowerCase()) ||
-            article.tag_list.toLowerCase().includes(keyword.toLowerCase());
-
-          if (matchesKeyword && !seenIds.has(article.id)) {
-            seenIds.add(article.id);
-            articles.push(article);
-          }
-        }
-      }
-
-      // Rate limit: wait 2 seconds between requests (30/min = 1 every 2s)
+      // Rate limit: wait 2 seconds between keywords (30 requests/min)
       await new Promise(resolve => setTimeout(resolve, 2000));
     }
 
