@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export async function PATCH(request: NextRequest) {
   try {
@@ -76,7 +77,7 @@ export async function PATCH(request: NextRequest) {
     if (error instanceof BodyTooLargeError) {
       return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
     }
-    console.error("Failed to update email preferences:", error);
+    logger.error("Failed to update email preferences:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to update email preferences" },
       { status: 500 }

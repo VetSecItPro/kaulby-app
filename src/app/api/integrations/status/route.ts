@@ -4,6 +4,7 @@ import { db, users } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import { decryptIntegrationData } from "@/lib/encryption";
 import { checkApiRateLimit } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 interface IntegrationStatus {
   connected: boolean;
@@ -76,7 +77,7 @@ export async function GET() {
 
     return NextResponse.json({ integrations: status });
   } catch (error) {
-    console.error("Error fetching integration status:", error);
+    logger.error("Error fetching integration status:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Failed to fetch integration status" }, { status: 500 });
   }
 }

@@ -5,6 +5,7 @@ import { budgetAlerts, users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { isValidEmail, sanitizeUrl } from "@/lib/security";
 import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -122,7 +123,7 @@ export async function PATCH(
     if (error instanceof BodyTooLargeError) {
       return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
     }
-    console.error("Error updating budget alert:", error);
+    logger.error("Error updating budget alert:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Failed to update budget alert" }, { status: 500 });
   }
 }
@@ -164,7 +165,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error deleting budget alert:", error);
+    logger.error("Error deleting budget alert:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Failed to delete budget alert" }, { status: 500 });
   }
 }

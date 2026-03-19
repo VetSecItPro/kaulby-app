@@ -13,6 +13,7 @@ import {
 } from "@/lib/ai/rate-limit";
 import { AI_TOOLS, TOOL_METADATA, executeTool, type ToolResult } from "@/lib/ai/tools";
 import type OpenAI from "openai";
+import { logger } from "@/lib/logger";
 
 export const maxDuration = 60;
 
@@ -385,7 +386,7 @@ export async function POST(req: Request) {
       },
     });
   } catch (error) {
-    console.error("AI Ask error:", error);
+    logger.error("AI Ask error:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to process your question" },
       { status: 500 }

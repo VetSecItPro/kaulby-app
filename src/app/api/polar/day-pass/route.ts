@@ -3,6 +3,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { getPolarClient, DAY_PASS_PRODUCT_ID } from "@/lib/polar";
 
 import { checkApiRateLimit } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 export const dynamic = "force-dynamic";
 
 /**
@@ -61,7 +62,7 @@ export async function POST() {
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     const errDetail = (error as { statusCode?: number; detail?: unknown })?.statusCode;
-    console.error("Polar day pass checkout error:", { message: errMsg, statusCode: errDetail, error });
+    logger.error("Polar day pass checkout error:", { message: errMsg, statusCode: errDetail, error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to create checkout session", detail: errMsg },
       { status: 500 }

@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { notifications } from "@/lib/db/schema";
 import { eq, and, desc, inArray } from "drizzle-orm";
 import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 // GET - List unread notifications for the current user
 export async function GET() {
@@ -35,7 +36,7 @@ export async function GET() {
     response.headers.set("Cache-Control", "private, no-store");
     return response;
   } catch (error) {
-    console.error("Failed to fetch notifications:", error);
+    logger.error("Failed to fetch notifications:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to fetch notifications" },
       { status: 500 }
@@ -103,7 +104,7 @@ export async function PATCH(request: NextRequest) {
     if (error instanceof BodyTooLargeError) {
       return NextResponse.json({ error: "Request body too large" }, { status: 413 });
     }
-    console.error("Failed to mark notifications as read:", error);
+    logger.error("Failed to mark notifications as read:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to mark notifications as read" },
       { status: 500 }

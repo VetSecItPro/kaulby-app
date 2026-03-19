@@ -6,6 +6,7 @@ import { users, workspaces } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
 import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 export const dynamic = "force-dynamic";
 
 /**
@@ -100,7 +101,7 @@ export async function POST(request: NextRequest) {
     }
     const errMsg = error instanceof Error ? error.message : String(error);
     const errDetail = (error as { statusCode?: number; detail?: unknown })?.statusCode;
-    console.error("Polar seat addon checkout error:", { message: errMsg, statusCode: errDetail, error });
+    logger.error("Polar seat addon checkout error:", { message: errMsg, statusCode: errDetail, error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to create checkout session", detail: errMsg },
       { status: 500 }

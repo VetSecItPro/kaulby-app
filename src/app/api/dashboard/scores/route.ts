@@ -4,6 +4,7 @@ import { results, monitors } from "@/lib/db/schema";
 import { eq, inArray, gte, and, count, sql } from "drizzle-orm";
 import { getEffectiveUserId } from "@/lib/dev-auth";
 import { checkApiRateLimit } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -314,7 +315,7 @@ export async function GET() {
     response.headers.set("Cache-Control", "private, max-age=300, stale-while-revalidate=600");
     return response;
   } catch (error) {
-    console.error("Brand scores error:", error);
+    logger.error("Brand scores error:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to calculate brand scores" },
       { status: 500 }

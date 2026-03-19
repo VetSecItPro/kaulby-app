@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
   const webhookSecret = process.env.POLAR_WEBHOOK_SECRET;
 
   if (!webhookSecret) {
-    console.error("POLAR_WEBHOOK_SECRET not configured");
+    logger.error("POLAR_WEBHOOK_SECRET not configured");
     return NextResponse.json(
       { error: "Webhook secret not configured" },
       { status: 500 }
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
     request.headers.get("x-webhook-signature");
 
   if (!verifyWebhookSignature(body, signature, webhookSecret)) {
-    console.error("Polar webhook signature verification failed");
+    logger.error("Polar webhook signature verification failed");
     return NextResponse.json(
       { error: "Invalid webhook signature" },
       { status: 400 }
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
   try {
     event = JSON.parse(body);
   } catch {
-    console.error("Failed to parse webhook body");
+    logger.error("Failed to parse webhook body");
     return NextResponse.json(
       { error: "Invalid JSON body" },
       { status: 400 }
@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
         const productId = eventData.productId as string;
 
         if (!userId) {
-          console.error("No userId in checkout metadata");
+          logger.error("No userId in checkout metadata");
           break;
         }
 
@@ -236,7 +236,7 @@ export async function POST(request: NextRequest) {
         });
 
         if (!user) {
-          console.error(`No user found for Polar customer ${customerId}`);
+          logger.error(`No user found for Polar customer ${customerId}`);
           break;
         }
 
@@ -490,7 +490,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ received: true });
   } catch (error) {
-    console.error("Polar webhook handler error:", error);
+    logger.error("Polar webhook handler error:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Webhook handler failed" },
       { status: 500 }

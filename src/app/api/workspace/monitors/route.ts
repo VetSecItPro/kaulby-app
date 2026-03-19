@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { users, monitors } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { checkApiRateLimit } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -70,7 +71,7 @@ export async function GET() {
       isOwner: user.workspaceRole === "owner",
     });
   } catch (error) {
-    console.error("Error fetching workspace monitors:", error);
+    logger.error("Error fetching workspace monitors:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Failed to fetch monitors" }, { status: 500 });
   }
 }

@@ -4,6 +4,7 @@ import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-
 import { sanitizeUrl } from "@/lib/security";
 import { generateTestPayload } from "@/lib/webhooks/events";
 import crypto from "crypto";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -114,7 +115,7 @@ export async function POST(request: NextRequest) {
         { status: 413 },
       );
     }
-    console.error("Webhook test error:", error);
+    logger.error("Webhook test error:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to test webhook" },
       { status: 500 },

@@ -4,6 +4,7 @@ import { db, audiences } from "@/lib/db";
 import { eq, and } from "drizzle-orm";
 import { z } from "zod";
 import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -69,7 +70,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     if (error instanceof BodyTooLargeError) {
       return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
     }
-    console.error("Failed to update audience:", error);
+    logger.error("Failed to update audience:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to update audience" },
       { status: 500 }
@@ -110,7 +111,7 @@ export async function DELETE(request: Request, { params }: RouteParams) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Failed to delete audience:", error);
+    logger.error("Failed to delete audience:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to delete audience" },
       { status: 500 }

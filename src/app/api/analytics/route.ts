@@ -4,6 +4,7 @@ import { results, monitors } from "@/lib/db/schema";
 import { eq, inArray, gte, and, sql, count } from "drizzle-orm";
 import { getEffectiveUserId } from "@/lib/dev-auth";
 import { checkApiRateLimit } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -207,7 +208,7 @@ export async function GET(request: Request) {
     response.headers.set("Cache-Control", "private, max-age=300, stale-while-revalidate=900");
     return response;
   } catch (error) {
-    console.error("Analytics error:", error);
+    logger.error("Analytics error:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Failed to fetch analytics" }, { status: 500 });
   }
 }

@@ -10,6 +10,7 @@ export const maxDuration = 60;
 import { eq, sql } from "drizzle-orm";
 import { upsertContact, sendWelcomeEmail } from "@/lib/email";
 import { identifyUser } from "@/lib/posthog";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
       "svix-signature": svix_signature,
     }) as WebhookEvent;
   } catch (error) {
-    console.error("Error verifying webhook:", error);
+    logger.error("Error verifying webhook:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Invalid signature" },
       { status: 400 }
@@ -93,7 +94,7 @@ export async function POST(request: NextRequest) {
           // 1. User deleted their Clerk account but DB record remained
           // 2. User signed up again with the same email
           // Security note: We don't expose "email already exists" externally
-          console.warn(`[clerk-webhook] Linking existing user ${existingUser.id} to new Clerk ID ${id}`);
+          logger.warn(`[clerk-webhook] Linking existing user ${existingUser.id} to new Clerk ID ${id}`);
 
           // Can't just UPDATE the PK because child tables have FK constraints
           // without ON UPDATE CASCADE. Must: create new row → migrate FKs → delete old row.
@@ -146,7 +147,7 @@ export async function POST(request: NextRequest) {
           // 4. Delete old user row
           await db.delete(users).where(eq(users.id, oldId));
 
-          console.warn(`[clerk-webhook] Successfully migrated user ${oldId} → ${id}`);
+          logger.warn(`[clerk-webhook] Successfully migrated user ${oldId} → ${id}`);
           isNewUser = false;
         } else {
           // Create new user in database
@@ -173,7 +174,7 @@ export async function POST(request: NextRequest) {
               name: first_name || undefined,
             });
           } catch (emailError) {
-            console.error("Email error:", emailError);
+            logger.error("Email error:", { error: emailError instanceof Error ? emailError.message : String(emailError) });
           }
         }
 
@@ -218,7 +219,7 @@ export async function POST(request: NextRequest) {
             userId: id,
           });
         } catch (emailError) {
-          console.error("Email error:", emailError);
+          logger.error("Email error:", { error: emailError instanceof Error ? emailError.message : String(emailError) });
         }
 
         break;
@@ -238,7 +239,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ received: true });
   } catch (error) {
-    console.error("Webhook handler error:", error);
+    logger.error("Webhook handler error:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Webhook handler failed" },
       { status: 500 }

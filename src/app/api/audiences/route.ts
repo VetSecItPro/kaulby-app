@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { db, audiences } from "@/lib/db";
 import { z } from "zod";
 import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -64,7 +65,7 @@ export async function POST(request: Request) {
     if (error instanceof BodyTooLargeError) {
       return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
     }
-    console.error("Failed to create audience:", error);
+    logger.error("Failed to create audience:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to create audience" },
       { status: 500 }

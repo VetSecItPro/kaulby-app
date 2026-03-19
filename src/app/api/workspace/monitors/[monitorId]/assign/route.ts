@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { users, monitors } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -97,7 +98,7 @@ export async function PATCH(
     if (error instanceof BodyTooLargeError) {
       return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
     }
-    console.error("Error assigning monitor:", error);
+    logger.error("Error assigning monitor:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Failed to assign monitor" }, { status: 500 });
   }
 }

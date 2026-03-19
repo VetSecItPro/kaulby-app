@@ -4,6 +4,7 @@ import { results, monitors } from "@/lib/db/schema";
 import { eq, inArray, gte, and, count, sql, desc } from "drizzle-orm";
 import { getEffectiveUserId } from "@/lib/dev-auth";
 import { checkApiRateLimit } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -265,7 +266,7 @@ export async function GET() {
     response.headers.set("Cache-Control", "private, max-age=300");
     return response;
   } catch (error) {
-    console.error("Competitor comparison error:", error);
+    logger.error("Competitor comparison error:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to fetch competitor data" },
       { status: 500 }

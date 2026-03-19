@@ -7,6 +7,7 @@ import { findUserWithFallback } from "@/lib/auth-utils";
 import { permissions } from "@/lib/permissions";
 import { logActivity } from "@/lib/activity-log";
 import { checkApiRateLimit } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -102,7 +103,7 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error removing member:", error);
+    logger.error("Error removing member:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Failed to remove member" }, { status: 500 });
   }
 }

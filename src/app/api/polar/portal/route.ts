@@ -4,6 +4,7 @@ import { getPolarClient } from "@/lib/polar";
 import { findUserWithFallback } from "@/lib/auth-utils";
 
 import { checkApiRateLimit } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 export const dynamic = "force-dynamic";
 
 /**
@@ -38,7 +39,7 @@ export async function POST() {
     if (!user?.polarCustomerId) {
       // No Polar customer ID - redirect to Polar dashboard for manual management
       // This can happen if the webhook hasn't processed yet or there's a sync issue
-      console.warn("[polar-portal] No polarCustomerId for user:", userId);
+      logger.warn("[polar-portal] No polarCustomerId for user:", { detail: userId });
       return NextResponse.json(
         {
           error: "No subscription found. Please contact support if you believe this is an error.",
@@ -58,10 +59,10 @@ export async function POST() {
       url: session.customerPortalUrl,
     });
   } catch (error) {
-    console.error("Polar portal error:", error);
+    logger.error("Polar portal error:", { error: error instanceof Error ? error.message : String(error) });
     // SECURITY: Sanitized error logging — FIX-001
     if (error instanceof Error) {
-      console.error("Portal session creation failed:", error.message);
+      logger.error("Portal session creation failed:", { error_message: error.message });
     }
     // SECURITY: Never expose internal error details to client
     return NextResponse.json(

@@ -16,6 +16,7 @@ import { eq } from "drizzle-orm";
 import { encryptIntegrationData, decryptIntegrationData } from "@/lib/encryption";
 import { isValidTeamsWebhookUrl } from "@/lib/integrations/teams";
 import { checkApiRateLimit } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 /**
  * GET /api/integrations/teams
@@ -59,7 +60,7 @@ export async function GET() {
       connectedAt: teamsData.connectedAt || null,
     });
   } catch (error) {
-    console.error("Error getting Teams status:", error);
+    logger.error("Error getting Teams status:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to get Teams status" },
       { status: 500 }
@@ -135,7 +136,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error saving Teams webhook:", error);
+    logger.error("Error saving Teams webhook:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to save Teams webhook" },
       { status: 500 }
@@ -181,7 +182,7 @@ export async function DELETE() {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error disconnecting Teams:", error);
+    logger.error("Error disconnecting Teams:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to disconnect integration" },
       { status: 500 }

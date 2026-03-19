@@ -3,6 +3,7 @@ import { getEffectiveUserId } from "@/lib/dev-auth";
 import { db, activityLogs, users } from "@/lib/db";
 import { eq, desc, and, lt } from "drizzle-orm";
 import { checkApiRateLimit } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -82,7 +83,7 @@ export async function GET(request: NextRequest) {
       hasMore,
     });
   } catch (error) {
-    console.error("Failed to fetch activity logs:", error);
+    logger.error("Failed to fetch activity logs:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to fetch activity logs" },
       { status: 500 }

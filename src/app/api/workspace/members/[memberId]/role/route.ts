@@ -7,6 +7,7 @@ import { findUserWithFallback } from "@/lib/auth-utils";
 import { permissions, getAssignableRoles, type WorkspaceRole } from "@/lib/permissions";
 import { logActivity } from "@/lib/activity-log";
 import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -127,7 +128,7 @@ export async function PATCH(
     if (error instanceof BodyTooLargeError) {
       return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
     }
-    console.error("Error changing role:", error);
+    logger.error("Error changing role:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Failed to change role" }, { status: 500 });
   }
 }

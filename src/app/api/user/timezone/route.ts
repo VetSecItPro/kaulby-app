@@ -4,6 +4,7 @@ import { db, users } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import { findUserWithFallback } from "@/lib/auth-utils";
 import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -59,7 +60,7 @@ export async function PATCH(request: NextRequest) {
     if (error instanceof BodyTooLargeError) {
       return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
     }
-    console.error("Timezone update error:", error);
+    logger.error("Timezone update error:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to update timezone" },
       { status: 500 }

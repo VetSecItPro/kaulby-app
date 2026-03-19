@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { savedSearches, users } from "@/lib/db/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 // Maximum saved searches per plan
 const SAVED_SEARCH_LIMITS = {
@@ -35,7 +36,7 @@ export async function GET() {
 
     return NextResponse.json({ searches });
   } catch (error) {
-    console.error("Failed to fetch saved searches:", error);
+    logger.error("Failed to fetch saved searches:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to fetch saved searches" },
       { status: 500 }
@@ -128,7 +129,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof BodyTooLargeError) {
       return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
     }
-    console.error("Failed to create saved search:", error);
+    logger.error("Failed to create saved search:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to create saved search" },
       { status: 500 }

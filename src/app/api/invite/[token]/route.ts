@@ -6,6 +6,7 @@ import { eq, sql } from "drizzle-orm";
 import { sendInviteAcceptedEmail } from "@/lib/email";
 import { findUserWithFallback } from "@/lib/auth-utils";
 import { checkApiRateLimit } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -65,7 +66,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error("Error fetching invite:", error);
+    logger.error("Error fetching invite:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Failed to fetch invite" }, { status: 500 });
   }
 }
@@ -206,7 +207,7 @@ export async function POST(
         });
       }
     } catch (emailError) {
-      console.error("Failed to send acceptance notification:", emailError);
+      logger.error("Failed to send acceptance notification:", { error: emailError instanceof Error ? emailError.message : String(emailError) });
       // Don't fail - the join was successful
     }
 
@@ -230,7 +231,7 @@ export async function POST(
         return NextResponse.json({ error: "This workspace has reached its seat limit. Contact the workspace owner." }, { status: 403 });
       }
     }
-    console.error("Error accepting invite:", error);
+    logger.error("Error accepting invite:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Failed to accept invite" }, { status: 500 });
   }
 }

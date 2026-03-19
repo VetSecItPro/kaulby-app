@@ -11,6 +11,7 @@ import { eq, and, gte, inArray, desc, sql } from "drizzle-orm";
 import { getUserPlan } from "@/lib/limits";
 import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
 import { escapeHtml } from "@/lib/security";
+import { logger } from "@/lib/logger";
 
 // FIX-212: Add maxDuration for long-running report generation
 export const maxDuration = 60;
@@ -233,7 +234,7 @@ export async function POST(req: Request) {
     if (error instanceof BodyTooLargeError) {
       return NextResponse.json({ error: "Request body too large" }, { status: 413 });
     }
-    console.error("Report generation error:", error);
+    logger.error("Report generation error:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to generate report" },
       { status: 500 }

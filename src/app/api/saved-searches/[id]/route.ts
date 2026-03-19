@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { savedSearches } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -88,7 +89,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (error instanceof BodyTooLargeError) {
       return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
     }
-    console.error("Failed to update saved search:", error);
+    logger.error("Failed to update saved search:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to update saved search" },
       { status: 500 }
@@ -128,7 +129,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Failed to delete saved search:", error);
+    logger.error("Failed to delete saved search:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to delete saved search" },
       { status: 500 }

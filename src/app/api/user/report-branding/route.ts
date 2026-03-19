@@ -4,6 +4,7 @@ import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getEffectiveUserId } from "@/lib/dev-auth";
 import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
 
@@ -40,7 +41,7 @@ export async function GET() {
       isTeam: user.subscriptionStatus === "team",
     });
   } catch (error) {
-    console.error("Failed to fetch report branding:", error);
+    logger.error("Failed to fetch report branding:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to fetch report branding" },
       { status: 500 }
@@ -142,7 +143,7 @@ export async function PATCH(request: NextRequest) {
     if (error instanceof BodyTooLargeError) {
       return NextResponse.json({ error: "Request body too large" }, { status: 413 });
     }
-    console.error("Failed to update report branding:", error);
+    logger.error("Failed to update report branding:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to update report branding" },
       { status: 500 }

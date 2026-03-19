@@ -12,6 +12,7 @@ import { eq } from "drizzle-orm";
 import { getAuthorizationUrl, isSlackConfigured } from "@/lib/integrations/slack";
 import { nanoid } from "nanoid";
 import { checkApiRateLimit } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 // Initiate OAuth flow
 export async function POST() {
@@ -62,7 +63,7 @@ export async function POST() {
 
     return NextResponse.json({ authUrl });
   } catch (error) {
-    console.error("Error initiating Slack OAuth:", error);
+    logger.error("Error initiating Slack OAuth:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to initiate OAuth flow" },
       { status: 500 }
@@ -103,7 +104,7 @@ export async function DELETE() {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error disconnecting Slack:", error);
+    logger.error("Error disconnecting Slack:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to disconnect integration" },
       { status: 500 }
