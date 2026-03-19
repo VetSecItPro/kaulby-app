@@ -13,6 +13,18 @@ import {
   audienceMonitors,
   alerts,
   communities,
+  bookmarkCollections,
+  bookmarks,
+  chatConversations,
+  emailDeliveryFailures,
+  emailEvents,
+  feedback,
+  notifications,
+  savedSearches,
+  sharedReports,
+  userDetectionKeywords,
+  activityLogs,
+  aiVisibilityChecks,
 } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { clerkClient } from "@clerk/nextjs/server";
@@ -204,6 +216,37 @@ async function deleteAllUserData(userId: string): Promise<void> {
     const webhookIds = userWebhookRows.map(w => w.id);
 
     // PHASE 2: Delete data in correct order (deepest dependencies first)
+
+    // --- Missing tables (GDPR fix) ---
+
+    // bookmarks must be deleted before bookmarkCollections (FK: collectionId -> bookmarkCollections.id)
+    await tx.delete(bookmarks).where(eq(bookmarks.userId, userId));
+    await tx.delete(bookmarkCollections).where(eq(bookmarkCollections.userId, userId));
+
+    // chatConversations cascade-deletes chatMessages via FK on conversationId
+    await tx.delete(chatConversations).where(eq(chatConversations.userId, userId));
+
+    // aiVisibilityChecks references monitorId (cascade) — delete before monitors
+    await tx.delete(aiVisibilityChecks).where(eq(aiVisibilityChecks.userId, userId));
+
+    // sharedReports references monitorId (cascade) — delete before monitors
+    await tx.delete(sharedReports).where(eq(sharedReports.userId, userId));
+
+    // notifications references monitorId (SET NULL) and resultId (SET NULL) — safe anytime
+    await tx.delete(notifications).where(eq(notifications.userId, userId));
+
+    // activityLogs references workspaceId (cascade) and userId (cascade) — delete before workspaces/user
+    await tx.delete(activityLogs).where(eq(activityLogs.userId, userId));
+
+    // Remaining leaf tables with only userId FK
+    await tx.delete(savedSearches).where(eq(savedSearches.userId, userId));
+    await tx.delete(emailEvents).where(eq(emailEvents.userId, userId));
+    await tx.delete(emailDeliveryFailures).where(eq(emailDeliveryFailures.userId, userId));
+    await tx.delete(feedback).where(eq(feedback.userId, userId));
+    await tx.delete(userDetectionKeywords).where(eq(userDetectionKeywords.userId, userId));
+
+    // --- End missing tables ---
+
     if (webhookIds.length > 0) {
       await tx.delete(webhookDeliveries).where(inArray(webhookDeliveries.webhookId, webhookIds));
     }

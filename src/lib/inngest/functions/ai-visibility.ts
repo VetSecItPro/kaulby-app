@@ -23,7 +23,7 @@ export const checkAIVisibilityJob = inngest.createFunction(
       limit: 2, // Limit concurrent runs to control AI costs
     },
   },
-  { cron: "0 8 * * 0" }, // Every Sunday at 8 AM UTC
+  { cron: "0 8 1 * *" }, // Monthly on the 1st at 8 AM UTC (AI model responses don't shift weekly)
   async ({ step }) => {
     // Get all Team tier users
     const teamUsers = await step.run("get-team-users", async () => {

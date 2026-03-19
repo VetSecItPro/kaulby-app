@@ -543,6 +543,9 @@ export async function incrementResultsCount(
   userId: string,
   incrementBy: number = 1
 ): Promise<void> {
+  // Security: Prevent negative increments that could reduce usage counters
+  if (incrementBy <= 0) return;
+
   const usageRecord = await getOrCreateUsageRecord(userId);
 
   await db
@@ -560,6 +563,9 @@ export async function incrementAiCallsCount(
   userId: string,
   incrementBy: number = 1
 ): Promise<void> {
+  // Security: Prevent negative increments that could reduce usage counters
+  if (incrementBy <= 0) return;
+
   const usageRecord = await getOrCreateUsageRecord(userId);
 
   await db

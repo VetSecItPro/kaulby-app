@@ -47,7 +47,7 @@ export const syncHubspotContacts = inngest.createFunction(
     timeouts: { finish: "10m" },
     concurrency: { limit: 2 },
   },
-  { cron: "*/30 * * * *" }, // Every 30 minutes
+  { cron: "0 */6 * * *" }, // Every 6 hours (CRM sync doesn't need minute-level freshness)
   async ({ step }) => {
     // Guard: skip if HubSpot is not configured at the app level
     if (!isHubSpotConfigured()) {

@@ -214,7 +214,7 @@ export const collectCommunityStats = inngest.createFunction(
     retries: 3,
     timeouts: { finish: "30m" },
   },
-  { cron: "0 3 * * 0" }, // Every Sunday at 3 AM UTC
+  { cron: "0 3 1 * *" }, // Monthly on the 1st at 3 AM UTC (community stats don't shift week-to-week)
   async ({ step }) => {
     // Process priority subreddits first
     const priorityResults = await step.run("process-priority-subreddits", async () => {

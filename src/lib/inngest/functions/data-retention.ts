@@ -18,7 +18,7 @@ export const dataRetention = inngest.createFunction(
     retries: 3,
     timeouts: { finish: "30m" },
   },
-  { cron: "0 3 * * *" }, // Run daily at 3 AM UTC
+  { cron: "0 3 * * 0" }, // Weekly Sunday at 3 AM UTC (retention periods are 3-365 days, weekly is sufficient)
   async ({ step, logger }) => {
     logger.info("Starting data retention cleanup");
 

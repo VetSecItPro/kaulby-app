@@ -8,6 +8,7 @@ import {
   saveNewResults,
   triggerAiAnalysis,
   updateMonitorStats,
+  hasAnyActiveMonitors,
   type MonitorStep,
 } from "../utils/monitor-helpers";
 
@@ -98,9 +99,13 @@ export const monitorProductHunt = inngest.createFunction(
     timeouts: { finish: "14m" },
     concurrency: { limit: 5 },
   },
-  { cron: "0 */2 * * *" }, // Every 2 hours (PH has less frequent posts)
+  { cron: "14 */2 * * *" }, // :14 on even hours (staggered)
   async ({ step: _step }) => {
     const step = _step as unknown as MonitorStep;
+
+    // Skip entirely if no monitors exist in the system
+    const hasWork = await hasAnyActiveMonitors(step);
+    if (!hasWork) return { skipped: true, reason: "no active monitors in system" };
 
     // Get OAuth access token
     const accessToken = await step.run("get-access-token", async () => {

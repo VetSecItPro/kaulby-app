@@ -51,6 +51,22 @@ export type ResultInsertValues = typeof results.$inferInsert;
 // ---------------------------------------------------------------------------
 
 /**
+ * Fast global check: does the system have ANY active monitors?
+ * Use as first gate in cron functions to skip entirely when idle.
+ */
+export async function hasAnyActiveMonitors(
+  step: MonitorStep
+): Promise<boolean> {
+  return step.run("check-any-active", async () => {
+    const row = await pooledDb.query.monitors.findFirst({
+      where: eq(monitors.isActive, true),
+      columns: { id: true },
+    });
+    return !!row;
+  });
+}
+
+/**
  * Fetch all active monitors for a specific platform.
  */
 export async function getActiveMonitors(

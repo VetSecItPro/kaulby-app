@@ -81,7 +81,7 @@ export const detectCrisis = inngest.createFunction(
     name: "Crisis Detection",
     timeouts: { finish: "15m" },
   },
-  { cron: "0 * * * *" }, // Every hour
+  { cron: "0 */4 * * *" }, // Every 4 hours (analyzes 24h windows, 4h granularity is sufficient)
   async ({ step }) => {
     // Get all Team tier users with active monitors
     const teamUsers = await step.run("get-team-users", async () => {

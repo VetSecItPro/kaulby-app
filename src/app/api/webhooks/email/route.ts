@@ -3,6 +3,7 @@ import { Resend } from "resend";
 import { escapeHtml, sanitizeForLog } from "@/lib/security";
 import { db } from "@/lib/db";
 import { webhookEvents } from "@/lib/db/schema";
+import crypto from "crypto";
 
 export const dynamic = "force-dynamic";
 // PERF: Email webhook processing may take longer than default 10s — FIX-016
@@ -42,7 +43,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Webhook not configured" }, { status: 500 });
     }
     const signature = request.headers.get("resend-signature") || request.headers.get("x-resend-signature");
-    if (!signature || signature !== webhookSecret) {
+    // Security: Use timing-safe comparison to prevent timing attacks on signature
+    if (!signature || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(webhookSecret))) {
       return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
 

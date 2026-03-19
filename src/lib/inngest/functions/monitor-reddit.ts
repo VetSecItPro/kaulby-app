@@ -15,6 +15,7 @@ import {
   saveNewResults,
   triggerAiAnalysis,
   updateMonitorStats,
+  hasAnyActiveMonitors,
   type MonitorStep,
 } from "../utils/monitor-helpers";
 
@@ -30,6 +31,10 @@ export const monitorReddit = inngest.createFunction(
   { cron: "0 */2 * * *" }, // Every 2 hours (matches fastest plan tier)
   async ({ step: _step }) => {
     const step = _step as unknown as MonitorStep;
+
+    // Skip entirely if no monitors exist in the system
+    const hasWork = await hasAnyActiveMonitors(step);
+    if (!hasWork) return { skipped: true, reason: "no active monitors in system" };
 
     const redditMonitors = await getActiveMonitors("reddit", step);
     if (redditMonitors.length === 0) {

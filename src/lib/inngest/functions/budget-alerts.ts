@@ -15,7 +15,7 @@ export const checkBudgetAlerts = inngest.createFunction(
     retries: 2,
     timeouts: { finish: "5m" },
   },
-  { cron: "0 * * * *" }, // Every hour
+  { cron: "0 */6 * * *" }, // Every 6 hours (spend only changes during scans)
   async ({ step }) => {
     // Get all active budget alerts
     const activeAlerts = await step.run("get-active-alerts", async () => {

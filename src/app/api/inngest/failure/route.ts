@@ -7,10 +7,40 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
+import crypto from "crypto";
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    // Security: Verify request comes from Inngest via signing key
+    const signingKey = process.env.INNGEST_SIGNING_KEY;
+    if (!signingKey) {
+      logger.warn("[Inngest] Failure webhook called but INNGEST_SIGNING_KEY not set");
+      return NextResponse.json({ error: "Not configured" }, { status: 503 });
+    }
+
+    const signature = request.headers.get("x-inngest-signature");
+    if (!signature) {
+      return NextResponse.json({ error: "Missing signature" }, { status: 401 });
+    }
+
+    const rawBody = await request.text();
+
+    // Inngest signature format: "s=<hmac>&t=<timestamp>"
+    const params = new URLSearchParams(signature);
+    const sig = params.get("s");
+    const ts = params.get("t");
+    if (!sig || !ts) {
+      return NextResponse.json({ error: "Invalid signature format" }, { status: 401 });
+    }
+
+    // Verify HMAC
+    const signingKeyHash = crypto.createHash("sha256").update(signingKey).digest();
+    const mac = crypto.createHmac("sha256", signingKeyHash).update(`${rawBody}${ts}`).digest("hex");
+    if (!crypto.timingSafeEqual(Buffer.from(mac), Buffer.from(sig))) {
+      return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+    }
+
+    const body = JSON.parse(rawBody);
 
     const { function_id, event, error: errorMsg, run_id } = body;
 
