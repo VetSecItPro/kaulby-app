@@ -2,6 +2,7 @@ import { getEffectiveUserId } from "@/lib/dev-auth";
 import { NextResponse } from "next/server";
 import { checkDayPassStatus, getDayPassHistory } from "@/lib/day-pass";
 import { checkApiRateLimit } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +34,7 @@ export async function GET() {
       lastPurchasedAt: history.lastPurchasedAt,
     });
   } catch (error) {
-    console.error("Failed to get day pass status:", error);
+    logger.error("Failed to get day pass status:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to get day pass status" },
       { status: 500 }

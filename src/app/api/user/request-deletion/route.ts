@@ -5,6 +5,7 @@ import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { inngest } from "@/lib/inngest";
 import { checkApiRateLimit } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 // POST /api/user/request-deletion - Request account deletion (7-day cooldown)
 export async function POST() {
@@ -66,7 +67,7 @@ export async function POST() {
       deletionDate: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
     });
   } catch (error) {
-    console.error("Error requesting deletion:", error);
+    logger.error("Error requesting deletion:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to request account deletion" },
       { status: 500 }
@@ -103,7 +104,7 @@ export async function DELETE() {
       message: "Deletion request cancelled",
     });
   } catch (error) {
-    console.error("Error cancelling deletion:", error);
+    logger.error("Error cancelling deletion:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to cancel deletion request" },
       { status: 500 }

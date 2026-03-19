@@ -5,6 +5,7 @@ import { workspaceInvites } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { findUserWithFallback } from "@/lib/auth-utils";
 import { checkApiRateLimit } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -54,7 +55,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error revoking invite:", error);
+    logger.error("Error revoking invite:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Failed to revoke invite" }, { status: 500 });
   }
 }

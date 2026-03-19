@@ -4,6 +4,7 @@ import { aiVisibilityChecks, monitors } from "@/lib/db/schema";
 import { eq, inArray, desc } from "drizzle-orm";
 import { getEffectiveUserId } from "@/lib/dev-auth";
 import { checkApiRateLimit } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -144,7 +145,7 @@ export async function GET() {
     response.headers.set("Cache-Control", "private, max-age=600, stale-while-revalidate=1200");
     return response;
   } catch (error) {
-    console.error("AI visibility API error:", error);
+    logger.error("AI visibility API error:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to fetch AI visibility data" },
       { status: 500 }

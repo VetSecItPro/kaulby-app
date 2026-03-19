@@ -6,6 +6,7 @@ import { getEffectiveUserId } from "@/lib/dev-auth";
 import { getUserPlan } from "@/lib/limits";
 import { isValidUuid, escapeHtml } from "@/lib/security";
 import { checkApiRateLimit } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 // Conversation limits by plan
 const CONVERSATION_LIMITS: Record<string, number> = {
@@ -41,7 +42,7 @@ export async function GET() {
 
     return NextResponse.json({ conversations });
   } catch (error) {
-    console.error("Error listing conversations:", error);
+    logger.error("Error listing conversations:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Failed to list conversations" }, { status: 500 });
   }
 }
@@ -99,7 +100,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ conversation }, { status: 201 });
   } catch (error) {
-    console.error("Error creating conversation:", error);
+    logger.error("Error creating conversation:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Failed to create conversation" }, { status: 500 });
   }
 }
@@ -129,7 +130,7 @@ export async function DELETE(req: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error deleting conversation:", error);
+    logger.error("Error deleting conversation:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Failed to delete conversation" }, { status: 500 });
   }
 }

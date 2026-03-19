@@ -6,6 +6,7 @@ import { monitors } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { canCreateMonitor } from "@/lib/limits";
 import { checkApiRateLimit } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export async function POST(
   request: Request,
@@ -67,7 +68,7 @@ export async function POST(
       message: "Monitor duplicated successfully",
     });
   } catch (error) {
-    console.error("Error duplicating monitor:", error);
+    logger.error("Error duplicating monitor:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to duplicate monitor" },
       { status: 500 }

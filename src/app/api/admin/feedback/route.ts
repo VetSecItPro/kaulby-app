@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { feedback, users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 // PATCH - Update feedback status (admin only)
 export async function PATCH(request: NextRequest) {
@@ -48,7 +49,7 @@ export async function PATCH(request: NextRequest) {
     if (error instanceof BodyTooLargeError) {
       return NextResponse.json({ error: "Request body too large" }, { status: 413 });
     }
-    console.error("Failed to update feedback:", error);
+    logger.error("Failed to update feedback:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Failed to update feedback" }, { status: 500 });
   }
 }

@@ -9,6 +9,7 @@ import { findUserWithFallback } from "@/lib/auth-utils";
 import { logActivity } from "@/lib/activity-log";
 import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
 import { z } from "zod";
+import { logger } from "@/lib/logger";
 
 const createInviteSchema = z.object({
   email: z.string().email("Invalid email format").max(320),
@@ -64,7 +65,7 @@ export async function GET() {
       })),
     });
   } catch (error) {
-    console.error("Error fetching invites:", error);
+    logger.error("Error fetching invites:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Failed to fetch invites" }, { status: 500 });
   }
 }
@@ -171,7 +172,7 @@ export async function POST(request: Request) {
         inviteToken: token,
       });
     } catch (emailError) {
-      console.error("Failed to send invite email:", emailError);
+      logger.error("Failed to send invite email:", { error: emailError instanceof Error ? emailError.message : String(emailError) });
       // Don't fail the request if email fails - invite is still valid
     }
 
@@ -196,7 +197,7 @@ export async function POST(request: Request) {
     if (error instanceof BodyTooLargeError) {
       return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
     }
-    console.error("Error creating invite:", error);
+    logger.error("Error creating invite:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Failed to create invite" }, { status: 500 });
   }
 }

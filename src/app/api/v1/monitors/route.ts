@@ -8,6 +8,7 @@ import { sanitizeMonitorInput, isValidKeyword } from "@/lib/security";
 import { checkApiRateLimit } from "@/lib/rate-limit";
 import { getUserPlan, canCreateMonitor, checkKeywordsLimit, filterAllowedPlatforms, getUpgradePrompt } from "@/lib/limits";
 import { z } from "zod";
+import { logger } from "@/lib/logger";
 
 const createMonitorV1Schema = z.object({
   name: z.string().min(1).max(200),
@@ -72,7 +73,7 @@ export async function GET(request: NextRequest) {
         },
       });
     } catch (error) {
-      console.error("API v1 monitors error:", error);
+      logger.error("API v1 monitors error:", { error: error instanceof Error ? error.message : String(error) });
       return NextResponse.json(
         { error: "Failed to fetch monitors" },
         { status: 500 }
@@ -193,7 +194,7 @@ export async function POST(request: NextRequest) {
         },
       }, { status: 201 });
     } catch (error) {
-      console.error("API v1 create monitor error:", error);
+      logger.error("API v1 create monitor error:", { error: error instanceof Error ? error.message : String(error) });
       return NextResponse.json(
         { error: "Failed to create monitor" },
         { status: 500 }

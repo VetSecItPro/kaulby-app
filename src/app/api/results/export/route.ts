@@ -5,6 +5,7 @@ import { users, monitors, results } from "@/lib/db/schema";
 import { eq, and, inArray, desc, lt } from "drizzle-orm";
 import { getPlanLimits } from "@/lib/plans";
 import { checkApiRateLimit } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 // Force dynamic rendering
 export const dynamic = "force-dynamic";
@@ -190,7 +191,7 @@ export async function GET(request: NextRequest) {
 
           controller.close();
         } catch (error) {
-          console.error("CSV stream error:", error);
+          logger.error("CSV stream error:", { error: error instanceof Error ? error.message : String(error) });
           controller.error(error);
         }
       },
@@ -205,7 +206,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Export error:", error);
+    logger.error("Export error:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to export results" },
       { status: 500 }

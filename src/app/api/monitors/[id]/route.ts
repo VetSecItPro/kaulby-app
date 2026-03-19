@@ -15,6 +15,7 @@ import { sanitizeMonitorInput, isValidKeyword } from "@/lib/security";
 import { logError } from "@/lib/error-logger";
 import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
 import { z } from "zod";
+import { logger } from "@/lib/logger";
 
 const updateMonitorSchema = z.object({
   name: z.string().min(1).max(200).optional(),
@@ -77,7 +78,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error("Error fetching monitor:", error);
+    logger.error("Error fetching monitor:", { error: error instanceof Error ? error.message : String(error) });
     logError({ source: "api", message: "Failed to fetch monitor", error, endpoint: "GET /api/monitors/[id]" });
     return NextResponse.json({ error: "Failed to fetch monitor" }, { status: 500 });
   }
@@ -231,7 +232,7 @@ export async function PATCH(
     if (error instanceof BodyTooLargeError) {
       return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
     }
-    console.error("Error updating monitor:", error);
+    logger.error("Error updating monitor:", { error: error instanceof Error ? error.message : String(error) });
     logError({ source: "api", message: "Failed to update monitor", error, endpoint: "PATCH /api/monitors/[id]" });
     return NextResponse.json({ error: "Failed to update monitor" }, { status: 500 });
   }
@@ -273,7 +274,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error deleting monitor:", error);
+    logger.error("Error deleting monitor:", { error: error instanceof Error ? error.message : String(error) });
     logError({ source: "api", message: "Failed to delete monitor", error, endpoint: "DELETE /api/monitors/[id]" });
     return NextResponse.json({ error: "Failed to delete monitor" }, { status: 500 });
   }

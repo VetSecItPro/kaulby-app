@@ -9,6 +9,7 @@ import {
   sanitizeInput,
   validateInput,
 } from "@/lib/ai/rate-limit";
+import { logger } from "@/lib/logger";
 
 interface SuggestReplyRequest {
   resultId: string;
@@ -161,7 +162,7 @@ Return JSON: {"suggestions": [{"text": "...", "tone": "helpful|professional|casu
       },
     });
   } catch (error) {
-    console.error("Suggest reply error:", error);
+    logger.error("Suggest reply error:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to generate reply suggestions" },
       { status: 500 }

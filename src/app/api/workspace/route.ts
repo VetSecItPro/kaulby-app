@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import { findUserWithFallback } from "@/lib/auth-utils";
 import { logActivity } from "@/lib/activity-log";
 import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -63,7 +64,7 @@ export async function GET() {
       role: user.workspaceRole,
     });
   } catch (error) {
-    console.error("Error fetching workspace:", error);
+    logger.error("Error fetching workspace:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Failed to fetch workspace" }, { status: 500 });
   }
 }
@@ -164,7 +165,7 @@ export async function POST(request: Request) {
     if (error instanceof BodyTooLargeError) {
       return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
     }
-    console.error("Error creating workspace:", error);
+    logger.error("Error creating workspace:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Failed to create workspace" }, { status: 500 });
   }
 }

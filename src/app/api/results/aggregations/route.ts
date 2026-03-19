@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { monitors, results } from "@/lib/db/schema";
 import { eq, inArray, and, gte, lte, count, desc, isNotNull, sql } from "drizzle-orm";
 import { checkApiRateLimit } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 // Force dynamic rendering
 export const dynamic = "force-dynamic";
@@ -322,7 +323,7 @@ export async function GET(request: NextRequest) {
       engagement: engagementBuckets,
     } satisfies AggregationsResponse);
   } catch (error) {
-    console.error("Aggregations error:", error);
+    logger.error("Aggregations error:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to get aggregations" },
       { status: 500 }

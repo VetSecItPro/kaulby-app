@@ -4,6 +4,7 @@ import { createApiKey, listApiKeys, revokeApiKey } from "@/lib/api-auth";
 import { findUserWithFallback } from "@/lib/auth-utils";
 import { logError } from "@/lib/error-logger";
 import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +39,7 @@ export async function GET() {
 
     return NextResponse.json({ keys });
   } catch (error) {
-    console.error("List API keys error:", error);
+    logger.error("List API keys error:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to list API keys" },
       { status: 500 }
@@ -130,7 +131,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof BodyTooLargeError) {
       return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
     }
-    console.error("Create API key error:", error);
+    logger.error("Create API key error:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to create API key" },
       { status: 500 }
@@ -187,7 +188,7 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Revoke API key error:", error);
+    logger.error("Revoke API key error:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to revoke API key" },
       { status: 500 }

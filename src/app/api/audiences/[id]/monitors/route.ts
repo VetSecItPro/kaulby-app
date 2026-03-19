@@ -4,6 +4,7 @@ import { db, audiences, audienceMonitors, monitors } from "@/lib/db";
 import { eq, and } from "drizzle-orm";
 import { z } from "zod";
 import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -89,7 +90,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     if (error instanceof BodyTooLargeError) {
       return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
     }
-    console.error("Failed to add monitor to audience:", error);
+    logger.error("Failed to add monitor to audience:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to add monitor to audience" },
       { status: 500 }
@@ -162,7 +163,7 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     if (error instanceof BodyTooLargeError) {
       return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
     }
-    console.error("Failed to remove monitor from audience:", error);
+    logger.error("Failed to remove monitor from audience:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to remove monitor from audience" },
       { status: 500 }

@@ -5,6 +5,7 @@ import { webhooks } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import crypto from "crypto";
 import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -108,7 +109,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof BodyTooLargeError) {
       return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
     }
-    console.error("Test webhook error:", error);
+    logger.error("Test webhook error:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to test webhook" },
       { status: 500 }

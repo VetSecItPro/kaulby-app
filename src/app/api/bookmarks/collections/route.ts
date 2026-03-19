@@ -4,6 +4,7 @@ import { db, bookmarkCollections, bookmarks } from "@/lib/db";
 import { eq, and, count, desc } from "drizzle-orm";
 import { checkApiRateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
+import { logger } from "@/lib/logger";
 
 const createCollectionSchema = z.object({
   name: z.string().trim().min(1).max(100),
@@ -120,7 +121,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof Error && error.message === "COLLECTION_LIMIT_REACHED") {
       return NextResponse.json({ error: "Maximum 20 collections allowed" }, { status: 400 });
     }
-    console.error("Error creating collection:", error);
+    logger.error("Error creating collection:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Failed to create collection" }, { status: 500 });
   }
 }

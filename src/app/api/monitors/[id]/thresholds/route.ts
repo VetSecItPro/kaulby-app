@@ -4,6 +4,7 @@ import { monitors } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getEffectiveUserId } from "@/lib/dev-auth";
 import { z } from "zod";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -107,7 +108,7 @@ export async function PATCH(
       crisisThresholds: updatedThresholds,
     });
   } catch (error) {
-    console.error("Failed to update crisis thresholds:", error);
+    logger.error("Failed to update crisis thresholds:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

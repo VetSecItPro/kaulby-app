@@ -4,6 +4,7 @@ import { results, monitors } from "@/lib/db/schema";
 import { eq, inArray, desc, gte, and, count, or } from "drizzle-orm";
 import { getEffectiveUserId } from "@/lib/dev-auth";
 import { checkApiRateLimit } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -275,7 +276,7 @@ export async function GET() {
     response.headers.set("Cache-Control", "private, max-age=300, stale-while-revalidate=600");
     return response;
   } catch (error) {
-    console.error("Dashboard insights error:", error);
+    logger.error("Dashboard insights error:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to fetch dashboard insights" },
       { status: 500 }

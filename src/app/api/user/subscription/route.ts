@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getEffectiveUserId } from "@/lib/dev-auth";
 import { db, users } from "@/lib/db";
 import { eq } from "drizzle-orm";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,7 @@ export async function GET() {
       plan: user?.subscriptionStatus || "free",
     });
   } catch (error) {
-    console.error("Error fetching subscription:", error);
+    logger.error("Error fetching subscription:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Failed to fetch subscription" }, { status: 500 });
   }
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { emailEvents } from "@/lib/db/schema";
 import { sanitizeUrl, isValidUuid, verifyTrackingSignature } from "@/lib/security";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -70,7 +71,7 @@ export async function GET(request: NextRequest) {
       });
     } catch (error) {
       // Log but don't fail - tracking shouldn't break the redirect
-      console.error("Failed to track email click:", error);
+      logger.error("Failed to track email click:", { error: error instanceof Error ? error.message : String(error) });
     }
   }
 

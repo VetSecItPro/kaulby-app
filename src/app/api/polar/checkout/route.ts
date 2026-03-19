@@ -3,6 +3,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { getPolarClient, POLAR_PLANS, PolarPlanKey, getProductId, BillingInterval } from "@/lib/polar";
 
 import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 export const dynamic = "force-dynamic";
 
 /**
@@ -95,7 +96,7 @@ export async function POST(request: NextRequest) {
     }
     const errMsg = error instanceof Error ? error.message : String(error);
     const errDetail = (error as { statusCode?: number; detail?: unknown })?.statusCode;
-    console.error("Polar checkout error:", { message: errMsg, statusCode: errDetail, error });
+    logger.error("Polar checkout error:", { message: errMsg, statusCode: errDetail, error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to create checkout session", detail: errMsg },
       { status: 500 }

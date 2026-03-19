@@ -3,6 +3,7 @@ import { getEffectiveUserId } from "@/lib/dev-auth";
 import { db, bookmarks } from "@/lib/db";
 import { eq, and } from "drizzle-orm";
 import { checkApiRateLimit } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 interface RouteParams {
   params: Promise<{ resultId: string }>;
@@ -38,7 +39,7 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error deleting bookmark:", error);
+    logger.error("Error deleting bookmark:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Failed to delete bookmark" }, { status: 500 });
   }
 }

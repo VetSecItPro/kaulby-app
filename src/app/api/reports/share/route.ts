@@ -10,6 +10,7 @@ import { db, monitors, results, sharedReports } from "@/lib/db";
 import { eq, and, gte, inArray, desc, sql } from "drizzle-orm";
 import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
 import crypto from "crypto";
+import { logger } from "@/lib/logger";
 
 interface ShareReportRequest {
   monitorId?: string; // Optional - if omitted, aggregates all monitors
@@ -201,7 +202,7 @@ export async function POST(req: Request) {
     if (error instanceof BodyTooLargeError) {
       return NextResponse.json({ error: "Request body too large" }, { status: 413 });
     }
-    console.error("Share report error:", error);
+    logger.error("Share report error:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to create shared report" },
       { status: 500 }

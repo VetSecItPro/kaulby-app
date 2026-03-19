@@ -4,6 +4,7 @@ import { escapeHtml, sanitizeForLog } from "@/lib/security";
 import { db } from "@/lib/db";
 import { webhookEvents } from "@/lib/db/schema";
 import crypto from "crypto";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 // PERF: Email webhook processing may take longer than default 10s — FIX-016
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
     // SECURITY (SEC-AUTH-001): Verify Resend webhook secret (mandatory)
     const webhookSecret = process.env.RESEND_WEBHOOK_SECRET;
     if (!webhookSecret) {
-      console.error("[email-webhook] RESEND_WEBHOOK_SECRET not configured");
+      logger.error("[email-webhook] RESEND_WEBHOOK_SECRET not configured");
       return NextResponse.json({ error: "Webhook not configured" }, { status: 500 });
     }
     const signature = request.headers.get("resend-signature") || request.headers.get("x-resend-signature");
@@ -78,7 +79,7 @@ export async function POST(request: NextRequest) {
 
     // If body is missing, fetch full inbound email using Resend's receiving API
     if (!text && !html && email.email_id) {
-      console.warn("[email-webhook] Body missing, fetching:", sanitizeForLog(email.email_id));
+      logger.warn("[email-webhook] Body missing, fetching:", { detail: sanitizeForLog(email.email_id) });
       try {
         const response = await fetch(`https://api.resend.com/emails/receiving/${encodeURIComponent(email.email_id)}`, {
           headers: {
@@ -91,10 +92,10 @@ export async function POST(request: NextRequest) {
           text = fullEmail.text;
           html = fullEmail.html;
         } else {
-          console.error("Failed to fetch inbound email:", response.status);
+          logger.error("Failed to fetch inbound email:", { response_status: response.status });
         }
       } catch (fetchErr) {
-        console.error("Failed to fetch inbound email:", fetchErr);
+        logger.error("Failed to fetch inbound email:", { error: fetchErr instanceof Error ? fetchErr.message : String(fetchErr) });
       }
     }
 
@@ -134,7 +135,7 @@ export async function POST(request: NextRequest) {
     // Email forwarded with Reply-To to original sender
 
     if (error) {
-      console.error("Forward failed:", error);
+      logger.error("Forward failed:", { error: error instanceof Error ? error.message : String(error) });
       return NextResponse.json({ error: "Forward failed" }, { status: 500 });
     }
 
@@ -142,7 +143,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ received: true, forwarded: true });
 
   } catch (err) {
-    console.error("Webhook error:", err);
+    logger.error("Webhook error:", { error: err instanceof Error ? err.message : String(err) });
     return NextResponse.json({ error: "Webhook failed" }, { status: 500 });
   }
 }

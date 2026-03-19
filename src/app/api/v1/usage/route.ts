@@ -3,6 +3,7 @@ import { withApiAuth } from "@/lib/api-auth";
 import { db } from "@/lib/db";
 import { monitors, results, usage, users } from "@/lib/db/schema";
 import { eq, count, and, gte } from "drizzle-orm";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -98,7 +99,7 @@ export async function GET(request: NextRequest) {
         },
       });
     } catch (error) {
-      console.error("API v1 usage error:", error);
+      logger.error("API v1 usage error:", { error: error instanceof Error ? error.message : String(error) });
       return NextResponse.json(
         { error: "Failed to fetch usage" },
         { status: 500 }

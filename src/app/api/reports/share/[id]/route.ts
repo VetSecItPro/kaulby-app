@@ -10,6 +10,7 @@ import { getEffectiveUserId } from "@/lib/dev-auth";
 import { db, sharedReports } from "@/lib/db";
 import { eq, and, desc } from "drizzle-orm";
 import { checkApiRateLimit } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export async function GET(
   _req: Request,
@@ -75,7 +76,7 @@ export async function GET(
       isExpired: report.expiresAt ? new Date(report.expiresAt) < new Date() : false,
     });
   } catch (error) {
-    console.error("List shared reports error:", error);
+    logger.error("List shared reports error:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to fetch shared reports" },
       { status: 500 }
@@ -116,7 +117,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true, id: updated.id });
   } catch (error) {
-    console.error("Delete shared report error:", error);
+    logger.error("Delete shared report error:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to deactivate shared report" },
       { status: 500 }

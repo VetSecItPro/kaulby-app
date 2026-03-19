@@ -6,6 +6,7 @@ import { eq, inArray } from "drizzle-orm";
 import { getPlanLimits } from "@/lib/plans";
 
 import { checkApiRateLimit } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 export const dynamic = "force-dynamic";
 
 /**
@@ -335,7 +336,7 @@ export async function GET(request: Request) {
       }
     }
   } catch (error) {
-    console.error("Export error:", error);
+    logger.error("Export error:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Failed to export data" }, { status: 500 });
   }
 }

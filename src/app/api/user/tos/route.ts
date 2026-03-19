@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getEffectiveUserId } from "@/lib/dev-auth";
+import { logger } from "@/lib/logger";
 
 export async function POST() {
   try {
@@ -18,7 +19,7 @@ export async function POST() {
 
     return NextResponse.json({ accepted: true });
   } catch (error) {
-    console.error("Error accepting ToS:", error);
+    logger.error("Error accepting ToS:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Failed to accept terms" }, { status: 500 });
   }
 }

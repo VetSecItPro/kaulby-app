@@ -5,6 +5,7 @@ import { eq, and, asc } from "drizzle-orm";
 import { getEffectiveUserId } from "@/lib/dev-auth";
 import { isValidUuid } from "@/lib/security";
 import { checkApiRateLimit } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 // Max content length per message (characters)
 const MAX_MESSAGE_LENGTH = 10_000;
@@ -55,7 +56,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ messages });
   } catch (error) {
-    console.error("Error loading messages:", error);
+    logger.error("Error loading messages:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Failed to load messages" }, { status: 500 });
   }
 }
@@ -170,7 +171,7 @@ export async function POST(req: Request) {
 
   return NextResponse.json({ saved: inserted.length });
   } catch (error) {
-    console.error("Error saving messages:", error);
+    logger.error("Error saving messages:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Failed to save messages" }, { status: 500 });
   }
 }

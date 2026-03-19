@@ -3,6 +3,7 @@ import { db, monitors, results } from "@/lib/db";
 import { eq, desc, inArray, and, lt } from "drizzle-orm";
 import { getEffectiveUserId } from "@/lib/dev-auth";
 import { checkApiRateLimit } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -114,7 +115,7 @@ export async function GET(request: NextRequest) {
     response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
     return response;
   } catch (error) {
-    console.error("Failed to fetch results:", error);
+    logger.error("Failed to fetch results:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to fetch results" },
       { status: 500 }

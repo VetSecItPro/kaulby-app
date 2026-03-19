@@ -7,6 +7,7 @@ import { eq, and } from "drizzle-orm";
 import { canTriggerManualScan, getManualScanCooldown } from "@/lib/limits";
 import { inngest } from "@/lib/inngest";
 import { checkApiRateLimit } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -101,7 +102,7 @@ export async function POST(
       monitorId: id,
     });
   } catch (error) {
-    console.error("Error starting scan:", error);
+    logger.error("Error starting scan:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to start scan" },
       { status: 500 }
@@ -164,7 +165,7 @@ export async function GET(
       cooldownHours,
     });
   } catch (error) {
-    console.error("Error getting scan status:", error);
+    logger.error("Error getting scan status:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to get scan status" },
       { status: 500 }

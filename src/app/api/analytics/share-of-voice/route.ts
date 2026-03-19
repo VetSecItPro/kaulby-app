@@ -4,6 +4,7 @@ import { db, monitors, results } from "@/lib/db";
 import { eq, and, gte, inArray, sql } from "drizzle-orm";
 import { getUserPlan } from "@/lib/limits";
 import { checkApiRateLimit } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 interface BrandData {
   name: string;
@@ -150,7 +151,7 @@ export async function GET(req: Request) {
     response.headers.set("Cache-Control", "private, max-age=300");
     return response;
   } catch (error) {
-    console.error("Share of Voice error:", error);
+    logger.error("Share of Voice error:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to calculate share of voice" },
       { status: 500 }

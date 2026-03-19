@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { errorLogs, users } from "@/lib/db/schema";
 import { eq, desc, and, gte, lte, or, ilike, count, sql } from "drizzle-orm";
 import { checkApiRateLimit } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 /**
  * GET /api/admin/errors
@@ -187,7 +188,7 @@ export async function GET(request: NextRequest) {
     },
   });
   } catch (error) {
-    console.error("Error fetching admin errors:", error);
+    logger.error("Error fetching admin errors:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Failed to fetch error logs" }, { status: 500 });
   }
 }

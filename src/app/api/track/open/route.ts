@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { emailEvents } from "@/lib/db/schema";
 import { isValidUuid } from "@/lib/security";
+import { logger } from "@/lib/logger";
 
 // 1x1 transparent GIF
 const TRACKING_PIXEL = Buffer.from(
@@ -64,7 +65,7 @@ export async function GET(request: NextRequest) {
       }
     } catch (error) {
       // Log but don't fail - tracking shouldn't break the user experience
-      console.error("Failed to track email open:", error);
+      logger.error("Failed to track email open:", { error: error instanceof Error ? error.message : String(error) });
     }
   }
 
