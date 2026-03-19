@@ -19,8 +19,6 @@ import {
 import { HeroDashboard } from "@/components/landing/hero-dashboard";
 import { TestimonialSection } from "@/components/landing/testimonials";
 import { FeatureTabs } from "@/components/landing/feature-tabs";
-import { AiSection } from "@/components/landing/ai-section";
-import { VideoPlayer } from "@/components/landing/video-player";
 import { PlatformLogo } from "@/components/landing/platform-logos";
 import { PWAInstallButton } from "@/components/shared/pwa-install-button";
 
@@ -101,19 +99,7 @@ export default function HomePage() {
             </div>
 
             <div className="mt-12 md:mt-16 lg:mt-20 px-4">
-              <div className="relative w-full max-w-5xl mx-auto">
-                {/* Teal glow underneath */}
-                <div className="absolute -inset-4 bg-teal-500/10 rounded-3xl blur-2xl -z-10" />
-                <div className="md:[transform:rotateX(2deg)] transition-transform duration-500" style={{ perspective: "1200px" }}>
-                  <VideoPlayer
-                    mp4Src="/videos/product-demo.mp4"
-                    webmSrc="/videos/product-demo.webm"
-                    poster="/videos/product-demo-poster.webp"
-                    className="shadow-2xl shadow-teal-500/5"
-                    fallback={<HeroDashboard />}
-                  />
-                </div>
-              </div>
+              <HeroDashboard />
             </div>
           </div>
         </section>
@@ -209,9 +195,6 @@ export default function HomePage() {
             <FeatureTabs />
           </div>
         </AnimatedSection>
-
-        {/* Kaulby AI Section */}
-        <AiSection />
 
         {/* How it works */}
         <AnimatedSection className="py-16 md:py-24 px-4 bg-muted/30">
