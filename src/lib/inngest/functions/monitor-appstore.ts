@@ -10,6 +10,7 @@ import {
   saveNewResults,
   triggerAiAnalysis,
   updateMonitorStats,
+  hasAnyActiveMonitors,
   type MonitorStep,
 } from "../utils/monitor-helpers";
 
@@ -19,7 +20,7 @@ import {
  * For App Store monitors, the "keywords" field stores App Store URLs
  * or app IDs to monitor (e.g., "id123456789" or "https://apps.apple.com/us/app/app-name/id123456789")
  *
- * Runs every 6 hours since App Store reviews update less frequently
+ * Runs every 2 hours on odd hours (staggered with other platform monitors)
  */
 export const monitorAppStore = inngest.createFunction(
   {
@@ -29,9 +30,13 @@ export const monitorAppStore = inngest.createFunction(
     timeouts: { finish: "14m" },
     concurrency: { limit: 5 },
   },
-  { cron: "0 */2 * * *" }, // Every 2 hours (matches fastest plan tier)
+  { cron: "17 1-23/2 * * *" }, // :17 on odd hours (staggered)
   async ({ step: _step }) => {
     const step = _step as unknown as MonitorStep;
+
+    // Skip entirely if no monitors exist in the system
+    const hasWork = await hasAnyActiveMonitors(step);
+    if (!hasWork) return { skipped: true, reason: "no active monitors in system" };
 
     if (!isApifyConfigured()) {
       return { message: "Apify API key not configured, skipping App Store monitoring" };

@@ -5,6 +5,7 @@ import { eq, desc, and, count } from "drizzle-orm";
 import { getEffectiveUserId } from "@/lib/dev-auth";
 import { getUserPlan } from "@/lib/limits";
 import { isValidUuid, escapeHtml } from "@/lib/security";
+import { checkApiRateLimit } from "@/lib/rate-limit";
 
 // Conversation limits by plan
 const CONVERSATION_LIMITS: Record<string, number> = {
@@ -19,6 +20,12 @@ export async function GET() {
     const userId = await getEffectiveUserId();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Security: Rate limit conversation listing
+    const rateLimit = await checkApiRateLimit(userId, "read");
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
     }
 
     const conversations = await db.query.chatConversations.findMany({
@@ -45,6 +52,12 @@ export async function POST(req: Request) {
     const userId = await getEffectiveUserId();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Security: Rate limit conversation creation
+    const writeRateLimit = await checkApiRateLimit(userId, "write");
+    if (!writeRateLimit.allowed) {
+      return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
     }
 
     const plan = await getUserPlan(userId);

@@ -245,36 +245,43 @@ export async function POST(request: NextRequest) {
         let foundingMemberNumber: number | null = null;
 
         if (plan === "pro" || plan === "team") {
-          // Use an atomic UPDATE that only sets founding member if under limit
-          const result = await db
-            .update(users)
-            .set({
-              polarSubscriptionId: subscriptionId,
-              subscriptionStatus: subscriptionStatus,
-              currentPeriodStart: currentPeriodStart ? new Date(currentPeriodStart) : undefined,
-              currentPeriodEnd: currentPeriodEnd ? new Date(currentPeriodEnd) : undefined,
-              isFoundingMember: sql`CASE
-                WHEN (SELECT COUNT(*) FROM ${users} WHERE ${users.isFoundingMember} = true) < ${FOUNDING_MEMBER_LIMIT}
-                THEN true
-                ELSE false
-              END`,
-              foundingMemberNumber: sql`CASE
-                WHEN (SELECT COUNT(*) FROM ${users} WHERE ${users.isFoundingMember} = true) < ${FOUNDING_MEMBER_LIMIT}
-                THEN (SELECT COUNT(*) FROM ${users} WHERE ${users.isFoundingMember} = true) + 1
-                ELSE NULL
-              END`,
-              foundingMemberPriceId: sql`CASE
-                WHEN (SELECT COUNT(*) FROM ${users} WHERE ${users.isFoundingMember} = true) < ${FOUNDING_MEMBER_LIMIT}
-                THEN ${productId}
-                ELSE NULL
-              END`,
-              updatedAt: new Date(),
-            })
-            .where(eq(users.id, user.id))
-            .returning({
-              isFoundingMember: users.isFoundingMember,
-              foundingMemberNumber: users.foundingMemberNumber,
-            });
+          // Security (SEC-11): Use advisory lock to prevent race condition on founding member assignment.
+          // Without the lock, two concurrent webhooks could both read the same COUNT and assign
+          // the same foundingMemberNumber.
+          const result = await db.transaction(async (tx) => {
+            // Advisory lock scoped to this transaction — released automatically on commit
+            await tx.execute(sql`SELECT pg_advisory_xact_lock(${sql.raw("hashtext('founding-member')")})`);
+
+            return tx
+              .update(users)
+              .set({
+                polarSubscriptionId: subscriptionId,
+                subscriptionStatus: subscriptionStatus,
+                currentPeriodStart: currentPeriodStart ? new Date(currentPeriodStart) : undefined,
+                currentPeriodEnd: currentPeriodEnd ? new Date(currentPeriodEnd) : undefined,
+                isFoundingMember: sql`CASE
+                  WHEN (SELECT COUNT(*) FROM ${users} WHERE ${users.isFoundingMember} = true) < ${FOUNDING_MEMBER_LIMIT}
+                  THEN true
+                  ELSE false
+                END`,
+                foundingMemberNumber: sql`CASE
+                  WHEN (SELECT COUNT(*) FROM ${users} WHERE ${users.isFoundingMember} = true) < ${FOUNDING_MEMBER_LIMIT}
+                  THEN (SELECT COUNT(*) FROM ${users} WHERE ${users.isFoundingMember} = true) + 1
+                  ELSE NULL
+                END`,
+                foundingMemberPriceId: sql`CASE
+                  WHEN (SELECT COUNT(*) FROM ${users} WHERE ${users.isFoundingMember} = true) < ${FOUNDING_MEMBER_LIMIT}
+                  THEN ${productId}
+                  ELSE NULL
+                END`,
+                updatedAt: new Date(),
+              })
+              .where(eq(users.id, user.id))
+              .returning({
+                isFoundingMember: users.isFoundingMember,
+                foundingMemberNumber: users.foundingMemberNumber,
+              });
+          });
 
           if (result[0]) {
             isFoundingMember = result[0].isFoundingMember || false;
@@ -331,7 +338,7 @@ export async function POST(request: NextRequest) {
       }
 
       case "subscription.updated": {
-        // Subscription was updated (e.g., plan change)
+        // Subscription was updated (e.g., plan change, payment failure)
         const customerId = eventData.customerId as string;
         const productId = eventData.productId as string;
         const currentPeriodStart = eventData.currentPeriodStart as string | undefined;
@@ -339,12 +346,18 @@ export async function POST(request: NextRequest) {
         const status = eventData.status as string;
 
         const plan = getPlanFromProductId(productId);
-        const subscriptionStatus = mapPlanToSubscriptionStatus(plan);
+
+        // Security (SEC-12): Check subscription status — don't grant paid tier if payment failed.
+        // Polar sends status: "active", "past_due", "unpaid", "incomplete", "canceled"
+        const DEGRADED_STATUSES = ["past_due", "unpaid", "incomplete"];
+        const effectiveStatus = DEGRADED_STATUSES.includes(status)
+          ? "free" as const  // Downgrade to free on payment failure
+          : mapPlanToSubscriptionStatus(plan);
 
         await db
           .update(users)
           .set({
-            subscriptionStatus: subscriptionStatus,
+            subscriptionStatus: effectiveStatus,
             currentPeriodStart: currentPeriodStart ? new Date(currentPeriodStart) : undefined,
             currentPeriodEnd: currentPeriodEnd ? new Date(currentPeriodEnd) : undefined,
             updatedAt: new Date(),
@@ -362,8 +375,9 @@ export async function POST(request: NextRequest) {
             event: "subscription_updated",
             properties: {
               provider: "polar",
-              plan: subscriptionStatus,
-              status,
+              plan: effectiveStatus,
+              polarStatus: status,
+              wasDegraded: DEGRADED_STATUSES.includes(status),
             },
           });
         }

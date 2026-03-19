@@ -261,7 +261,7 @@ function generateHtmlReport(
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title}</title>
+  <title>${escapeHtml(title)}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -328,9 +328,9 @@ function generateHtmlReport(
 </head>
 <body>
   <div class="header">
-    <h1>${title}</h1>
+    <h1>${escapeHtml(title)}</h1>
     <div class="meta">
-      ${companyName} &bull; Last ${days} days &bull; Generated ${new Date().toLocaleDateString()}
+      ${escapeHtml(companyName)} &bull; Last ${days} days &bull; Generated ${new Date().toLocaleDateString()}
     </div>
   </div>
 

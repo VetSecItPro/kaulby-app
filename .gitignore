@@ -50,6 +50,9 @@ next-env.d.ts
 # clerk configuration (can include secrets)
 /.clerk/
 
+# Remotion cache
+.remotion/
+
 # Sentry
 .sentryclirc
 
@@ -101,3 +104,4 @@ ARCHITECTURE.md
 .test-audit.json
 .perf-reports/
 .smoketest-reports/
+remotion/node_modules/

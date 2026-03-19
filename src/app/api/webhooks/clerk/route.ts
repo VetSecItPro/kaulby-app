@@ -133,13 +133,13 @@ export async function POST(request: NextRequest) {
           ];
           for (const table of childTables) {
             await db.execute(
-              sql.raw(`UPDATE "${table}" SET user_id = '${id}' WHERE user_id = '${oldId}'`)
+              sql`UPDATE ${sql.identifier(table)} SET user_id = ${id} WHERE user_id = ${oldId}`
             );
           }
           // Also update workspace_members if it exists
           try {
             await db.execute(
-              sql.raw(`UPDATE "workspace_members" SET user_id = '${id}' WHERE user_id = '${oldId}'`)
+              sql`UPDATE ${sql.identifier("workspace_members")} SET user_id = ${id} WHERE user_id = ${oldId}`
             );
           } catch { /* table may not exist */ }
 

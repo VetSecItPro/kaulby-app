@@ -18,7 +18,7 @@ export const chatCleanup = inngest.createFunction(
     retries: 3,
     timeouts: { finish: "15m" },
   },
-  { cron: "0 4 * * *" }, // Run daily at 4 AM UTC
+  { cron: "0 4 * * 0" }, // Weekly Sunday at 4 AM UTC (retention is 7-90 days, weekly is sufficient)
   async ({ step, logger }) => {
     logger.info("Starting chat history cleanup");
 

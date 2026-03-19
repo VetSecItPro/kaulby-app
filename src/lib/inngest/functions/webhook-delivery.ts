@@ -327,7 +327,7 @@ export const retryWebhookDeliveries = inngest.createFunction(
     retries: 3,
     timeouts: { finish: "5m" },
   },
-  { cron: "* * * * *" }, // Run every minute
+  { cron: "*/5 * * * *" }, // Every 5 minutes (backoff delays are 1/5/15/60/240m — 5m poll is sufficient)
   async ({ step, logger }) => {
     const now = new Date();
 

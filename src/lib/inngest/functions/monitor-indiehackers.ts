@@ -10,6 +10,7 @@ import {
   saveNewResults,
   triggerAiAnalysis,
   updateMonitorStats,
+  hasAnyActiveMonitors,
   type MonitorStep,
 } from "../utils/monitor-helpers";
 
@@ -158,9 +159,13 @@ export const monitorIndieHackers = inngest.createFunction(
     timeouts: { finish: "14m" },
     concurrency: { limit: 5 },
   },
-  { cron: "0 */2 * * *" }, // Every 2 hours (matches fastest plan tier)
+  { cron: "49 */2 * * *" }, // :49 on even hours (staggered)
   async ({ step: _step }) => {
     const step = _step as unknown as MonitorStep;
+
+    // Skip entirely if no monitors exist in the system
+    const hasWork = await hasAnyActiveMonitors(step);
+    if (!hasWork) return { skipped: true, reason: "no active monitors in system" };
 
     const ihMonitors = await getActiveMonitors("indiehackers", step);
     if (ihMonitors.length === 0) {

@@ -4,6 +4,7 @@ import { chatConversations, chatMessages } from "@/lib/db/schema";
 import { eq, and, asc } from "drizzle-orm";
 import { getEffectiveUserId } from "@/lib/dev-auth";
 import { isValidUuid } from "@/lib/security";
+import { checkApiRateLimit } from "@/lib/rate-limit";
 
 // Max content length per message (characters)
 const MAX_MESSAGE_LENGTH = 10_000;
@@ -16,6 +17,12 @@ export async function GET(req: Request) {
     const userId = await getEffectiveUserId();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Security: Rate limit chat message reads
+    const rateLimit = await checkApiRateLimit(userId, "read");
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
     }
 
     const { searchParams } = new URL(req.url);
@@ -59,6 +66,12 @@ export async function POST(req: Request) {
   const userId = await getEffectiveUserId();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Security: Rate limit chat message writes
+  const writeRateLimit = await checkApiRateLimit(userId, "write");
+  if (!writeRateLimit.allowed) {
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
   }
 
   const body = await req.json().catch(() => null);

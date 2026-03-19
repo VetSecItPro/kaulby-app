@@ -92,12 +92,19 @@ export async function POST(req: Request) {
     const cleanContent = content ? sanitizeInput(content, 500) : "";
     const cleanProductContext = productContext ? sanitizeInput(productContext, 200) : "";
 
-    const platformGuide = PLATFORM_GUIDELINES[platform.toLowerCase()] || PLATFORM_GUIDELINES.default;
+    // Security: Validate platform against allowlist to prevent prompt injection via platform field
+    const ALLOWED_PLATFORMS = ["reddit", "hackernews", "producthunt", "devto", "hashnode", "github", "quora", "youtube", "trustpilot", "googlereviews", "g2", "yelp", "amazon", "appstore", "playstore", "indiehackers", "x"];
+    const normalizedPlatform = platform.toLowerCase().trim();
+    if (!ALLOWED_PLATFORMS.includes(normalizedPlatform)) {
+      return NextResponse.json({ error: "Invalid platform" }, { status: 400 });
+    }
+
+    const platformGuide = PLATFORM_GUIDELINES[normalizedPlatform] || PLATFORM_GUIDELINES.default;
 
     // RT-003: System prompt contains only trusted instructions — no user-controlled data.
     const systemPrompt = `Generate 3 reply suggestions for a social media post. Each reply should be helpful, authentic, and NOT promotional.
 
-Platform: ${platform}
+Platform: ${normalizedPlatform}
 Guidelines: ${platformGuide}
 
 Rules:

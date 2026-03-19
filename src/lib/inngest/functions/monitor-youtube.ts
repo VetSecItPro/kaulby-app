@@ -14,6 +14,7 @@ import {
   saveNewResults,
   triggerAiAnalysis,
   updateMonitorStats,
+  hasAnyActiveMonitors,
   type MonitorStep,
 } from "../utils/monitor-helpers";
 
@@ -33,9 +34,13 @@ export const monitorYouTube = inngest.createFunction(
     timeouts: { finish: "14m" },
     concurrency: { limit: 5 },
   },
-  { cron: "0 */2 * * *" }, // Every 2 hours (matches fastest plan tier)
+  { cron: "35 */2 * * *" }, // :35 on even hours (staggered)
   async ({ step: _step }) => {
     const step = _step as unknown as MonitorStep;
+
+    // Skip entirely if no monitors exist in the system
+    const hasWork = await hasAnyActiveMonitors(step);
+    if (!hasWork) return { skipped: true, reason: "no active monitors in system" };
 
     if (!isYouTubeApiConfigured()) {
       return { message: "YouTube API key not configured, skipping YouTube monitoring" };

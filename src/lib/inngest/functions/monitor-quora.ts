@@ -14,6 +14,7 @@ import {
   saveNewResults,
   triggerAiAnalysis,
   updateMonitorStats,
+  hasAnyActiveMonitors,
   type MonitorStep,
 } from "../utils/monitor-helpers";
 
@@ -34,9 +35,13 @@ export const monitorQuora = inngest.createFunction(
     timeouts: { finish: "14m" },
     concurrency: { limit: 5 },
   },
-  { cron: "0 */2 * * *" }, // Every 2 hours (matches fastest plan tier)
+  { cron: "31 1-23/2 * * *" }, // :31 on odd hours (staggered)
   async ({ step: _step }) => {
     const step = _step as unknown as MonitorStep;
+
+    // Skip entirely if no monitors exist in the system
+    const hasWork = await hasAnyActiveMonitors(step);
+    if (!hasWork) return { skipped: true, reason: "no active monitors in system" };
 
     if (!isSerperConfigured()) {
       return { message: "Serper API key not configured, skipping Quora monitoring" };
@@ -67,7 +72,8 @@ export const monitorQuora = inngest.createFunction(
       // For Quora, keywords are search queries to find relevant discussions
       for (const keyword of monitor.keywords) {
         // Fetch answers via Serper (Google Search)
-        const answers = await step.run(`fetch-quora-${monitor.id}-${keyword.slice(0, 20)}`, async () => {
+        const ki = monitor.keywords.indexOf(keyword);
+        const answers = await step.run(`fetch-quora-${monitor.id}-kw${ki}`, async () => {
           try {
             return await searchQuoraSerper(keyword, 15);
           } catch (error) {
@@ -100,7 +106,7 @@ export const monitorQuora = inngest.createFunction(
             },
           }),
           step,
-          stepSuffix: keyword.slice(0, 20),
+          stepSuffix: `kw${ki}`,
         });
 
         monitorCount += count;

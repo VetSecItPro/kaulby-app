@@ -28,7 +28,7 @@ const nextConfig = {
     return [
       {
         // Cache static assets for 1 year
-        source: '/:all*(svg|jpg|jpeg|png|gif|ico|webp|avif|woff|woff2)',
+        source: '/:all*(svg|jpg|jpeg|png|gif|ico|webp|avif|woff|woff2|mp4|webm)',
         headers: [
           {
             key: 'Cache-Control',

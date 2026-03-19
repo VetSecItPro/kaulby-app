@@ -10,6 +10,7 @@ import { eq } from "drizzle-orm";
 import { exchangeCodeForTokens } from "@/lib/integrations/slack";
 import { encryptIntegrationData } from "@/lib/encryption";
 import { logger } from "@/lib/logger";
+import { getEffectiveUserId } from "@/lib/dev-auth";
 
 export async function GET(request: NextRequest) {
   try {
@@ -40,9 +41,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Extract user ID from state
+    // Security: Cross-validate state userId against authenticated session
+    const sessionUserId = await getEffectiveUserId();
     const [userId] = state.split(":");
-    if (!userId) {
+    if (!userId || (sessionUserId && sessionUserId !== userId)) {
       return NextResponse.redirect(
         new URL(
           "/dashboard/settings?tab=integrations&error=Invalid+state+parameter",
