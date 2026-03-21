@@ -1210,6 +1210,7 @@ export default function DemoPage() {
     if (viewParam && viewParam !== activeView) {
       setActiveView(viewParam);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewParam]);
 
   // Sync state → URL

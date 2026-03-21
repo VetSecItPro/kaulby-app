@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check, X, ArrowRight, Zap } from "lucide-react";
+import { Check, ArrowRight, Zap } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Switch from GummySearch to Kaulby — Migration Guide",
