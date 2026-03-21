@@ -20,7 +20,7 @@ export const instantScan = inngest.createFunction(
     retries: 1,
     timeouts: { finish: "2m" },
     concurrency: {
-      limit: 10,
+      limit: 5,
     },
   },
   { event: "monitor/scan.requested" },

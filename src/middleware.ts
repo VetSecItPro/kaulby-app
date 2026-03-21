@@ -28,6 +28,7 @@ async function getClerkHandler() {
 
     const isPublicRoute = createRouteMatcher([
       "/",
+      "/demo(.*)", // Public demo route for video capture and try-before-signup
       "/pricing",
       "/privacy",
       "/terms",
@@ -184,7 +185,7 @@ export default async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     // Skip Next.js internals and all static files, unless found in search params
-    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest|json)).*)",
+    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest|json|mp4|webm|ogg|mov|avi)).*)",
     // Always run for API routes
     "/(api|trpc)(.*)",
   ],
