@@ -1,11 +1,14 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { MobileSettings } from "@/components/mobile/mobile-settings";
-import { TeamSettings } from "@/components/dashboard/team-settings";
-import { ApiKeysSettings } from "@/components/dashboard/api-keys-settings";
-import { IntegrationsSettings, DEFAULT_INTEGRATIONS } from "@/components/dashboard/integrations-settings";
-import { DetectionKeywordsSettings } from "@/components/dashboard/detection-keywords-settings";
+import dynamic from "next/dynamic";
+import { DEFAULT_INTEGRATIONS } from "@/components/dashboard/integrations-settings";
+
+const MobileSettings = dynamic(() => import("@/components/mobile/mobile-settings").then(m => m.MobileSettings), { ssr: false });
+const TeamSettings = dynamic(() => import("@/components/dashboard/team-settings").then(m => m.TeamSettings), { ssr: false });
+const ApiKeysSettings = dynamic(() => import("@/components/dashboard/api-keys-settings").then(m => m.ApiKeysSettings), { ssr: false });
+const IntegrationsSettings = dynamic(() => import("@/components/dashboard/integrations-settings").then(m => m.IntegrationsSettings), { ssr: false });
+const DetectionKeywordsSettings = dynamic(() => import("@/components/dashboard/detection-keywords-settings").then(m => m.DetectionKeywordsSettings), { ssr: false });
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

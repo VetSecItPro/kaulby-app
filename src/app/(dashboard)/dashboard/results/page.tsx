@@ -70,6 +70,7 @@ async function ResultsContent({ searchParams }: ResultsPageProps) {
     getRefreshDelay(userId),
     db.query.monitors.findMany({
       where: eq(monitors.userId, userId),
+      columns: { id: true, name: true },
     }),
   ]);
 

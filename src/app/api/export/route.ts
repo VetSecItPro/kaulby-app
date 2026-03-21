@@ -125,22 +125,39 @@ export async function GET(request: Request) {
       );
     }
 
-    // Get user's monitors
+    // Get user's monitors (only fetch fields needed for export)
     const userMonitors = await db.query.monitors.findMany({
       where: eq(monitors.userId, userId),
+      columns: { id: true, name: true, companyName: true, keywords: true, searchQuery: true, platforms: true, monitorType: true, discoveryPrompt: true, isActive: true, audienceId: true, filters: true, createdAt: true, updatedAt: true },
     });
 
     // Get all results for user's monitors
     const monitorIds = userMonitors.map((m) => m.id);
-    let userResults: typeof results.$inferSelect[] = [];
-
-    if (monitorIds.length > 0) {
-      userResults = await db.query.results.findMany({
+    const userResults = monitorIds.length > 0
+      ? await db.query.results.findMany({
         where: inArray(results.monitorId, monitorIds),
         orderBy: (results, { desc }) => [desc(results.createdAt)],
         limit: 50000,
-      });
-    }
+        columns: {
+          id: true,
+          title: true,
+          content: true,
+          platform: true,
+          sentiment: true,
+          sentimentScore: true,
+          painPointCategory: true,
+          conversationCategory: true,
+          leadScore: true,
+          sourceUrl: true,
+          author: true,
+          postedAt: true,
+          createdAt: true,
+          monitorId: true,
+          aiSummary: true,
+          isSaved: true,
+        },
+      })
+      : [];
 
     // Get user's audiences (bounded to prevent OOM)
     const userAudiences = await db.query.audiences.findMany({
@@ -227,8 +244,6 @@ export async function GET(request: Request) {
           sentimentScore: r.sentimentScore,
           conversationCategory: r.conversationCategory,
           aiSummary: r.aiSummary,
-          aiAnalysis: r.aiAnalysis,
-          metadata: r.metadata,
           createdAt: r.createdAt,
         }));
 
@@ -314,8 +329,6 @@ export async function GET(request: Request) {
             painPointCategory: r.painPointCategory,
             conversationCategory: r.conversationCategory,
             aiSummary: r.aiSummary,
-            aiAnalysis: r.aiAnalysis,
-            metadata: r.metadata,
             isSaved: r.isSaved,
             createdAt: r.createdAt,
           })),

@@ -37,6 +37,7 @@ export async function GET(
       const reports = await db.query.sharedReports.findMany({
         where: eq(sharedReports.userId, userId),
         orderBy: [desc(sharedReports.createdAt)],
+        limit: 100,
         columns: {
           id: true,
           title: true,

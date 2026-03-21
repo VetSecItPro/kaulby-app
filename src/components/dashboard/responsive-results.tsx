@@ -1,10 +1,9 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
-import { MobileResults } from "@/components/mobile/mobile-results";
+import dynamic from "next/dynamic";
 import { ResultsList } from "./results-list";
 import { ResultsSidebar } from "./results-sidebar";
-import { ThemesPanel } from "./themes-panel";
 import { DateRangePicker } from "./date-range-picker";
 import { SearchInputWithHelp } from "./search-help-tooltip";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,9 +12,12 @@ import { Button } from "@/components/ui/button";
 import { HiddenResultsBanner, RefreshDelayBanner } from "./upgrade-prompt";
 import { EmptyState, ScanningState } from "./empty-states";
 import { Download, Lock, SlidersHorizontal, X, Loader2 } from "lucide-react";
-import { SavedSearches } from "./saved-searches";
-import { SearchBuilder } from "./search-builder";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+
+const MobileResults = dynamic(() => import("@/components/mobile/mobile-results").then(m => m.MobileResults), { ssr: false });
+const ThemesPanel = dynamic(() => import("./themes-panel").then(m => m.ThemesPanel), { ssr: false });
+const SavedSearches = dynamic(() => import("./saved-searches").then(m => m.SavedSearches), { ssr: false });
+const SearchBuilder = dynamic(() => import("./search-builder").then(m => m.SearchBuilder), { ssr: false });
 import type { PlanKey } from "@/lib/plans";
 import { parseSearchQuery, matchesQuery } from "@/lib/search-parser";
 
