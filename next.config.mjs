@@ -99,7 +99,6 @@ const nextConfig = {
       '@clerk/nextjs',
       'framer-motion',
       'recharts',
-      '@icons-pack/react-simple-icons',
       'posthog-js',
       '@sentry/nextjs',
     ],
