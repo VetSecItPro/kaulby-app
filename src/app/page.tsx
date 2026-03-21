@@ -17,6 +17,7 @@ import {
   TextReveal,
 } from "@/components/shared/home-animations-lazy";
 import { HeroDashboard } from "@/components/landing/hero-dashboard";
+import { VideoPlayer } from "@/components/landing/video-player";
 import { UseCaseBlocks } from "@/components/landing/use-case-blocks";
 import { TestimonialSection } from "@/components/landing/testimonials";
 import { FeatureTabs } from "@/components/landing/feature-tabs";
@@ -84,7 +85,8 @@ export default function HomePage() {
                 <span className="relative z-10">Pain Points</span>
                 <span className="absolute -inset-x-1 top-1/3 bottom-0 bg-yellow-400/50 -rotate-2 -z-0 rounded-sm" />
               </span>
-              , Competitor Gaps,
+              ,{" "}
+              <span className="whitespace-nowrap">Competitor Gaps,</span>
               <br className="hidden sm:block" />
               <span className="sm:hidden"> </span>
               and{" "}
@@ -101,8 +103,19 @@ export default function HomePage() {
               <HeroCTA />
             </div>
 
-            <div className="mt-12 md:mt-16 lg:mt-20 px-4">
-              <HeroDashboard />
+            <div className="mt-12 md:mt-16 lg:mt-20 px-4 max-w-5xl mx-auto">
+              <div className="relative" style={{ perspective: "1200px" }}>
+                <div className="md:[transform:rotateX(2deg)] transition-transform duration-500">
+                  <div className="absolute -inset-4 bg-teal-500/10 rounded-3xl blur-2xl -z-10" />
+                  <VideoPlayer
+                    mp4Src="/videos/product-overview.mp4"
+                    webmSrc="/videos/product-overview.webm"
+                    poster="/videos/product-overview-poster.webp"
+                    className="shadow-2xl shadow-teal-500/10 rounded-xl overflow-hidden"
+                    fallback={<HeroDashboard />}
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </section>
