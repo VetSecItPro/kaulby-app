@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import useSWR from "swr";
+import { fetcher } from "@/lib/swr-fetcher";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -652,76 +654,26 @@ export function InsightsView() {
   const [activeTab, setActiveTab] = useState<InsightTab>("pain-points");
   const [range, setRange] = useState<TimeRange>("30d");
 
-  // Data states
-  const [insightsData, setInsightsData] = useState<InsightsData | null>(null);
-  const [painPointsData, setPainPointsData] = useState<PainPointsData | null>(null);
-  const [recsData, setRecsData] = useState<RecommendationsData | null>(null);
+  // Data fetching via SWR
+  const { data: painPointsData, isLoading: painPointsLoading } = useSWR<PainPointsData>(
+    `/api/insights/pain-points?range=${range}`,
+    fetcher
+  );
 
-  // Loading states
-  const [insightsLoading, setInsightsLoading] = useState(false);
-  const [painPointsLoading, setPainPointsLoading] = useState(true);
-  const [recsLoading, setRecsLoading] = useState(false);
+  const { data: recsData, isLoading: recsLoading } = useSWR<RecommendationsData>(
+    activeTab === "recommendations" ? `/api/insights/recommendations?range=${range}` : null,
+    fetcher
+  );
+
+  const { data: insightsData, isLoading: insightsLoading } = useSWR<InsightsData>(
+    activeTab === "trending" ? `/api/insights?range=${range}` : null,
+    fetcher
+  );
 
   // UI states
   const [expandedTopic, setExpandedTopic] = useState<string | null>(null);
   const [expandedPainPoint, setExpandedPainPoint] = useState<string | null>(null);
   const [expandedRec, setExpandedRec] = useState<string | null>(null);
-
-  // Fetch pain points on mount and range change
-  useEffect(() => {
-    async function fetchPainPoints() {
-      setPainPointsLoading(true);
-      try {
-        const res = await fetch(`/api/insights/pain-points?range=${range}`);
-        if (res.ok) setPainPointsData(await res.json());
-      } catch {
-        // silently fail
-      } finally {
-        setPainPointsLoading(false);
-      }
-    }
-    fetchPainPoints();
-  }, [range]);
-
-  // Fetch recommendations when tab is activated
-  useEffect(() => {
-    if (activeTab !== "recommendations" || recsData) return;
-    async function fetchRecs() {
-      setRecsLoading(true);
-      try {
-        const res = await fetch(`/api/insights/recommendations?range=${range}`);
-        if (res.ok) setRecsData(await res.json());
-      } catch {
-        // silently fail
-      } finally {
-        setRecsLoading(false);
-      }
-    }
-    fetchRecs();
-  }, [activeTab, range, recsData]);
-
-  // Fetch trending topics when tab is activated
-  useEffect(() => {
-    if (activeTab !== "trending" || insightsData) return;
-    async function fetchInsights() {
-      setInsightsLoading(true);
-      try {
-        const res = await fetch(`/api/insights?range=${range}`);
-        if (res.ok) setInsightsData(await res.json());
-      } catch {
-        // silently fail
-      } finally {
-        setInsightsLoading(false);
-      }
-    }
-    fetchInsights();
-  }, [activeTab, range, insightsData]);
-
-  // Reset data when range changes (except pain points which auto-fetches)
-  useEffect(() => {
-    setInsightsData(null);
-    setRecsData(null);
-  }, [range]);
 
   const getTrendIcon = (direction: string) => {
     switch (direction) {

@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import useSWR from "swr";
+import { fetcher } from "@/lib/swr-fetcher";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -121,62 +123,20 @@ interface AnalyticsChartsProps {
 }
 
 export function AnalyticsCharts({ subscriptionStatus = "free" }: AnalyticsChartsProps) {
-  const [data, setData] = useState<AnalyticsData | null>(null);
-  const [loading, setLoading] = useState(true);
   const [range, setRange] = useState<TimeRange>("30d");
-  const [sovData, setSovData] = useState<ShareOfVoiceData | null>(null);
-  const [sovLoading, setSovLoading] = useState(false);
 
   const isTeam = subscriptionStatus === "team";
 
-  useEffect(() => {
-    const controller = new AbortController();
-    async function fetchAnalytics() {
-      setLoading(true);
-      try {
-        const response = await fetch(`/api/analytics?range=${range}`, {
-          signal: controller.signal,
-        });
-        if (response.ok) {
-          const analytics = await response.json();
-          setData(analytics);
-        }
-      } catch (error) {
-        if (error instanceof Error && error.name === "AbortError") return;
-        console.error("Failed to fetch analytics:", error);
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
-      }
-    }
-    fetchAnalytics();
-    return () => controller.abort();
-  }, [range]);
+  const { data, isLoading: loading } = useSWR<AnalyticsData>(
+    `/api/analytics?range=${range}`,
+    fetcher
+  );
 
-  // Fetch Share of Voice data for Team tier users
-  useEffect(() => {
-    if (!isTeam) return;
-    const controller = new AbortController();
-    async function fetchShareOfVoice() {
-      setSovLoading(true);
-      try {
-        const days = range === "7d" ? 7 : range === "30d" ? 30 : range === "90d" ? 90 : 365;
-        const response = await fetch(`/api/analytics/share-of-voice?days=${days}`, {
-          signal: controller.signal,
-        });
-        if (response.ok) {
-          const sovResult = await response.json();
-          setSovData(sovResult);
-        }
-      } catch (error) {
-        if (error instanceof Error && error.name === "AbortError") return;
-        console.error("Failed to fetch share of voice:", error);
-      } finally {
-        if (!controller.signal.aborted) setSovLoading(false);
-      }
-    }
-    fetchShareOfVoice();
-    return () => controller.abort();
-  }, [range, isTeam]);
+  const sovDays = range === "7d" ? 7 : range === "30d" ? 30 : range === "90d" ? 90 : 365;
+  const { data: sovData, isLoading: sovLoading } = useSWR<ShareOfVoiceData>(
+    isTeam ? `/api/analytics/share-of-voice?days=${sovDays}` : null,
+    fetcher
+  );
 
   if (loading) {
     return (
