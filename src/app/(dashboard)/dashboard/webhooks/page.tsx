@@ -39,6 +39,7 @@ async function WebhooksContent() {
     userWebhooks = await db.query.webhooks.findMany({
       where: eq(webhooks.userId, userId),
       orderBy: desc(webhooks.createdAt),
+      limit: 100,
     });
 
     // Get recent deliveries for all user's webhooks in a single query

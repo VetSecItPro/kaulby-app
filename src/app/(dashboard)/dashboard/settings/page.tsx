@@ -56,14 +56,17 @@ async function SettingsContent() {
   let clerkUser = null;
 
   if (!isDev) {
-    const authResult = await auth();
+    const [authResult, clerkUserResult] = await Promise.all([auth(), currentUser()]);
     userId = authResult.userId;
-    clerkUser = await currentUser();
+    clerkUser = clerkUserResult;
 
     if (!userId) {
       redirect("/sign-in");
     }
   }
+
+  // Run user DB lookup and data stats in parallel
+  const clerkEmail = clerkUser?.emailAddresses[0]?.emailAddress;
 
   // First try to find user by Clerk ID
   let user = userId
@@ -73,12 +76,18 @@ async function SettingsContent() {
     : null;
 
   // Fallback: if not found by ID, try by email (handles Clerk ID mismatch)
-  const clerkEmail = clerkUser?.emailAddresses[0]?.emailAddress;
   if (!user && clerkEmail) {
     user = await db.query.users.findFirst({
       where: eq(users.email, clerkEmail),
     });
   }
+
+  // Get data stats in parallel now that we have userId confirmed
+  const dataStats = userId ? await getDataStats(userId) : {
+    monitors: 0,
+    results: 0,
+    aiCalls: 0,
+  };
 
   // In dev mode, default to team for full feature testing
   const subscriptionStatus = isDev ? "team" : (user?.subscriptionStatus || "free");
@@ -91,13 +100,6 @@ async function SettingsContent() {
   const digestPaused = user?.digestPaused || false;
   const reportSchedule = user?.reportSchedule || "off";
   const reportDay = user?.reportDay || 1;
-
-  // Get data stats
-  const dataStats = userId ? await getDataStats(userId) : {
-    monitors: 0,
-    results: 0,
-    aiCalls: 0,
-  };
 
   // Plans synced with pricing page
   const plans = [
