@@ -37,21 +37,21 @@ export function UpgradeBanner({ plan, variant = "full", context = "dashboard" }:
   const painPoints = [
     {
       icon: Clock,
-      title: "24-hour delay",
-      description: "Your results are delayed by 24 hours",
-      cta: "Get 4-hour refresh with Pro",
+      title: "Slow refresh",
+      description: "Competitors see signals 20 hours before you",
+      cta: "Refresh every 4 hours with Pro",
     },
     {
       icon: Eye,
-      title: "Limited visibility",
-      description: "Only see your last 3 results",
-      cta: "See unlimited results",
+      title: "Reddit only",
+      description: "Missing pain points on 16 other platforms",
+      cta: "See all 17 platforms",
     },
     {
       icon: Bell,
-      title: "No alerts",
-      description: "Missing important mentions?",
-      cta: "Get instant alerts",
+      title: "No AI analysis",
+      description: "No sentiment, lead scoring, or pain points",
+      cta: "Unlock AI-powered insights",
     },
   ];
 
@@ -83,9 +83,9 @@ export function UpgradeBanner({ plan, variant = "full", context = "dashboard" }:
               <Zap className="h-4 w-4 text-amber-500" />
             </div>
             <div>
-              <p className="text-sm font-medium">Upgrade to Pro</p>
+              <p className="text-sm font-medium">Catch Buying Signals Faster</p>
               <p className="text-xs text-muted-foreground">
-                Get 4-hour refresh, all 17 platforms, and full AI analysis
+                Pro monitors refresh every 4 hours — catch buying signals before competitors
               </p>
             </div>
           </div>
@@ -113,7 +113,7 @@ export function UpgradeBanner({ plan, variant = "full", context = "dashboard" }:
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <Zap className="h-5 w-5 text-primary" />
-              <h3 className="font-semibold">Unlock the full power of Kaulby</h3>
+              <h3 className="font-semibold">Stop missing buying signals and competitor gaps</h3>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {painPoints.map((point) => (
@@ -171,7 +171,7 @@ export function ResultsLimitBanner({
               {hiddenCount} more {hiddenCount === 1 ? "mention" : "mentions"} hidden
             </p>
             <p className="text-xs text-muted-foreground">
-              Upgrade to Pro to see all your results
+              Pro monitors refresh every 4 hours — catch buying signals before competitors
             </p>
           </div>
         </div>

@@ -35,6 +35,12 @@ export type Events = {
       deliveryId: string;
     };
   };
+  "monitor/scan.requested": {
+    data: {
+      monitorId: string;
+      userId: string;
+    };
+  };
   "monitor/scan-now": {
     data: {
       monitorId: string;

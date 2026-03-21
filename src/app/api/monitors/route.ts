@@ -255,12 +255,19 @@ export async function POST(request: Request) {
       })
       .returning();
 
-    // Trigger immediate first scan so the user gets initial results right away
+    // Trigger instant lightweight scan so the user sees first results fast,
+    // then queue the full scan for comprehensive coverage
     const { inngest } = await import("@/lib/inngest/client");
-    await inngest.send({
-      name: "monitor/scan-now",
-      data: { monitorId: newMonitor.id, userId: dbUserId },
-    });
+    await inngest.send([
+      {
+        name: "monitor/scan.requested",
+        data: { monitorId: newMonitor.id, userId: dbUserId },
+      },
+      {
+        name: "monitor/scan-now",
+        data: { monitorId: newMonitor.id, userId: dbUserId },
+      },
+    ]);
     await db.update(monitors).set({ isScanning: true }).where(eq(monitors.id, newMonitor.id));
 
     // Track monitor creation with platform analytics

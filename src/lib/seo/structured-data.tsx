@@ -11,7 +11,7 @@ export function OrganizationSchema() {
     url: BASE_URL,
     logo: `${BASE_URL}/logo.jpg`,
     description:
-      "AI-powered social listening tool for startups. Monitor brand mentions across 17 platforms including Reddit, Hacker News, and Product Hunt.",
+      "AI-powered community monitoring for founders and SaaS teams. Discover customer pain points, competitor gaps, and buying signals across 17 platforms including Reddit, Hacker News, and Google Reviews.",
     foundingDate: "2024",
     sameAs: [],
     contactPoint: {

@@ -22,7 +22,7 @@ export function MarketingFooter() {
               <span className="text-lg font-bold gradient-text">Kaulby</span>
             </Link>
             <p className="text-xs text-muted-foreground">
-              AI-powered social listening for startups.
+              AI-powered community monitoring for founders and SaaS teams.
             </p>
           </div>
 

@@ -363,11 +363,11 @@ export function BlurredAiAnalysis({ aiSummary, sentiment, painPointCategory }: B
           </div>
           <p className="text-sm font-medium mb-1">AI Analysis Ready</p>
           <p className="text-xs text-muted-foreground mb-3">
-            Unlock insights on every result
+            See sentiment, pain points, and buying intent
           </p>
           <Button size="sm" asChild className="bg-gradient-to-r from-primary to-purple-600">
             <Link href="/pricing">
-              Unlock AI
+              Unlock AI Insights
               <ArrowRight className="ml-1 h-3 w-3" />
             </Link>
           </Button>

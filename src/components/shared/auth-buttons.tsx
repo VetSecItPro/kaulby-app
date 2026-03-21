@@ -55,7 +55,7 @@ export async function HeroCTA() {
           </Button>
         </Link>
         <Link href="/pricing">
-          <Button size="lg">
+          <Button size="lg" variant="outline">
             View Pricing
           </Button>
         </Link>
@@ -67,12 +67,12 @@ export async function HeroCTA() {
     <>
       <Link href="/sign-up">
         <Button size="lg" className="gap-2">
-          Start Free Trial <ArrowRight className="h-4 w-4" />
+          Start Monitoring Free <ArrowRight className="h-4 w-4" />
         </Button>
       </Link>
-      <Link href="/pricing">
-        <Button size="lg">
-          View Pricing
+      <Link href="#how-it-works">
+        <Button size="lg" variant="outline">
+          See How It Works
         </Button>
       </Link>
     </>
@@ -96,7 +96,7 @@ export async function AuthCTA() {
   return (
     <Link href="/sign-up">
       <Button size="lg" variant="secondary" className="gap-2">
-        Get Started for Free <ArrowRight className="h-4 w-4" />
+        Start Your Free Monitor <ArrowRight className="h-4 w-4" />
       </Button>
     </Link>
   );

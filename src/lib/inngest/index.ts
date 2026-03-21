@@ -21,6 +21,7 @@ export { monitorHashnode } from "./functions/monitor-hashnode";
 // Phase 5 - Social media
 export { monitorX } from "./functions/monitor-x";
 export { scanOnDemand } from "./functions/scan-on-demand";
+export { instantScan } from "./functions/instant-scan";
 export { analyzeContent } from "./functions/analyze-content";
 export { analyzeContentBatch } from "./functions/analyze-content-batch";
 export { sendAlert, sendDailyDigest, sendWeeklyDigest, sendMonthlyDigest } from "./functions/send-alerts";
@@ -66,6 +67,7 @@ import { monitorHashnode } from "./functions/monitor-hashnode";
 // Phase 5 - Social media
 import { monitorX } from "./functions/monitor-x";
 import { scanOnDemand } from "./functions/scan-on-demand";
+import { instantScan } from "./functions/instant-scan";
 import { analyzeContent } from "./functions/analyze-content";
 import { analyzeContentBatch } from "./functions/analyze-content-batch";
 import { sendAlert, sendDailyDigest, sendWeeklyDigest, sendMonthlyDigest } from "./functions/send-alerts";
@@ -111,6 +113,7 @@ export const functions = [
   // Phase 5 - Social media
   monitorX,
   scanOnDemand,
+  instantScan,
   analyzeContent,
   analyzeContentBatch,
   sendAlert,
