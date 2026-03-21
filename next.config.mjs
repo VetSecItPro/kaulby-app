@@ -129,4 +129,9 @@ export default withSentryConfig(nextConfig, {
 
   // Disable Sentry telemetry
   telemetry: false,
+
+  // PERF: Don't inject Sentry into Edge middleware bundle (saves ~100 kB)
+  webpack: {
+    autoInstrumentMiddleware: false,
+  },
 });
