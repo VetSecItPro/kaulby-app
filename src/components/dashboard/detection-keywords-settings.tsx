@@ -162,7 +162,7 @@ export function DetectionKeywordsSettings({ subscriptionStatus }: DetectionKeywo
           <div className="flex items-center gap-3 p-4 rounded-lg bg-muted/50">
             <Lock className="h-5 w-5 text-muted-foreground" />
             <p className="text-sm text-muted-foreground">
-              Upgrade to Pro to customize detection keywords and reduce AI analysis costs.
+              Customize detection keywords to catch pain points, buying signals, and competitor mentions automatically.
             </p>
           </div>
         </CardContent>

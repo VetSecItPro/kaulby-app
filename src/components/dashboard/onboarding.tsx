@@ -866,7 +866,7 @@ export function QuickStartGuide({ hasMonitors, hasResults, hasAlerts = false, on
               <Zap className="h-5 w-5 text-primary flex-shrink-0" />
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium">Ready to level up?</p>
-                <p className="text-xs text-muted-foreground">Upgrade to Pro for unlimited results and AI insights</p>
+                <p className="text-xs text-muted-foreground">Unlock AI-powered sentiment analysis, lead scoring, and pain point detection</p>
               </div>
               <Button size="sm" variant="outline" onClick={() => router.push("/dashboard/settings")}>
                 Upgrade

@@ -14,7 +14,7 @@ export default async function InsightsPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Insights</h1>
         <p className="text-muted-foreground">
-          Discover cross-platform trends and topic correlations in your monitored conversations.
+          Discover pain points, get actionable recommendations, and track trending topics across your monitors.
         </p>
       </div>
 

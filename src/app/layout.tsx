@@ -46,8 +46,8 @@ export const viewport: Viewport = {
 // Metadata
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://kaulbyapp.com"),
-  title: "Kaulby - AI-Powered Community Monitoring",
-  description: "Track discussions across Reddit, Hacker News, and online communities. AI-powered pain point detection, sentiment analysis, and natural language querying.",
+  title: "Kaulby — Find Customer Pain Points, Competitor Gaps & Buying Signals",
+  description: "Monitor Reddit, Hacker News, reviews, and 17 platforms. AI-powered pain point detection, competitor intelligence, and buying signal scoring for founders and SaaS teams.",
   icons: {
     icon: [
       { url: "/favicon-16.png", sizes: "16x16", type: "image/png" },
@@ -58,8 +58,8 @@ export const metadata: Metadata = {
     ],
   },
   openGraph: {
-    title: "Kaulby - AI-Powered Community Monitoring",
-    description: "Track discussions across Reddit, Hacker News, and online communities. Get AI-powered insights and instant alerts.",
+    title: "Kaulby — Find Customer Pain Points, Competitor Gaps & Buying Signals",
+    description: "Monitor Reddit, reviews, Hacker News, and 17 platforms. AI surfaces pain points, competitor weaknesses, and buying signals for founders and SaaS teams.",
     url: "https://kaulbyapp.com",
     siteName: "Kaulby",
     images: [
@@ -67,15 +67,15 @@ export const metadata: Metadata = {
         url: "/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "Kaulby - AI-Powered Community Monitoring",
+        alt: "Kaulby — Customer Pain Points, Competitor Gaps & Buying Signals Dashboard",
       },
     ],
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Kaulby - AI-Powered Community Monitoring",
-    description: "Track discussions across Reddit, Hacker News, and online communities.",
+    title: "Kaulby — Find Customer Pain Points, Competitor Gaps & Buying Signals",
+    description: "Monitor Reddit, reviews, and 17 platforms. AI-powered pain point detection, competitor intelligence, and buying signal scoring.",
     images: ["/opengraph-image"],
   },
   manifest: "/manifest.json",

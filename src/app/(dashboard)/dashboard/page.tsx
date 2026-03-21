@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Eye } from "lucide-react";
+import { PlusCircle, Eye, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { QuickStartGuide } from "@/components/dashboard/onboarding";
 import { SampleResultsPreview } from "@/components/dashboard/sample-results";
@@ -12,6 +12,7 @@ import { getEffectiveUserId, isLocalDev } from "@/lib/dev-auth";
 import {
   getCachedMonitorIds,
   getCachedResultsCount,
+  getCachedMonitors,
 } from "@/lib/server-cache";
 
 export default async function DashboardPage() {
@@ -41,6 +42,30 @@ export default async function DashboardPage() {
   const hasResults = resultsCount > 0;
 
   const showGettingStarted = !hasMonitors || !hasResults;
+
+  // Get first monitor details for the empty state message
+  const PLATFORM_LABELS: Record<string, string> = {
+    reddit: "Reddit", hackernews: "Hacker News", producthunt: "Product Hunt",
+    googlereviews: "Google Reviews", trustpilot: "Trustpilot", appstore: "App Store",
+    playstore: "Play Store", quora: "Quora", youtube: "YouTube", g2: "G2",
+    yelp: "Yelp", amazonreviews: "Amazon Reviews", indiehackers: "Indie Hackers",
+    github: "GitHub", devto: "Dev.to", hashnode: "Hashnode", x: "X",
+  };
+  let firstMonitorName = "";
+  let firstMonitorPlatforms = "";
+  if (hasMonitors && !hasResults && userId) {
+    const allMonitors = await getCachedMonitors(userId);
+    if (allMonitors.length > 0) {
+      firstMonitorName = allMonitors[0].name;
+      const platformNames = allMonitors[0].platforms
+        .map(p => PLATFORM_LABELS[p] || p)
+        .slice(0, 3);
+      const remaining = allMonitors[0].platforms.length - platformNames.length;
+      firstMonitorPlatforms = remaining > 0
+        ? `${platformNames.join(", ")} +${remaining} more`
+        : platformNames.join(", ");
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -82,10 +107,35 @@ export default async function DashboardPage() {
             <div className="rounded-full bg-muted p-3 mb-4">
               <Eye className="h-6 w-6 text-muted-foreground" />
             </div>
-            <h3 className="font-semibold mb-1">Scanning for mentions...</h3>
-            <p className="text-sm text-muted-foreground max-w-sm">
-              Your monitors are active! Results will appear here as we find matching posts across platforms.
+            <h3 className="font-semibold mb-1">
+              {firstMonitorName
+                ? `Your monitor "${firstMonitorName}" is scanning ${firstMonitorPlatforms}`
+                : "Scanning for mentions..."}
+            </h3>
+            <p className="text-sm text-muted-foreground max-w-md">
+              First results typically appear within 2 hours. We&apos;ll analyze sentiment, detect pain points, and score buying intent automatically.
             </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* No monitors empty state */}
+      {!hasMonitors && (
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-10 text-center">
+            <div className="rounded-full bg-primary/10 p-3 mb-4">
+              <Sparkles className="h-6 w-6 text-primary" />
+            </div>
+            <h3 className="font-semibold mb-2">Discover what people are saying about you</h3>
+            <p className="text-sm text-muted-foreground max-w-md mb-4">
+              Create your first monitor to start discovering pain points, competitor gaps, and buying signals. It takes 30 seconds.
+            </p>
+            <Link href="/dashboard/monitors/new">
+              <Button className="gap-2">
+                <PlusCircle className="h-4 w-4" />
+                Create Your First Monitor
+              </Button>
+            </Link>
           </CardContent>
         </Card>
       )}

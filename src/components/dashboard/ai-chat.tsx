@@ -809,10 +809,10 @@ export function AIChat({
         </CardHeader>
         <CardContent className="text-center">
           <p className="text-muted-foreground mb-4">
-            Ask questions about your data using natural language. Get insights, summaries, and find
-            patterns across all your monitored conversations.
+            Unlock AI-powered sentiment analysis, lead scoring, and pain point detection.
+            Ask questions about your data and get actionable insights instantly.
           </p>
-          <Button>Upgrade to Pro</Button>
+          <Button>Unlock AI Insights</Button>
         </CardContent>
       </Card>
     );

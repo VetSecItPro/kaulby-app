@@ -470,10 +470,10 @@ export function IntegrationsSettings({
             <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
             <div>
               <p className="font-medium text-amber-800 dark:text-amber-200">
-                Upgrade to Pro for integrations
+                Send alerts where your team works
               </p>
               <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
-                CRM integrations and custom webhooks are available on Pro and Team plans.
+                Route buying signals and pain points directly to Slack, your CRM, or custom webhooks.
               </p>
               <Button size="sm" className="mt-2" asChild>
                 <Link href="/pricing">Upgrade Now</Link>

@@ -17,52 +17,52 @@ interface ValueProp {
 
 const valueProps: ValueProp[] = [
   {
+    icon: Brain,
+    title: "Pain Points Clustered Automatically",
+    description:
+      "AI categorizes every mention — pricing concerns, support needs, feature requests, negative experiences — so you see exactly what to fix.",
+    stat: "7",
+    statLabel: "pain point categories",
+  },
+  {
     icon: Globe,
     title: "17 Platforms, One Dashboard",
     description:
-      "Reddit, Hacker News, Product Hunt, YouTube, G2, Trustpilot, and 11 more — all monitored from a single view.",
+      "Reddit, Hacker News, Google Reviews, Trustpilot, G2, YouTube, X, and 10 more — never miss a conversation that matters.",
     stat: "17",
     statLabel: "platforms tracked",
   },
   {
-    icon: Brain,
-    title: "AI That Understands Context",
+    icon: Zap,
+    title: "Buying Signals Scored by Intent",
     description:
-      "Sentiment analysis, pain point detection, and lead scoring powered by AI — not just keyword matching.",
-    stat: "5",
-    statLabel: "AI analysis dimensions",
-  },
-  {
-    icon: Clock,
-    title: "Mentions Found in Hours, Not Days",
-    description:
-      "Automated scans every 2-4 hours so you can respond while conversations are still active.",
-    stat: "2hr",
-    statLabel: "fastest refresh cycle",
+      "Every mention is scored for purchase intent. Find people actively looking for solutions like yours — before your competitors do.",
+    stat: "100",
+    statLabel: "lead score scale",
   },
   {
     icon: Shield,
     title: "Crisis Detection Built In",
     description:
-      "Automatic alerts when negative sentiment spikes or a viral post threatens your reputation.",
+      "Automatic alerts when negative sentiment spikes or a viral post threatens your reputation. Respond while it still matters.",
     stat: "24/7",
     statLabel: "monitoring uptime",
   },
   {
-    icon: BarChart3,
-    title: "Reports That Prove ROI",
+    icon: Clock,
+    title: "Catch Signals in Hours, Not Days",
     description:
-      "Scheduled PDF reports with sentiment trends, platform breakdowns, and AI-generated insights.",
-    stat: "3",
-    statLabel: "report frequencies",
+      "Automated scans every 2-4 hours so you can respond to buying signals, complaints, and competitor gaps while conversations are active.",
+    stat: "2hr",
+    statLabel: "fastest refresh cycle",
   },
   {
-    icon: Zap,
-    title: "Set Up in Under 2 Minutes",
+    icon: BarChart3,
+    title: "AI Recommendations, Not Just Data",
     description:
-      "Enter your brand name, pick your platforms, and start monitoring. No API keys or technical setup required.",
-    stat: "30s",
-    statLabel: "to first monitor",
+      "Get prioritized action plans: what to fix, what to improve, and what to respond to — ranked by impact and urgency.",
+    stat: "3-7",
+    statLabel: "actions per analysis",
   },
 ];
 
@@ -112,7 +112,7 @@ function ValuePropCard({
 
 /**
  * Value proposition section for the homepage.
- * Replaces testimonials until real user feedback is available.
+ * Outcome-focused cards highlighting what Kaulby does for users.
  */
 export function TestimonialSection() {
   return (
@@ -123,11 +123,11 @@ export function TestimonialSection() {
             Why Kaulby
           </span>
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 md:mb-4">
-            Everything you need to protect your brand
+            Turn conversations into competitive advantage
           </h2>
           <p className="text-sm md:text-base text-muted-foreground max-w-2xl mx-auto">
-            Monitor every conversation, detect threats early, and turn mentions
-            into opportunities — all on autopilot.
+            Kaulby is not just monitoring — it&apos;s a customer research engine that surfaces
+            pain points, competitor gaps, and buying signals automatically.
           </p>
         </div>
 
