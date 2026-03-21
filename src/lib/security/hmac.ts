@@ -15,11 +15,15 @@ import { createHmac } from "crypto";
  * Falls back to RESEND_API_KEY, then a test-only default.
  */
 function getSigningKey(): string {
-  return (
-    process.env.CLERK_SECRET_KEY ??
-    process.env.RESEND_API_KEY ??
-    "kaulby-hmac-fallback-key"
-  );
+  const secret = process.env.CLERK_SECRET_KEY ?? process.env.RESEND_API_KEY;
+  if (!secret) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("HMAC signing requires CLERK_SECRET_KEY or RESEND_API_KEY");
+    }
+    // Dev fallback only
+    return "kaulby-hmac-fallback-key";
+  }
+  return secret;
 }
 
 /**

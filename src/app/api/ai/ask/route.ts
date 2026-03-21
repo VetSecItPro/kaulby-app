@@ -11,6 +11,7 @@ import {
   getCachedAnswer,
   cacheAnswer,
 } from "@/lib/ai/rate-limit";
+import { parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
 import { AI_TOOLS, TOOL_METADATA, executeTool, type ToolResult } from "@/lib/ai/tools";
 import type OpenAI from "openai";
 import { logger } from "@/lib/logger";
@@ -217,7 +218,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const body: AskRequest = await req.json();
+    const body: AskRequest = await parseJsonBody(req);
     const { conversationHistory = [] } = body;
 
     // Handle pending confirmation
@@ -388,6 +389,9 @@ export async function POST(req: Request) {
       },
     });
   } catch (error) {
+    if (error instanceof BodyTooLargeError) {
+      return NextResponse.json({ error: "Request body too large" }, { status: 413 });
+    }
     logger.error("AI Ask error:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to process your question" },
