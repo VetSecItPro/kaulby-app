@@ -16,13 +16,20 @@ export async function activateDayPass(userId: string): Promise<{
   purchaseCount: number;
 }> {
   const now = new Date();
-  const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 hours from now
 
-  // Get current purchase count
+  // Get current purchase count and existing day pass expiry
   const user = await db.query.users.findFirst({
     where: eq(users.id, userId),
-    columns: { dayPassPurchaseCount: true },
+    columns: { dayPassPurchaseCount: true, dayPassExpiresAt: true },
   });
+
+  // SEC-BIZ-02: If day pass is already active, extend from current expiry instead of now
+  // This prevents stacking multiple day passes to get 48h+ of access from a single purchase
+  const existingExpiry = user?.dayPassExpiresAt;
+  const baseTime = existingExpiry && new Date(existingExpiry) > now
+    ? new Date(existingExpiry)
+    : now;
+  const expiresAt = new Date(baseTime.getTime() + 24 * 60 * 60 * 1000);
 
   const newPurchaseCount = (user?.dayPassPurchaseCount || 0) + 1;
 

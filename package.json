@@ -96,7 +96,8 @@
       "minimatch": ">=9.0.9",
       "rollup": ">=4.59.0",
       "serialize-javascript": ">=7.0.3",
-      "esbuild": ">=0.25.0"
+      "esbuild": ">=0.25.0",
+      "flatted": ">=3.4.2"
     }
   }
 }

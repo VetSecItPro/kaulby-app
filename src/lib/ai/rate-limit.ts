@@ -253,6 +253,11 @@ export async function checkTokenBudget(
  * Sanitize user input to prevent prompt injection
  */
 export function sanitizeInput(input: string, maxLength: number = 2000): string {
+  // SEC-LLM-01: Strip zero-width characters and normalize Unicode before pattern matching
+  // Prevents bypassing filters via Unicode homoglyphs or invisible characters
+  input = input.replace(/[\u200B-\u200F\u2028-\u202F\uFEFF\u00AD]/g, '');
+  input = input.normalize('NFKC');
+
   // Remove potential prompt injection patterns
   let sanitized = input
     // Remove system/assistant role markers

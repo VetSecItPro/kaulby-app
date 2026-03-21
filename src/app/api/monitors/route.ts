@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { db } from "@/lib/db";
 import { monitors, users } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, count } from "drizzle-orm";
 import {
   canCreateMonitor,
   checkKeywordsLimit,
@@ -10,7 +10,7 @@ import {
   filterAllowedPlatforms,
   getUpgradePrompt,
 } from "@/lib/limits";
-import { Platform, ALL_PLATFORMS } from "@/lib/plans";
+import { Platform, ALL_PLATFORMS, getPlanLimits } from "@/lib/plans";
 import { sanitizeMonitorInput, isValidKeyword } from "@/lib/security";
 import { captureEvent } from "@/lib/posthog";
 import { logError } from "@/lib/error-logger";
@@ -208,21 +208,37 @@ export async function POST(request: Request) {
     // Get user's plan (use dbUserId for DB lookups)
     const plan = await getUserPlan(dbUserId);
 
-    // Check monitor limits
-    const limitsCheck = await checkMonitorLimits(dbUserId, plan, sanitizedKeywords, platforms);
-    if ("error" in limitsCheck) {
-      const { error, upgradePrompt, status, current, limit } = limitsCheck;
+    // Check non-monitor limits first (keywords, platforms) — these don't need transaction protection
+    // Check keywords limit (only if keywords provided)
+    if (sanitizedKeywords.length > 0) {
+      const keywordCheck = checkKeywordsLimit(sanitizedKeywords, plan);
+      if (!keywordCheck.allowed) {
+        const prompt = getUpgradePrompt(plan, "keywords");
+        return NextResponse.json(
+          {
+            error: keywordCheck.message,
+            upgradePrompt: prompt,
+            ...(keywordCheck.current !== undefined && { current: keywordCheck.current }),
+            ...(keywordCheck.limit !== undefined && { limit: keywordCheck.limit }),
+          },
+          { status: 403 }
+        );
+      }
+    }
+
+    // Filter platforms to only allowed ones for user's plan
+    const allowedPlatforms = await filterAllowedPlatforms(dbUserId, platforms as Platform[]);
+    if (allowedPlatforms.length === 0) {
+      const prompt = getUpgradePrompt(plan, "platform", { platformName: platforms[0] });
       return NextResponse.json(
         {
-          error,
-          upgradePrompt,
-          ...(current !== undefined && { current }),
-          ...(limit !== undefined && { limit }),
+          error: `Your plan doesn't have access to ${platforms.join(", ")}. ${prompt.description}`,
+          upgradePrompt: prompt,
         },
-        { status }
+        { status: 403 }
       );
     }
-    const { allowedPlatforms, filteredOut } = limitsCheck;
+    const filteredOut = platforms.filter((p: string) => !allowedPlatforms.includes(p as Platform));
 
     // Sanitize search query if provided (Pro feature)
     const sanitizedSearchQuery = searchQuery && typeof searchQuery === "string"
@@ -232,28 +248,50 @@ export async function POST(request: Request) {
     // Sanitize platform URLs if provided
     const sanitizedPlatformUrls = sanitizePlatformUrls(platformUrls);
 
-    // Create monitor with allowed platforms only
-    const [newMonitor] = await db
-      .insert(monitors)
-      .values({
-        userId: dbUserId,
-        name: sanitizeMonitorInput(name),
-        companyName: sanitizeMonitorInput(companyName),
-        monitorType: sanitizedMonitorType,
-        keywords: sanitizedMonitorType === "keyword" ? sanitizedKeywords : [],
-        searchQuery: sanitizedMonitorType === "keyword" ? sanitizedSearchQuery : null,
-        discoveryPrompt: sanitizedMonitorType === "ai_discovery" ? sanitizedDiscoveryPrompt : null,
-        platformUrls: Object.keys(sanitizedPlatformUrls).length > 0 ? sanitizedPlatformUrls : null,
-        platforms: allowedPlatforms,
-        isActive: true,
-        // Schedule settings
-        scheduleEnabled: scheduleEnabled === true,
-        scheduleStartHour: typeof scheduleStartHour === "number" ? scheduleStartHour : 9,
-        scheduleEndHour: typeof scheduleEndHour === "number" ? scheduleEndHour : 17,
-        scheduleDays: Array.isArray(scheduleDays) ? scheduleDays : null,
-        scheduleTimezone: typeof scheduleTimezone === "string" ? scheduleTimezone : "America/New_York",
-      })
-      .returning();
+    // SEC-BIZ-04: Wrap monitor count check + INSERT in a transaction to prevent
+    // race conditions where concurrent requests bypass the monitor limit.
+    const planLimits = getPlanLimits(plan);
+    const newMonitor = await db.transaction(async (tx) => {
+      // Re-check monitor count inside transaction for atomicity
+      if (planLimits.monitors !== -1) {
+        const [result] = await tx
+          .select({ count: count() })
+          .from(monitors)
+          .where(eq(monitors.userId, dbUserId));
+
+        const currentCount = result?.count || 0;
+        if (currentCount >= planLimits.monitors) {
+          throw new Error(
+            `MONITOR_LIMIT:You've reached your limit of ${planLimits.monitors} monitor${planLimits.monitors === 1 ? "" : "s"}. Upgrade to Pro for more.`
+          );
+        }
+      }
+
+      // Insert inside same transaction
+      const [created] = await tx
+        .insert(monitors)
+        .values({
+          userId: dbUserId,
+          name: sanitizeMonitorInput(name),
+          companyName: sanitizeMonitorInput(companyName),
+          monitorType: sanitizedMonitorType,
+          keywords: sanitizedMonitorType === "keyword" ? sanitizedKeywords : [],
+          searchQuery: sanitizedMonitorType === "keyword" ? sanitizedSearchQuery : null,
+          discoveryPrompt: sanitizedMonitorType === "ai_discovery" ? sanitizedDiscoveryPrompt : null,
+          platformUrls: Object.keys(sanitizedPlatformUrls).length > 0 ? sanitizedPlatformUrls : null,
+          platforms: allowedPlatforms,
+          isActive: true,
+          // Schedule settings
+          scheduleEnabled: scheduleEnabled === true,
+          scheduleStartHour: typeof scheduleStartHour === "number" ? scheduleStartHour : 9,
+          scheduleEndHour: typeof scheduleEndHour === "number" ? scheduleEndHour : 17,
+          scheduleDays: Array.isArray(scheduleDays) ? scheduleDays : null,
+          scheduleTimezone: typeof scheduleTimezone === "string" ? scheduleTimezone : "America/New_York",
+        })
+        .returning();
+
+      return created;
+    });
 
     // Trigger instant lightweight scan so the user sees first results fast,
     // then queue the full scan for comprehensive coverage
@@ -304,6 +342,11 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof BodyTooLargeError) {
       return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
+    }
+    // Handle monitor limit exceeded from transaction
+    if (error instanceof Error && error.message.startsWith("MONITOR_LIMIT:")) {
+      const message = error.message.replace("MONITOR_LIMIT:", "");
+      return NextResponse.json({ error: message }, { status: 403 });
     }
     const { logger } = await import("@/lib/logger");
     logger.error("Error creating monitor", { error: error instanceof Error ? error.message : String(error) });
