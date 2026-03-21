@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { db, monitors, results } from "@/lib/db";
 import { eq, desc, gte } from "drizzle-orm";
@@ -87,7 +88,7 @@ async function getTrendingTopics() {
   };
 }
 
-export default async function DiscoverPage() {
+async function DiscoverContent() {
   const userId = await getEffectiveUserId();
 
   if (!userId && !isLocalDev()) {
@@ -117,5 +118,13 @@ export default async function DiscoverPage() {
       isPro={isPro}
       trendingData={trendingData}
     />
+  );
+}
+
+export default function DiscoverPage() {
+  return (
+    <Suspense fallback={<div className="animate-pulse p-6">Loading...</div>}>
+      <DiscoverContent />
+    </Suspense>
   );
 }

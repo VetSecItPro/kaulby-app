@@ -197,6 +197,7 @@ export function Sidebar({ isAdmin = false, subscriptionStatus = "free", hasActiv
                 width={28}
                 height={28}
                 className="object-cover w-full h-full"
+                priority
               />
             </div>
             <span className="text-xl gradient-text">Kaulby</span>

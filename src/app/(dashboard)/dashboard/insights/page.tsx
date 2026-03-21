@@ -1,8 +1,9 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { InsightsView } from "@/components/dashboard/insights-view";
 import { getEffectiveUserId, isLocalDev } from "@/lib/dev-auth";
 
-export default async function InsightsPage() {
+async function InsightsContent() {
   const userId = await getEffectiveUserId();
 
   if (!userId && !isLocalDev()) {
@@ -20,5 +21,13 @@ export default async function InsightsPage() {
 
       <InsightsView />
     </div>
+  );
+}
+
+export default function InsightsPage() {
+  return (
+    <Suspense fallback={<div className="animate-pulse p-6">Loading...</div>}>
+      <InsightsContent />
+    </Suspense>
   );
 }
