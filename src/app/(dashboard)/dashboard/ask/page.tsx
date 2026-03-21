@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { db, monitors, audiences } from "@/lib/db";
 import { eq } from "drizzle-orm";
@@ -55,7 +56,7 @@ async function getUserContext(userId: string) {
   };
 }
 
-export default async function AskPage() {
+async function AskContent() {
   const userId = await getEffectiveUserId();
 
   if (!userId && !isLocalDev()) {
@@ -89,5 +90,13 @@ export default async function AskPage() {
         />
       </div>
     </div>
+  );
+}
+
+export default function AskPage() {
+  return (
+    <Suspense fallback={<div className="animate-pulse p-6">Loading...</div>}>
+      <AskContent />
+    </Suspense>
   );
 }

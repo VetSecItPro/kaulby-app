@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { users, webhooks, webhookDeliveries } from "@/lib/db/schema";
@@ -5,7 +6,7 @@ import { eq, desc, and, gte, inArray } from "drizzle-orm";
 import { WebhookManagement } from "@/components/dashboard/webhook-management";
 import { getEffectiveUserId, isLocalDev } from "@/lib/dev-auth";
 
-export default async function WebhooksPage() {
+async function WebhooksContent() {
   const userId = await getEffectiveUserId();
 
   if (!userId) {
@@ -64,5 +65,13 @@ export default async function WebhooksPage() {
       webhooks={userWebhooks}
       recentDeliveries={recentDeliveries}
     />
+  );
+}
+
+export default function WebhooksPage() {
+  return (
+    <Suspense fallback={<div className="animate-pulse p-6">Loading...</div>}>
+      <WebhooksContent />
+    </Suspense>
   );
 }

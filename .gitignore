@@ -105,3 +105,4 @@ ARCHITECTURE.md
 .perf-reports/
 .smoketest-reports/
 remotion/node_modules/
+.perf/

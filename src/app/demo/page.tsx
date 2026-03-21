@@ -456,6 +456,7 @@ function DemoSidebar({ activeView, onViewChange }: { activeView: DemoView; onVie
                 width={28}
                 height={28}
                 className="object-cover w-full h-full"
+                priority
               />
             </div>
             <span className="text-xl gradient-text">Kaulby</span>

@@ -1,10 +1,11 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { db, results, bookmarkCollections, bookmarks } from "@/lib/db";
 import { eq, and, desc } from "drizzle-orm";
 import { getEffectiveUserId, isLocalDev } from "@/lib/dev-auth";
 import { BookmarksView } from "@/components/dashboard/bookmarks-view";
 
-export default async function BookmarksPage() {
+async function BookmarksContent() {
   const userId = await getEffectiveUserId();
 
   if (!userId && !isLocalDev()) {
@@ -67,5 +68,13 @@ export default async function BookmarksPage() {
       collections={collectionsWithCounts}
       bookmarkMap={Object.fromEntries(bookmarkMap)}
     />
+  );
+}
+
+export default function BookmarksPage() {
+  return (
+    <Suspense fallback={<div className="animate-pulse p-6">Loading...</div>}>
+      <BookmarksContent />
+    </Suspense>
   );
 }
