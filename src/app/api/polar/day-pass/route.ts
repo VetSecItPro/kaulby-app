@@ -64,7 +64,7 @@ export async function POST() {
     const errDetail = (error as { statusCode?: number; detail?: unknown })?.statusCode;
     logger.error("Polar day pass checkout error:", { message: errMsg, statusCode: errDetail, error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
-      { error: "Failed to create checkout session", detail: errMsg },
+      { error: "Failed to create checkout session" },
       { status: 500 }
     );
   }

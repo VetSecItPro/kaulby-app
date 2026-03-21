@@ -31,7 +31,7 @@ async function checkService(
     return {
       status: "down",
       latencyMs: Date.now() - start,
-      error: error instanceof Error ? error.message : String(error),
+      ...(process.env.NODE_ENV === "development" ? { error: error instanceof Error ? error.message : String(error) } : {}),
     };
   }
 }
@@ -100,7 +100,7 @@ export async function GET() {
       services[serviceNames[i]] = {
         status: "down",
         latencyMs: 0,
-        error: result.reason?.message || "Unknown error",
+        ...(process.env.NODE_ENV === "development" ? { error: result.reason?.message || "Unknown error" } : {}),
       };
     }
   });
