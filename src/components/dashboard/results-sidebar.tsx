@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useEffect, useMemo, memo } from "react";
+import { useState, useMemo, memo } from "react";
+import useSWR from "swr";
+import { fetcher } from "@/lib/swr-fetcher";
 import { ChevronDown, ChevronRight, MessageSquare, Globe, Smile, BarChart3, Loader2, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -86,9 +88,17 @@ export const ResultsSidebar = memo(function ResultsSidebar({
   onEngagementChange,
   className,
 }: ResultsSidebarProps) {
-  const [data, setData] = useState<AggregationsData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Build SWR key from params
+  const aggregationKey = (() => {
+    const params = new URLSearchParams();
+    if (monitorId) params.set("monitorId", monitorId);
+    if (dateFrom) params.set("dateFrom", dateFrom);
+    if (dateTo) params.set("dateTo", dateTo);
+    return `/api/results/aggregations?${params}`;
+  })();
+
+  const { data, isLoading, error: swrError } = useSWR<AggregationsData>(aggregationKey, fetcher);
+  const error = swrError ? (swrError instanceof Error ? swrError.message : "An error occurred") : null;
 
   // Section collapse state
   const [platformsOpen, setPlatformsOpen] = useState(true);
@@ -98,40 +108,6 @@ export const ResultsSidebar = memo(function ResultsSidebar({
 
   // Track which platforms have expanded community lists
   const [expandedPlatforms, setExpandedPlatforms] = useState<Record<string, boolean>>({});
-
-  // Fetch aggregations data
-  useEffect(() => {
-    const controller = new AbortController();
-    async function fetchAggregations() {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const params = new URLSearchParams();
-        if (monitorId) params.set("monitorId", monitorId);
-        if (dateFrom) params.set("dateFrom", dateFrom);
-        if (dateTo) params.set("dateTo", dateTo);
-
-        const response = await fetch(`/api/results/aggregations?${params}`, {
-          signal: controller.signal,
-        });
-        if (!response.ok) {
-          throw new Error("Failed to fetch aggregations");
-        }
-
-        const result = await response.json();
-        setData(result);
-      } catch (err) {
-        if (err instanceof Error && err.name === "AbortError") return;
-        setError(err instanceof Error ? err.message : "An error occurred");
-      } finally {
-        if (!controller.signal.aborted) setIsLoading(false);
-      }
-    }
-
-    fetchAggregations();
-    return () => controller.abort();
-  }, [monitorId, dateFrom, dateTo]);
 
   // Group communities by platform
   const communities = data?.communities;
