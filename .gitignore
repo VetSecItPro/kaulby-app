@@ -107,3 +107,4 @@ ARCHITECTURE.md
 remotion/node_modules/
 .perf/
 .security-reports/
+.cleancode-reports/
