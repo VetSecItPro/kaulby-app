@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { db, audiences, audienceMonitors, results, monitors } from "@/lib/db";
 import { eq, inArray, gte, and } from "drizzle-orm";
@@ -5,6 +6,8 @@ import { AudiencesList } from "@/components/dashboard/audiences-list";
 import type { AudienceStats } from "@/components/dashboard/audience-card";
 import { getSuggestionsFromMonitors } from "@/lib/community-suggestions";
 import { getEffectiveUserId, isLocalDev } from "@/lib/dev-auth";
+
+export const metadata: Metadata = { title: "Audiences | Kaulby" };
 
 /**
  * Calculate audience stats from results

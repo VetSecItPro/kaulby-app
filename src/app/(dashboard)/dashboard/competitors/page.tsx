@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
@@ -5,6 +6,8 @@ import { db, users } from "@/lib/db";
 import { getEffectiveUserId, isLocalDev } from "@/lib/dev-auth";
 import { CompetitorComparison } from "@/components/dashboard/competitor-comparison";
 import { Lock } from "lucide-react";
+
+export const metadata: Metadata = { title: "Competitors | Kaulby" };
 
 function CompetitorsSkeleton() {
   return (

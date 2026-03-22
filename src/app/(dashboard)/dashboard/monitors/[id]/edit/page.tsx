@@ -1,8 +1,11 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getUserPlan } from "@/lib/limits";
 import { getPlanLimits } from "@/lib/plans";
 import { EditMonitorForm } from "./edit-monitor-form";
 import { getEffectiveUserId, isLocalDev } from "@/lib/dev-auth";
+
+export const metadata: Metadata = { title: "Edit Monitor | Kaulby" };
 
 interface EditMonitorPageProps {
   params: Promise<{ id: string }>;

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { db, monitors, audiences } from "@/lib/db";
@@ -5,6 +6,8 @@ import { eq } from "drizzle-orm";
 import { getUserPlan } from "@/lib/limits";
 import { AIChat } from "@/components/dashboard/ai-chat";
 import { getEffectiveUserId, isLocalDev } from "@/lib/dev-auth";
+
+export const metadata: Metadata = { title: "Ask Kaulby AI | Kaulby" };
 
 /**
  * Get user's monitors and audiences for scoping

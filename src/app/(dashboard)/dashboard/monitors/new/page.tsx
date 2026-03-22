@@ -1,8 +1,11 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getUserPlan } from "@/lib/limits";
 import { getPlanLimits } from "@/lib/plans";
 import { NewMonitorForm } from "./new-monitor-form";
 import { getEffectiveUserId, isLocalDev } from "@/lib/dev-auth";
+
+export const metadata: Metadata = { title: "Create Monitor | Kaulby" };
 
 export default async function NewMonitorPage() {
   const userId = await getEffectiveUserId();

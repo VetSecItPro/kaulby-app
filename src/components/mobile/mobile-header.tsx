@@ -85,7 +85,7 @@ function DayPassTimer({ expiresAt }: { expiresAt: string }) {
   }, [expiresAt]);
 
   return (
-    <span className="px-1.5 py-0.5 text-[9px] font-mono font-semibold tracking-wide rounded-full bg-purple-600/20 text-purple-400 border border-purple-500/30">
+    <span className="px-1.5 py-0.5 text-[10px] font-mono font-semibold tracking-wide rounded-full bg-purple-600/20 text-purple-400 border border-purple-500/30">
       {timeRemaining}
     </span>
   );
@@ -175,7 +175,7 @@ export const MobileHeader = memo(function MobileHeader({
           {subscriptionStatus === "team" && workspaceRole && (
             <span
               className={cn(
-                "px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide rounded-full",
+                "px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide rounded-full",
                 workspaceRole === "owner"
                   ? "bg-gradient-to-r from-amber-300 to-yellow-400 text-black"
                   : "bg-slate-600 text-white"
@@ -257,7 +257,7 @@ export const MobileHeader = memo(function MobileHeader({
                   >
                     <ShieldCheck className="h-5 w-5" />
                     <span className="font-medium">Admin Dashboard</span>
-                    <span className="px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide rounded-full bg-red-500 text-white">
+                    <span className="px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide rounded-full bg-red-500 text-white">
                       Admin
                     </span>
                   </Link>

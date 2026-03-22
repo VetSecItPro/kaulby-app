@@ -1,5 +1,8 @@
 // PERF: Dynamic import creation wizard — FIX-202
+import type { Metadata } from "next";
 import { Suspense } from "react";
+
+export const metadata: Metadata = { title: "Monitors | Kaulby" };
 import { redirect } from "next/navigation";
 import { ResponsiveMonitors } from "@/components/dashboard/responsive-monitors";
 import { getEffectiveUserId, isLocalDev } from "@/lib/dev-auth";

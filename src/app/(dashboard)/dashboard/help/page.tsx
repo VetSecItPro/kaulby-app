@@ -1,4 +1,7 @@
+import type { Metadata } from "next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
+export const metadata: Metadata = { title: "Help | Kaulby" };
 import { Badge } from "@/components/ui/badge";
 import {
   Radio,

@@ -1,5 +1,8 @@
 // PERF: Lazy-load filters to reduce 224kB bundle — FIX-201
+import type { Metadata } from "next";
 import { Suspense } from "react";
+
+export const metadata: Metadata = { title: "Results | Kaulby" };
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { monitors, results } from "@/lib/db/schema";

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { db, monitors, results } from "@/lib/db";
@@ -5,6 +6,8 @@ import { eq, desc, gte } from "drizzle-orm";
 import { DiscoverView } from "@/components/dashboard/discover-view";
 import { getUserPlan } from "@/lib/limits";
 import { getEffectiveUserId, isLocalDev } from "@/lib/dev-auth";
+
+export const metadata: Metadata = { title: "Discover | Kaulby" };
 
 /**
  * Get user's current platforms and keywords for context-aware suggestions

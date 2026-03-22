@@ -1,9 +1,12 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { db, results, bookmarkCollections, bookmarks } from "@/lib/db";
 import { eq, and, desc } from "drizzle-orm";
 import { getEffectiveUserId, isLocalDev } from "@/lib/dev-auth";
 import { BookmarksView } from "@/components/dashboard/bookmarks-view";
+
+export const metadata: Metadata = { title: "Bookmarks | Kaulby" };
 
 async function BookmarksContent() {
   const userId = await getEffectiveUserId();
