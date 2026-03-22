@@ -77,6 +77,7 @@ interface ResponsiveSettingsProps {
   digestPaused?: boolean;
   reportSchedule?: string;
   reportDay?: number;
+  reengagementOptOut?: boolean;
 }
 
 // Helper to convert internal plan names to display names
@@ -121,6 +122,7 @@ export function ResponsiveSettings({
   digestPaused: initialDigestPaused = false,
   reportSchedule: initialReportSchedule = "off",
   reportDay: initialReportDay = 1,
+  reengagementOptOut: initialReengagementOptOut = false,
 }: ResponsiveSettingsProps) {
   const planDisplayName = getPlanDisplayName(subscriptionStatus);
   const { resetOnboarding } = useOnboarding();
@@ -137,6 +139,7 @@ export function ResponsiveSettings({
   const [digestPaused, setDigestPaused] = useState(initialDigestPaused);
   const [reportSchedule, setReportSchedule] = useState(initialReportSchedule);
   const [reportDay, setReportDay] = useState(initialReportDay);
+  const [reengagementOptOut, setReengagementOptOut] = useState(initialReengagementOptOut);
   const [isSavingEmailPrefs, setIsSavingEmailPrefs] = useState(false);
 
   const CONFIRM_DELETE_PHRASE = "delete my account";
@@ -165,6 +168,7 @@ export function ResponsiveSettings({
     digestPaused?: boolean;
     reportSchedule?: string;
     reportDay?: number;
+    reengagementOptOut?: boolean;
   }) => {
     setIsSavingEmailPrefs(true);
     try {
@@ -177,6 +181,7 @@ export function ResponsiveSettings({
         if (updates.digestPaused !== undefined) setDigestPaused(updates.digestPaused);
         if (updates.reportSchedule !== undefined) setReportSchedule(updates.reportSchedule);
         if (updates.reportDay !== undefined) setReportDay(updates.reportDay);
+        if (updates.reengagementOptOut !== undefined) setReengagementOptOut(updates.reengagementOptOut);
       }
     } catch (error) {
       console.error("Failed to update email preferences:", error);
@@ -470,6 +475,24 @@ export function ResponsiveSettings({
               id="pause-digests"
               checked={digestPaused}
               onCheckedChange={(checked) => handleEmailPrefsChange({ digestPaused: checked })}
+              disabled={isSavingEmailPrefs}
+            />
+          </div>
+
+          {/* Opt Out of Re-engagement Emails */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="reengagement-opt-out" className="text-sm font-medium">
+                Opt Out of Re-engagement Emails
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Stop receiving emails when you haven&apos;t used Kaulby in a while
+              </p>
+            </div>
+            <Switch
+              id="reengagement-opt-out"
+              checked={reengagementOptOut}
+              onCheckedChange={(checked) => handleEmailPrefsChange({ reengagementOptOut: checked })}
               disabled={isSavingEmailPrefs}
             />
           </div>

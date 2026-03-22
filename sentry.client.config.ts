@@ -1,13 +1,19 @@
 import * as Sentry from "@sentry/nextjs";
 
+// Gate session replay behind same cookie consent that PostHog uses
+const CONSENT_KEY = "kaulby:analytics-consent";
+const hasConsent =
+  typeof window !== "undefined" &&
+  localStorage.getItem(CONSENT_KEY) === "granted";
+
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
   enabled: !!process.env.NEXT_PUBLIC_SENTRY_DSN,
 
   tracesSampleRate: 0.1,
 
-  replaysOnErrorSampleRate: 1.0,
-  replaysSessionSampleRate: 0.01, // 1% baseline session replay
+  replaysOnErrorSampleRate: hasConsent ? 1.0 : 0,
+  replaysSessionSampleRate: hasConsent ? 0.01 : 0, // 1% baseline session replay, only with consent
 
   integrations: [Sentry.replayIntegration({ maskAllText: true, blockAllMedia: true })],
 

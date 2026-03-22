@@ -109,7 +109,7 @@ export function InfiniteResults({
 
       {/* End of results */}
       {!hasMore && results.length > 0 && (
-        <div className="text-center py-8 text-sm text-muted-foreground">
+        <div className="text-center py-8 text-sm text-muted-foreground" aria-live="polite" role="status">
           Showing all {totalCount.toLocaleString()} results
         </div>
       )}

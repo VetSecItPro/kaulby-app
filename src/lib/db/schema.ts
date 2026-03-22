@@ -212,6 +212,7 @@ export const users = pgTable("users", {
   // Activity tracking for churn detection
   lastActiveAt: timestamp("last_active_at"), // Last meaningful activity (dashboard visit, monitor action)
   reengagementEmailSentAt: timestamp("reengagement_email_sent_at"), // Prevent duplicate re-engagement emails
+  reengagementOptOut: boolean("reengagement_opt_out").default(false).notNull(), // User opted out of re-engagement emails
   trialWinbackSentAt: timestamp("trial_winback_sent_at"), // Prevent duplicate trial win-back emails
   // Scheduled PDF Reports (Team tier feature)
   reportSchedule: text("report_schedule").default("off"), // 'off' | 'weekly' | 'monthly'

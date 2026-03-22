@@ -95,9 +95,9 @@ const conversationCategoryStyles: Record<ConversationCategory, { bg: string; tex
 };
 
 const sentimentIcons = {
-  positive: <ThumbsUp className="h-4 w-4 text-green-500" />,
-  negative: <ThumbsDown className="h-4 w-4 text-red-500" />,
-  neutral: <Minus className="h-4 w-4 text-gray-500" />,
+  positive: <ThumbsUp className="h-4 w-4 text-green-500" aria-label="Positive sentiment" />,
+  negative: <ThumbsDown className="h-4 w-4 text-red-500" aria-label="Negative sentiment" />,
+  neutral: <Minus className="h-4 w-4 text-gray-500" aria-label="Neutral sentiment" />,
 };
 
 // FIX-308: Using layout="position" to constrain animations to transform/opacity only, reducing CLS

@@ -65,9 +65,9 @@ interface BookmarksViewProps {
 }
 
 const sentimentIcons = {
-  positive: <ThumbsUp className="h-3.5 w-3.5 text-green-500" />,
-  negative: <ThumbsDown className="h-3.5 w-3.5 text-red-500" />,
-  neutral: <Minus className="h-3.5 w-3.5 text-gray-500" />,
+  positive: <ThumbsUp className="h-3.5 w-3.5 text-green-500" aria-label="Positive sentiment" />,
+  negative: <ThumbsDown className="h-3.5 w-3.5 text-red-500" aria-label="Negative sentiment" />,
+  neutral: <Minus className="h-3.5 w-3.5 text-gray-500" aria-label="Neutral sentiment" />,
 };
 
 export function BookmarksView({ results, collections, bookmarkMap }: BookmarksViewProps) {

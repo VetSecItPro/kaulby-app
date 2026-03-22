@@ -1700,6 +1700,34 @@ export default function HelpPage() {
 
       </section>
 
+      {/* ==================== SECTION: PRIVACY RIGHTS ==================== */}
+      <section id="privacy-rights" className="scroll-mt-20 space-y-6">
+        <div className="flex items-center gap-3 border-b pb-4">
+          <div className="p-2 rounded-lg bg-primary/10">
+            <Shield className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold">Privacy Rights</h2>
+            <p className="text-muted-foreground">Exercise your data protection rights</p>
+          </div>
+        </div>
+
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              To exercise your right to object to data processing, request data correction, or withdraw consent, email us at{" "}
+              <a
+                href="mailto:privacy@kaulbyapp.com"
+                className="text-primary underline underline-offset-4 hover:text-primary/80"
+              >
+                privacy@kaulbyapp.com
+              </a>
+              . We will respond to your request within 30 days in accordance with applicable data protection regulations.
+            </p>
+          </CardContent>
+        </Card>
+      </section>
+
       {/* ==================== SECTION 11: CONTACT SUPPORT ==================== */}
       <section id="contact" className="scroll-mt-20 space-y-6">
         <div className="flex items-center gap-3 border-b pb-4">

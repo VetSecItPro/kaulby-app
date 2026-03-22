@@ -757,7 +757,7 @@ export function InsightsView() {
           ) : (
             <div className="space-y-6">
               {/* Summary stats */}
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid gap-4 md:grid-cols-3" aria-live="polite" role="status">
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium flex items-center gap-2">
