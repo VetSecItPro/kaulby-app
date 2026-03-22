@@ -56,6 +56,11 @@ next-env.d.ts
 # Sentry
 .sentryclirc
 
+# Serwist (generated service worker)
+public/sw.js
+public/sw.js.map
+public/swe-worker-*.js
+
 # Playwright
 playwright-report/
 test-results/
