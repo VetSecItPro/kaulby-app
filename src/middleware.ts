@@ -53,6 +53,7 @@ async function getClerkHandler() {
       "/api/track(.*)", // Email tracking pixels/clicks (public by design)
       "/invite(.*)", // Public invite acceptance page
       "/banned", // Banned user page
+      "/~offline", // PWA offline fallback page
       "/report(.*)", // Public shared report pages
       "/robots.txt", // Search engine crawling directives
       "/sitemap.xml", // Search engine sitemap

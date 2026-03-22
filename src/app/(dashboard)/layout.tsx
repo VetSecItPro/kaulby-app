@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { DashboardClientWrapper } from "@/components/dashboard/dashboard-client-wrapper";
 import { ResponsiveDashboardLayout } from "@/components/dashboard/responsive-dashboard-layout";
 import { RoutePreloader } from "@/components/dashboard/route-preloader";
-import { ServiceWorkerRegister } from "@/components/shared/service-worker-register";
+// PWA: Service worker registration handled by @serwist/next (auto-register)
 import { db } from "@/lib/db";
 import { monitors, users } from "@/lib/db/schema";
 import { eq, count } from "drizzle-orm";
@@ -97,7 +97,6 @@ export default async function DashboardLayout({
       workspaceRole={workspaceRole}
     >
       <RoutePreloader />
-      <ServiceWorkerRegister />
       <DashboardClientWrapper isNewUser={isNewUser} userName={userName} userPlan={userPlan}>
         {children}
       </DashboardClientWrapper>
