@@ -370,6 +370,7 @@ export const alerts = pgTable("alerts", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
   index("alerts_monitor_id_idx").on(table.monitorId),
+  uniqueIndex("alerts_monitor_channel_dest_idx").on(table.monitorId, table.channel, table.destination),
 ]);
 
 // Results - found content
@@ -448,9 +449,9 @@ export const aiLogs = pgTable("ai_logs", {
   costUsd: real("cost_usd"),
   latencyMs: integer("latency_ms"),
   traceId: text("trace_id"), // Langfuse trace ID
-  // Cost attribution columns
-  monitorId: uuid("monitor_id"),
-  resultId: uuid("result_id"),
+  // Cost attribution columns — SET NULL on delete preserves logs for cost tracking
+  monitorId: uuid("monitor_id").references(() => monitors.id, { onDelete: "set null" }),
+  resultId: uuid("result_id").references(() => results.id, { onDelete: "set null" }),
   analysisType: text("analysis_type"), // "sentiment" | "pain_points" | "summary" | "comprehensive" | "categorization"
   cacheHit: boolean("cache_hit").default(false),
   platform: text("platform"),
