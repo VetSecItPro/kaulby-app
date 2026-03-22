@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 // PERF: Replaced framer-motion with CSS animations to reduce bundle by ~35 kB
 import dynamic from "next/dynamic";
 const MobileMonitors = dynamic(() => import("@/components/mobile/mobile-monitors").then(m => m.MobileMonitors), { ssr: false });
@@ -76,6 +76,10 @@ interface ResponsiveMonitorsProps {
 // Renders both layouts on SSR to avoid hydration mismatch,
 // then after mount switches to rendering only the active one.
 // This prevents duplicate API calls (scan status checks) from both components.
+// Context to let child components know if they can use browser APIs (Date.now, etc.)
+const MountedContext = React.createContext(false);
+export const useMounted = () => React.useContext(MountedContext);
+
 export function ResponsiveMonitors({ monitors, refreshInfo }: ResponsiveMonitorsProps) {
   const [mounted, setMounted] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
@@ -94,19 +98,23 @@ export function ResponsiveMonitors({ monitors, refreshInfo }: ResponsiveMonitors
   // because useEffect-based fetches haven't fired yet on first render)
   if (!mounted) {
     return (
-      <>
+      <MountedContext.Provider value={false}>
         <div className="lg:hidden">
           <MobileMonitors monitors={monitors} refreshInfo={refreshInfo} />
         </div>
         <DesktopMonitors monitors={monitors} refreshInfo={refreshInfo} />
-      </>
+      </MountedContext.Provider>
     );
   }
 
   // After mount: render only the active layout — prevents duplicate API calls
-  return isDesktop
-    ? <DesktopMonitors monitors={monitors} refreshInfo={refreshInfo} />
-    : <MobileMonitors monitors={monitors} refreshInfo={refreshInfo} />;
+  return (
+    <MountedContext.Provider value={true}>
+      {isDesktop
+        ? <DesktopMonitors monitors={monitors} refreshInfo={refreshInfo} />
+        : <MobileMonitors monitors={monitors} refreshInfo={refreshInfo} />}
+    </MountedContext.Provider>
+  );
 }
 
 // Monitor actions dropdown menu
@@ -497,7 +505,7 @@ function DesktopMonitors({ monitors, refreshInfo }: ResponsiveMonitorsProps) {
                   </div>
                 </div>
                 {monitor.lastCheckedAt && (
-                  <p className="mt-2 text-xs text-muted-foreground">
+                  <p className="mt-2 text-xs text-muted-foreground" suppressHydrationWarning>
                     Last refreshed {formatRelativeTime(monitor.lastCheckedAt)}
                   </p>
                 )}

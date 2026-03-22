@@ -116,7 +116,8 @@ export default async function middleware(request: NextRequest) {
   if (
     pathname.startsWith("/api/webhooks") ||
     pathname.startsWith("/api/inngest") ||
-    pathname.startsWith("/api/v1")
+    pathname.startsWith("/api/v1") ||
+    pathname === "/api/health"
   ) {
     return NextResponse.next();
   }

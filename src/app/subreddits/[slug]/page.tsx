@@ -311,11 +311,11 @@ export default async function SubredditPage({
   // Normalize slug (lowercase, remove r/ prefix if present)
   const normalizedSlug = slug.toLowerCase().replace(/^r\//, "");
 
-  // Get cached stats from database
-  const dbStats = await getSubredditStats(normalizedSlug);
-
-  // If not in DB, fetch live stats
-  const liveStats = !dbStats ? await fetchLiveStats(normalizedSlug) : null;
+  // Fetch DB stats and live stats in parallel — use whichever responds
+  const [dbStats, liveStats] = await Promise.all([
+    getSubredditStats(normalizedSlug),
+    fetchLiveStats(normalizedSlug),
+  ]);
 
   // If neither source has data and it's not a known subreddit, return 404
   if (!dbStats && !liveStats && !subredditMetadata[normalizedSlug] && !ALL_TRACKED_SUBREDDITS.includes(normalizedSlug)) {

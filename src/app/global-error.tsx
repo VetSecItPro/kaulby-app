@@ -11,6 +11,21 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
+    // Auto-recover from stale chunk errors after deployments by reloading once
+    const isChunkError =
+      error.message?.includes("Failed to load") ||
+      error.message?.includes("Loading chunk") ||
+      error.message?.includes("ChunkLoadError") ||
+      error.message?.includes("clientReferenceManifest");
+
+    if (isChunkError && !sessionStorage.getItem("chunk-reload")) {
+      sessionStorage.setItem("chunk-reload", "1");
+      window.location.reload();
+      return;
+    }
+    // Clear flag on non-chunk errors so future chunk errors can retry
+    sessionStorage.removeItem("chunk-reload");
+
     Sentry.captureException(error);
     console.error("Critical App Error:", error);
   }, [error]);

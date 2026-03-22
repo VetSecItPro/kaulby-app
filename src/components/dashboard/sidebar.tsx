@@ -5,7 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { UserButton, SignOutButton, useUser } from "@clerk/nextjs";
+import { UserButton, SignOutButton } from "@clerk/nextjs";
+import { useSafeUser } from "@/hooks/use-safe-user";
 import {
   LayoutDashboard,
   Radio,
@@ -154,7 +155,7 @@ export function Sidebar({ isAdmin = false, subscriptionStatus = "free", hasActiv
   const planBadge = getPlanBadge(subscriptionStatus, hasActiveDayPass);
   const [mounted, setMounted] = useState(false);
   const [prefetchedRoutes, setPrefetchedRoutes] = useState<Set<string>>(new Set());
-  const { user } = useUser();
+  const { user } = useSafeUser();
 
   // Prevent hydration mismatch by only rendering UserButton after mount
   useEffect(() => {
