@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-import { motion } from "framer-motion";
 import {
   Radio,
   Search,
@@ -20,16 +19,13 @@ import {
 // Animated illustration wrapper
 function IllustrationWrapper({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <motion.div
-      initial={{ scale: 0.8, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      transition={{ duration: 0.5, ease: "easeOut" }}
-      className={cn("relative", className)}
+    <div
+      className={cn("relative animate-[fadeScaleIn_0.5s_ease-out_both]", className)}
     >
       {/* Glow effect */}
       <div className="absolute inset-0 bg-primary/10 blur-3xl rounded-full" />
       <div className="relative">{children}</div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -39,28 +35,16 @@ function MonitorIllustration() {
     <IllustrationWrapper className="w-32 h-32 mx-auto mb-6">
       <div className="relative w-full h-full">
         {/* Background circles */}
-        <motion.div
-          animate={{ scale: [1, 1.1, 1] }}
-          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/20 to-purple-500/20"
-        />
-        <motion.div
-          animate={{ scale: [1.1, 1, 1.1] }}
-          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute inset-4 rounded-full bg-gradient-to-br from-primary/30 to-purple-500/30"
-        />
+        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/20 to-purple-500/20 animate-[pulse_6s_ease-in-out_infinite]" />
+        <div className="absolute inset-4 rounded-full bg-gradient-to-br from-primary/30 to-purple-500/30 animate-[pulse_6s_ease-in-out_infinite_reverse]" />
         {/* Icon */}
         <div className="absolute inset-0 flex items-center justify-center">
           <Radio className="w-12 h-12 text-primary" aria-hidden="true" />
         </div>
-        {/* Floating elements */}
-        <motion.div
-          animate={{ y: [-4, 4, -4] }}
-          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-primary/40 flex items-center justify-center"
-        >
+        {/* Floating element */}
+        <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-primary/40 flex items-center justify-center animate-[float_4s_ease-in-out_infinite]">
           <Sparkles className="w-3 h-3 text-primary" aria-hidden="true" />
-        </motion.div>
+        </div>
       </div>
     </IllustrationWrapper>
   );
@@ -70,20 +54,12 @@ function ResultsIllustration() {
   return (
     <IllustrationWrapper className="w-32 h-32 mx-auto mb-6">
       <div className="relative w-full h-full">
-        <motion.div
-          animate={{ scale: [1, 1.05, 1] }}
-          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-500/20 to-primary/20"
-        />
+        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-500/20 to-primary/20 animate-[pulse_8s_ease-in-out_infinite]" />
         <div className="absolute inset-0 flex items-center justify-center">
           <Search className="w-12 h-12 text-primary" aria-hidden="true" />
         </div>
-        {/* Animated search rings */}
-        <motion.div
-          animate={{ scale: [1, 1.5], opacity: [0.5, 0] }}
-          transition={{ duration: 2, repeat: Infinity }}
-          className="absolute inset-0 rounded-full border-2 border-primary/30"
-        />
+        {/* Animated search ring */}
+        <div className="absolute inset-0 rounded-full border-2 border-primary/30 animate-[pingOnce_2s_ease-out_infinite]" />
       </div>
     </IllustrationWrapper>
   );
@@ -93,18 +69,11 @@ function AlertsIllustration() {
   return (
     <IllustrationWrapper className="w-32 h-32 mx-auto mb-6">
       <div className="relative w-full h-full">
-        <motion.div
-          animate={{ scale: [1, 1.08, 1] }}
-          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute inset-0 rounded-full bg-gradient-to-br from-amber-500/20 to-primary/20"
-        />
+        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-amber-500/20 to-primary/20 animate-[pulse_6s_ease-in-out_infinite]" />
         <div className="absolute inset-0 flex items-center justify-center">
-          <motion.div
-            animate={{ rotate: [-5, 5, -5] }}
-            transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 2 }}
-          >
+          <div className="animate-[bellRing_3s_ease-in-out_infinite]">
             <Bell className="w-12 h-12 text-primary" aria-hidden="true" />
-          </motion.div>
+          </div>
         </div>
       </div>
     </IllustrationWrapper>
@@ -115,23 +84,20 @@ function AnalyticsIllustration() {
   return (
     <IllustrationWrapper className="w-32 h-32 mx-auto mb-6">
       <div className="relative w-full h-full">
-        <motion.div
-          animate={{ scale: [1, 1.05, 1] }}
-          transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute inset-0 rounded-full bg-gradient-to-br from-green-500/20 to-primary/20"
-        />
+        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-green-500/20 to-primary/20 animate-[pulse_3500ms_ease-in-out_infinite]" />
         <div className="absolute inset-0 flex items-center justify-center">
           <BarChart3 className="w-12 h-12 text-primary" aria-hidden="true" />
         </div>
         {/* Animated bars */}
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1">
-          {[0.3, 0.6, 0.4, 0.8, 0.5].map((height, i) => (
-            <motion.div
-              key={i}
-              animate={{ scaleY: [height, 1, height] }}
-              transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.1 }}
-              className="w-1 h-4 bg-primary/40 rounded-full origin-bottom"
-            />
+          {[
+            "animate-[barPulse_1.5s_ease-in-out_infinite_0ms]",
+            "animate-[barPulse_1.5s_ease-in-out_infinite_100ms]",
+            "animate-[barPulse_1.5s_ease-in-out_infinite_200ms]",
+            "animate-[barPulse_1.5s_ease-in-out_infinite_300ms]",
+            "animate-[barPulse_1.5s_ease-in-out_infinite_400ms]",
+          ].map((cls, i) => (
+            <div key={i} className={cn("w-1 h-4 bg-primary/40 rounded-full origin-bottom", cls)} />
           ))}
         </div>
       </div>
@@ -143,11 +109,7 @@ function AudienceIllustration() {
   return (
     <IllustrationWrapper className="w-32 h-32 mx-auto mb-6">
       <div className="relative w-full h-full">
-        <motion.div
-          animate={{ scale: [1, 1.06, 1] }}
-          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute inset-0 rounded-full bg-gradient-to-br from-purple-500/20 to-primary/20"
-        />
+        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-purple-500/20 to-primary/20 animate-[pulse_3s_ease-in-out_infinite]" />
         <div className="absolute inset-0 flex items-center justify-center">
           <Users className="w-12 h-12 text-primary" aria-hidden="true" />
         </div>
@@ -160,20 +122,12 @@ function WebhookIllustration() {
   return (
     <IllustrationWrapper className="w-32 h-32 mx-auto mb-6">
       <div className="relative w-full h-full">
-        <motion.div
-          animate={{ scale: [1, 1.05, 1] }}
-          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute inset-0 rounded-full bg-gradient-to-br from-cyan-500/20 to-primary/20"
-        />
+        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-cyan-500/20 to-primary/20 animate-[pulse_3s_ease-in-out_infinite]" />
         <div className="absolute inset-0 flex items-center justify-center">
           <Webhook className="w-12 h-12 text-primary" aria-hidden="true" />
         </div>
-        {/* Connection dots */}
-        <motion.div
-          animate={{ x: [0, 20, 0], opacity: [0, 1, 0] }}
-          transition={{ duration: 2, repeat: Infinity }}
-          className="absolute top-1/2 right-0 w-2 h-2 rounded-full bg-primary"
-        />
+        {/* Connection dot */}
+        <div className="absolute top-1/2 right-0 w-2 h-2 rounded-full bg-primary animate-[connectionDot_2s_ease-in-out_infinite]" />
       </div>
     </IllustrationWrapper>
   );
@@ -183,36 +137,23 @@ function InsightsIllustration() {
   return (
     <IllustrationWrapper className="w-32 h-32 mx-auto mb-6">
       <div className="relative w-full h-full">
-        <motion.div
-          animate={{ scale: [1, 1.08, 1] }}
-          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/20 to-amber-500/20"
-        />
+        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/20 to-amber-500/20 animate-[pulse_4s_ease-in-out_infinite]" />
         <div className="absolute inset-0 flex items-center justify-center">
           <Sparkles className="w-12 h-12 text-primary" aria-hidden="true" />
         </div>
         {/* Floating sparkles */}
-        {[0, 1, 2].map((i) => (
-          <motion.div
+        {[
+          { delay: "0ms", left: "30%" },
+          { delay: "500ms", left: "50%" },
+          { delay: "1000ms", left: "70%" },
+        ].map((s, i) => (
+          <div
             key={i}
-            animate={{
-              y: [-10, -20, -10],
-              opacity: [0, 1, 0],
-              scale: [0.5, 1, 0.5],
-            }}
-            transition={{
-              duration: 2,
-              repeat: Infinity,
-              delay: i * 0.5,
-            }}
-            className="absolute"
-            style={{
-              top: "20%",
-              left: `${30 + i * 20}%`,
-            }}
+            className="absolute animate-[sparkleFloat_2s_ease-in-out_infinite]"
+            style={{ top: "20%", left: s.left, animationDelay: s.delay }}
           >
             <Sparkles className="w-3 h-3 text-amber-400" />
-          </motion.div>
+          </div>
         ))}
       </div>
     </IllustrationWrapper>
@@ -315,12 +256,9 @@ export function EmptyState({
   const Illustration = config.illustration;
 
   const content = (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
+    <div
       className={cn(
-        "flex flex-col items-center justify-center text-center",
+        "flex flex-col items-center justify-center text-center animate-[fadeSlideUp_0.5s_ease-out_both]",
         compact ? "py-8" : "py-12",
         className
       )}
@@ -353,7 +291,7 @@ export function EmptyState({
           </Link>
         )
       )}
-    </motion.div>
+    </div>
   );
 
   if (compact) {
@@ -372,39 +310,29 @@ export function EmptyState({
 // Scanning state - shown when monitors are active but no results yet
 export function ScanningState({ monitorName }: { monitorName?: string }) {
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="flex flex-col items-center justify-center text-center py-12"
-    >
+    <div className="flex flex-col items-center justify-center text-center py-12 animate-[fadeIn_0.3s_ease-out_both]">
       <div className="relative w-24 h-24 mb-6">
-        {/* Radar animation */}
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-          className="absolute inset-0"
-        >
+        {/* Radar sweep line */}
+        <div className="absolute inset-0 animate-spin [animation-duration:3s]">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-0.5 h-1/2 bg-gradient-to-b from-primary to-transparent origin-bottom" />
-        </motion.div>
+        </div>
 
         {/* Concentric circles */}
-        {[1, 2, 3].map((i) => (
-          <motion.div
+        {[
+          { margin: "8px", delay: "0s" },
+          { margin: "16px", delay: "0.5s" },
+          { margin: "24px", delay: "1s" },
+        ].map((ring, i) => (
+          <div
             key={i}
-            animate={{ scale: [1, 1.2], opacity: [0.3, 0] }}
-            transition={{ duration: 2, repeat: Infinity, delay: i * 0.5 }}
-            className="absolute inset-0 rounded-full border border-primary/30"
-            style={{ margin: `${i * 8}px` }}
+            className="absolute inset-0 rounded-full border border-primary/30 animate-[radarRing_2s_ease-out_infinite]"
+            style={{ margin: ring.margin, animationDelay: ring.delay }}
           />
         ))}
 
         {/* Center dot */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <motion.div
-            animate={{ scale: [1, 1.2, 1] }}
-            transition={{ duration: 1, repeat: Infinity }}
-            className="w-3 h-3 rounded-full bg-primary"
-          />
+          <div className="w-3 h-3 rounded-full bg-primary animate-pulse" />
         </div>
       </div>
 
@@ -414,6 +342,6 @@ export function ScanningState({ monitorName }: { monitorName?: string }) {
           ? `"${monitorName}" is actively scanning. Results will appear here soon.`
           : "Your monitors are actively scanning. New mentions will appear here."}
       </p>
-    </motion.div>
+    </div>
   );
 }

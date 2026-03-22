@@ -17,6 +17,13 @@ interface BusinessMetricsProps {
   paidUserPercentage: number;
 }
 
+const CURRENCY_FORMAT = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+});
+
 export function BusinessMetrics({
   mrr,
   mrrChange,
@@ -29,14 +36,7 @@ export function BusinessMetrics({
   monthlySignups,
   paidUserPercentage,
 }: BusinessMetricsProps) {
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
+  const formatCurrency = (value: number) => CURRENCY_FORMAT.format(value);
 
   const formatPercent = (value: number) => {
     return `${value.toFixed(1)}%`;

@@ -514,42 +514,72 @@ async function scanRedditForMonitor(monitor: MonitorData): Promise<number> {
         if (siteWideResult.posts.length > 0) {
           logger.info("[Reddit] Site-wide fallback found posts", { count: siteWideResult.posts.length });
 
+          // 1. Run content matching to find candidates
+          interface SitewideMatchedPost {
+            sourceUrl: string;
+            title: string;
+            content: string;
+            author: string;
+            postedAt: Date;
+            metadata: Record<string, unknown>;
+          }
+          const sitewideMatched: SitewideMatchedPost[] = [];
+
           for (const post of siteWideResult.posts) {
             const matchResult = await contentMatchesMonitor(
               { title: post.title, body: post.selftext, author: post.author, platform: "reddit" },
               monitor
             );
-
             if (!matchResult.isMatch) continue;
 
-            const sourceUrl = post.url || `https://reddit.com${post.permalink}`;
-            const existing = await pooledDb.query.results.findMany({
-              where: and(eq(results.monitorId, monitor.id), eq(results.sourceUrl, sourceUrl)),
-              columns: { id: true },
-            });
-            if (existing.length > 0) continue;
-
-            const inserted = await pooledDb.insert(results).values({
-              monitorId: monitor.id,
-              platform: "reddit" as const,
-              sourceUrl,
+            sitewideMatched.push({
+              sourceUrl: post.url || `https://reddit.com${post.permalink}`,
               title: post.title,
               content: post.selftext,
               author: post.author,
               postedAt: new Date(post.created_utc * 1000),
               metadata: { subreddit: post.subreddit, score: post.score, numComments: post.num_comments, source: "sitewide-fallback" },
-            }).returning();
+            });
+          }
 
-            count += inserted.length;
-            await incrementResultsCount(monitor.userId, inserted.length);
+          if (sitewideMatched.length > 0) {
+            // 2. Batch existence check — single inArray query
+            const sitewideUrls = sitewideMatched.map((m) => m.sourceUrl);
+            const sitewideExisting = await pooledDb.query.results.findMany({
+              where: and(eq(results.monitorId, monitor.id), inArray(results.sourceUrl, sitewideUrls)),
+              columns: { sourceUrl: true },
+            });
+            const sitewideExistingSet = new Set(sitewideExisting.map((r) => r.sourceUrl));
 
-            if (inserted.length > 0) {
-              await inngest.send(
-                inserted.map(result => ({
-                  name: "content/analyze" as const,
-                  data: { resultId: result.id, userId: monitor.userId },
+            // 3. Filter to new items only
+            const sitewideNew = sitewideMatched.filter((m) => !sitewideExistingSet.has(m.sourceUrl));
+
+            if (sitewideNew.length > 0) {
+              // 4. Batch insert
+              const inserted = await pooledDb.insert(results).values(
+                sitewideNew.map((item) => ({
+                  monitorId: monitor.id,
+                  platform: "reddit" as const,
+                  sourceUrl: item.sourceUrl,
+                  title: item.title,
+                  content: item.content,
+                  author: item.author,
+                  postedAt: item.postedAt,
+                  metadata: item.metadata,
                 }))
-              );
+              ).returning();
+
+              count += inserted.length;
+              await incrementResultsCount(monitor.userId, inserted.length);
+
+              if (inserted.length > 0) {
+                await inngest.send(
+                  inserted.map(result => ({
+                    name: "content/analyze" as const,
+                    data: { resultId: result.id, userId: monitor.userId },
+                  }))
+                );
+              }
             }
           }
         }

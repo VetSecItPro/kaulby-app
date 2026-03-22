@@ -34,6 +34,8 @@ import { Switch } from "@/components/ui/switch";
 import { Bell, Plus, Trash2, Edit, AlertTriangle, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 
+const CURRENCY_FORMAT = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+
 interface BudgetAlert {
   id: string;
   name: string;
@@ -209,8 +211,7 @@ export function BudgetAlerts({ initialAlerts }: BudgetAlertsProps) {
     setIsCreateOpen(true);
   };
 
-  const formatCurrency = (value: number) =>
-    new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
+  const formatCurrency = (value: number) => CURRENCY_FORMAT.format(value);
 
   const getStatusBadge = (alert: BudgetAlert) => {
     if (!alert.isActive) {

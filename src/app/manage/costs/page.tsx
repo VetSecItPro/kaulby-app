@@ -383,17 +383,26 @@ async function getBudgetAlertsData() {
   }));
 }
 
+const CURRENCY_FORMAT_0 = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+});
+const CURRENCY_FORMAT_2 = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+const NUMBER_FORMAT = new Intl.NumberFormat("en-US");
+
 function formatCurrency(value: number, decimals = 2) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  }).format(value);
+  return (decimals === 0 ? CURRENCY_FORMAT_0 : CURRENCY_FORMAT_2).format(value);
 }
 
 function formatNumber(value: number) {
-  return new Intl.NumberFormat("en-US").format(value);
+  return NUMBER_FORMAT.format(value);
 }
 
 function getPlanBadge(plan: string) {

@@ -314,14 +314,21 @@ export async function GET(request: NextRequest) {
       }))
       .sort((a, b) => b.count - a.count);
 
-    return NextResponse.json({
-      total,
-      platforms,
-      communities,
-      categories,
-      sentiments,
-      engagement: engagementBuckets,
-    } satisfies AggregationsResponse);
+    return NextResponse.json(
+      {
+        total,
+        platforms,
+        communities,
+        categories,
+        sentiments,
+        engagement: engagementBuckets,
+      } satisfies AggregationsResponse,
+      {
+        headers: {
+          "Cache-Control": "private, max-age=300, stale-while-revalidate=600",
+        },
+      }
+    );
   } catch (error) {
     logger.error("Aggregations error:", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(

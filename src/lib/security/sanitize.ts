@@ -54,30 +54,29 @@ export function escapeHtml(unsafe: string | null | undefined): string {
  * const safe = escapeHtmlPreserveSafe(userBio);
  * // Returns: '<b>Hello</b>&lt;script&gt;bad&lt;/script&gt;'
  */
+const SAFE_TAGS = ["b", "i", "em", "strong", "br"] as const;
+
+// Pre-compiled RegExps for each safe tag — avoids recreating on every call
+const SAFE_TAG_PATTERNS = SAFE_TAGS.map((tag) => ({
+  open: new RegExp(`&lt;(${tag})&gt;`, "gi"),
+  close: new RegExp(`&lt;&#x2F;(${tag})&gt;`, "gi"),
+  selfClose: new RegExp(`&lt;(${tag})\\s*&#x2F;&gt;`, "gi"),
+}));
+
 export function escapeHtmlPreserveSafe(unsafe: string | null | undefined): string {
   if (!unsafe) return "";
 
   // First, escape everything
   let safe = escapeHtml(unsafe);
 
-  // Then, unescape only the safe tags
-  const safeTags = ["b", "i", "em", "strong", "br"];
-  for (const tag of safeTags) {
+  // Then, unescape only the safe tags using pre-compiled patterns
+  for (const patterns of SAFE_TAG_PATTERNS) {
     // Opening tags
-    safe = safe.replace(
-      new RegExp(`&lt;(${tag})&gt;`, "gi"),
-      `<$1>`
-    );
+    safe = safe.replace(patterns.open, "<$1>");
     // Closing tags (the / is escaped to &#x2F; by escapeHtml)
-    safe = safe.replace(
-      new RegExp(`&lt;&#x2F;(${tag})&gt;`, "gi"),
-      `</$1>`
-    );
+    safe = safe.replace(patterns.close, "</$1>");
     // Self-closing tags (for <br />, the / is escaped to &#x2F;)
-    safe = safe.replace(
-      new RegExp(`&lt;(${tag})\\s*&#x2F;&gt;`, "gi"),
-      `<$1 />`
-    );
+    safe = safe.replace(patterns.selfClose, "<$1 />");
   }
 
   return safe;

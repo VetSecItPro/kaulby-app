@@ -1,10 +1,8 @@
 "use client";
 
 import { ReactNode, useEffect } from "react";
-import { useRouter, usePathname } from "next/navigation";
-import { AnimatePresence } from "framer-motion";
+import { useRouter } from "next/navigation";
 import { OnboardingProvider } from "./onboarding-provider";
-import { PageTransition } from "@/components/shared/motion";
 import { useAutoTimezone } from "@/hooks/use-auto-timezone";
 
 interface DashboardClientWrapperProps {
@@ -45,13 +43,9 @@ export function DashboardClientWrapper({
     return () => clearTimeout(timeoutId);
   }, [router]);
 
-  const pathname = usePathname();
-
   return (
     <OnboardingProvider isNewUser={isNewUser} userName={userName} userPlan={userPlan}>
-      <AnimatePresence mode="wait">
-        <PageTransition key={pathname}>{children}</PageTransition>
-      </AnimatePresence>
+      <div className="animate-fade-up">{children}</div>
     </OnboardingProvider>
   );
 }
