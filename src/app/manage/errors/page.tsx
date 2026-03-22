@@ -426,6 +426,7 @@ export default function ErrorLogsPage() {
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                   className="pl-8"
+                  aria-label="Search errors"
                 />
               </div>
             </div>

@@ -763,7 +763,7 @@ export function QuickStartGuide({ hasMonitors, hasResults, hasAlerts = false, on
             <Rocket className="h-5 w-5 text-primary" />
             Getting Started
           </CardTitle>
-          <Button variant="ghost" size="sm" onClick={handleDismiss} className="h-8 w-8 p-0">
+          <Button variant="ghost" size="sm" onClick={handleDismiss} className="h-8 w-8 p-0" aria-label="Dismiss getting started">
             <X className="h-4 w-4" />
           </Button>
         </div>

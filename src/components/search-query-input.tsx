@@ -65,7 +65,7 @@ export function SearchQueryInput({ value, onChange, isPro = false }: SearchQuery
             </Badge>
             <span className="text-xs text-muted-foreground">(optional)</span>
           </Label>
-          <Button variant="ghost" size="sm" className="h-6 px-2">
+          <Button variant="ghost" size="sm" className="h-6 px-2" aria-label="Toggle advanced search" aria-expanded={isOpen}>
             <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`} />
           </Button>
         </div>

@@ -324,6 +324,7 @@ export function BudgetAlerts({ initialAlerts }: BudgetAlertsProps) {
                   placeholder="admin@company.com"
                   value={formData.notifyEmail}
                   onChange={(e) => setFormData({ ...formData, notifyEmail: e.target.value })}
+                  autoComplete="email"
                 />
               </div>
 
@@ -415,6 +416,7 @@ export function BudgetAlerts({ initialAlerts }: BudgetAlertsProps) {
                           variant="ghost"
                           size="icon"
                           onClick={() => openEdit(alert)}
+                          aria-label="Edit alert"
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -422,6 +424,7 @@ export function BudgetAlerts({ initialAlerts }: BudgetAlertsProps) {
                           variant="ghost"
                           size="icon"
                           onClick={() => handleDelete(alert.id)}
+                          aria-label="Delete alert"
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>

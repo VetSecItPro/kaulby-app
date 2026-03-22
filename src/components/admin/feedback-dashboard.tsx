@@ -115,7 +115,7 @@ export function FeedbackDashboard({ feedback, stats }: FeedbackDashboardProps) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Link href="/manage">
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" aria-label="Go back">
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
