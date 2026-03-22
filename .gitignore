@@ -108,3 +108,5 @@ remotion/node_modules/
 .perf/
 .security-reports/
 .cleancode-reports/
+.monitor-reports/
+.db-reports/
