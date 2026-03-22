@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import useSWR from "swr";
+import { fetcher } from "@/lib/swr-fetcher";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -93,8 +95,16 @@ export function SavedSearches({
   currentFilters,
   onSelectSearch,
 }: SavedSearchesProps) {
-  const [searches, setSearches] = useState<SavedSearch[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, isLoading: loading, mutate } = useSWR<{ searches: SavedSearch[] }>(
+    "/api/saved-searches",
+    fetcher,
+    {
+      revalidateOnFocus: false,
+      onError: () => toast.error("Failed to load saved searches"),
+    }
+  );
+  const searches = data?.searches ?? [];
+
   const [saving, setSaving] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [newSearchName, setNewSearchName] = useState("");
@@ -110,25 +120,6 @@ export function SavedSearches({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteSearchId, setDeleteSearchId] = useState<string | null>(null);
   const [deleteSearchName, setDeleteSearchName] = useState("");
-
-  // Fetch saved searches on mount
-  useEffect(() => {
-    async function fetchSearches() {
-      try {
-        const response = await fetch("/api/saved-searches");
-        if (response.ok) {
-          const data = await response.json();
-          setSearches(data.searches);
-        }
-      } catch (err) {
-        console.error("Failed to fetch saved searches:", err);
-        toast.error("Failed to load saved searches");
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchSearches();
-  }, []);
 
   const handleSaveSearch = async () => {
     if (!newSearchName.trim()) {
@@ -151,14 +142,17 @@ export function SavedSearches({
       });
 
       if (response.ok) {
-        const data = await response.json();
-        setSearches((prev) => [data.search, ...prev]);
+        const respData = await response.json();
+        mutate(
+          (current) => current ? { searches: [respData.search, ...current.searches] } : { searches: [respData.search] },
+          { revalidate: false }
+        );
         setShowSaveDialog(false);
         setNewSearchName("");
         toast.success("Search saved");
       } else {
-        const data = await response.json();
-        setError(data.error || "Failed to save search");
+        const respData = await response.json();
+        setError(respData.error || "Failed to save search");
       }
     } catch (err) {
       setError("Failed to save search");
@@ -177,13 +171,16 @@ export function SavedSearches({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ incrementUse: true }),
       });
-      // Update local state to reflect the use
-      setSearches((prev) =>
-        prev.map((s) =>
-          s.id === search.id
-            ? { ...s, useCount: s.useCount + 1, lastUsedAt: new Date() }
-            : s
-        )
+      // Optimistically update the cache
+      mutate(
+        (current) => current ? {
+          searches: current.searches.map((s) =>
+            s.id === search.id
+              ? { ...s, useCount: s.useCount + 1, lastUsedAt: new Date() }
+              : s
+          ),
+        } : current,
+        { revalidate: false }
       );
     } catch (err) {
       console.error("Failed to update use count:", err);
@@ -212,10 +209,13 @@ export function SavedSearches({
       });
 
       if (response.ok) {
-        setSearches((prev) =>
-          prev.map((s) =>
-            s.id === renameSearchId ? { ...s, name: renameName.trim() } : s
-          )
+        mutate(
+          (current) => current ? {
+            searches: current.searches.map((s) =>
+              s.id === renameSearchId ? { ...s, name: renameName.trim() } : s
+            ),
+          } : current,
+          { revalidate: false }
         );
         setShowRenameDialog(false);
         setRenameSearchId(null);
@@ -247,7 +247,12 @@ export function SavedSearches({
       });
 
       if (response.ok) {
-        setSearches((prev) => prev.filter((s) => s.id !== deleteSearchId));
+        mutate(
+          (current) => current ? {
+            searches: current.searches.filter((s) => s.id !== deleteSearchId),
+          } : current,
+          { revalidate: false }
+        );
         toast.success("Search deleted");
       }
     } catch (err) {

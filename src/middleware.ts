@@ -62,6 +62,17 @@ async function getClerkHandler() {
     ]);
 
     clerkHandler = clerkMiddleware(async (auth, request) => {
+      // SECURITY: Dev auth bypass — skip Clerk protect() in verified local dev
+      // so Playwright e2e tests can access dashboard without a Clerk session.
+      // Layout uses getEffectiveUserId() to resolve the test user from DB.
+      if (
+        isLocalDev &&
+        process.env.ALLOW_DEV_AUTH_BYPASS === "true" &&
+        !process.env.VERCEL &&
+        !process.env.VERCEL_ENV
+      ) {
+        return;
+      }
       if (!isPublicRoute(request)) {
         await auth.protect({
           unauthenticatedUrl: new URL('/sign-in', request.url).toString(),

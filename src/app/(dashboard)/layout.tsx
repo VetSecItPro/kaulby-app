@@ -8,13 +8,16 @@ import { db } from "@/lib/db";
 import { monitors, users } from "@/lib/db/schema";
 import { eq, count } from "drizzle-orm";
 import { logger } from "@/lib/logger";
+import { getEffectiveUserId, isLocalDev } from "@/lib/dev-auth";
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { userId } = await auth();
+  const userId = isLocalDev()
+    ? await getEffectiveUserId()
+    : (await auth()).userId;
 
   if (!userId) {
     redirect("/sign-in");
@@ -22,8 +25,9 @@ export default async function DashboardLayout({
 
   // Run Clerk user fetch and DB queries in parallel to reduce blocking time
   const userColumns = { isAdmin: true, subscriptionStatus: true, isBanned: true, onboardingCompleted: true, dayPassExpiresAt: true, workspaceRole: true } as const;
+  const devBypass = isLocalDev();
   const [user, dbUserById, monitorsCountResult] = await Promise.all([
-    currentUser(),
+    devBypass ? Promise.resolve(null) : currentUser(),
     db.query.users.findFirst({
       where: (users, { eq }) => eq(users.id, userId),
       columns: userColumns,
