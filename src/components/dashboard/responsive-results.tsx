@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { ResultsList } from "./results-list";
 import { ResultsSidebar } from "./results-sidebar";
@@ -13,6 +13,8 @@ import { HiddenResultsBanner, RefreshDelayBanner } from "./upgrade-prompt";
 import { EmptyState, ScanningState } from "./empty-states";
 import { Download, Lock, SlidersHorizontal, X, Loader2 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { useInfiniteResults } from "@/hooks/use-infinite-results";
+import type { Result } from "@/hooks/use-infinite-results";
 
 const MobileResults = dynamic(() => import("@/components/mobile/mobile-results").then(m => m.MobileResults), { ssr: false });
 const ThemesPanel = dynamic(() => import("./themes-panel").then(m => m.ThemesPanel), { ssr: false });
@@ -22,25 +24,6 @@ import type { PlanKey } from "@/lib/plans";
 import { parseSearchQuery, matchesQuery } from "@/lib/search-parser";
 
 type ConversationCategory = "pain_point" | "solution_request" | "advice_request" | "money_talk" | "hot_discussion";
-
-interface Result {
-  id: string;
-  platform: "reddit" | "hackernews" | "producthunt" | "devto" | "googlereviews" | "trustpilot" | "appstore" | "playstore" | "quora" | "youtube" | "g2" | "yelp" | "amazonreviews" | "indiehackers" | "github" | "hashnode" | "x";
-  sourceUrl: string;
-  title: string;
-  content: string | null;
-  author: string | null;
-  postedAt: Date | null;
-  sentiment: "positive" | "negative" | "neutral" | null;
-  painPointCategory: string | null;
-  conversationCategory: ConversationCategory | null;
-  aiSummary: string | null;
-  isViewed: boolean;
-  isClicked: boolean;
-  isSaved: boolean;
-  isHidden: boolean;
-  monitor: { name: string; keywords?: string[] } | null;
-}
 
 interface PlanInfo {
   plan: PlanKey;
@@ -66,8 +49,8 @@ interface ResponsiveResultsProps {
   planInfo?: PlanInfo;
 }
 
-// CSS-based responsive - renders both layouts, CSS handles visibility
-// This prevents hydration mismatch from JS device detection
+// Renders both layouts on SSR to avoid hydration mismatch,
+// then after mount switches to rendering only the active one.
 export function ResponsiveResults({
   results,
   totalCount,
@@ -76,40 +59,55 @@ export function ResponsiveResults({
   hasMonitors,
   planInfo,
 }: ResponsiveResultsProps) {
+  const [mounted, setMounted] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  useEffect(() => {
+    const mql = window.matchMedia("(min-width: 1024px)");
+    setIsDesktop(mql.matches);
+    setMounted(true);
+
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    mql.addEventListener("change", handler);
+    return () => mql.removeEventListener("change", handler);
+  }, []);
+
   // Filter results based on visibility limit for free tier
   const visibleResults = planInfo?.isLimited
     ? results.slice(0, planInfo.visibleLimit)
     : results;
 
-  return (
-    <>
-      {/* Mobile/Tablet view - hidden on lg and above */}
-      <div className="lg:hidden">
-        <MobileResultsView
-          results={results}
-          visibleResults={visibleResults}
-          totalCount={totalCount}
-          page={page}
-          totalPages={totalPages}
-          hasMonitors={hasMonitors}
-          planInfo={planInfo}
-        />
-      </div>
+  const sharedProps = {
+    results,
+    visibleResults,
+    totalCount,
+    page,
+    totalPages,
+    hasMonitors,
+    planInfo,
+  };
 
-      {/* Desktop view - hidden below lg */}
-      <div className="hidden lg:block">
-        <DesktopResultsView
-          results={results}
-          visibleResults={visibleResults}
-          totalCount={totalCount}
-          page={page}
-          totalPages={totalPages}
-          hasMonitors={hasMonitors}
-          planInfo={planInfo}
-        />
-      </div>
-    </>
-  );
+  // SSR + first paint: render both with CSS visibility (prevents hydration mismatch)
+  if (!mounted) {
+    return (
+      <>
+        {/* Mobile/Tablet view - hidden on lg and above */}
+        <div className="lg:hidden">
+          <MobileResultsView {...sharedProps} />
+        </div>
+
+        {/* Desktop view - hidden below lg */}
+        <div className="hidden lg:block">
+          <DesktopResultsView {...sharedProps} />
+        </div>
+      </>
+    );
+  }
+
+  // After mount: render only the active layout
+  return isDesktop
+    ? <DesktopResultsView {...sharedProps} />
+    : <MobileResultsView {...sharedProps} />;
 }
 
 interface ViewProps {
@@ -137,106 +135,11 @@ function MobileResultsView({
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
   const [selectedSentiment, setSelectedSentiment] = useState<string | null>(null);
 
-  // Infinite scroll state
-  const [loadedResults, setLoadedResults] = useState<Result[]>([]);
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(totalPages > 1);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const mobileLoadMoreRef = useRef<HTMLDivElement>(null);
-
-  // Combine initial results with loaded results
-  const allResults = useMemo(() => {
-    return [...visibleResults, ...loadedResults];
-  }, [visibleResults, loadedResults]);
-
-  // Refs for stable handleLoadMore (avoids IntersectionObserver reconnection)
-  const cursorRef = useRef(cursor);
-  const visibleResultsRef = useRef(visibleResults);
-  cursorRef.current = cursor;
-  visibleResultsRef.current = visibleResults;
-
-  // Abort controller ref for cancelling in-flight fetches
-  const mobileAbortRef = useRef<AbortController | null>(null);
-
-  // Load more results
-  const handleLoadMore = useCallback(async () => {
-    if (loadingMore || !hasMore) return;
-
-    // Cancel any in-flight request
-    mobileAbortRef.current?.abort();
-    const controller = new AbortController();
-    mobileAbortRef.current = controller;
-
-    setLoadingMore(true);
-    try {
-      const cursorValue = cursorRef.current;
-      const visResults = visibleResultsRef.current;
-
-      const cursorParam = cursorValue || (() => {
-        // Use functional access to get latest loadedResults
-        let lastPostedAt: string | null = null;
-        setLoadedResults((prev) => {
-          const lastResult = prev.length > 0
-            ? prev[prev.length - 1]
-            : visResults[visResults.length - 1];
-          lastPostedAt = lastResult?.postedAt
-            ? new Date(lastResult.postedAt).toISOString()
-            : null;
-          return prev;
-        });
-        return lastPostedAt;
-      })();
-
-      const url = cursorParam
-        ? `/api/results?cursor=${encodeURIComponent(cursorParam)}&limit=20`
-        : "/api/results?limit=20";
-
-      const res = await fetch(url, { signal: controller.signal });
-      const data = await res.json();
-
-      if (res.ok) {
-        const newResults: Result[] = data.items.map((item: Record<string, unknown>) => ({
-          ...item,
-          postedAt: item.postedAt ? new Date(item.postedAt as string) : null,
-        }));
-        setLoadedResults((prev) => {
-          const combined = [...prev, ...newResults];
-          return combined.length > 500 ? combined.slice(-500) : combined;
-        });
-        setCursor(data.nextCursor);
-        setHasMore(data.hasMore);
-      }
-    } catch (error) {
-      // Ignore abort errors — they're expected when cancelling in-flight requests
-      if (error instanceof DOMException && error.name === "AbortError") return;
-      console.error("Failed to load more results:", error);
-    } finally {
-      setLoadingMore(false);
-    }
-  }, [loadingMore, hasMore]);
-
-  // Cleanup abort controller on unmount
-  useEffect(() => {
-    return () => mobileAbortRef.current?.abort();
-  }, []);
-
-  // IntersectionObserver for auto-loading more results (mobile)
-  useEffect(() => {
-    const sentinel = mobileLoadMoreRef.current;
-    if (!sentinel || !hasMore || loadingMore) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          handleLoadMore();
-        }
-      },
-      { threshold: 0.1 }
-    );
-
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [hasMore, loadingMore, handleLoadMore]);
+  // Infinite scroll via shared hook
+  const { allResults, loadMoreRef, hasMore, loadingMore } = useInfiniteResults({
+    visibleResults,
+    totalPages,
+  });
 
   // Apply filters
   const filteredResults = useMemo(() => {
@@ -358,7 +261,7 @@ function MobileResultsView({
       />
 
       {/* Infinite scroll sentinel */}
-      <div ref={mobileLoadMoreRef} className="h-1" />
+      <div ref={loadMoreRef} className="h-1" />
       {hasMore && (
         <div className="flex items-center justify-center py-6 pb-8">
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -390,107 +293,11 @@ function DesktopResultsView(props: ViewProps) {
   const [selectedEngagement, setSelectedEngagement] = useState<{ min: number; max: number } | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<ConversationCategory | null>(null);
 
-  // Infinite scroll state
-  const [loadedResults, setLoadedResults] = useState<Result[]>([]);
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(totalPages > 1);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const desktopLoadMoreRef = useRef<HTMLDivElement>(null);
-
-  // Combine initial results with loaded results
-  const allResults = useMemo(() => {
-    return [...visibleResults, ...loadedResults];
-  }, [visibleResults, loadedResults]);
-
-  // Refs for stable handleLoadMore (avoids IntersectionObserver reconnection)
-  const desktopCursorRef = useRef(cursor);
-  const desktopVisibleResultsRef = useRef(visibleResults);
-  desktopCursorRef.current = cursor;
-  desktopVisibleResultsRef.current = visibleResults;
-
-  // Abort controller ref for cancelling in-flight fetches
-  const desktopAbortRef = useRef<AbortController | null>(null);
-
-  // Load more results
-  const handleLoadMore = useCallback(async () => {
-    if (loadingMore || !hasMore) return;
-
-    // Cancel any in-flight request
-    desktopAbortRef.current?.abort();
-    const controller = new AbortController();
-    desktopAbortRef.current = controller;
-
-    setLoadingMore(true);
-    try {
-      const cursorValue = desktopCursorRef.current;
-      const visResults = desktopVisibleResultsRef.current;
-
-      // Get cursor from last result
-      const cursorParam = cursorValue || (() => {
-        let lastPostedAt: string | null = null;
-        setLoadedResults((prev) => {
-          const lastResult = prev.length > 0
-            ? prev[prev.length - 1]
-            : visResults[visResults.length - 1];
-          lastPostedAt = lastResult?.postedAt
-            ? new Date(lastResult.postedAt).toISOString()
-            : null;
-          return prev;
-        });
-        return lastPostedAt;
-      })();
-
-      const url = cursorParam
-        ? `/api/results?cursor=${encodeURIComponent(cursorParam)}&limit=20`
-        : "/api/results?limit=20";
-
-      const res = await fetch(url, { signal: controller.signal });
-      const data = await res.json();
-
-      if (res.ok) {
-        // Convert API response to Result type
-        const newResults: Result[] = data.items.map((item: Record<string, unknown>) => ({
-          ...item,
-          postedAt: item.postedAt ? new Date(item.postedAt as string) : null,
-        }));
-        setLoadedResults((prev) => {
-          const combined = [...prev, ...newResults];
-          return combined.length > 500 ? combined.slice(-500) : combined;
-        });
-        setCursor(data.nextCursor);
-        setHasMore(data.hasMore);
-      }
-    } catch (error) {
-      // Ignore abort errors — they're expected when cancelling in-flight requests
-      if (error instanceof DOMException && error.name === "AbortError") return;
-      console.error("Failed to load more results:", error);
-    } finally {
-      setLoadingMore(false);
-    }
-  }, [loadingMore, hasMore]);
-
-  // Cleanup abort controller on unmount
-  useEffect(() => {
-    return () => desktopAbortRef.current?.abort();
-  }, []);
-
-  // IntersectionObserver for auto-loading more results (desktop)
-  useEffect(() => {
-    const sentinel = desktopLoadMoreRef.current;
-    if (!sentinel || !hasMore || loadingMore) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          handleLoadMore();
-        }
-      },
-      { threshold: 0.1 }
-    );
-
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [hasMore, loadingMore, handleLoadMore]);
+  // Infinite scroll via shared hook
+  const { allResults, loadMoreRef, hasMore } = useInfiniteResults({
+    visibleResults,
+    totalPages,
+  });
 
   const canExport = planInfo?.plan === "pro" || planInfo?.plan === "team";
 
@@ -828,7 +635,7 @@ function DesktopResultsView(props: ViewProps) {
                 )}
 
                 {/* Infinite scroll sentinel */}
-                <div ref={desktopLoadMoreRef} className="h-1" />
+                <div ref={loadMoreRef} className="h-1" />
                 {hasMore && (
                   <div className="flex items-center justify-center py-6">
                     <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />

@@ -11,8 +11,6 @@ import {
   Area,
   BarChart,
   Bar,
-  PieChart,
-  Pie,
   Cell,
   XAxis,
   YAxis,
@@ -99,6 +97,102 @@ const SENTIMENT_COLORS = {
   negative: "hsl(var(--destructive))",
   neutral: "hsl(var(--muted-foreground))",
 };
+
+// PERF-RENDER-004: Extract Tooltip contentStyle to module-level constant to
+// prevent object recreation on every render inside JSX.
+const TOOLTIP_CONTENT_STYLE = {
+  backgroundColor: "hsl(var(--popover))",
+  border: "1px solid hsl(var(--border))",
+  borderRadius: "8px",
+} as const;
+
+// CSS SVG donut chart — replaces recharts PieChart to trim bundle weight.
+// Uses stroke-dasharray / stroke-dashoffset on a single <circle> per segment.
+interface DonutSegment {
+  label: string;
+  count: number;
+  color: string;
+}
+
+function CssDonutChart({ segments }: { segments: DonutSegment[] }) {
+  const total = segments.reduce((sum, s) => sum + s.count, 0);
+  if (total === 0) {
+    return (
+      <div className="flex items-center justify-center h-[250px] text-sm text-muted-foreground">
+        No data
+      </div>
+    );
+  }
+
+  const SIZE = 160;
+  const STROKE = 28;
+  const R = (SIZE - STROKE) / 2;
+  const CIRCUMFERENCE = 2 * Math.PI * R;
+  const CENTER = SIZE / 2;
+
+  // Build segments by walking around the circle.
+  let offset = 0; // current dashoffset start (in circumference units)
+  const arcs = segments.map((seg) => {
+    const fraction = seg.count / total;
+    const dash = fraction * CIRCUMFERENCE;
+    // stroke-dashoffset shifts the start of the dash; we negate to go clockwise.
+    const arc = { ...seg, dash, offsetVal: CIRCUMFERENCE - offset, fraction };
+    offset += dash;
+    return arc;
+  });
+
+  return (
+    <div className="flex flex-col items-center gap-4">
+      <svg
+        width={SIZE}
+        height={SIZE}
+        viewBox={`0 0 ${SIZE} ${SIZE}`}
+        role="img"
+        aria-label="Category breakdown donut chart"
+        className="rotate-[-90deg]" // start at 12-o'clock
+      >
+        {/* Grey background ring */}
+        <circle
+          cx={CENTER}
+          cy={CENTER}
+          r={R}
+          fill="none"
+          stroke="hsl(var(--muted))"
+          strokeWidth={STROKE}
+        />
+        {arcs.map((arc, i) => (
+          <circle
+            key={i}
+            cx={CENTER}
+            cy={CENTER}
+            r={R}
+            fill="none"
+            stroke={arc.color}
+            strokeWidth={STROKE}
+            strokeDasharray={`${arc.dash} ${CIRCUMFERENCE - arc.dash}`}
+            strokeDashoffset={arc.offsetVal}
+          />
+        ))}
+      </svg>
+
+      {/* Legend */}
+      <ul className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs w-full px-2">
+        {arcs.map((arc, i) => (
+          <li key={i} className="flex items-center gap-1.5 min-w-0">
+            <span
+              className="flex-shrink-0 inline-block w-2.5 h-2.5 rounded-full"
+              style={{ background: arc.color }}
+            />
+            <span className="truncate text-muted-foreground">{arc.label}</span>
+            <span className="ml-auto font-medium tabular-nums">
+              {(arc.fraction * 100).toFixed(0)}%
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 type TimeRange = "7d" | "30d" | "90d" | "1y";
 
@@ -329,11 +423,7 @@ export function AnalyticsCharts({ subscriptionStatus = "free" }: AnalyticsCharts
               />
               <Tooltip
                 labelFormatter={formatDate}
-                contentStyle={{
-                  backgroundColor: "hsl(var(--popover))",
-                  border: "1px solid hsl(var(--border))",
-                  borderRadius: "8px",
-                }}
+                contentStyle={TOOLTIP_CONTENT_STYLE}
               />
               <Area
                 type="monotone"
@@ -370,11 +460,7 @@ export function AnalyticsCharts({ subscriptionStatus = "free" }: AnalyticsCharts
               />
               <Tooltip
                 labelFormatter={formatDate}
-                contentStyle={{
-                  backgroundColor: "hsl(var(--popover))",
-                  border: "1px solid hsl(var(--border))",
-                  borderRadius: "8px",
-                }}
+                contentStyle={TOOLTIP_CONTENT_STYLE}
               />
               <Legend />
               <Area
@@ -421,29 +507,13 @@ export function AnalyticsCharts({ subscriptionStatus = "free" }: AnalyticsCharts
             <CardDescription>Mentions by conversation type</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <PieChart>
-                <Pie
-                  data={data.categoryBreakdown}
-                  dataKey="count"
-                  nameKey="category"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={80}
-                  label={({ category, percent }) =>
-                    `${CATEGORY_LABELS[category] || category} (${(percent * 100).toFixed(0)}%)`
-                  }
-                  labelLine={false}
-                >
-                  {data.categoryBreakdown.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={CATEGORY_COLORS[entry.category] || "#6b7280"}
-                    />
-                  ))}
-                </Pie>
-              </PieChart>
-            </ResponsiveContainer>
+            <CssDonutChart
+              segments={data.categoryBreakdown.map((entry) => ({
+                label: CATEGORY_LABELS[entry.category] || entry.category,
+                count: entry.count,
+                color: CATEGORY_COLORS[entry.category] || "#6b7280",
+              }))}
+            />
           </CardContent>
         </Card>
 
