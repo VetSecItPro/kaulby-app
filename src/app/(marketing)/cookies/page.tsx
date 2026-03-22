@@ -123,6 +123,19 @@ export default function CookiePolicyPage() {
                 Polar&apos;s Privacy Policy
               </a>.
             </li>
+            <li>
+              <strong>Sentry:</strong> Error tracking and performance monitoring. May set cookies
+              or similar identifiers for session replay monitoring, error reporting, and performance
+              tracing. See{" "}
+              <a
+                href="https://sentry.io/privacy/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline"
+              >
+                Sentry&apos;s Privacy Policy
+              </a>.
+            </li>
           </ul>
         </section>
 

@@ -20,7 +20,7 @@ export default function PrivacyPage() {
   return (
     <div className="container max-w-4xl py-16">
       <h1 className="text-4xl font-bold mb-8">Privacy Policy</h1>
-      <p className="text-muted-foreground mb-8">Last updated: January 2025</p>
+      <p className="text-muted-foreground mb-8">Last updated: March 2026</p>
 
       <div className="prose prose-neutral dark:prose-invert max-w-none space-y-8">
         <section>
@@ -78,6 +78,12 @@ export default function PrivacyPage() {
             and summarization. This processing is performed to enhance your experience and provide
             actionable insights. Your monitor configurations and results are not used to train AI models.
           </p>
+          <p className="text-muted-foreground leading-relaxed mt-4">
+            We use AI services (via OpenRouter) to analyze scraped content for sentiment, pain points,
+            and trends. Your monitored keywords and the content they match are sent to AI providers for
+            analysis. AI-generated insights are stored in our database. We use Langfuse to monitor AI
+            quality and costs.
+          </p>
         </section>
 
         <section>
@@ -102,7 +108,7 @@ export default function PrivacyPage() {
           <ul className="list-disc list-inside text-muted-foreground mt-4 space-y-2">
             <li>Free plan: 7 days</li>
             <li>Pro plan: 30 days</li>
-            <li>Enterprise plan: 365 days</li>
+            <li>Team plan: 365 days</li>
           </ul>
           <p className="text-muted-foreground leading-relaxed mt-4">
             You may request deletion of your account and data at any time.
@@ -151,6 +157,14 @@ export default function PrivacyPage() {
             <li><strong>Polar:</strong> Payment processing (Merchant of Record)</li>
             <li><strong>PostHog:</strong> Product analytics</li>
             <li><strong>Resend:</strong> Email communications</li>
+            <li><strong>Sentry:</strong> Error tracking and performance monitoring. Receives error stack traces, browser/OS info, and masked session replays. Location: US. See <a href="https://sentry.io/privacy/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Sentry&apos;s Privacy Policy</a>.</li>
+            <li><strong>Langfuse:</strong> AI observability and tracing. Receives AI prompts, model responses, and usage metrics. Location: EU/US. See <a href="https://langfuse.com/privacy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Langfuse&apos;s Privacy Policy</a>.</li>
+            <li><strong>OpenRouter:</strong> AI inference routing. Receives text content for analysis (keywords, scraped mentions). Location: US. See <a href="https://openrouter.ai/privacy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">OpenRouter&apos;s Privacy Policy</a>.</li>
+            <li><strong>Apify:</strong> Web scraping infrastructure. Receives search keywords and platform URLs. Location: EU. See <a href="https://apify.com/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Apify&apos;s Privacy Policy</a>.</li>
+            <li><strong>Serper:</strong> Google search API. Receives search queries for platform monitoring. Location: US. See <a href="https://serper.dev/privacy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Serper&apos;s Privacy Policy</a>.</li>
+            <li><strong>Upstash:</strong> Rate limiting and caching. Receives user IDs for rate limiting and cached query results. Location: US. See <a href="https://upstash.com/privacy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Upstash&apos;s Privacy Policy</a>.</li>
+            <li><strong>Inngest:</strong> Background job processing. Receives event payloads including monitor configurations and user IDs. Location: US. See <a href="https://inngest.com/privacy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Inngest&apos;s Privacy Policy</a>.</li>
+            <li><strong>Neon:</strong> PostgreSQL database hosting. Receives all application data. Location: US. See <a href="https://neon.tech/privacy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Neon&apos;s Privacy Policy</a>.</li>
           </ul>
           <p className="text-muted-foreground leading-relaxed mt-4">
             Each service has its own privacy policy governing data handling.

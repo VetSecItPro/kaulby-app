@@ -110,3 +110,4 @@ remotion/node_modules/
 .cleancode-reports/
 .monitor-reports/
 .db-reports/
+.compliance/
