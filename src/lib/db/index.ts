@@ -38,6 +38,7 @@ export const db = new Proxy({} as ReturnType<typeof drizzle<typeof schema>>, {
 // ---------------------------------------------------------------------------
 
 let pooledDbInstance: ReturnType<typeof drizzleWs<typeof schema>> | null = null;
+let poolInstance: InstanceType<typeof Pool> | null = null;
 
 function getPooledDb() {
   if (!pooledDbInstance) {
@@ -47,8 +48,20 @@ function getPooledDb() {
     // ws is required for Node.js environments (Inngest runs in Node, not Edge)
     neonConfig.webSocketConstructor = ws;
 
-    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-    pooledDbInstance = drizzleWs(pool, { schema });
+    poolInstance = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      max: 5,
+      idleTimeoutMillis: 30_000,
+      connectionTimeoutMillis: 10_000,
+    });
+
+    // Recreate pool on unexpected termination (prevents "Connection terminated" errors)
+    poolInstance.on("error", () => {
+      pooledDbInstance = null;
+      poolInstance = null;
+    });
+
+    pooledDbInstance = drizzleWs(poolInstance, { schema });
   }
   return pooledDbInstance;
 }

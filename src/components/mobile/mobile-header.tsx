@@ -15,7 +15,8 @@ import {
   SheetClose,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { UserButton, SignOutButton, useUser } from "@clerk/nextjs";
+import { UserButton, SignOutButton } from "@clerk/nextjs";
+import { useSafeUser } from "@/hooks/use-safe-user";
 import type { WorkspaceRole } from "@/lib/permissions";
 import { NotificationBell } from "@/components/dashboard/notification-bell";
 
@@ -129,7 +130,7 @@ export const MobileHeader = memo(function MobileHeader({
 }: MobileHeaderProps) {
   const pathname = usePathname();
   const planBadge = getPlanBadge(subscriptionStatus, hasActiveDayPass);
-  const { user } = useUser();
+  const { user } = useSafeUser();
 
   // Mounted state to prevent hydration mismatch with Clerk's UserButton
   const [mounted, setMounted] = useState(false);

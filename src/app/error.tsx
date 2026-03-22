@@ -14,6 +14,20 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
+    // Auto-recover from stale chunk errors after deployments by reloading once
+    const isChunkError =
+      error.message?.includes("Failed to load") ||
+      error.message?.includes("Loading chunk") ||
+      error.message?.includes("ChunkLoadError") ||
+      error.message?.includes("clientReferenceManifest");
+
+    if (isChunkError && !sessionStorage.getItem("chunk-reload")) {
+      sessionStorage.setItem("chunk-reload", "1");
+      window.location.reload();
+      return;
+    }
+    sessionStorage.removeItem("chunk-reload");
+
     Sentry.captureException(error);
     console.error("Application error:", error);
   }, [error]);

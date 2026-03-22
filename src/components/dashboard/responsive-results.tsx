@@ -155,9 +155,17 @@ function MobileResultsView({
   cursorRef.current = cursor;
   visibleResultsRef.current = visibleResults;
 
+  // Abort controller ref for cancelling in-flight fetches
+  const mobileAbortRef = useRef<AbortController | null>(null);
+
   // Load more results
   const handleLoadMore = useCallback(async () => {
     if (loadingMore || !hasMore) return;
+
+    // Cancel any in-flight request
+    mobileAbortRef.current?.abort();
+    const controller = new AbortController();
+    mobileAbortRef.current = controller;
 
     setLoadingMore(true);
     try {
@@ -183,7 +191,7 @@ function MobileResultsView({
         ? `/api/results?cursor=${encodeURIComponent(cursorParam)}&limit=20`
         : "/api/results?limit=20";
 
-      const res = await fetch(url);
+      const res = await fetch(url, { signal: controller.signal });
       const data = await res.json();
 
       if (res.ok) {
@@ -199,11 +207,18 @@ function MobileResultsView({
         setHasMore(data.hasMore);
       }
     } catch (error) {
+      // Ignore abort errors — they're expected when cancelling in-flight requests
+      if (error instanceof DOMException && error.name === "AbortError") return;
       console.error("Failed to load more results:", error);
     } finally {
       setLoadingMore(false);
     }
   }, [loadingMore, hasMore]);
+
+  // Cleanup abort controller on unmount
+  useEffect(() => {
+    return () => mobileAbortRef.current?.abort();
+  }, []);
 
   // IntersectionObserver for auto-loading more results (mobile)
   useEffect(() => {
@@ -393,9 +408,17 @@ function DesktopResultsView(props: ViewProps) {
   desktopCursorRef.current = cursor;
   desktopVisibleResultsRef.current = visibleResults;
 
+  // Abort controller ref for cancelling in-flight fetches
+  const desktopAbortRef = useRef<AbortController | null>(null);
+
   // Load more results
   const handleLoadMore = useCallback(async () => {
     if (loadingMore || !hasMore) return;
+
+    // Cancel any in-flight request
+    desktopAbortRef.current?.abort();
+    const controller = new AbortController();
+    desktopAbortRef.current = controller;
 
     setLoadingMore(true);
     try {
@@ -421,7 +444,7 @@ function DesktopResultsView(props: ViewProps) {
         ? `/api/results?cursor=${encodeURIComponent(cursorParam)}&limit=20`
         : "/api/results?limit=20";
 
-      const res = await fetch(url);
+      const res = await fetch(url, { signal: controller.signal });
       const data = await res.json();
 
       if (res.ok) {
@@ -438,11 +461,18 @@ function DesktopResultsView(props: ViewProps) {
         setHasMore(data.hasMore);
       }
     } catch (error) {
+      // Ignore abort errors — they're expected when cancelling in-flight requests
+      if (error instanceof DOMException && error.name === "AbortError") return;
       console.error("Failed to load more results:", error);
     } finally {
       setLoadingMore(false);
     }
   }, [loadingMore, hasMore]);
+
+  // Cleanup abort controller on unmount
+  useEffect(() => {
+    return () => desktopAbortRef.current?.abort();
+  }, []);
 
   // IntersectionObserver for auto-loading more results (desktop)
   useEffect(() => {
