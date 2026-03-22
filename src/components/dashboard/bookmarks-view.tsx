@@ -362,6 +362,7 @@ export function BookmarksView({ results, collections, bookmarkMap }: BookmarksVi
             placeholder="Collection name..."
             value={newCollectionName}
             onChange={(e) => setNewCollectionName(e.target.value)}
+            aria-label="Collection name"
             onKeyDown={(e) => {
               if (e.key === "Enter") handleCreateCollection();
             }}

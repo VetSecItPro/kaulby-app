@@ -137,6 +137,7 @@ export default async function SubredditsIndexPage() {
               placeholder="Search for a subreddit..."
               className="pl-10 py-6 text-lg"
               disabled
+              aria-label="Search subreddits"
             />
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
               Coming soon

@@ -368,10 +368,10 @@ function ConversationSidebar({
   if (collapsed) {
     return (
       <div className="flex flex-col items-center py-3 gap-2 border-r w-12 shrink-0">
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onToggle}>
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onToggle} aria-label="Expand chat history">
           <PanelLeftOpen className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onNew}>
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onNew} aria-label="New conversation">
           <Plus className="h-4 w-4" />
         </Button>
       </div>
@@ -386,10 +386,10 @@ function ConversationSidebar({
           <span className="text-xs font-medium">History</span>
         </div>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onNew}>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onNew} aria-label="New conversation">
             <Plus className="h-3.5 w-3.5" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onToggle}>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onToggle} aria-label="Collapse chat history">
             <PanelLeftClose className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -900,6 +900,7 @@ export function AIChat({
               placeholder="Ask anything — search results, create monitors, find leads…"
               disabled={isLoading}
               className="flex-1"
+              aria-label="Chat message"
             />
             <Button type="submit" disabled={!input.trim() || isLoading}>
               <Send className="h-4 w-4" />

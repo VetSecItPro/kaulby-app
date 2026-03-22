@@ -155,7 +155,7 @@ export function UsersManagement({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link href="/manage">
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" aria-label="Go back">
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
@@ -203,8 +203,9 @@ export function UsersManagement({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="flex-1"
+            aria-label="Search users"
           />
-          <Button type="submit" variant="secondary" disabled={isPending}>
+          <Button type="submit" variant="secondary" disabled={isPending} aria-label="Search">
             <Search className="h-4 w-4" />
           </Button>
         </form>
@@ -279,7 +280,7 @@ export function UsersManagement({
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="User actions">
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>

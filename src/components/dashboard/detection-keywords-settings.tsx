@@ -312,6 +312,7 @@ export function DetectionKeywordsSettings({ subscriptionStatus }: DetectionKeywo
                             onClick={() => handleRemoveKeyword(config.category, keyword)}
                             className="ml-0.5 opacity-50 hover:opacity-100 transition-opacity"
                             disabled={isSaving}
+                            aria-label="Remove keyword"
                           >
                             <X className="h-3 w-3" />
                           </button>
