@@ -286,6 +286,7 @@ export const communities = pgTable("communities", {
   identifier: text("identifier").notNull(), // subreddit name, etc.
   metadata: jsonb("metadata"), // size, activity level, etc.
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
   index("communities_audience_id_idx").on(table.audienceId),
 ]);
@@ -366,6 +367,7 @@ export const alerts = pgTable("alerts", {
   destination: text("destination").notNull(), // email address, slack webhook, etc.
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
   index("alerts_monitor_id_idx").on(table.monitorId),
 ]);
@@ -416,7 +418,6 @@ export const results = pgTable("results", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("results_batch_analyzed_idx").on(table.batchAnalyzed),
-  index("results_monitor_id_idx").on(table.monitorId),
   index("results_created_at_idx").on(table.createdAt),
   index("results_platform_idx").on(table.platform),
   index("results_sentiment_idx").on(table.sentiment),
@@ -429,8 +430,7 @@ export const results = pgTable("results", {
   index("results_last_sent_in_digest_idx").on(table.lastSentInDigestAt),
   index("results_is_saved_idx").on(table.isSaved),
   index("results_posted_at_idx").on(table.postedAt),
-  // DB: Indexes for dashboard queries filtering by view/hide state — FIX-005
-  index("results_is_viewed_idx").on(table.isViewed),
+  // DB: Composite index for dashboard queries filtering by view/hide state — FIX-005
   index("results_viewed_hidden_idx").on(table.isViewed, table.isHidden),
   // DB: Composite index for high-intent lead queries — FIX-020
   index("results_lead_score_viewed_hidden_idx").on(table.leadScore, table.isViewed, table.isHidden),
@@ -461,6 +461,7 @@ export const aiLogs = pgTable("ai_logs", {
   index("ai_logs_monitor_id_idx").on(table.monitorId),
   index("ai_logs_analysis_type_idx").on(table.analysisType),
   index("ai_logs_cache_hit_idx").on(table.cacheHit),
+  index("ai_logs_result_id_idx").on(table.resultId),
 ]);
 
 // Budget Alerts - admin cost monitoring and alerting
@@ -537,7 +538,7 @@ export const usage = pgTable("usage", {
   aiCallsCount: integer("ai_calls_count").default(0).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
-  index("usage_user_id_period_idx").on(table.userId, table.periodStart),
+  uniqueIndex("usage_user_id_period_idx").on(table.userId, table.periodStart),
 ]);
 
 // Webhook status enum
@@ -987,7 +988,7 @@ export const webhookEvents = pgTable("webhook_events", {
   eventId: text("event_id").notNull(),
   eventType: text("event_type").notNull(),
   provider: text("provider").notNull().default("polar"),
-  processedAt: timestamp("processed_at", { withTimezone: true }).notNull().defaultNow(),
+  processedAt: timestamp("processed_at").notNull().defaultNow(),
 }, (table) => [
   uniqueIndex("webhook_events_event_id_provider_idx").on(table.eventId, table.provider),
 ]);
@@ -1034,9 +1035,9 @@ export const emailDeliveryFailures = pgTable("email_delivery_failures", {
   errorCode: text("error_code"), // HTTP status or Resend error code
   retryCount: integer("retry_count").default(0).notNull(),
   maxRetries: integer("max_retries").default(3).notNull(),
-  nextRetryAt: timestamp("next_retry_at", { withTimezone: true }),
-  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  nextRetryAt: timestamp("next_retry_at"),
+  resolvedAt: timestamp("resolved_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("email_failures_user_id_idx").on(table.userId),
   index("email_failures_unresolved_idx").on(table.resolvedAt, table.nextRetryAt),
