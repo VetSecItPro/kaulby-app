@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { hasCsrfCookie, setCsrfCookie } from "@/lib/csrf";
 
-// PERF: Middleware bundle is 76.7kB — consider code-splitting non-essential logic — FIX-216
+// PERF: Middleware bundle is ~141kB — dominated by @clerk/nextjs/server (unavoidable).
+// @/lib/csrf only imports next/server + Web Crypto API (Edge-compatible, no Node polyfills).
+// No further reduction is practical without removing Clerk auth.
 
 // PERF: Cache env check — env vars don't change at runtime — FIX-021
 let _clerkConfigured: boolean | null = null;
