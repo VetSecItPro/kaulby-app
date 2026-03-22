@@ -80,7 +80,9 @@ const nextConfig = {
           },
           {
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' https://clerk.kaulbyapp.com https://*.clerk.accounts.dev https://challenges.cloudflare.com https://us.i.posthog.com https://us-assets.i.posthog.com https://vercel.live; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.clerk.com https://img.clerk.com https://vercel.live https://*.vercel.live; connect-src 'self' https://*.clerk.accounts.dev https://clerk.kaulbyapp.com https://us.i.posthog.com https://us.posthog.com https://us-assets.i.posthog.com https://api.polar.sh https://vercel.live https://*.vercel.live https://*.sentry.io; frame-src https://challenges.cloudflare.com https://*.clerk.accounts.dev https://vercel.live; worker-src 'self' blob:; frame-ancestors 'none';",
+            // SECURITY: 'unsafe-eval' is required in development for Webpack HMR/Fast Refresh.
+            // It is NOT included in production builds.
+            value: `default-src 'self'; script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''} https://clerk.kaulbyapp.com https://*.clerk.accounts.dev https://challenges.cloudflare.com https://us.i.posthog.com https://us-assets.i.posthog.com https://vercel.live; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.clerk.com https://img.clerk.com https://vercel.live https://*.vercel.live; connect-src 'self' https://*.clerk.accounts.dev https://clerk.kaulbyapp.com https://us.i.posthog.com https://us.posthog.com https://us-assets.i.posthog.com https://api.polar.sh https://vercel.live https://*.vercel.live https://*.sentry.io; frame-src https://challenges.cloudflare.com https://*.clerk.accounts.dev https://vercel.live; worker-src 'self' blob:; frame-ancestors 'none';`,
           },
         ],
       },

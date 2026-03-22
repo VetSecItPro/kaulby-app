@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import useSWRInfinite from "swr/infinite";
+import { fetcher } from "@/lib/swr-fetcher";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { Loader2 } from "lucide-react";
 
@@ -27,6 +28,12 @@ export interface InfiniteResultItem {
   } | null;
 }
 
+interface ApiPage {
+  items: InfiniteResultItem[];
+  hasMore: boolean;
+  nextCursor: string | null;
+}
+
 interface InfiniteResultsProps {
   /** Initial server-rendered results */
   initialResults: InfiniteResultItem[];
@@ -50,48 +57,49 @@ export function InfiniteResults({
   monitorId,
   renderResult,
 }: InfiniteResultsProps) {
-  const [results, setResults] = useState<InfiniteResultItem[]>(initialResults);
-  const [hasMore, setHasMore] = useState(initialHasMore);
-  const [isLoading, setIsLoading] = useState(false);
-  const [cursor, setCursor] = useState<string | null>(initialCursor);
+  const getKey = (pageIndex: number, previousPageData: ApiPage | null) => {
+    // First page uses server-rendered data (no fetch needed)
+    if (pageIndex === 0) return null;
 
-  const loadMore = useCallback(async () => {
-    if (isLoading || !hasMore || !cursor) return;
-    setIsLoading(true);
+    // If previous page said no more, stop
+    if (previousPageData && !previousPageData.hasMore) return null;
 
-    try {
-      const params = new URLSearchParams({
-        cursor,
-        limit: "30",
-      });
-      if (monitorId) {
-        params.set("monitorId", monitorId);
-      }
+    const cursor = previousPageData?.nextCursor;
+    if (!cursor) return null;
 
-      const res = await fetch(`/api/results?${params.toString()}`);
-      if (!res.ok) throw new Error("Failed to load more results");
+    const params = new URLSearchParams({ cursor, limit: "30" });
+    if (monitorId) params.set("monitorId", monitorId);
+    return `/api/results?${params.toString()}`;
+  };
 
-      const data = await res.json();
-      setResults((prev) => [...prev, ...data.items]);
-      setHasMore(data.hasMore);
-      setCursor(data.nextCursor);
-    } catch (error) {
-      console.error("Failed to load more results:", error);
-    } finally {
-      setIsLoading(false);
+  const { data: pages, size, setSize, isValidating } = useSWRInfinite<ApiPage>(
+    getKey,
+    fetcher,
+    {
+      revalidateOnFocus: false,
+      revalidateFirstPage: false,
+      fallbackData: [{
+        items: initialResults,
+        hasMore: initialHasMore,
+        nextCursor: initialCursor,
+      }],
     }
-  }, [cursor, hasMore, isLoading, monitorId]);
+  );
+
+  const allResults = pages ? pages.flatMap((page) => page.items) : initialResults;
+  const hasMore = pages ? pages[pages.length - 1]?.hasMore ?? false : initialHasMore;
+  const isLoading = isValidating;
 
   const { sentinelRef } = useInfiniteScroll({
     hasMore,
     isLoading,
-    onLoadMore: loadMore,
+    onLoadMore: () => setSize(size + 1),
   });
 
   return (
     <div>
       <div className="space-y-4">
-        {results.map((result) => (
+        {allResults.map((result) => (
           <div key={result.id}>{renderResult(result)}</div>
         ))}
       </div>
@@ -108,7 +116,7 @@ export function InfiniteResults({
       )}
 
       {/* End of results */}
-      {!hasMore && results.length > 0 && (
+      {!hasMore && allResults.length > 0 && (
         <div className="text-center py-8 text-sm text-muted-foreground" aria-live="polite" role="status">
           Showing all {totalCount.toLocaleString()} results
         </div>
