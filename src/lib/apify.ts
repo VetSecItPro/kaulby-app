@@ -15,6 +15,8 @@
  * - Automatic fallback to Apify when official APIs fail
  */
 
+import { logger } from "@/lib/logger";
+
 const APIFY_API_BASE = "https://api.apify.com/v2";
 
 // Actor IDs for different scrapers
@@ -340,7 +342,7 @@ async function resolveGoogleShareLink(shareUrl: string): Promise<string | null> 
 
     return null;
   } catch (error) {
-    console.error("[GoogleReviews] Failed to resolve share link:", error);
+    logger.error("[GoogleReviews] Failed to resolve share link", { error: error instanceof Error ? error.message : String(error) });
     return null;
   }
 }

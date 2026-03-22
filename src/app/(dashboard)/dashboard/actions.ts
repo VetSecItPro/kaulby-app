@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { logger } from "@/lib/logger";
 
 /**
  * Marks onboarding as completed for the current user.
@@ -28,7 +29,7 @@ export async function completeOnboarding() {
     revalidatePath("/dashboard", "layout");
     return { success: true };
   } catch (error) {
-    console.error("Failed to complete onboarding:", error);
+    logger.error("Failed to complete onboarding", { error: error instanceof Error ? error.message : String(error) });
     return { success: false, error: "Failed to update onboarding status" };
   }
 }
@@ -55,7 +56,7 @@ export async function resetOnboarding() {
     revalidatePath("/dashboard", "layout");
     return { success: true };
   } catch (error) {
-    console.error("Failed to reset onboarding:", error);
+    logger.error("Failed to reset onboarding", { error: error instanceof Error ? error.message : String(error) });
     return { success: false, error: "Failed to reset onboarding status" };
   }
 }

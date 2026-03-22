@@ -690,44 +690,6 @@ function FeatureItem({
   );
 }
 
-// Welcome banner for returning users with no monitors
-interface WelcomeBannerProps {
-  onDismiss: () => void;
-}
-
-export function WelcomeBanner({ onDismiss }: WelcomeBannerProps) {
-  const router = useRouter();
-
-  return (
-    <Card className="border-2 border-primary/20 bg-gradient-to-r from-primary/5 via-transparent to-purple-500/5">
-      <CardContent className="p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-600">
-              <Rocket className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-lg mb-1">Get started with Kaulby</h3>
-              <p className="text-muted-foreground text-sm mb-4">
-                Create your first monitor to start tracking mentions across Reddit, Hacker News, and more.
-              </p>
-              <div className="flex items-center gap-3">
-                <Button onClick={() => router.push("/dashboard/monitors/new")} className="gap-2">
-                  <Target className="h-4 w-4" />
-                  Create Monitor
-                </Button>
-                <Button variant="ghost" onClick={onDismiss}>
-                  Dismiss
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
 // Quick start guide component - dynamic based on user data
 interface QuickStartGuideProps {
   hasMonitors: boolean;
@@ -876,36 +838,6 @@ export function QuickStartGuide({ hasMonitors, hasResults, hasAlerts = false, on
         )}
       </CardContent>
     </Card>
-  );
-}
-
-// Compact checklist for sidebar or smaller spaces
-interface CompactChecklistProps {
-  hasMonitors: boolean;
-  hasResults: boolean;
-}
-
-export function CompactChecklist({ hasMonitors, hasResults }: CompactChecklistProps) {
-  const router = useRouter();
-
-  if (hasMonitors && hasResults) return null;
-
-  return (
-    <div className="rounded-lg border bg-card p-3 space-y-2">
-      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Getting Started</p>
-      <div className="space-y-1">
-        <ChecklistItem
-          completed={hasMonitors}
-          label="Create a monitor"
-          onClick={() => router.push("/dashboard/monitors/new")}
-        />
-        <ChecklistItem
-          completed={hasResults}
-          label="View your results"
-          onClick={() => router.push("/dashboard/results")}
-        />
-      </div>
-    </div>
   );
 }
 

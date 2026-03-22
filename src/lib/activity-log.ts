@@ -1,5 +1,6 @@
 import { db, activityLogs } from "@/lib/db";
 import { headers } from "next/headers";
+import { logger } from "@/lib/logger";
 
 // Activity action types (matches the enum in schema)
 export type ActivityAction =
@@ -73,7 +74,7 @@ export async function logActivity({
     });
   } catch (error) {
     // Don't throw - activity logging should never break the main operation
-    console.error("Failed to log activity:", error);
+    logger.error("Failed to log activity", { error: error instanceof Error ? error.message : String(error) });
   }
 }
 

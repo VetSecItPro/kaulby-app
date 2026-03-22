@@ -296,29 +296,3 @@ export const ShareOfVoice = memo(function ShareOfVoice({
   );
 });
 
-/**
- * Compact Share of Voice Widget
- */
-export const ShareOfVoiceCompact = memo(function ShareOfVoiceCompact({
-  yourBrand,
-  competitors,
-  className,
-}: Omit<ShareOfVoiceProps, "showDetails" | "period">) {
-  const total = yourBrand.mentions + competitors.reduce((sum, c) => sum + c.mentions, 0);
-  const yourPercentage = total > 0 ? (yourBrand.mentions / total) * 100 : 0;
-
-  return (
-    <div className={cn("flex items-center gap-3", className)}>
-      <PieChart className="h-4 w-4 text-muted-foreground" />
-      <div className="flex-1">
-        <div className="text-sm font-medium">Share of Voice</div>
-        <div className="text-xs text-muted-foreground">
-          {yourBrand.mentions.toLocaleString()} of {total.toLocaleString()} mentions
-        </div>
-      </div>
-      <div className="text-xl font-bold text-primary">
-        {yourPercentage.toFixed(0)}%
-      </div>
-    </div>
-  );
-});

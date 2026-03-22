@@ -6,6 +6,7 @@ import { pooledDb } from "@/lib/db";
 import { notifications, monitors } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getPlatformDisplayName } from "@/lib/platform-utils";
+import { logger } from "@/lib/logger";
 
 export async function createScanNotification({
   monitorId,
@@ -39,6 +40,6 @@ export async function createScanNotification({
     });
   } catch (err) {
     // Don't let notification failure break the scan pipeline
-    console.warn("[notification] Failed to create scan notification:", err);
+    logger.warn("[notification] Failed to create scan notification", { error: err instanceof Error ? err.message : String(err) });
   }
 }

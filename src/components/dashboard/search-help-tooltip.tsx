@@ -179,46 +179,6 @@ export const SearchHelpTooltip = memo(function SearchHelpTooltip({
 });
 
 /**
- * Inline version that shows as a simple popover
- */
-interface InlineSearchHelpProps {
-  className?: string;
-}
-
-export const InlineSearchHelp = memo(function InlineSearchHelp({
-  className,
-}: InlineSearchHelpProps) {
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className={cn(
-            "h-6 w-6 text-muted-foreground hover:text-foreground",
-            className
-          )}
-          aria-label="Search help"
-        >
-          <HelpCircle className="h-3.5 w-3.5" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent side="bottom" className="w-auto p-2">
-        <div className="space-y-1 text-xs">
-          <p className="font-medium">Search Operators:</p>
-          <ul className="space-y-0.5 text-muted-foreground">
-            <li><code className="bg-muted px-1 rounded">&quot;phrase&quot;</code> - Exact match</li>
-            <li><code className="bg-muted px-1 rounded">title:</code> - In title only</li>
-            <li><code className="bg-muted px-1 rounded">NOT</code> - Exclude term</li>
-            <li><code className="bg-muted px-1 rounded">OR</code> - Either term</li>
-          </ul>
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-});
-
-/**
  * Search input with integrated help
  */
 interface SearchInputWithHelpProps {

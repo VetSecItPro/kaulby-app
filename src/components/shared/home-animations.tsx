@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useTransform, useScroll } from "framer-motion";
+import { motion } from "framer-motion";
 import { ReactNode } from "react";
 
 interface HomeAnimationsProps {
@@ -164,45 +164,6 @@ export function AnimatedBadge({
       {children}
     </motion.div>
   );
-}
-
-// Floating animation for decorative elements
-export function FloatingElement({
-  children,
-  className,
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <motion.div
-      className={className}
-      animate={{
-        y: [0, -10, 0],
-      }}
-      transition={{
-        duration: 3,
-        repeat: Infinity,
-        ease: "easeInOut",
-      }}
-    >
-      {children}
-    </motion.div>
-  );
-}
-
-// Parallax wrapper
-export function ParallaxContainer({
-  children,
-  offset = 50,
-}: {
-  children: ReactNode;
-  offset?: number;
-}) {
-  const { scrollYProgress } = useScroll();
-  const y = useTransform(scrollYProgress, [0, 1], [0, offset]);
-
-  return <motion.div style={{ y }}>{children}</motion.div>;
 }
 
 // Animated step card with number pop effect
