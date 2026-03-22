@@ -36,7 +36,10 @@ async function getClerkHandler() {
       "/docs/api(.*)", // Public API documentation
       "/status", // Public system status page
       "/install", // PWA installation instructions
+      "/roadmap", // Public product roadmap page
       "/gummysearch", // GummySearch migration landing page
+      "/migrate(.*)", // Migration guides (e.g., /migrate/gummysearch)
+      "/use-case(.*)", // Programmatic SEO - use case landing pages
       "/subreddits(.*)", // Programmatic SEO - subreddit landing pages
       "/alternatives(.*)", // Programmatic SEO - competitor comparison pages
       "/tools(.*)", // Programmatic SEO - tool landing pages
@@ -60,7 +63,9 @@ async function getClerkHandler() {
 
     clerkHandler = clerkMiddleware(async (auth, request) => {
       if (!isPublicRoute(request)) {
-        await auth.protect();
+        await auth.protect({
+          unauthenticatedUrl: new URL('/sign-in', request.url).toString(),
+        });
       }
     }) as (request: NextRequest, event: never) => Promise<Response>;
   }
