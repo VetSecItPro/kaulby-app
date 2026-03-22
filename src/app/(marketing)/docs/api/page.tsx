@@ -224,7 +224,7 @@ X-API-Key: kaulby_live_xxxxxxxxxxxx`}</pre>
             <div>
               <h4 className="font-medium mb-2">Available Platforms</h4>
               <div className="flex flex-wrap gap-2">
-                {["reddit", "hackernews", "producthunt", "devto", "googlereviews", "trustpilot", "appstore", "playstore", "quora", "youtube", "g2", "yelp", "amazonreviews", "indiehackers", "github", "hashnode"].map((p) => (
+                {["reddit", "hackernews", "producthunt", "devto", "googlereviews", "trustpilot", "appstore", "playstore", "quora", "youtube", "g2", "yelp", "amazonreviews", "indiehackers", "github", "hashnode", "x"].map((p) => (
                   <span key={p} className="px-2 py-1 bg-muted text-xs font-mono rounded">{p}</span>
                 ))}
               </div>
