@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { monitors, results, usage, users } from "@/lib/db/schema";
 import { eq, count, and, gte } from "drizzle-orm";
 import { logger } from "@/lib/logger";
+import { getPlanLimits, type PlanKey } from "@/lib/plans";
 
 export const dynamic = "force-dynamic";
 
@@ -68,15 +69,14 @@ export async function GET(request: NextRequest) {
         ),
       });
 
-      // Plan limits
-      const planLimits = {
-        free: { monitors: 1, keywords: 3, resultsVisible: 3, refreshHours: 24 },
-        pro: { monitors: 10, keywords: 20, resultsVisible: -1, refreshHours: 4 },
-        team: { monitors: 30, keywords: 35, resultsVisible: -1, refreshHours: 2 },
+      const currentPlan = (user.subscriptionStatus || "free") as PlanKey;
+      const planLimits = getPlanLimits(currentPlan);
+      const limits = {
+        monitors: planLimits.monitors,
+        keywords: planLimits.keywordsPerMonitor,
+        resultsVisible: planLimits.resultsVisible,
+        refreshHours: planLimits.refreshDelayHours,
       };
-
-      const currentPlan = user.subscriptionStatus || "free";
-      const limits = planLimits[currentPlan as keyof typeof planLimits];
 
       return NextResponse.json({
         usage: {
