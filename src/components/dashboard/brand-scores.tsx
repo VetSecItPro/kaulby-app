@@ -56,7 +56,7 @@ function ScoreRing({ score, size = 80 }: { score: number; size?: number }) {
   const offset = circumference - (score / 100) * circumference;
 
   return (
-    <svg width={size} height={size} className="transform -rotate-90">
+    <svg width={size} height={size} className="transform -rotate-90" aria-hidden="true">
       {/* Background track */}
       <circle
         cx={size / 2}

@@ -61,13 +61,15 @@ export const detectInactiveUsers = inngest.createFunction(
           name: true,
           lastActiveAt: true,
           reengagementEmailSentAt: true,
+          reengagementOptOut: true,
           subscriptionStatus: true,
         },
       });
     });
 
-    // Filter out users who received re-engagement email recently
+    // Filter out users who opted out or received re-engagement email recently
     const eligibleUsers = inactiveUsers.filter((user) => {
+      if (user.reengagementOptOut) return false;
       if (!user.reengagementEmailSentAt) return true;
       const sentAt = new Date(user.reengagementEmailSentAt);
       return sentAt < cooldownThreshold;

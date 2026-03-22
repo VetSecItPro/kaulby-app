@@ -300,9 +300,11 @@ export function ApiKeysSettings({ subscriptionStatus }: ApiKeysSettingsProps) {
                     value={keyName}
                     onChange={(e) => setKeyName(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleCreateKey()}
+                    aria-invalid={!!error}
+                    aria-describedby={error ? "api-key-name-error" : undefined}
                   />
                   {error && (
-                    <p role="alert" className="text-sm text-destructive">{error}</p>
+                    <p id="api-key-name-error" role="alert" className="text-sm text-destructive">{error}</p>
                   )}
                 </div>
                 <DialogFooter>

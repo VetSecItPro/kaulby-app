@@ -21,13 +21,17 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await parseJsonBody(request);
-    const { digestPaused, reportSchedule, reportDay } = body;
+    const { digestPaused, reportSchedule, reportDay, reengagementOptOut } = body;
 
     // Build update object with only provided fields
     const updates: Record<string, unknown> = {};
 
     if (typeof digestPaused === "boolean") {
       updates.digestPaused = digestPaused;
+    }
+
+    if (typeof reengagementOptOut === "boolean") {
+      updates.reengagementOptOut = reengagementOptOut;
     }
 
     if (reportSchedule !== undefined) {

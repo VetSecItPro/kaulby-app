@@ -103,6 +103,7 @@ async function SettingsContent() {
   const digestPaused = user?.digestPaused || false;
   const reportSchedule = user?.reportSchedule || "off";
   const reportDay = user?.reportDay || 1;
+  const reengagementOptOut = user?.reengagementOptOut || false;
 
   // Plans synced with pricing page
   const plans = [
@@ -172,6 +173,7 @@ async function SettingsContent() {
       digestPaused={digestPaused}
       reportSchedule={reportSchedule}
       reportDay={reportDay}
+      reengagementOptOut={reengagementOptOut}
     />
   );
 }

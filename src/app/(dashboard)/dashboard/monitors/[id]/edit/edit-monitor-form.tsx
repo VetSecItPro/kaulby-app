@@ -317,6 +317,8 @@ export function EditMonitorForm({ monitorId, limits, userPlan }: EditMonitorForm
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
                   autoComplete="off"
+                  aria-invalid={!!error}
+                  aria-describedby={error ? `${formId}-form-error` : undefined}
                   className="dark-input placeholder:text-gray-400 hover:border-teal-500 focus:border-teal-500 min-h-[44px]"
                 />
                 <p className="text-xs text-muted-foreground">
@@ -604,7 +606,7 @@ export function EditMonitorForm({ monitorId, limits, userPlan }: EditMonitorForm
           {error && (
             <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
               <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
-              <p className="text-sm text-destructive">{error}</p>
+              <p id={`${formId}-form-error`} role="alert" className="text-sm text-destructive">{error}</p>
             </div>
           )}
 

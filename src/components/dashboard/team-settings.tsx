@@ -615,6 +615,8 @@ export function TeamSettings({ subscriptionStatus }: TeamSettingsProps) {
                 onChange={(e) => setInviteEmail(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleInvite()}
                 disabled={inviting}
+                aria-invalid={!!error}
+                aria-describedby={error ? "invite-email-error" : undefined}
               />
               <Button onClick={handleInvite} disabled={inviting || !inviteEmail.trim()}>
                 {inviting ? (
@@ -625,7 +627,7 @@ export function TeamSettings({ subscriptionStatus }: TeamSettingsProps) {
               </Button>
             </div>
             {error && (
-              <p className="text-sm text-destructive">{error}</p>
+              <p id="invite-email-error" role="alert" className="text-sm text-destructive">{error}</p>
             )}
             <p className="text-xs text-muted-foreground">
               {workspace.seatLimit - workspace.seatCount} seats remaining

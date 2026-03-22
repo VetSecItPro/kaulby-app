@@ -158,7 +158,7 @@ function SentimentDonut({
   ].filter(s => s.length > 0);
 
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
       {segments.map((segment) => {
         const currentOffset = offset;
         offset += segment.length;
