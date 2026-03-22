@@ -105,6 +105,3 @@ export function getCsrfToken(): string | null {
   return match ? match.split("=")[1] : null;
 }
 
-/** Exported for tests / consumers that need the constant */
-export const CSRF_COOKIE = CSRF_COOKIE_NAME;
-export const CSRF_HEADER = CSRF_HEADER_NAME;

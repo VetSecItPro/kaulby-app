@@ -30,7 +30,6 @@ export function ServiceWorkerRegister() {
                 navigator.serviceWorker.controller
               ) {
                 // New version available - could show update prompt
-                console.log("[SW] New version available");
               }
             });
           }

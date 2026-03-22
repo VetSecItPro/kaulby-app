@@ -129,11 +129,4 @@ describe("csrf", () => {
     });
   });
 
-  describe("exported constants", () => {
-    it("exports correct cookie and header names", async () => {
-      const { CSRF_COOKIE, CSRF_HEADER } = await import("../csrf");
-      expect(CSRF_COOKIE).toBe("kaulby_csrf");
-      expect(CSRF_HEADER).toBe("x-csrf-token");
-    });
-  });
 });

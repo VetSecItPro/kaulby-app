@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import {
   AUDIENCE_TEMPLATES,
   TEMPLATE_CATEGORIES,
-  getTemplateById,
 } from "../audience-templates";
 
 describe("audience-templates", () => {
@@ -85,59 +84,27 @@ describe("audience-templates", () => {
     });
   });
 
-  describe("getTemplateById", () => {
-    it("returns template when ID exists", () => {
-      const template = getTemplateById("brand-mentions");
-      expect(template).toBeDefined();
-      expect(template?.id).toBe("brand-mentions");
-      expect(template?.name).toBe("Brand Mentions");
-    });
-
-    it("returns undefined when ID does not exist", () => {
-      const template = getTemplateById("non-existent-template");
-      expect(template).toBeUndefined();
-    });
-
-    it("returns correct template for each known template", () => {
-      const knownTemplates = [
-        "brand-mentions",
-        "competitor-tracker",
-        "buyer-intent",
-        "customer-feedback",
-        "feature-requests",
-      ];
-
-      for (const id of knownTemplates) {
-        const template = getTemplateById(id);
-        expect(template).toBeDefined();
-        expect(template?.id).toBe(id);
-      }
-    });
-
-    it("is case-sensitive", () => {
-      const template = getTemplateById("BRAND-MENTIONS");
-      expect(template).toBeUndefined();
-    });
-  });
-
   describe("template content quality", () => {
     it("brand-mentions template has expected content", () => {
-      const template = getTemplateById("brand-mentions");
+      const template = AUDIENCE_TEMPLATES.find((t) => t.id === "brand-mentions");
+      expect(template).toBeDefined();
       expect(template?.category).toBe("business");
       expect(template?.suggestedPlatforms).toContain("reddit");
       expect(template?.suggestedKeywords.length).toBeGreaterThan(0);
     });
 
     it("competitor-tracker template has expected content", () => {
-      const template = getTemplateById("competitor-tracker");
+      const template = AUDIENCE_TEMPLATES.find((t) => t.id === "competitor-tracker");
+      expect(template).toBeDefined();
       expect(template?.category).toBe("competitive");
       expect(template?.description).toContain("competitor");
     });
 
     it("buyer-intent template has expected content", () => {
-      const template = getTemplateById("buyer-intent");
+      const template = AUDIENCE_TEMPLATES.find((t) => t.id === "buyer-intent");
+      expect(template).toBeDefined();
       expect(template?.category).toBe("business");
-      expect(template?.suggestedKeywords.some((k) => k.includes("looking for"))).toBe(true);
+      expect(template?.suggestedKeywords.some((k: string) => k.includes("looking for"))).toBe(true);
     });
 
     it("all templates have meaningful descriptions", () => {

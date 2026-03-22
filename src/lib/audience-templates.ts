@@ -166,6 +166,3 @@ export const TEMPLATE_CATEGORIES = [
   { id: "competitive" as const, label: "Competitive" },
 ] as const;
 
-export function getTemplateById(id: string): AudienceTemplate | undefined {
-  return AUDIENCE_TEMPLATES.find((t) => t.id === id);
-}

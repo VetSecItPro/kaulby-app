@@ -299,15 +299,4 @@ export function MobileResultCardSkeleton() {
   );
 }
 
-// Mobile results list skeleton
-export function MobileResultsListSkeleton({ count = 5 }: { count?: number }) {
-  return (
-    <div className="space-y-2">
-      {Array.from({ length: count }).map((_, i) => (
-        <MobileResultCardSkeleton key={i} />
-      ))}
-    </div>
-  );
-}
-
 export { Skeleton };

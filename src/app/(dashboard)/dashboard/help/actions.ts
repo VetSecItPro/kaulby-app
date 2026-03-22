@@ -7,6 +7,7 @@ import { users, feedback } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { Resend } from "resend";
 import { escapeHtml } from "@/lib/security";
+import { logger } from "@/lib/logger";
 
 // Lazy init to avoid build-time errors when RESEND_API_KEY is not set
 let resend: Resend | null = null;
@@ -191,7 +192,7 @@ Kaulby - Community Monitoring Made Simple
 
     return { success: true };
   } catch (error) {
-    console.error("Failed to send support ticket:", error);
+    logger.error("Failed to send support ticket", { error: error instanceof Error ? error.message : String(error) });
     return { success: false, error: "Failed to send your message. Please try again or email us directly." };
   }
 }

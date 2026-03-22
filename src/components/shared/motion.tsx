@@ -78,36 +78,6 @@ export function FadeIn({ children, ...props }: MotionDivProps) {
   );
 }
 
-export function ScaleIn({ children, ...props }: MotionDivProps) {
-  return (
-    <motion.div
-      initial="initial"
-      animate="animate"
-      exit="exit"
-      variants={scaleIn}
-      transition={{ duration: 0.2, ease: "easeOut" }}
-      {...props}
-    >
-      {children}
-    </motion.div>
-  );
-}
-
-export function SlideInRight({ children, ...props }: MotionDivProps) {
-  return (
-    <motion.div
-      initial="initial"
-      animate="animate"
-      exit="exit"
-      variants={slideInRight}
-      transition={{ duration: 0.3, ease: "easeOut" }}
-      {...props}
-    >
-      {children}
-    </motion.div>
-  );
-}
-
 interface StaggerContainerProps extends MotionDivProps {
   delay?: number;
 }

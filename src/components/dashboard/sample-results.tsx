@@ -218,33 +218,3 @@ function SampleResultCard({ result }: SampleResultCardProps) {
   );
 }
 
-// Compact version for sidebar or smaller spaces
-export function SampleResultsCompact() {
-  return (
-    <div className="space-y-2">
-      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-        Preview: What you&apos;ll see
-      </p>
-      <div className="space-y-2">
-        {SAMPLE_RESULTS.slice(0, 2).map((result) => (
-          <div
-            key={result.id}
-            className="rounded-lg border bg-card p-2 space-y-1 opacity-75"
-          >
-            <div className="flex items-center gap-1">
-              <Badge variant="secondary" className="text-[10px] px-1 py-0">
-                {getPlatformDisplayName(result.platform)}
-              </Badge>
-              <span className="text-[10px] text-muted-foreground">{result.timeAgo}</span>
-            </div>
-            <p className="text-xs font-medium line-clamp-1">{result.title}</p>
-            <p className="text-[10px] text-muted-foreground line-clamp-1">{result.aiSummary}</p>
-          </div>
-        ))}
-      </div>
-      <p className="text-[10px] text-muted-foreground text-center">
-        This is sample data. Create a monitor to see real results.
-      </p>
-    </div>
-  );
-}

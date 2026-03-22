@@ -7,6 +7,7 @@ import { ServiceWorkerRegister } from "@/components/shared/service-worker-regist
 import { db } from "@/lib/db";
 import { monitors, users } from "@/lib/db/schema";
 import { eq, count } from "drizzle-orm";
+import { logger } from "@/lib/logger";
 
 export default async function DashboardLayout({
   children,
@@ -58,7 +59,7 @@ export default async function DashboardLayout({
     .where(eq(users.id, userId))
     .execute()
     .catch((err) => {
-      console.warn("[layout] lastActiveAt update failed:", err?.message);
+      logger.warn("[layout] lastActiveAt update failed", { error: err instanceof Error ? err.message : String(err) });
     });
 
   const hasMonitors = (monitorsCountResult[0]?.count || 0) > 0;
