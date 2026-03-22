@@ -327,6 +327,11 @@ export function Sidebar({ isAdmin = false, subscriptionStatus = "free", hasActiv
             Sign out
           </button>
         </SignOutButton>
+        <div className="px-3 pt-1.5">
+          <Link href="/privacy" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+            Privacy
+          </Link>
+        </div>
       </div>
     </div>
   );

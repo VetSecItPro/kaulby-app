@@ -20,7 +20,7 @@ export default function TermsPage() {
   return (
     <div className="container max-w-4xl py-16">
       <h1 className="text-4xl font-bold mb-8">Terms of Service</h1>
-      <p className="text-muted-foreground mb-8">Last updated: January 2025</p>
+      <p className="text-muted-foreground mb-8">Last updated: March 2026</p>
 
       <div className="prose prose-neutral dark:prose-invert max-w-none space-y-8">
         <section>
@@ -59,7 +59,7 @@ export default function TermsPage() {
           <ul className="list-disc list-inside text-muted-foreground mt-4 space-y-2">
             <li>Free plan: Limited monitors and results</li>
             <li>Pro plan: Extended limits and AI features</li>
-            <li>Enterprise plan: Unlimited usage with priority support</li>
+            <li>Team plan: Expanded limits with priority support</li>
           </ul>
         </section>
 
