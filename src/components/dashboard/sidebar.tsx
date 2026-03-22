@@ -139,7 +139,7 @@ function DayPassTimer({ expiresAt }: { expiresAt: string }) {
 
   return (
     <span
-      className="ml-1 px-1.5 py-0.5 text-[9px] font-mono font-semibold tracking-wide rounded-full bg-purple-600/20 text-purple-400 border border-purple-500/30"
+      className="ml-1 px-1.5 py-0.5 text-[10px] font-mono font-semibold tracking-wide rounded-full bg-purple-600/20 text-purple-400 border border-purple-500/30"
       role="timer" // A11Y: FIX-314
       aria-label={`Day Pass expires in ${timeRemaining}`}
     >
@@ -297,7 +297,7 @@ export function Sidebar({ isAdmin = false, subscriptionStatus = "free", hasActiv
                 <ShieldCheck className="h-4 w-4" />
                 Admin Dashboard
               </Link>
-              <span className="px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide rounded-full bg-red-500 text-white">
+              <span className="px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide rounded-full bg-red-500 text-white">
                 Admin
               </span>
             </div>

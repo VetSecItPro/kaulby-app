@@ -360,7 +360,7 @@ export function CompetitorComparison() {
                   {brand.brandName}
                 </span>
                 {brand.isYourBrand && (
-                  <span className="text-[9px] font-medium uppercase tracking-wider text-primary bg-primary/10 px-1 py-0.5 rounded shrink-0">
+                  <span className="text-[10px] font-medium uppercase tracking-wider text-primary bg-primary/10 px-1 py-0.5 rounded shrink-0">
                     You
                   </span>
                 )}
@@ -427,7 +427,7 @@ export function CompetitorComparison() {
                         )}
                         <span className="font-medium text-sm">{brand.brandName}</span>
                         {brand.isYourBrand && (
-                          <span className="text-[9px] font-medium uppercase tracking-wider text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                          <span className="text-[10px] font-medium uppercase tracking-wider text-primary bg-primary/10 px-1.5 py-0.5 rounded">
                             You
                           </span>
                         )}

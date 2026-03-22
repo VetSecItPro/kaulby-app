@@ -439,7 +439,7 @@ export const PlatformCoverage = memo(function PlatformCoverage({
               key={platform}
               variant="secondary"
               className={cn(
-                "text-[9px] px-1 py-0",
+                "text-[10px] px-1 py-0",
                 isActive
                   ? getPlatformBadgeColor(platform, "light")
                   : "bg-muted text-muted-foreground opacity-50"

@@ -1,7 +1,10 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { InsightsView } from "@/components/dashboard/insights-view";
 import { getEffectiveUserId, isLocalDev } from "@/lib/dev-auth";
+
+export const metadata: Metadata = { title: "Insights | Kaulby" };
 
 async function InsightsContent() {
   const userId = await getEffectiveUserId();

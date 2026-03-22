@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
@@ -5,6 +6,8 @@ import { users, webhooks, webhookDeliveries } from "@/lib/db/schema";
 import { eq, desc, and, gte, inArray } from "drizzle-orm";
 import { WebhookManagement } from "@/components/dashboard/webhook-management";
 import { getEffectiveUserId, isLocalDev } from "@/lib/dev-auth";
+
+export const metadata: Metadata = { title: "Webhooks | Kaulby" };
 
 async function WebhooksContent() {
   const userId = await getEffectiveUserId();

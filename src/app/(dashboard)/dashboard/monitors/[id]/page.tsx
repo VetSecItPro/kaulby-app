@@ -1,4 +1,7 @@
+import type { Metadata } from "next";
 import { redirect, notFound } from "next/navigation";
+
+export const metadata: Metadata = { title: "Monitor Details | Kaulby" };
 import { db } from "@/lib/db";
 import { monitors, results } from "@/lib/db/schema";
 import { eq, desc, asc, and, count, gte, SQL } from "drizzle-orm";

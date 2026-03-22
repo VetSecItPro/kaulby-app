@@ -467,7 +467,7 @@ function DemoSidebar({ activeView, onViewChange }: { activeView: DemoView; onVie
           <span className="px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide rounded-full bg-teal-500 text-black">
             Pro
           </span>
-          <span className="px-1.5 py-0.5 text-[9px] font-mono font-semibold tracking-wide rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
+          <span className="px-1.5 py-0.5 text-[10px] font-mono font-semibold tracking-wide rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
             DEMO
           </span>
         </div>
@@ -561,7 +561,7 @@ function DemoMobileHeader({ activeView, onViewChange }: { activeView: DemoView; 
             <Image src="/logo.jpg" alt="Kaulby" width={24} height={24} className="object-cover w-full h-full" />
           </div>
           <span className="text-lg font-semibold gradient-text">Kaulby</span>
-          <span className="px-1.5 py-0.5 text-[9px] font-mono font-semibold tracking-wide rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
+          <span className="px-1.5 py-0.5 text-[10px] font-mono font-semibold tracking-wide rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
             DEMO
           </span>
         </div>

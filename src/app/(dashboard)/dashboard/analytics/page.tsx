@@ -1,8 +1,11 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db, users } from "@/lib/db";
 import { getEffectiveUserId, isLocalDev } from "@/lib/dev-auth";
+
+export const metadata: Metadata = { title: "Analytics | Kaulby" };
 // PERF-BUNDLE-001: Lazy-load recharts via client wrapper with ssr: false
 import { LazyAnalyticsCharts } from "@/components/dashboard/analytics-charts-lazy";
 import { BrandScores } from "@/components/dashboard/brand-scores";

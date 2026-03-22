@@ -1,5 +1,8 @@
 // PERF: Dynamic import settings tabs — FIX-204
+import type { Metadata } from "next";
 import { Suspense } from "react";
+
+export const metadata: Metadata = { title: "Settings | Kaulby" };
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
