@@ -20,6 +20,42 @@ import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
+export async function GET() {
+  try {
+    const userId = await getEffectiveUserId();
+
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const rateLimit = await checkApiRateLimit(userId, "read");
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests" },
+        { status: 429, headers: { "Retry-After": String(rateLimit.retryAfter ?? 60) } }
+      );
+    }
+
+    const userMonitors = await db.query.monitors.findMany({
+      where: eq(monitors.userId, userId),
+      orderBy: (m, { desc }) => [desc(m.createdAt)],
+    });
+
+    return NextResponse.json(
+      { monitors: userMonitors },
+      {
+        headers: {
+          "Cache-Control": "private, max-age=60, stale-while-revalidate=300",
+        },
+      }
+    );
+  } catch (error) {
+    logError({ source: "api", message: "Failed to list monitors", error, endpoint: "GET /api/monitors" });
+    return NextResponse.json({ error: "Failed to list monitors" }, { status: 500 });
+  }
+}
+
+
 const createMonitorSchema = z.object({
   name: z.string().min(1).max(200),
   companyName: z.string().min(1).max(200),

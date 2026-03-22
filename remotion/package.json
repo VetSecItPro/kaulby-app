@@ -1,0 +1,28 @@
+{
+  "name": "kaulby-remotion",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "preview": "remotion studio src/index.ts",
+    "render:chat": "remotion render src/index.ts AIChatDemo public/videos/ai-chat-demo.mp4 && remotion render src/index.ts AIChatDemo public/videos/ai-chat-demo.webm --codec=vp8",
+    "render:pain-points": "remotion render src/index.ts PainPointDemo public/videos/pain-point-demo.mp4 && remotion render src/index.ts PainPointDemo public/videos/pain-point-demo.webm --codec=vp8",
+    "render:competitor": "remotion render src/index.ts CompetitorDemo public/videos/competitor-demo.mp4 && remotion render src/index.ts CompetitorDemo public/videos/competitor-demo.webm --codec=vp8",
+    "render:overview": "remotion render src/index.ts ProductOverview public/videos/product-overview.mp4 && remotion render src/index.ts ProductOverview public/videos/product-overview.webm --codec=vp8",
+    "render:posters": "remotion still src/index.ts AIChatDemo public/videos/ai-chat-demo-poster.webp --image-format=webp --frame=0 && remotion still src/index.ts PainPointDemo public/videos/pain-point-demo-poster.webp --image-format=webp --frame=0 && remotion still src/index.ts ProductOverview public/videos/product-overview-poster.webp --image-format=webp --frame=0",
+    "render:all": "npm run render:chat && npm run render:pain-points && npm run render:competitor && npm run render:overview && npm run render:posters"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.261",
+    "@remotion/tailwind": "4.0.261",
+    "remotion": "4.0.261",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "18.3.27",
+    "typescript": "5.9.3",
+    "tailwindcss": "3.4.19",
+    "postcss": "8.5.6",
+    "autoprefixer": "10.4.20"
+  }
+}

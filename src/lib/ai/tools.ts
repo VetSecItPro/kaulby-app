@@ -1149,35 +1149,39 @@ async function execGetInsightsSummary(userId: string, params: Record<string, unk
 
   const since = dateFromRange(params.date_range as string | undefined);
 
-  const [totalCount] = await db
-    .select({ count: count() })
-    .from(results)
-    .where(and(inArray(results.monitorId, monitorIds), gte(results.createdAt, since), eq(results.isHidden, false)));
+  const whereClause = and(inArray(results.monitorId, monitorIds), gte(results.createdAt, since), eq(results.isHidden, false));
 
-  const sentimentCounts = await db
-    .select({ sentiment: results.sentiment, count: count() })
-    .from(results)
-    .where(and(inArray(results.monitorId, monitorIds), gte(results.createdAt, since), eq(results.isHidden, false)))
-    .groupBy(results.sentiment);
+  const [[totalCount], sentimentCounts, platformCounts, categoryCounts] = await Promise.all([
+    db
+      .select({ count: count() })
+      .from(results)
+      .where(whereClause),
 
-  const platformCounts = await db
-    .select({ platform: results.platform, count: count() })
-    .from(results)
-    .where(and(inArray(results.monitorId, monitorIds), gte(results.createdAt, since), eq(results.isHidden, false)))
-    .groupBy(results.platform)
-    .orderBy(desc(count()));
+    db
+      .select({ sentiment: results.sentiment, count: count() })
+      .from(results)
+      .where(whereClause)
+      .groupBy(results.sentiment),
 
-  const categoryCounts = await db
-    .select({ category: results.conversationCategory, count: count() })
-    .from(results)
-    .where(and(
-      inArray(results.monitorId, monitorIds),
-      gte(results.createdAt, since),
-      eq(results.isHidden, false),
-      sql`${results.conversationCategory} IS NOT NULL`
-    ))
-    .groupBy(results.conversationCategory)
-    .orderBy(desc(count()));
+    db
+      .select({ platform: results.platform, count: count() })
+      .from(results)
+      .where(whereClause)
+      .groupBy(results.platform)
+      .orderBy(desc(count())),
+
+    db
+      .select({ category: results.conversationCategory, count: count() })
+      .from(results)
+      .where(and(
+        inArray(results.monitorId, monitorIds),
+        gte(results.createdAt, since),
+        eq(results.isHidden, false),
+        sql`${results.conversationCategory} IS NOT NULL`
+      ))
+      .groupBy(results.conversationCategory)
+      .orderBy(desc(count())),
+  ]);
 
   return {
     success: true,
@@ -1216,16 +1220,21 @@ async function execListAudiences(userId: string): Promise<ToolResult> {
     columns: { id: true, name: true, description: true, color: true, icon: true, createdAt: true },
   });
 
-  // Get monitor count per audience
-  const result = await Promise.all(
-    userAudiences.map(async (a) => {
-      const [monitorCount] = await db
-        .select({ count: count() })
+  // Get monitor count per audience — single GROUP BY query instead of N+1
+  const audienceIds = userAudiences.map((a) => a.id);
+  const countRows = audienceIds.length > 0
+    ? await db
+        .select({ audienceId: audienceMonitors.audienceId, count: count() })
         .from(audienceMonitors)
-        .where(eq(audienceMonitors.audienceId, a.id));
-      return { ...a, monitorCount: monitorCount.count, createdAt: a.createdAt.toISOString() };
-    })
-  );
+        .where(inArray(audienceMonitors.audienceId, audienceIds))
+        .groupBy(audienceMonitors.audienceId)
+    : [];
+  const countMap = new Map(countRows.map((r) => [r.audienceId, r.count]));
+  const result = userAudiences.map((a) => ({
+    ...a,
+    monitorCount: countMap.get(a.id) ?? 0,
+    createdAt: a.createdAt.toISOString(),
+  }));
 
   return { success: true, data: result };
 }
