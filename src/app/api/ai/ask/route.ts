@@ -15,6 +15,7 @@ import { parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
 import { AI_TOOLS, TOOL_METADATA, executeTool, type ToolResult } from "@/lib/ai/tools";
 import type OpenAI from "openai";
 import { logger } from "@/lib/logger";
+import { ONBOARDING_SYSTEM_PROMPT } from "@/lib/ai/onboarding-prompt";
 
 export const maxDuration = 60;
 
@@ -27,6 +28,7 @@ interface AskRequest {
   monitorIds?: string[];
   audienceIds?: string[];
   conversationHistory?: { role: "user" | "assistant"; content: string }[];
+  conversationType?: "default" | "onboarding";
   pendingConfirmation?: {
     toolCallId: string;
     toolName: string;
@@ -184,9 +186,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Plan check
+    // Plan check — onboarding chat is available to all tiers
     const plan = await getUserPlan(userId);
-    if (plan !== "pro" && plan !== "team") {
+    const bodyPeek: AskRequest = await req.clone().json().catch(() => ({})) as AskRequest;
+    const isOnboarding = bodyPeek.conversationType === "onboarding";
+    if (!isOnboarding && plan !== "pro" && plan !== "team") {
       return NextResponse.json(
         { error: "This feature requires a Pro subscription" },
         { status: 403 }
@@ -219,7 +223,8 @@ export async function POST(req: Request) {
     }
 
     const body: AskRequest = await parseJsonBody(req);
-    const { conversationHistory = [] } = body;
+    const { conversationHistory = [], conversationType } = body;
+    void conversationType; // used above via bodyPeek and below for prompt selection
 
     // Handle pending confirmation
     if (body.pendingConfirmation) {
@@ -244,9 +249,10 @@ export async function POST(req: Request) {
       });
     }
 
-    // Build message history
+    // Build message history — use onboarding prompt for new user setup
+    const activePrompt = body.conversationType === "onboarding" ? ONBOARDING_SYSTEM_PROMPT : SYSTEM_PROMPT;
     const messages: OpenAI.ChatCompletionMessageParam[] = [
-      { role: "system", content: SYSTEM_PROMPT },
+      { role: "system", content: activePrompt },
     ];
 
     // Add last 4 conversation messages
