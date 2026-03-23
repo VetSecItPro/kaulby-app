@@ -311,6 +311,19 @@ export function OnboardingWizard({ isOpen, onClose, userName, userPlan = "free" 
               <Button variant="ghost" onClick={handleSkip}>
                 Skip for now
               </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (!tosAccepted) return;
+                  onClose();
+                  router.push("/dashboard/onboarding-chat");
+                }}
+                className="gap-2 border-violet-500/50 text-violet-400 hover:bg-violet-500/10"
+                disabled={!tosAccepted}
+              >
+                <Sparkles className="h-4 w-4" />
+                Set up with AI
+              </Button>
               <Button onClick={handleNext} className="gap-2" disabled={!tosAccepted}>
                 Get Started
                 <ArrowRight className="h-4 w-4" />
