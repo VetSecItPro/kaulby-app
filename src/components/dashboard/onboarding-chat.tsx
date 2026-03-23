@@ -254,11 +254,11 @@ function ProgressSidebar({
               </li>
               <li className="flex items-start gap-1.5">
                 <span className="mt-0.5 text-violet-500">•</span>
-                I'll suggest what to monitor
+                I&apos;ll suggest what to monitor
               </li>
               <li className="flex items-start gap-1.5">
                 <span className="mt-0.5 text-violet-500">•</span>
-                I'll create monitors instantly
+                I&apos;ll create monitors instantly
               </li>
               <li className="flex items-start gap-1.5">
                 <span className="mt-0.5 text-violet-500">•</span>
