@@ -118,3 +118,4 @@ remotion/node_modules/
 .compliance/
 .docs-reports/
 .qatest-reports/
+.archive/
