@@ -18,8 +18,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "fs";
-import { globSync } from "glob";
+import { readFileSync, readdirSync, statSync } from "fs";
 import path from "path";
 
 /**
@@ -57,10 +56,24 @@ const APPROVED_PATTERNS = [
   /\bcheckIpRateLimit\b/,   // @/lib/rate-limit — IP-keyed for public endpoints
 ];
 
+function walk(dir: string, collected: string[]): string[] {
+  for (const entry of readdirSync(dir)) {
+    const full = path.join(dir, entry);
+    const st = statSync(full);
+    if (st.isDirectory()) {
+      walk(full, collected);
+    } else if (st.isFile() && entry === "route.ts") {
+      collected.push(full);
+    }
+  }
+  return collected;
+}
+
 function findApiRoutes(): string[] {
   const repoRoot = path.resolve(__dirname, "../../..");
-  const pattern = path.join(repoRoot, "src/app/api/**/route.ts");
-  return globSync(pattern).map((p) => path.relative(repoRoot, p));
+  const apiRoot = path.join(repoRoot, "src/app/api");
+  const absolutePaths = walk(apiRoot, []);
+  return absolutePaths.map((p: string) => path.relative(repoRoot, p));
 }
 
 function fileUsesRateLimit(absPath: string): boolean {
