@@ -19,6 +19,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
+    "backfill:ai-analyzed": "npx tsx scripts/backfill-ai-analyzed.ts",
     "remotion:preview": "cd remotion && npx remotion studio src/index.ts",
     "remotion:render": "cd remotion && npx remotion render src/index.ts ProductDemo ../public/videos/product-demo.mp4 && npx remotion render src/index.ts AIChatDemo ../public/videos/ai-chat-demo.mp4 && npx remotion render src/index.ts ProductDemo ../public/videos/product-demo.webm --codec=vp8 && npx remotion render src/index.ts AIChatDemo ../public/videos/ai-chat-demo.webm --codec=vp8",
     "remotion:posters": "cd remotion && npx remotion still src/index.ts ProductDemo ../public/videos/product-demo-poster.webp --image-format=webp --frame=0 && npx remotion still src/index.ts AIChatDemo ../public/videos/ai-chat-demo-poster.webp --image-format=webp --frame=0"
