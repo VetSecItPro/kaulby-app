@@ -2,9 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { emailEvents } from "@/lib/db/schema";
 import { sanitizeUrl, isValidUuid, verifyTrackingSignature } from "@/lib/security";
+import { checkIpRateLimit, getClientIp } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
+  // Public endpoint — no authenticated user, so rate-limit by client IP.
+  // "read" tier (200/min) is generous enough for legitimate email link clicks
+  // while blocking scrapers that follow tracking URLs at high rates.
+  const ip = getClientIp(request);
+  const rateLimit = await checkIpRateLimit(ip, "read");
+  if (!rateLimit.allowed) {
+    // Fall back to a silent dashboard redirect (same as invalid-URL path)
+    // rather than a 429 so that malicious traffic doesn't learn about the limit.
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
   const searchParams = request.nextUrl.searchParams;
   const emailId = searchParams.get("eid");
   const userId = searchParams.get("uid");

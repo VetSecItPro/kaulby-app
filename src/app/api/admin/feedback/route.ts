@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { feedback, users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
+import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
 
 // PATCH - Update feedback status (admin only)
@@ -12,6 +12,14 @@ export async function PATCH(request: NextRequest) {
     const userId = await getEffectiveUserId();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const rateLimit = await checkApiRateLimit(userId, "write");
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests" },
+        { status: 429, headers: { "Retry-After": String(rateLimit.retryAfter ?? 60) } }
+      );
     }
 
     // Verify admin
