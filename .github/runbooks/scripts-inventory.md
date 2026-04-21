@@ -1,0 +1,95 @@
+# `scripts/` Inventory
+
+**When to use this:** You need a one-off data backfill, smoke check, or integration test and want to know what already exists before writing new code.
+
+All scripts live at the repo root in `scripts/` and are run via `npx tsx scripts/<name>.ts`. They load `.env.local` via `dotenv` and operate on whichever branch `DATABASE_URL` points at — **always verify the target branch first.**
+
+## Inventory
+
+### `backfill-workspace-ids.ts`
+
+- **What**: Sets `workspaceId` on existing `monitors` and `audiences` rows based on the owner's workspace membership.
+- **When to run**: After introducing workspace-scoped ownership; one-time migration. Should not need to re-run unless new legacy rows are imported.
+- **Safety**: Additive only (only updates rows where `workspaceId IS NULL`). Idempotent.
+- **Run**: `npx tsx scripts/backfill-workspace-ids.ts`
+
+### `clear-test-data.ts`
+
+- **What**: Deletes all data associated with a specific test user (set via `TEST_EMAIL` env var, default `test@example.com`).
+- **When to run**: Resetting a local or staging environment between E2E test runs. **Never run against production.**
+- **Safety**: Destructive. Requires `TEST_EMAIL` to be set; will fail if the user doesn't exist.
+- **Run**: `TEST_EMAIL=test@example.com npx tsx scripts/clear-test-data.ts`
+
+### `reset-stuck-scans.ts`
+
+- **What**: Finds monitors with `is_scanning = true` and resets the flag, unsticking scans that crashed mid-flight.
+- **When to run**: After an Inngest drain (see `inngest-drain.md`) or when the UI shows monitors stuck in "scanning" state for > 30 min.
+- **Safety**: Safe. Only flips a boolean; no data loss. Idempotent.
+- **Run**: `npx tsx scripts/reset-stuck-scans.ts`
+
+### `send-test-emails.ts`
+
+- **What**: Sends daily-digest and weekly-report test emails to `TEST_EMAIL` via Resend, using real HTML templates.
+- **When to run**: After touching email templates or digest data shapes; to preview in your actual inbox.
+- **Safety**: Sends real email — use a test address you own.
+- **Run**: `TEST_EMAIL=you@example.com npx tsx scripts/send-test-emails.ts`
+
+### `smoke-test.ts`
+
+- **What**: Hits a running dev server on a port (default 6761) and walks through dashboard pages, API routes, and marketing pages. Reports pass/fail.
+- **When to run**: After a big refactor; quick regression check before opening a PR. Faster than full Playwright E2E.
+- **Safety**: Read-only HTTP requests. No data mutations.
+- **Run**: `pnpm dev` in one terminal, then `npx tsx scripts/smoke-test.ts [port]`
+
+### `test-ai-prompts.ts`
+
+- **What**: Runs sentiment / pain-point / summarization / comprehensive AI analyses on a fixed sample input; compares Pro vs Team tier prompts.
+- **When to run**: After editing `src/lib/ai/prompts.ts` or swapping OpenRouter models.
+- **Safety**: Burns OpenRouter credits. A few cents per run.
+- **Run**: `npx tsx scripts/test-ai-prompts.ts`
+
+### `test-polar-checkout.ts`
+
+- **What**: Validates Polar plan ID mapping, checkout API request shape, webhook event processing, and DB updates end-to-end.
+- **When to run**: Before shipping any change to billing / subscription logic. After upgrading `@polar-sh/sdk`.
+- **Safety**: Uses test products. Does not hit live billing. Still touches the DB — point at a dev branch.
+- **Run**: `npx tsx scripts/test-polar-checkout.ts`
+
+### `test-producthunt.ts`
+
+- **What**: Tests Product Hunt GraphQL API integration: OAuth token fetch + data pull for the test user's monitors.
+- **When to run**: When Product Hunt scans are failing and you need to isolate whether it's the API wrapper or Inngest.
+- **Safety**: Read-only against Product Hunt API. Writes results to DB under the test user.
+- **Run**: `npx tsx scripts/test-producthunt.ts`
+
+### `test-team-features.ts`
+
+- **What**: End-to-end test of workspace + team monitor ownership: creates a workspace, adds members, assigns monitors, tests member deletion / reassignment, cleans up.
+- **When to run**: After any change to workspace / team permissions logic.
+- **Safety**: Creates and deletes test rows. Cleans up after itself if it completes; leaves debris if it crashes mid-run. Run against a dev branch.
+- **Run**: `npx tsx scripts/test-team-features.ts`
+
+## Pattern for new backfill scripts
+
+When you need a new data migration (see `schema-migration.md`, Deploy 3 of the destructive flow), follow the shape of `backfill-workspace-ids.ts`:
+
+1. Top-of-file doc comment stating purpose and run command.
+2. `config({ path: ".env.local" });` for env loading.
+3. Idempotent: only touch rows that need changes. Safe to re-run.
+4. Log counts: rows considered, rows updated, rows skipped.
+5. Exit 0 on success; throw on failure.
+
+## How to verify a script worked
+
+- Each script prints a summary. Read it.
+- For DB-touching scripts: `pnpm db:studio` spot-check a few rows.
+- For email scripts: check the inbox.
+- For AI/API scripts: read the pass/fail console output.
+
+## Common pitfalls
+
+- **Running against the wrong Neon branch** — always `echo $DATABASE_URL` first, or use a dev branch.
+- **Running a `test-*` script in production** — the `test-team-features.ts` and `clear-test-data.ts` scripts write/delete real rows. Production `DATABASE_URL` + these scripts = bad time.
+- **Skipping the test-email recipient var** — `send-test-emails.ts` defaults to `test@example.com`, which bounces. Set `TEST_EMAIL`.
+- **Forgetting to start the dev server before `smoke-test.ts`** — all URLs fail with connection refused.
+- **Running AI scripts during quota crunch** — `test-ai-prompts.ts` makes multiple paid API calls per run.

@@ -1,0 +1,21 @@
+# Kaulby Operational Runbooks
+
+One-page playbooks for common operational tasks. Each runbook is self-contained: "when to use", numbered steps, verification, and common pitfalls.
+
+## Index
+
+| Runbook | Purpose |
+|---------|---------|
+| [rollback-deploy.md](./rollback-deploy.md) | Roll back a bad Vercel deploy (revert commit, force-redeploy, patch vs rollback decision) |
+| [inngest-drain.md](./inngest-drain.md) | Pause Inngest during an incident, drain the queue, resume safely |
+| [clerk-key-rotation.md](./clerk-key-rotation.md) | Rotate Clerk publishable/secret keys with zero downtime (prod + E2E app) |
+| [neon-branch-management.md](./neon-branch-management.md) | Neon branch strategy: main=prod, e2e-ci=CI, dev branches for risky migrations |
+| [ci-env-drift.md](./ci-env-drift.md) | Diagnose "works locally, fails in CI" — env var drift between `.env.example` and GitHub Actions |
+| [schema-migration.md](./schema-migration.md) | Apply schema changes safely — additive direct-push vs destructive multi-deploy flow |
+| [scripts-inventory.md](./scripts-inventory.md) | What's in `scripts/` — each script, purpose, when to run, safety notes |
+
+## Conventions
+
+- Commands are copy-pasteable. Replace `<PLACEHOLDERS>` with real values.
+- "Who to notify" lines reference the solo-dev reality today but leave a placeholder for team growth.
+- Runbooks live under `.github/runbooks/` because the repo's root `.gitignore` blanket-ignores `*.md`; an exception is added for this directory.
