@@ -18,6 +18,7 @@ import { getPlanLimits } from "@/lib/plans";
 import { cache } from "@/lib/cache";
 import { matchDetectionKeywords } from "@/lib/detection-matcher";
 import { logger } from "@/lib/logger";
+import { track } from "@/lib/analytics";
 import crypto from "crypto";
 
 /**
@@ -27,7 +28,11 @@ import crypto from "crypto";
  * with the error message; dashboards render a "pending" state and alerts
  * skip these rows until a retry succeeds.
  */
-async function saveAnalysisFailure(resultId: string, error: unknown): Promise<void> {
+async function saveAnalysisFailure(
+  resultId: string,
+  error: unknown,
+  userId?: string
+): Promise<void> {
   const errorMessage = (error instanceof Error ? error.message : String(error)).slice(0, 500);
   await pooledDb
     .update(results)
@@ -36,6 +41,17 @@ async function saveAnalysisFailure(resultId: string, error: unknown): Promise<vo
       aiError: errorMessage,
     })
     .where(eq(results.id, resultId));
+
+  // Task 1.4: fire taxonomy event so Task 0.1's fallback-fire rate is visible
+  // in PostHog. userId is optional for back-compat with any future caller,
+  // but the two fallback paths in this file always supply it.
+  if (userId) {
+    track("ai_analysis.failed", {
+      userId,
+      resultId,
+      errorType: error instanceof Error ? error.name || "Error" : "Unknown",
+    });
+  }
 }
 
 /**
@@ -314,6 +330,21 @@ export const analyzeContent = inngest.createFunction(
         });
       });
 
+      // Task 1.4: taxonomy event — cache hit is still a successful analysis
+      // from the user's perspective, so fire with costUsd=0 to keep funnels
+      // honest about total analyses served.
+      track("ai_analysis.completed", {
+        userId,
+        resultId,
+        sentiment: (cachedAnalysis.sentiment === "positive" ||
+          cachedAnalysis.sentiment === "negative" ||
+          cachedAnalysis.sentiment === "neutral")
+          ? cachedAnalysis.sentiment
+          : null,
+        tier: analysisTier,
+        costUsd: 0,
+      });
+
       return {
         tier: analysisTier,
         cached: true,
@@ -479,6 +510,16 @@ export const analyzeContent = inngest.createFunction(
           });
         });
 
+        // Task 1.4: taxonomy event — team-tier success path. Sentiment is the
+        // validated Zod output from analyzeComprehensive.
+        track("ai_analysis.completed", {
+          userId,
+          resultId,
+          sentiment: analysis.sentiment.label,
+          tier: "team",
+          costUsd: teamAnalysisResult.totalCost,
+        });
+
         return {
           tier: "team",
           analysis: teamAnalysisResult.analysis,
@@ -497,7 +538,7 @@ export const analyzeContent = inngest.createFunction(
         // Mark result as analysis-failed; do NOT fabricate sentiment values.
         // Inngest retries + future scans will re-attempt analysis.
         await step.run("mark-team-analysis-failed", async () => {
-          await saveAnalysisFailure(resultId, teamError);
+          await saveAnalysisFailure(resultId, teamError, userId);
         });
 
         return {
@@ -637,6 +678,15 @@ export const analyzeContent = inngest.createFunction(
         });
       });
 
+      // Task 1.4: taxonomy event — pro-tier success path.
+      track("ai_analysis.completed", {
+        userId,
+        resultId,
+        sentiment: proAnalysisResult.sentiment.sentiment,
+        tier: "pro",
+        costUsd: proAnalysisResult.totalCost,
+      });
+
       return {
         tier: "pro",
         sentiment: proAnalysisResult.sentiment,
@@ -656,7 +706,7 @@ export const analyzeContent = inngest.createFunction(
       // Mark result as analysis-failed; do NOT fabricate sentiment values.
       // Inngest retries + future scans will re-attempt analysis.
       await step.run("mark-pro-analysis-failed", async () => {
-        await saveAnalysisFailure(resultId, proError);
+        await saveAnalysisFailure(resultId, proError, userId);
       });
 
       return {

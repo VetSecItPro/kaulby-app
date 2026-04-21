@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { results, monitors } from "@/lib/db/schema";
 import { eq, and, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { track } from "@/lib/analytics";
 
 // PERF-REDUN-001: Single query to verify ownership AND fetch needed fields
 async function getOwnedResult(resultId: string, userId: string) {
@@ -30,6 +31,9 @@ export async function markResultViewed(resultId: string) {
       viewedAt: new Date(),
     })
     .where(eq(results.id, resultId));
+
+  // Task 1.4: taxonomy event — feeds the "which alerts get acted on?" funnel.
+  track("result.action_taken", { userId, resultId, action: "mark_read" });
 
   revalidatePath("/dashboard/results");
   return { success: true };
@@ -63,15 +67,24 @@ export async function toggleResultSaved(resultId: string) {
   const result = await getOwnedResult(resultId, userId);
   if (!result) throw new Error("Not found");
 
+  const newSaved = !result.isSaved;
   await db
     .update(results)
     .set({
-      isSaved: !result.isSaved,
+      isSaved: newSaved,
     })
     .where(eq(results.id, resultId));
 
+  // Task 1.4: differentiate save vs unsave so retention funnels don't
+  // conflate them.
+  track("result.action_taken", {
+    userId,
+    resultId,
+    action: newSaved ? "save" : "unsave",
+  });
+
   revalidatePath("/dashboard/results");
-  return { success: true, isSaved: !result.isSaved };
+  return { success: true, isSaved: newSaved };
 }
 
 export async function toggleResultHidden(resultId: string) {
@@ -81,15 +94,22 @@ export async function toggleResultHidden(resultId: string) {
   const result = await getOwnedResult(resultId, userId);
   if (!result) throw new Error("Not found");
 
+  const newHidden = !result.isHidden;
   await db
     .update(results)
     .set({
-      isHidden: !result.isHidden,
+      isHidden: newHidden,
     })
     .where(eq(results.id, resultId));
 
+  // Task 1.4: only fire on hide (not un-hide) — the un-hide case is rare and
+  // doesn't carry signal about which results users find noisy.
+  if (newHidden) {
+    track("result.action_taken", { userId, resultId, action: "hide" });
+  }
+
   revalidatePath("/dashboard/results");
-  return { success: true, isHidden: !result.isHidden };
+  return { success: true, isHidden: newHidden };
 }
 
 export async function markAllResultsViewed() {

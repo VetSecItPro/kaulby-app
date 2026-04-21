@@ -27,6 +27,7 @@ import {
 import { isMonitorScheduleActive } from "@/lib/monitor-schedule";
 import { AI_BATCH_CONFIG } from "@/lib/ai/sampling";
 import { inngest } from "../client";
+import { track } from "@/lib/analytics";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -294,11 +295,17 @@ export async function triggerAiAnalysis(
 
 /**
  * Update monitor's lastCheckedAt and newMatchCount.
+ *
+ * Task 1.4: when `userId` + `platform` are supplied, emits the typed
+ * `scan.completed` PostHog event. Optional to preserve back-compat with any
+ * future caller that predates the taxonomy; all 17 current platform scans
+ * pass them so the activation/reliability funnels stay populated.
  */
 export async function updateMonitorStats(
   monitorId: string,
   matchCount: number,
-  step: MonitorStep
+  step: MonitorStep,
+  opts?: { userId: string; platform: string; startedAt?: number }
 ): Promise<void> {
   await step.run(`update-monitor-stats-${monitorId}`, async () => {
     await pooledDb
@@ -309,5 +316,38 @@ export async function updateMonitorStats(
         updatedAt: new Date(),
       })
       .where(eq(monitors.id, monitorId));
+  });
+
+  if (opts) {
+    track("scan.completed", {
+      userId: opts.userId,
+      monitorId,
+      platform: opts.platform,
+      resultsFound: matchCount,
+      // durationMs is best-effort — callers that don't pass startedAt log 0
+      // rather than omitting the field, so downstream dashboards can filter.
+      durationMs: opts.startedAt ? Date.now() - opts.startedAt : 0,
+    });
+  }
+}
+
+/**
+ * Task 1.4: emit `scan.failed` from a platform scan's outer catch. Keeps
+ * failure analytics in the shared helper so every platform reports failures
+ * with the same shape (errorType is the Error.name — e.g. "TimeoutError").
+ */
+export function trackScanFailed(params: {
+  userId: string;
+  monitorId: string;
+  platform: string;
+  error: unknown;
+}): void {
+  const errorType =
+    params.error instanceof Error ? params.error.name || "Error" : "Unknown";
+  track("scan.failed", {
+    userId: params.userId,
+    monitorId: params.monitorId,
+    platform: params.platform,
+    errorType,
   });
 }

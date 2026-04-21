@@ -119,7 +119,7 @@ export const monitorYelp = inngest.createFunction(
       await triggerAiAnalysis(newResultIds, monitor.id, monitor.userId, "yelp", step);
 
       monitorResults[monitor.id] = count;
-      await updateMonitorStats(monitor.id, count, step);
+      await updateMonitorStats(monitor.id, count, step, { userId: monitor.userId, platform: "yelp" });
     }
 
     return {
