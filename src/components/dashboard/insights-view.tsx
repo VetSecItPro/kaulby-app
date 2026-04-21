@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { track as trackClient } from "@/lib/analytics-client";
 
 // ============================================================================
 // TYPES
@@ -707,7 +708,11 @@ export function InsightsView() {
               key={r}
               variant={range === r ? "default" : "outline"}
               size="sm"
-              onClick={() => setRange(r)}
+              onClick={() => {
+                setRange(r);
+                // Analytics: engagement signal for insights time-range usage.
+                trackClient("ui.insights_range_changed", { range: r });
+              }}
             >
               {r === "7d" && "7 Days"}
               {r === "30d" && "30 Days"}
@@ -718,7 +723,15 @@ export function InsightsView() {
       </div>
 
       {/* Tabbed Interface */}
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as InsightTab)}>
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => {
+          setActiveTab(v as InsightTab);
+          // Analytics: which insight views users actually explore (pain-points
+          // is the default — recommendations/trending are the discovery paths).
+          trackClient("ui.tab_switched", { pageSection: "insights", tabName: v });
+        }}
+      >
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="pain-points" className="gap-2">
             <AlertTriangle className="h-4 w-4" />

@@ -36,6 +36,7 @@ import { TestimonialStrip } from "@/components/landing/testimonials";
 import { toast } from "sonner";
 import type { BillingInterval } from "@/lib/plans";
 import { FAQSchema } from "@/lib/seo/structured-data";
+import { track as trackClient } from "@/lib/analytics-client";
 
 interface Feature {
   text: string;
@@ -187,6 +188,8 @@ export default function PricingPage() {
   }, [isSignedIn]);
 
   const handleDayPassPurchase = async () => {
+    // Client analytics: fires before navigation so the event survives the redirect.
+    trackClient("ui.cta_clicked", { ctaName: "day_pass_purchase", location: "pricing_page" });
     setIsPurchasingDayPass(true);
     try {
       const response = await fetch("/api/polar/day-pass", {
@@ -207,6 +210,12 @@ export default function PricingPage() {
   };
 
   const handleUpgrade = (planKey: "pro" | "team", planName: string) => {
+    // Funnel analytics: capture plan CTA clicks on the pricing page so we can
+    // correlate intent -> checkout open -> payment.succeeded (server event).
+    trackClient("ui.cta_clicked", {
+      ctaName: `upgrade_${planKey}`,
+      location: "pricing_page",
+    });
     setSelectedPlan(planKey);
     setSelectedPlanName(planName);
     setCheckoutOpen(true);

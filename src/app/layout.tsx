@@ -4,6 +4,7 @@ import { Instrument_Serif } from "next/font/google";
 import { Toaster } from "@/components/ui/toaster";
 import { ResilientClerkProvider } from "@/components/shared/clerk-provider";
 import { CookieConsent } from "@/components/shared/cookie-consent";
+import { PostHogProvider } from "@/components/shared/posthog-provider";
 // PWA: Service worker registration handled by @serwist/next (auto-register)
 import { PWAInstallPrompt } from "@/components/shared/pwa-install-prompt";
 import { OrganizationSchema, SoftwareApplicationSchema } from "@/lib/seo/structured-data";
@@ -114,12 +115,14 @@ export default function RootLayout({
         <SoftwareApplicationSchema />
 
         <ResilientClerkProvider>
-          <div id="main-content">
-            {children}
-          </div>
-          <Toaster />
-          <CookieConsent />
-          <PWAInstallPrompt />
+          <PostHogProvider>
+            <div id="main-content">
+              {children}
+            </div>
+            <Toaster />
+            <CookieConsent />
+            <PWAInstallPrompt />
+          </PostHogProvider>
         </ResilientClerkProvider>
       </body>
     </html>
