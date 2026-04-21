@@ -24,10 +24,11 @@ vi.mock("@/lib/cache", () => ({
   cache: {
     get: vi.fn().mockResolvedValue(null),
     set: vi.fn().mockResolvedValue(undefined),
+    delete: vi.fn().mockResolvedValue(true),
   },
 }));
 
-import { matchDetectionKeywords } from "../detection-matcher";
+import { matchDetectionKeywords, invalidateKeywordsCache } from "../detection-matcher";
 import { db } from "@/lib/db";
 import { cache } from "@/lib/cache";
 
@@ -132,7 +133,9 @@ describe("matchDetectionKeywords", () => {
     expect(cache.set).toHaveBeenCalledWith(
       "detection-kw:user-1",
       { pain_point: ["broken"] },
-      5 * 60 * 1000
+      // Tier 1 Task 1.3: TTL raised from 5min to 60min. Keywords change rarely;
+      // stale reads are bounded by explicit invalidation on write, not the TTL.
+      60 * 60 * 1000
     );
   });
 
@@ -172,5 +175,25 @@ describe("matchDetectionKeywords", () => {
       "user-1"
     );
     expect(result!.confidence).toBeLessThanOrEqual(0.9);
+  });
+});
+
+describe("invalidateKeywordsCache", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("deletes the per-user cache entry by the same key shape used for reads", async () => {
+    // The paired invariant: write path evicts what the read path loads.
+    // If the key shape ever drifts, TTL (1h) would mask stale keyword reads
+    // for up to an hour after user edits.
+    await invalidateKeywordsCache("user-123");
+    expect(cache.delete).toHaveBeenCalledWith("detection-kw:user-123");
+  });
+
+  it("never touches other users' cache entries", async () => {
+    await invalidateKeywordsCache("user-a");
+    expect(cache.delete).toHaveBeenCalledTimes(1);
+    expect(cache.delete).not.toHaveBeenCalledWith("detection-kw:user-b");
   });
 });

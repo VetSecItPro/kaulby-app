@@ -9,8 +9,23 @@ interface KeywordMatch {
   confidence: number;
 }
 
-// Cache user keywords for 5 minutes to avoid DB lookups on every result
-const KEYWORDS_CACHE_TTL = 5 * 60 * 1000;
+// Cache user keywords for 1 hour. Keywords change rarely; the previous 5min TTL
+// caused ~12x more DB lookups than needed. Cache is invalidated explicitly on
+// write via invalidateKeywordsCache(), so stale reads are bounded by writes,
+// not by TTL.
+const KEYWORDS_CACHE_TTL = 60 * 60 * 1000;
+
+function keywordsCacheKey(userId: string): string {
+  return `detection-kw:${userId}`;
+}
+
+/**
+ * Invalidate the cached keyword map for a user. Call this from any endpoint
+ * that mutates userDetectionKeywords so the next read pulls fresh data.
+ */
+export async function invalidateKeywordsCache(userId: string): Promise<void> {
+  await cache.delete(keywordsCacheKey(userId));
+}
 
 /**
  * Get user's active detection keywords (with caching).
@@ -19,7 +34,7 @@ const KEYWORDS_CACHE_TTL = 5 * 60 * 1000;
 async function getUserKeywords(
   userId: string
 ): Promise<Record<string, string[]> | null> {
-  const cacheKey = `detection-kw:${userId}`;
+  const cacheKey = keywordsCacheKey(userId);
 
   const cached = await cache.get<Record<string, string[]>>(cacheKey);
   if (cached) return cached;

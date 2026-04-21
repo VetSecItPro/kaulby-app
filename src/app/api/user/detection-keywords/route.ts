@@ -6,6 +6,7 @@ import { getPlanLimits } from "@/lib/plans";
 import { getUserPlan } from "@/lib/limits";
 import { DETECTION_CATEGORIES } from "@/lib/detection-defaults";
 import { checkApiRateLimit } from "@/lib/rate-limit";
+import { invalidateKeywordsCache } from "@/lib/detection-matcher";
 import { z } from "zod";
 
 const updateKeywordsSchema = z.object({
@@ -148,6 +149,10 @@ export async function PUT(request: NextRequest) {
     });
   }
 
+  // Bust cache so scans pick up the new keywords on the next match attempt.
+  // Without this, the 1h TTL would delay keyword changes for up to an hour.
+  await invalidateKeywordsCache(userId);
+
   return NextResponse.json({ success: true, category, keywords: cleaned });
 }
 
@@ -193,6 +198,9 @@ export async function POST() {
   }));
 
   await db.insert(userDetectionKeywords).values(values);
+
+  // Bust cache so scans pick up the seeded keywords immediately.
+  await invalidateKeywordsCache(userId);
 
   return NextResponse.json({ success: true, count: values.length });
 }
