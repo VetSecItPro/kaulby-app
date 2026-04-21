@@ -1,7 +1,7 @@
 import { inngest } from "../client";
 import { pooledDb } from "@/lib/db";
 import { webhooks, webhookDeliveries, users } from "@/lib/db/schema";
-import { eq, and, lt, lte, or } from "drizzle-orm";
+import { eq, and, lte } from "drizzle-orm";
 import crypto from "crypto";
 import {
   formatSlackPayload,
@@ -361,38 +361,8 @@ export const retryWebhookDeliveries = inngest.createFunction(
   }
 );
 
-// Clean up old webhook delivery records (runs weekly)
-export const cleanupWebhookDeliveries = inngest.createFunction(
-  {
-    id: "cleanup-webhook-deliveries",
-    name: "Cleanup Webhook Deliveries",
-    retries: 3,
-    timeouts: { finish: "10m" },
-  },
-  { cron: "0 2 * * 0" }, // Run weekly on Sunday at 2 AM UTC
-  async ({ step, logger }) => {
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    const deleted = await step.run("delete-old-deliveries", async () => {
-      const result = await pooledDb
-        .delete(webhookDeliveries)
-        .where(
-          and(
-            lt(webhookDeliveries.createdAt, thirtyDaysAgo),
-            or(
-              eq(webhookDeliveries.status, "success"),
-              eq(webhookDeliveries.status, "failed")
-            )
-          )
-        )
-        .returning({ id: webhookDeliveries.id });
-
-      return result.length;
-    });
-
-    logger.info(`Deleted ${deleted} old webhook deliveries`);
-
-    return { success: true, deleted };
-  }
-);
+// Task DL.3: the old `cleanupWebhookDeliveries` (30d hard-delete of success/failed)
+// was superseded by the unified retention pipeline in `data-retention.ts`,
+// which soft-deletes delivered rows after 90d and failed rows after 1y
+// (keeping the failure trail around long enough to investigate flaky webhooks),
+// then hard-deletes after a 30d grace window.

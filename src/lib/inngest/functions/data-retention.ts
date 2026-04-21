@@ -8,6 +8,8 @@ import {
   emailEvents,
   errorLogs,
   chatMessages,
+  activityLogs,
+  webhookDeliveries,
 } from "@/lib/db/schema";
 import { eq, and, or, lt, isNull, isNotNull, inArray, sql, count } from "drizzle-orm";
 
@@ -41,6 +43,14 @@ const ERROR_LOGS_UNRESOLVED_DAYS = 365;
 
 // chatMessages: 1y soft-delete, hard-delete after 30d grace (= 2y total)
 const CHAT_MESSAGES_SOFT_DELETE_DAYS = 365;
+
+// Task DL.3: activityLogs are a compliance audit trail — keep 1 year.
+// webhook_deliveries: delivered (success) rows drop after 90d (useful for user
+// troubleshooting only); failed rows stay 1 year so we can diagnose recurrent
+// endpoint issues. Everything hard-deletes after the shared 30d grace window.
+const ACTIVITY_LOGS_RETENTION_DAYS = 365;
+const WEBHOOK_DELIVERIES_SUCCESS_DAYS = 90;
+const WEBHOOK_DELIVERIES_FAILED_DAYS = 365;
 
 // Minimal shape of the inngest context bits we need. Extracted so the handler
 // can be unit-tested with mock step/logger (Task 1.2 tests).
@@ -276,6 +286,71 @@ export async function runDataRetention({
       return value;
     });
 
+    // ──────────────────────────────────────────────────────────────────────
+    // Task DL.3: retention for activity_logs + webhook_deliveries.
+    // Same soft-then-hard pattern, different retention horizons per table.
+    // ──────────────────────────────────────────────────────────────────────
+
+    // --- activityLogs: 1y audit trail ---
+    const activityLogsSoftCutoff = new Date(now.getTime() - ACTIVITY_LOGS_RETENTION_DAYS * DAY_MS);
+
+    const activityLogsSoftDeleted = await step.run("soft-delete-activity-logs", async () => {
+      const whereClause = and(
+        isNull(activityLogs.deletedAt),
+        lt(activityLogs.createdAt, activityLogsSoftCutoff),
+      );
+      const [{ value }] = await pooledDb.select({ value: count() }).from(activityLogs).where(whereClause);
+      if (value > 0) {
+        await pooledDb.update(activityLogs).set({ deletedAt: now }).where(whereClause);
+      }
+      logger.info(`Soft-deleted ${value} activityLogs rows`);
+      return value;
+    });
+
+    const activityLogsHardDeleted = await step.run("hard-delete-activity-logs", async () => {
+      const whereClause = and(
+        isNotNull(activityLogs.deletedAt),
+        lt(activityLogs.deletedAt, hardDeleteCutoff),
+      );
+      const [{ value }] = await pooledDb.select({ value: count() }).from(activityLogs).where(whereClause);
+      if (value > 0) await pooledDb.delete(activityLogs).where(whereClause);
+      logger.info(`Hard-deleted ${value} activityLogs rows (past 30d grace)`);
+      return value;
+    });
+
+    // --- webhookDeliveries: status-keyed retention ---
+    // Keep in-flight rows ("pending"/"retrying") untouched regardless of age —
+    // they're actively being processed by retryWebhookDeliveries.
+    const webhookDeliveriesSuccessCutoff = new Date(now.getTime() - WEBHOOK_DELIVERIES_SUCCESS_DAYS * DAY_MS);
+    const webhookDeliveriesFailedCutoff = new Date(now.getTime() - WEBHOOK_DELIVERIES_FAILED_DAYS * DAY_MS);
+
+    const webhookDeliveriesSoftDeleted = await step.run("soft-delete-webhook-deliveries", async () => {
+      const whereClause = and(
+        isNull(webhookDeliveries.deletedAt),
+        or(
+          and(eq(webhookDeliveries.status, "success"), lt(webhookDeliveries.createdAt, webhookDeliveriesSuccessCutoff)),
+          and(eq(webhookDeliveries.status, "failed"), lt(webhookDeliveries.createdAt, webhookDeliveriesFailedCutoff)),
+        ),
+      );
+      const [{ value }] = await pooledDb.select({ value: count() }).from(webhookDeliveries).where(whereClause);
+      if (value > 0) {
+        await pooledDb.update(webhookDeliveries).set({ deletedAt: now }).where(whereClause);
+      }
+      logger.info(`Soft-deleted ${value} webhookDeliveries rows`);
+      return value;
+    });
+
+    const webhookDeliveriesHardDeleted = await step.run("hard-delete-webhook-deliveries", async () => {
+      const whereClause = and(
+        isNotNull(webhookDeliveries.deletedAt),
+        lt(webhookDeliveries.deletedAt, hardDeleteCutoff),
+      );
+      const [{ value }] = await pooledDb.select({ value: count() }).from(webhookDeliveries).where(whereClause);
+      if (value > 0) await pooledDb.delete(webhookDeliveries).where(whereClause);
+      logger.info(`Hard-deleted ${value} webhookDeliveries rows (past 30d grace)`);
+      return value;
+    });
+
     logger.info(`Data retention cleanup complete. Deleted ${totalDeleted} old results (free: ${freeDeleted}, pro: ${proDeleted}, team: ${teamDeleted}) and ${orphanedDeleted} orphaned results.`);
 
     return {
@@ -288,6 +363,8 @@ export async function runDataRetention({
         emailEvents: { softDeleted: emailEventsSoftDeleted, hardDeleted: emailEventsHardDeleted },
         errorLogs: { softDeleted: errorLogsSoftDeleted, hardDeleted: errorLogsHardDeleted },
         chatMessages: { softDeleted: chatMessagesSoftDeleted, hardDeleted: chatMessagesHardDeleted },
+        activityLogs: { softDeleted: activityLogsSoftDeleted, hardDeleted: activityLogsHardDeleted },
+        webhookDeliveries: { softDeleted: webhookDeliveriesSoftDeleted, hardDeleted: webhookDeliveriesHardDeleted },
       },
     };
 }

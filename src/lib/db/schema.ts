@@ -165,6 +165,8 @@ export const activityLogs = pgTable("activity_logs", {
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  // Task DL.3: soft-delete column so retention can stage deletes with a 30d grace window.
+  deletedAt: timestamp("deleted_at"),
 }, (table) => [
   index("activity_logs_workspace_id_idx").on(table.workspaceId),
   index("activity_logs_user_id_idx").on(table.userId),
@@ -618,6 +620,8 @@ export const webhookDeliveries = pgTable("webhook_deliveries", {
   nextRetryAt: timestamp("next_retry_at"), // When to retry (null if not scheduled)
   completedAt: timestamp("completed_at"), // When delivery was successful or gave up
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  // Task DL.3: soft-delete column so retention can stage deletes with a 30d grace window.
+  deletedAt: timestamp("deleted_at"),
 }, (table) => [
   index("webhook_deliveries_webhook_id_idx").on(table.webhookId),
   index("webhook_deliveries_status_retry_idx").on(table.status, table.nextRetryAt),

@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { users, webhooks, webhookDeliveries } from "@/lib/db/schema";
-import { eq, desc, and, gte, inArray } from "drizzle-orm";
+import { eq, desc, and, gte, inArray, isNull } from "drizzle-orm";
 import { WebhookManagement } from "@/components/dashboard/webhook-management";
 import { getEffectiveUserId, isLocalDev } from "@/lib/dev-auth";
 
@@ -54,7 +54,9 @@ async function WebhooksContent() {
       const deliveries = await db.query.webhookDeliveries.findMany({
         where: and(
           inArray(webhookDeliveries.webhookId, webhookIds),
-          gte(webhookDeliveries.createdAt, oneDayAgo)
+          gte(webhookDeliveries.createdAt, oneDayAgo),
+          // Task DL.3: hide rows already soft-deleted by retention.
+          isNull(webhookDeliveries.deletedAt)
         ),
         orderBy: desc(webhookDeliveries.createdAt),
         limit: 50,
