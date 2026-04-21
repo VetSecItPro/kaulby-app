@@ -2,7 +2,7 @@
  * Apify API client for scraping reviews and Q&A platforms
  *
  * Uses Apify actors to scrape data:
- * - Reddit: trudax/reddit-scraper (fallback when API fails)
+ * - Reddit: automation-lab/reddit-scraper (primary — $0.003/25 items measured; see .mdmp/reddit-spike-results-2026-04-21.md)
  * - Google Reviews: compass/google-maps-reviews-scraper
  * - Trustpilot: epctex/trustpilot-scraper
  * - App Store: alexey/app-store-scraper
@@ -22,7 +22,7 @@ const APIFY_API_BASE = "https://api.apify.com/v2";
 // Actor IDs for different scrapers
 // Format: "username/actor-name" - converted to "username~actor-name" for API calls
 const ACTORS = {
-  reddit: "trudax/reddit-scraper",
+  reddit: "automation-lab/reddit-scraper",
   googleReviews: "compass/google-maps-reviews-scraper",
   trustpilot: "happitap/trustpilot-scraper",
   appStore: "thewolves/appstore-reviews-scraper", // Pay per result ($0.10/1000 reviews)
