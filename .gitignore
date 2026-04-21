@@ -1,60 +1,49 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# Planning & audit files (local-only, never commit)
-TODO.md
-*.audit.md
-.db/
-*.plan.md
-.*-reports/
-kaulby-improve.md
-
-# dependencies
+# Dependencies
 /node_modules
 package-lock.json
 /.pnp
 .pnp.js
 .yarn/install-state.gz
 
-# testing
-/coverage
-
-# next.js
+# Build output
 /.next/
 /out/
-
-# production
 /build
+/coverage
 
-# misc
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Misc
 .DS_Store
 *.pem
-
-# debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# local env files
+# Local Claude Code state
+.claude/
+
+# Env / secrets
 .env
 .env*.local
 .env.production
 .env.development
+.sentryclirc
+/.clerk/
+.mcp.json
 
-# vercel
+# Vercel
 .vercel
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-
-# clerk configuration (can include secrets)
-/.clerk/
-
-# Remotion cache
+# Remotion
 .remotion/
-
-# Sentry
-.sentryclirc
+remotion/node_modules/
+remotion/screenshots/
+remotion/recordings/
 
 # Serwist (generated service worker)
 public/sw.js
@@ -65,57 +54,29 @@ public/swe-worker-*.js
 playwright-report/
 test-results/
 
-# Planning/audit documents (local only)
-kaulby-optimize-*.md
-kaulby-audit-*.md
-kaulby-reddit-subs.md
-kaulby-ai-roadmap.md
-
-# Internal audit and security reports
-.claude/audits/
-.security-reports/
-.redteam-reports/
-.security-audit.json
+# Internal docs / planning / audits (local only)
+# docs/ holds architecture + planning + archive; keep it all local.
 /docs/
+CLAUDE.md
+ARCHITECTURE.md
+*.md
+!README.md
+!.github/pull_request_template.md
 
-# Test results (local only)
-kaulby-test-results.md
-
-# MCP configuration (local dev tool config)
-.mcp.json
-.design-reports/
+# Skill report directories (any .*-reports/ or specific skill dirs)
+.*-reports/
 .a11y/
 .perf/
 .cleancode/
-.deps-reports/
+.compliance/
+.db/
+.mdmp/
+.claude/audits/
+
+# Skill JSON outputs
+.security-audit.json
 .deps-audit.json
-
-# ============================================
-# ALL INTERNAL DOCUMENTATION - KEEP PRIVATE
-# ============================================
-CLAUDE.md
-ARCHITECTURE.md
-
-# All markdown files (notes, plans, strategy)
-*.md
-
-# EXCEPTIONS: Public-facing files
-\!README.md
-\!.github/pull_request_template.md
-.test-reports/
+.test-audit.json
 .test-ship-state.json
 .test-ship-history.json
 .test-ship-quarantine.json
-.test-audit.json
-.perf-reports/
-.smoketest-reports/
-remotion/node_modules/
-.perf/
-.security-reports/
-.cleancode-reports/
-.monitor-reports/
-.db-reports/
-.compliance/
-.docs-reports/
-.qatest-reports/
-.archive/
