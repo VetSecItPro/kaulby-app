@@ -444,6 +444,26 @@ export const results = pgTable("results", {
   index("results_lead_score_viewed_hidden_idx").on(table.leadScore, table.isViewed, table.isHidden),
   // DB: Dashboard query optimization — FIX-113
   index("results_hidden_created_idx").on(table.isHidden, table.createdAt),
+  // Tier 1 Task 1.1: Composite index for dashboard insights sentiment filter
+  // and crisis detection's negative-sentiment spike query. Covers
+  // WHERE monitor_id IN (...) AND sentiment = ? AND is_hidden = ?
+  // ORDER BY created_at DESC LIMIT N — the shape of the "Negative attention"
+  // and "Pain points" dashboard cards and the 24h crisis-detection window.
+  index("results_monitor_sentiment_hidden_created_idx").on(
+    table.monitorId,
+    table.sentiment,
+    table.isHidden,
+    table.createdAt.desc()
+  ),
+  // Tier 1 Task 1.1: Composite index for "Engage Today" + reengagement queries
+  // that sort by engagement_score DESC then recency. Covers
+  // WHERE monitor_id IN (...) AND is_hidden = false
+  // ORDER BY engagement_score DESC, created_at DESC LIMIT N.
+  index("results_monitor_engagement_created_idx").on(
+    table.monitorId,
+    table.engagementScore.desc(),
+    table.createdAt.desc()
+  ),
 ]);
 
 // AI Logs - for cost tracking
