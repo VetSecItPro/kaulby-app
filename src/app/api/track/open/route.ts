@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { emailEvents } from "@/lib/db/schema";
 import { isValidUuid } from "@/lib/security";
+import { checkIpRateLimit, getClientIp } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
 
 // 1x1 transparent GIF
@@ -27,6 +28,14 @@ export async function GET(request: NextRequest) {
       "Expires": "0",
     },
   });
+
+  // Rate-limit by IP before any DB work. Over-limit still returns the pixel
+  // (silent) so scrapers don't learn about the limit; it just skips the insert.
+  const ip = getClientIp(request);
+  const rateLimit = await checkIpRateLimit(ip, "read");
+  if (!rateLimit.allowed) {
+    return response;
+  }
 
   // Validate uid format to prevent data poisoning
   if (userId && !isValidUuid(userId)) {

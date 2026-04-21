@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { monitors } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getEffectiveUserId } from "@/lib/dev-auth";
+import { checkApiRateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
 
@@ -43,6 +44,14 @@ export async function PATCH(
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const rateLimit = await checkApiRateLimit(userId, "write");
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests" },
+        { status: 429, headers: { "Retry-After": String(rateLimit.retryAfter ?? 60) } }
+      );
     }
 
     // Verify monitor exists and belongs to user

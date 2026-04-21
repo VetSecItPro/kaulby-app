@@ -131,6 +131,55 @@ export async function checkApiRateLimit(
 }
 
 /**
+ * Check rate limit keyed by IP address — used for public endpoints that have
+ * no authenticated user (email tracking pixels, click redirects, etc.).
+ *
+ * Callers extract the IP from request headers (x-forwarded-for / x-real-ip).
+ * If the header is missing, pass "unknown" — which means all anonymous
+ * traffic shares a bucket. That's acceptable for tracking endpoints whose
+ * threat model is abuse flooding, not per-user fairness.
+ */
+export async function checkIpRateLimit(
+  ip: string,
+  type: RateLimitType
+): Promise<{ allowed: boolean; retryAfter?: number }> {
+  const config = API_RATE_LIMITS[type];
+  const key = `ip:${type}:${ip || "unknown"}`;
+
+  const limiter = getLimiters()[type];
+  if (limiter) {
+    try {
+      const result = await limiter.limit(key);
+      if (!result.success) {
+        const retryAfter = Math.ceil((result.reset - Date.now()) / 1000);
+        return { allowed: false, retryAfter: Math.max(retryAfter, 1) };
+      }
+      return { allowed: true };
+    } catch {
+      // Redis error — fall through to in-memory
+    }
+  }
+
+  return checkMemory(key, config.requests, 60_000);
+}
+
+/**
+ * Extract client IP from Next.js request headers.
+ * Honors x-forwarded-for (takes first IP) and x-real-ip.
+ * Returns "unknown" when no header is present.
+ */
+export function getClientIp(request: Request): string {
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) {
+    const first = forwarded.split(",")[0]?.trim();
+    if (first) return first;
+  }
+  const realIp = request.headers.get("x-real-ip");
+  if (realIp) return realIp;
+  return "unknown";
+}
+
+/**
  * Check request body size against a limit.
  * Reads Content-Length header for a fast pre-check.
  */
