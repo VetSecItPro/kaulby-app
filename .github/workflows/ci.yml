@@ -171,9 +171,7 @@ jobs:
       - name: Seed E2E admin user
         # The dev-auth bypass returns the first admin user from the DB.
         # Idempotent; safe to re-run. Refuses on Vercel (see script).
-        # tsx isn't declared in devDependencies — use npx to auto-fetch,
-        # matching the pattern in package.json's backfill:ai-analyzed script.
-        run: npx tsx scripts/seed-e2e-admin.ts
+        run: pnpm exec tsx scripts/seed-e2e-admin.ts
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           ALLOW_DEV_AUTH_BYPASS: "true"
