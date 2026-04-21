@@ -15,8 +15,11 @@ import { test, expect, type Page, type Locator } from "@playwright/test";
  * - Form element may not exist - use waitForHydration(page, "button") instead
  */
 
+// TRUE when safe to run auth-gated specs: local dev, OR CI with explicit
+// dev-auth bypass opt-in (ALLOW_DEV_AUTH_BYPASS=true). Always FALSE when
+// targeting production (kaulbyapp.com).
 const isLocalDev =
-  !process.env.CI &&
+  (!process.env.CI || process.env.ALLOW_DEV_AUTH_BYPASS === "true") &&
   !process.env.PLAYWRIGHT_BASE_URL?.includes("kaulbyapp.com");
 
 /** Tailwind lg breakpoint */

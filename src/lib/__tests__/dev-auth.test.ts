@@ -24,6 +24,8 @@ describe("dev-auth", () => {
     vi.stubEnv("ALLOW_DEV_AUTH_BYPASS", "false");
     vi.stubEnv("VERCEL", "");
     vi.stubEnv("VERCEL_ENV", "");
+    vi.stubEnv("CI", "");
+    vi.stubEnv("GITHUB_ACTIONS", "");
   });
 
   afterEach(() => {
@@ -73,6 +75,42 @@ describe("dev-auth", () => {
     it("returns false when ALLOW_DEV_AUTH_BYPASS is not set", () => {
       vi.stubEnv("NODE_ENV", "development");
       vi.stubEnv("ALLOW_DEV_AUTH_BYPASS", "");
+
+      expect(isLocalDev()).toBe(false);
+    });
+
+    it("returns true in CI (CI=true) with opt-in, NODE_ENV=production", () => {
+      // Simulates GitHub Actions e2e job: production build, CI set, opt-in set.
+      vi.stubEnv("NODE_ENV", "production");
+      vi.stubEnv("ALLOW_DEV_AUTH_BYPASS", "true");
+      vi.stubEnv("CI", "true");
+
+      expect(isLocalDev()).toBe(true);
+    });
+
+    it("returns true in CI (GITHUB_ACTIONS=true) with opt-in", () => {
+      vi.stubEnv("NODE_ENV", "production");
+      vi.stubEnv("ALLOW_DEV_AUTH_BYPASS", "true");
+      vi.stubEnv("GITHUB_ACTIONS", "true");
+
+      expect(isLocalDev()).toBe(true);
+    });
+
+    it("returns false in CI WITHOUT the explicit opt-in", () => {
+      // CI alone is not enough — ALLOW_DEV_AUTH_BYPASS is the safety gate.
+      vi.stubEnv("NODE_ENV", "production");
+      vi.stubEnv("ALLOW_DEV_AUTH_BYPASS", "false");
+      vi.stubEnv("CI", "true");
+
+      expect(isLocalDev()).toBe(false);
+    });
+
+    it("returns false in CI when on Vercel (defense in depth)", () => {
+      // Even if CI=true and opt-in is set, Vercel must still block.
+      vi.stubEnv("NODE_ENV", "production");
+      vi.stubEnv("ALLOW_DEV_AUTH_BYPASS", "true");
+      vi.stubEnv("CI", "true");
+      vi.stubEnv("VERCEL", "1");
 
       expect(isLocalDev()).toBe(false);
     });
@@ -185,6 +223,59 @@ describe("dev-auth", () => {
       const userId = await getEffectiveUserId();
 
       expect(userId).toBe("clerk_user_secure");
+    });
+
+    it("CI with opt-in returns admin user (production NODE_ENV)", async () => {
+      // GitHub Actions e2e scenario: `pnpm start` sets NODE_ENV=production
+      // but CI=true + ALLOW_DEV_AUTH_BYPASS=true should still bypass.
+      vi.stubEnv("NODE_ENV", "production");
+      vi.stubEnv("ALLOW_DEV_AUTH_BYPASS", "true");
+      vi.stubEnv("CI", "true");
+
+      const { db } = await import("@/lib/db");
+      vi.mocked(db.query.users.findFirst).mockResolvedValueOnce({
+        id: "e2e-admin-user",
+      } as never);
+
+      const userId = await getEffectiveUserId();
+
+      expect(userId).toBe("e2e-admin-user");
+      expect(db.query.users.findFirst).toHaveBeenCalled();
+    });
+
+    it("CI WITHOUT opt-in falls through to Clerk auth", async () => {
+      vi.stubEnv("NODE_ENV", "production");
+      vi.stubEnv("ALLOW_DEV_AUTH_BYPASS", "false");
+      vi.stubEnv("CI", "true");
+
+      const { auth } = await import("@clerk/nextjs/server");
+      const { db } = await import("@/lib/db");
+      vi.mocked(auth).mockResolvedValueOnce({
+        userId: "clerk_ci_no_optin",
+      } as never);
+
+      const userId = await getEffectiveUserId();
+
+      expect(userId).toBe("clerk_ci_no_optin");
+      expect(db.query.users.findFirst).not.toHaveBeenCalled();
+    });
+
+    it("CI + opt-in but on Vercel falls through to Clerk (prod safety)", async () => {
+      vi.stubEnv("NODE_ENV", "production");
+      vi.stubEnv("ALLOW_DEV_AUTH_BYPASS", "true");
+      vi.stubEnv("CI", "true");
+      vi.stubEnv("VERCEL", "1");
+
+      const { auth } = await import("@clerk/nextjs/server");
+      const { db } = await import("@/lib/db");
+      vi.mocked(auth).mockResolvedValueOnce({
+        userId: "clerk_vercel_prod",
+      } as never);
+
+      const userId = await getEffectiveUserId();
+
+      expect(userId).toBe("clerk_vercel_prod");
+      expect(db.query.users.findFirst).not.toHaveBeenCalled();
     });
 
     it("dev bypass disabled on any Vercel environment", async () => {
