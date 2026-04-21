@@ -9,6 +9,7 @@ import { sendDiscordBotMessage } from "@/lib/integrations/discord";
 import { sendTeamsMessage, formatTeamsAlert } from "@/lib/integrations/teams";
 import { decryptIntegrationData } from "@/lib/encryption";
 import { logger } from "@/lib/logger";
+import { sortByAlertPriority } from "@/lib/alert-priority";
 
 // PERF-BUILDTIME-002: Cache Intl.DateTimeFormat instances by timezone+type
 const tzFormatterCache = new Map<string, Intl.DateTimeFormat>();
@@ -127,7 +128,7 @@ export const sendAlert = inngest.createFunction(
     // Get the results.
     // Exclude rows where aiAnalyzed=false (analysis failed, sentiment unfabricated);
     // include NULL (legacy rows from before the aiAnalyzed column) and TRUE (success).
-    const matchingResults = await step.run("get-results", async () => {
+    const rawMatchingResults = await step.run("get-results", async () => {
       return pooledDb.query.results.findMany({
         where: and(
           inArray(results.id, resultIds),
@@ -136,9 +137,13 @@ export const sendAlert = inngest.createFunction(
       });
     });
 
-    if (matchingResults.length === 0) {
+    if (rawMatchingResults.length === 0) {
       return { skipped: true, reason: "No results to send" };
     }
+
+    // Task 2.5: reorder (do not filter) so highest-priority items lead the email.
+    // Same set of rows, same alert rules — only the order the user sees changes.
+    const matchingResults = sortByAlertPriority(rawMatchingResults);
 
     // Send based on channel
     if (alert.channel === "email") {
