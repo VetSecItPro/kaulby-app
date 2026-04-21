@@ -1,6 +1,7 @@
 import { inngest } from "../client";
 import { pooledDb } from "@/lib/db";
-import { results, aiLogs, monitors, painPointCategoryEnum, conversationCategoryEnum } from "@/lib/db/schema";
+import { results, aiLogs, monitors, painPointCategoryEnum, conversationCategoryEnum, resultAnalyses } from "@/lib/db/schema";
+import { sql } from "drizzle-orm";
 import { logAiCall } from "@/lib/ai/log";
 import { eq, count } from "drizzle-orm";
 import {
@@ -68,6 +69,43 @@ function generateContentHash(content: string, tier: "pro" | "team"): string {
 
 // Cache TTL for AI analysis - 24 hours (content analysis doesn't change)
 const AI_ANALYSIS_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+
+/**
+ * Task DL.2 Phase 1 — dual-write the AI analysis payload to the new
+ * `result_analyses` sibling table. `results.aiAnalysis` is still written
+ * above for read-path backward compatibility until Phase 3 drops it.
+ *
+ * Why upsert: Inngest retries mean the same resultId may be analyzed more
+ * than once. ON CONFLICT keeps the most recent analysis + bumps updatedAt.
+ */
+async function writeResultAnalysis(
+  resultId: string,
+  analysisJson: string,
+  tier: "pro" | "team" | "batch"
+): Promise<void> {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(analysisJson);
+  } catch {
+    // Upstream always stringifies a plain object; if that ever breaks, log
+    // and skip the new-table write rather than corrupt it. Legacy column
+    // still has the original value.
+    logger.error("[AI Analysis] Could not parse analysisJson for result_analyses", { resultId });
+    return;
+  }
+
+  await pooledDb
+    .insert(resultAnalyses)
+    .values({ resultId, analysis: parsed, tier })
+    .onConflictDoUpdate({
+      target: resultAnalyses.resultId,
+      set: {
+        analysis: parsed,
+        tier,
+        updatedAt: sql`NOW()`,
+      },
+    });
+}
 
 /** Run Pro-tier AI analysis (sentiment + summary) */
 async function runProAnalysis(
@@ -311,6 +349,13 @@ export const analyzeContent = inngest.createFunction(
             aiError: null,
           })
           .where(eq(results.id, resultId));
+
+        // Task DL.2 Phase 1 — dual-write to extracted table.
+        await writeResultAnalysis(
+          resultId,
+          cachedAnalysis.aiAnalysis,
+          (cachedAnalysis.tier === "team" ? "team" : "pro")
+        );
       });
 
       // Log cache hit as $0-cost row for tracking efficiency
@@ -396,6 +441,23 @@ export const analyzeContent = inngest.createFunction(
         const analysis = teamAnalysisResult.analysis;
         const category = teamAnalysisResult.category;
 
+        // Build analysis JSON once — reused by legacy write, cache, and the
+        // new Phase 1 extracted table.
+        const teamAnalysisJson = JSON.stringify({
+          tier: "team",
+          sentiment: analysis.sentiment,
+          classification: analysis.classification,
+          conversationCategory: category,
+          opportunity: analysis.opportunity,
+          competitive: analysis.competitive,
+          actions: analysis.actions,
+          suggestedResponse: analysis.suggestedResponse,
+          contentOpportunity: analysis.contentOpportunity,
+          platformContext: analysis.platformContext,
+          executiveSummary: analysis.executiveSummary,
+          analyzedAt: new Date().toISOString(),
+        });
+
         // Update result with comprehensive AI analysis
         await step.run("update-result-team", async () => {
           await pooledDb
@@ -407,25 +469,15 @@ export const analyzeContent = inngest.createFunction(
               conversationCategory: category.category as typeof conversationCategoryEnum.enumValues[number],
               conversationCategoryConfidence: category.confidence,
               aiSummary: analysis.executiveSummary,
-              // Store full analysis as JSON metadata
-              aiAnalysis: JSON.stringify({
-                tier: "team",
-                sentiment: analysis.sentiment,
-                classification: analysis.classification,
-                conversationCategory: category,
-                opportunity: analysis.opportunity,
-                competitive: analysis.competitive,
-                actions: analysis.actions,
-                suggestedResponse: analysis.suggestedResponse,
-                contentOpportunity: analysis.contentOpportunity,
-                platformContext: analysis.platformContext,
-                executiveSummary: analysis.executiveSummary,
-                analyzedAt: new Date().toISOString(),
-              }),
+              // Store full analysis as JSON metadata (legacy; Phase 3 drops this column)
+              aiAnalysis: teamAnalysisJson,
               aiAnalyzed: true,
               aiError: null,
             })
             .where(eq(results.id, resultId));
+
+          // Task DL.2 Phase 1 — dual-write to extracted table.
+          await writeResultAnalysis(resultId, teamAnalysisJson, "team");
         });
 
         // Cache the analysis for reuse by other users with same content
@@ -438,20 +490,7 @@ export const analyzeContent = inngest.createFunction(
             conversationCategory: category.category,
             conversationCategoryConfidence: category.confidence,
             aiSummary: analysis.executiveSummary,
-            aiAnalysis: JSON.stringify({
-              tier: "team",
-              sentiment: analysis.sentiment,
-              classification: analysis.classification,
-              conversationCategory: category,
-              opportunity: analysis.opportunity,
-              competitive: analysis.competitive,
-              actions: analysis.actions,
-              suggestedResponse: analysis.suggestedResponse,
-              contentOpportunity: analysis.contentOpportunity,
-              platformContext: analysis.platformContext,
-              executiveSummary: analysis.executiveSummary,
-              analyzedAt: new Date().toISOString(),
-            }),
+            aiAnalysis: teamAnalysisJson,
           };
           await cache.set(cacheKey, cacheData, AI_ANALYSIS_CACHE_TTL);
           logger.debug("[AI Analysis] Cached TEAM tier analysis", { cacheKey: cacheKey.slice(-8) });
@@ -568,6 +607,17 @@ export const analyzeContent = inngest.createFunction(
 
       const resolvedCategory = proAnalysisResult.resolvedCategory;
 
+      // Build analysis JSON once — reused by legacy column, cache, and the
+      // new Phase 1 extracted table.
+      const proAnalysisJson = JSON.stringify({
+        tier: "pro",
+        sentiment: proAnalysisResult.sentiment,
+        painPoint: proAnalysisResult.painPoint,
+        summary: proAnalysisResult.summary,
+        conversationCategory: proAnalysisResult.conversationCategory,
+        analyzedAt: new Date().toISOString(),
+      });
+
       // Update result with AI analysis
       await step.run("update-result", async () => {
         await pooledDb
@@ -579,19 +629,15 @@ export const analyzeContent = inngest.createFunction(
             conversationCategory: resolvedCategory.category as typeof conversationCategoryEnum.enumValues[number],
             conversationCategoryConfidence: resolvedCategory.confidence,
             aiSummary: proAnalysisResult.summary.summary,
-            // Store Pro tier analysis as JSON metadata
-            aiAnalysis: JSON.stringify({
-              tier: "pro",
-              sentiment: proAnalysisResult.sentiment,
-              painPoint: proAnalysisResult.painPoint,
-              summary: proAnalysisResult.summary,
-              conversationCategory: proAnalysisResult.conversationCategory,
-              analyzedAt: new Date().toISOString(),
-            }),
+            // Store Pro tier analysis as JSON metadata (legacy; Phase 3 drops this column)
+            aiAnalysis: proAnalysisJson,
             aiAnalyzed: true,
             aiError: null,
           })
           .where(eq(results.id, resultId));
+
+        // Task DL.2 Phase 1 — dual-write to extracted table.
+        await writeResultAnalysis(resultId, proAnalysisJson, "pro");
       });
 
       // Cache the analysis for reuse by other users with same content
@@ -604,14 +650,7 @@ export const analyzeContent = inngest.createFunction(
           conversationCategory: resolvedCategory.category,
           conversationCategoryConfidence: resolvedCategory.confidence,
           aiSummary: proAnalysisResult.summary.summary,
-          aiAnalysis: JSON.stringify({
-            tier: "pro",
-            sentiment: proAnalysisResult.sentiment,
-            painPoint: proAnalysisResult.painPoint,
-            summary: proAnalysisResult.summary,
-            conversationCategory: proAnalysisResult.conversationCategory,
-            analyzedAt: new Date().toISOString(),
-          }),
+          aiAnalysis: proAnalysisJson,
         };
         await cache.set(cacheKey, cacheData, AI_ANALYSIS_CACHE_TTL);
         logger.debug("[AI Analysis] Cached PRO tier analysis", { cacheKey: cacheKey.slice(-8) });

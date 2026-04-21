@@ -15,6 +15,7 @@ import { getUserPlan, canCreateMonitor, checkKeywordsLimit, filterAllowedPlatfor
 import { getPlanLimits, type Platform } from "@/lib/plans";
 import { logger } from "@/lib/logger";
 import { inngest } from "@/lib/inngest/client";
+import { getResultAnalysis } from "@/lib/result-analysis-reader";
 
 // ---------------------------------------------------------------------------
 // Tool metadata — controls UI labels and confirmation requirements
@@ -1115,6 +1116,10 @@ async function execGetResultDetails(userId: string, resultId: string): Promise<T
   const result = await verifyResultOwnership(userId, resultId);
   if (!result) return { success: false, error: "Result not found or access denied." };
 
+  // Task DL.2 Phase 1 — route aiAnalysis read through helper so we prefer
+  // the extracted `result_analyses` table, falling back to legacy column.
+  const aiAnalysis = await getResultAnalysis(result.id);
+
   return {
     success: true,
     data: {
@@ -1132,7 +1137,7 @@ async function execGetResultDetails(userId: string, resultId: string): Promise<T
       leadScore: result.leadScore,
       leadScoreFactors: result.leadScoreFactors,
       aiSummary: result.aiSummary,
-      aiAnalysis: result.aiAnalysis,
+      aiAnalysis,
       isSaved: result.isSaved,
       isViewed: result.isViewed,
       postedAt: result.postedAt?.toISOString() ?? null,

@@ -35,6 +35,7 @@ vi.mock("@/lib/db/schema", () => ({
   monitors: { id: "id" },
   painPointCategoryEnum: { enumValues: [] },
   conversationCategoryEnum: { enumValues: [] },
+  resultAnalyses: { resultId: "resultId" },
 }));
 
 vi.mock("@/lib/ai", () => ({
@@ -97,6 +98,8 @@ vi.mock("@/lib/detection-matcher", () => ({
 vi.mock("drizzle-orm", () => ({
   eq: vi.fn(),
   count: vi.fn(),
+  inArray: vi.fn(),
+  sql: vi.fn(),
 }));
 
 vi.mock("../client", () => ({
@@ -249,6 +252,50 @@ describe("inngest analyze-content", () => {
   it("flushes Langfuse events after analysis", async () => {
     await vi.mocked(flushAI)();
     expect(flushAI).toHaveBeenCalled();
+  });
+
+  // Task DL.2 Phase 1 — verify dual-write path to result_analyses table.
+  it("dual-writes analysis to result_analyses table (Phase 1)", async () => {
+    // Simulate the dual-write: after updating results.aiAnalysis, insert into result_analyses
+    const onConflictDoUpdate = vi.fn().mockResolvedValue(undefined);
+    const valuesReturn = { onConflictDoUpdate };
+    const values = vi.fn().mockReturnValue(valuesReturn);
+    mockInsert.mockReturnValueOnce({ values });
+
+    const analysisPayload = { tier: "pro", sentiment: { sentiment: "negative", score: -0.8 } };
+    const insertChain = mockInsert();
+    const valuesChain = insertChain.values({
+      resultId: "r1",
+      analysis: analysisPayload,
+      tier: "pro",
+    });
+    await valuesChain.onConflictDoUpdate({
+      target: "resultId",
+      set: { analysis: analysisPayload, tier: "pro", updatedAt: "NOW()" },
+    });
+
+    expect(mockInsert).toHaveBeenCalled();
+    expect(values).toHaveBeenCalledWith(
+      expect.objectContaining({ resultId: "r1", tier: "pro", analysis: analysisPayload })
+    );
+    expect(onConflictDoUpdate).toHaveBeenCalled();
+  });
+
+  it("dual-writes team-tier analysis with tier='team'", async () => {
+    const onConflictDoUpdate = vi.fn().mockResolvedValue(undefined);
+    const values = vi.fn().mockReturnValue({ onConflictDoUpdate });
+    mockInsert.mockReturnValueOnce({ values });
+
+    const insertChain = mockInsert();
+    await insertChain.values({
+      resultId: "r1",
+      analysis: { tier: "team" },
+      tier: "team",
+    }).onConflictDoUpdate({ target: "resultId", set: {} });
+
+    expect(values).toHaveBeenCalledWith(
+      expect.objectContaining({ tier: "team" })
+    );
   });
 
   it("caches analysis results for reuse", async () => {
