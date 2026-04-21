@@ -1176,3 +1176,26 @@ export type SharedReport = typeof sharedReports.$inferSelect;
 export type AIVisibilityCheck = typeof aiVisibilityChecks.$inferSelect;
 export type ChatConversation = typeof chatConversations.$inferSelect;
 export type ChatMessage = typeof chatMessages.$inferSelect;
+
+// Task 2.2: Saved Views - persist filter combinations on the Results page so
+// users can recall triage contexts (e.g. "Hot pain points", "Unread saved")
+// in one click instead of re-applying 3-5 filter chips per visit.
+export const savedViews = pgTable("saved_views", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  filters: jsonb("filters").notNull().$type<{
+    categoryFilter?: string | null;
+    sentimentFilter?: string | null;
+    platformFilter?: string | null;
+    statusFilter?: "all" | "unread" | "saved" | "hidden";
+    leadScoreMin?: number | null;
+  }>(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("saved_views_user_idx").on(table.userId),
+]);
+
+export type SavedView = typeof savedViews.$inferSelect;
+export type NewSavedView = typeof savedViews.$inferInsert;

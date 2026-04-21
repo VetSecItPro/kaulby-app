@@ -5,6 +5,7 @@ import { useState, useTransition, memo, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -84,6 +85,11 @@ interface ResultCardProps {
   highlightKeywords?: string[];
   /** Show lead score badge (default: true) */
   showLeadScore?: boolean;
+  // Task 2.2: Bulk selection support — opt-in. When `onSelectionChange` is
+  // passed, a checkbox renders top-left; otherwise the card is unchanged for
+  // existing callers (digest emails, shared reports, etc.).
+  selected?: boolean;
+  onSelectionChange?: (id: string, selected: boolean) => void;
 }
 
 // Conversation category styling - these are the high-value GummySearch-style categories
@@ -110,7 +116,10 @@ export const ResultCard = memo(function ResultCard({
   showHidden = false,
   isAiBlurred = false,
   showLeadScore = true,
+  selected = false,
+  onSelectionChange,
 }: ResultCardProps) {
+  const isSelectable = typeof onSelectionChange === "function";
   const [isPending, startTransition] = useTransition();
   const [isSaved, setIsSaved] = useState(result.isSaved);
   const [isHidden, setIsHidden] = useState(result.isHidden);
@@ -189,6 +198,22 @@ export const ResultCard = memo(function ResultCard({
       >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-4">
+          {isSelectable && (
+            <div className="pt-1">
+              <Checkbox
+                checked={selected}
+                onCheckedChange={(checked) =>
+                  onSelectionChange?.(result.id, checked === true)
+                }
+                onKeyDown={(e) => {
+                  // Space key toggles selection (default on radix) — no-op here,
+                  // kept for explicit intent. Enter falls through to default.
+                  if (e.key === " ") e.stopPropagation();
+                }}
+                aria-label={`Select result: ${result.title}`}
+              />
+            </div>
+          )}
           <div className="space-y-1 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
               <Badge

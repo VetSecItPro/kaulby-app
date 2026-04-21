@@ -4,6 +4,12 @@ import { useState, useTransition, useMemo, useCallback, useEffect, useRef } from
 import { ResultCard, ResultsFilterBar } from "./result-card";
 import { markAllResultsViewed } from "@/app/(dashboard)/dashboard/results/actions";
 import { Loader2 } from "lucide-react";
+import { SelectionToolbar } from "./selection-toolbar";
+import {
+  SavedViewsDropdown,
+  SaveViewDialog,
+  type SavedViewFilters,
+} from "./saved-views-dropdown";
 
 const PAGE_SIZE = 20;
 
@@ -47,6 +53,9 @@ export function ResultsList({ results, hasUnlimitedAi = true, highlightKeywords 
   const [allMarkedRead, setAllMarkedRead] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const loadMoreRef = useRef<HTMLDivElement>(null);
+  // Task 2.2: bulk selection state — a Set gives O(1) toggle on click.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [saveViewOpen, setSaveViewOpen] = useState(false);
 
   // Memoize count calculations - only recalculate when results or allMarkedRead changes
   const { unviewedCount, savedCount, hiddenCount, totalCount, categoryCounts } = useMemo(() => {
@@ -118,11 +127,60 @@ export function ResultsList({ results, hasUnlimitedAi = true, highlightKeywords 
   // Reset visible count when filters change
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
+    // Filter changes invalidate the current selection — ids that are no
+    // longer visible shouldn't remain selected.
+    setSelectedIds(new Set());
   }, [filter, categoryFilter]);
+
+  // Task 2.2: selection handlers
+  const handleSelectionChange = useCallback((id: string, selected: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (selected) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
+
+  const handleSelectionActionComplete = useCallback(() => {
+    // Same-as-clear after a successful batch action; the server revalidates
+    // the route so fresh state will flow down via RSC props.
+    setSelectedIds(new Set());
+  }, []);
 
   const totalFiltered = filteredResults.length;
   const displayedResults = filteredResults.slice(0, visibleCount);
   const hasMoreToShow = visibleCount < totalFiltered;
+
+  // Task 2.2: Cmd/Ctrl+A selects all currently visible results; Escape clears.
+  // Scoped to when there is at least one displayed result to avoid hijacking
+  // the browser's select-all in empty states.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // Ignore if focus is in an input/textarea/contenteditable — users
+      // typing in the search bar expect native select-all.
+      const target = e.target as HTMLElement | null;
+      if (target) {
+        const tag = target.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable) return;
+      }
+
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "a") {
+        const displayed = filteredResults.slice(0, visibleCount);
+        if (displayed.length === 0) return;
+        e.preventDefault();
+        setSelectedIds(new Set(displayed.map((r) => r.id)));
+      } else if (e.key === "Escape" && selectedIds.size > 0) {
+        setSelectedIds(new Set());
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [filteredResults, visibleCount, selectedIds.size]);
 
   // IntersectionObserver for infinite scroll
   useEffect(() => {
@@ -142,8 +200,45 @@ export function ResultsList({ results, hasUnlimitedAi = true, highlightKeywords 
     return () => observer.disconnect();
   }, [visibleCount, totalFiltered]);
 
+  // Task 2.2: apply a saved-view's filters. categoryFilter is typed on the
+  // parent so we only accept the subset we know how to apply; other dimensions
+  // (platform, sentiment, leadScoreMin) live in the parent view and are
+  // ignored here until the parent wires them through.
+  const handleApplySavedView = useCallback((filters: SavedViewFilters) => {
+    if (filters.statusFilter) setFilter(filters.statusFilter);
+    if (filters.categoryFilter !== undefined) {
+      setCategoryFilter(
+        (filters.categoryFilter as ConversationCategory | null) ?? null
+      );
+    }
+  }, []);
+
+  const currentFilters: SavedViewFilters = {
+    statusFilter: filter,
+    categoryFilter: categoryFilter ?? null,
+  };
+
   return (
     <div className="space-y-4">
+      <div className="flex items-center justify-end gap-2">
+        <SavedViewsDropdown onApplyView={handleApplySavedView} />
+      </div>
+
+      <SelectionToolbar
+        selectedIds={Array.from(selectedIds)}
+        visibleCount={filteredResults.length}
+        onActionComplete={handleSelectionActionComplete}
+        onClear={handleClearSelection}
+        onSaveView={() => setSaveViewOpen(true)}
+        inHiddenView={filter === "hidden"}
+      />
+
+      <SaveViewDialog
+        open={saveViewOpen}
+        onOpenChange={setSaveViewOpen}
+        filters={currentFilters}
+      />
+
       <ResultsFilterBar
         totalCount={totalCount}
         unviewedCount={unviewedCount}
@@ -185,6 +280,8 @@ export function ResultsList({ results, hasUnlimitedAi = true, highlightKeywords 
                 showHidden={filter === "hidden"}
                 isAiBlurred={!hasUnlimitedAi && index > 0}
                 highlightKeywords={highlightKeywords}
+                selected={selectedIds.has(result.id)}
+                onSelectionChange={handleSelectionChange}
               />
             ))}
 
