@@ -30,6 +30,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { tracking } from "@/lib/tracking";
+import { track as trackClient } from "@/lib/analytics-client";
 import { getPlatformDisplayName } from "@/lib/platform-utils";
 import { EmptyState } from "./empty-states";
 import { RefreshDelayBanner } from "./upgrade-prompt";
@@ -516,7 +517,17 @@ function DesktopMonitors({ monitors, refreshInfo }: ResponsiveMonitorsProps) {
                     initialIsScanning={monitor.isScanning}
                     onScanComplete={handleScanComplete}
                   />
-                  <Link href={`/dashboard/monitors/${monitor.id}`}>
+                  <Link
+                    href={`/dashboard/monitors/${monitor.id}`}
+                    // Client analytics: drill-down from monitors list -> single monitor.
+                    // fromPage distinguishes desktop list vs mobile (mobile fires its own event).
+                    onClick={() =>
+                      trackClient("ui.monitor_card_clicked", {
+                        fromPage: "monitors_list_desktop",
+                        monitorId: monitor.id,
+                      })
+                    }
+                  >
                     <Button size="sm" className="bg-teal-500 text-black hover:bg-teal-600">
                       View Results
                     </Button>
