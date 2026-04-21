@@ -62,6 +62,9 @@ ARCHITECTURE.md
 *.md
 !README.md
 !.github/pull_request_template.md
+# Operational runbooks are committed references (Task Op.5)
+!.github/runbooks/
+!.github/runbooks/**/*.md
 
 # Skill report directories (any .*-reports/ or specific skill dirs)
 .*-reports/
