@@ -3,16 +3,11 @@
 import dynamic from "next/dynamic";
 import { ReactNode, Suspense } from "react";
 
-// Static fallback that renders content immediately without animation
-function StaticWrapper({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={className}>{children}</div>;
-}
-
-function StaticSection({ children, className }: { children: ReactNode; className?: string }) {
-  return <section className={className}>{children}</section>;
-}
-
 // Dynamically import home animations - loads framer-motion only when needed
+// Suspense fallbacks are `null`: these dynamic imports use `ssr: true`, so the
+// actual component renders during SSR. The fallback only shows if the client
+// chunk fails to load, and rendering `{children}` there causes a duplicate
+// subtree during hydration (e.g. two <h1> nodes on the homepage).
 const DynamicHomeAnimations = dynamic(
   () => import("./home-animations").then((mod) => mod.HomeAnimations),
   {
@@ -53,7 +48,7 @@ const DynamicTextReveal = dynamic(
 // Export wrapper components that show content immediately, add animations when loaded
 export function HomeAnimations({ children }: { children: ReactNode }) {
   return (
-    <Suspense fallback={<>{children}</>}>
+    <Suspense fallback={null}>
       <DynamicHomeAnimations>{children}</DynamicHomeAnimations>
     </Suspense>
   );
@@ -69,7 +64,7 @@ export function AnimatedSection({
   delay?: number;
 }) {
   return (
-    <Suspense fallback={<StaticSection className={className}>{children}</StaticSection>}>
+    <Suspense fallback={null}>
       <DynamicAnimatedSection className={className} delay={delay}>
         {children}
       </DynamicAnimatedSection>
@@ -87,7 +82,7 @@ export function StaggerContainer({
   staggerDelay?: number;
 }) {
   return (
-    <Suspense fallback={<StaticWrapper className={className}>{children}</StaticWrapper>}>
+    <Suspense fallback={null}>
       <DynamicStaggerContainer className={className} staggerDelay={staggerDelay}>
         {children}
       </DynamicStaggerContainer>
@@ -103,7 +98,7 @@ export function StaggerItem({
   className?: string;
 }) {
   return (
-    <Suspense fallback={<StaticWrapper className={className}>{children}</StaticWrapper>}>
+    <Suspense fallback={null}>
       <DynamicStaggerItem className={className}>{children}</DynamicStaggerItem>
     </Suspense>
   );
@@ -119,7 +114,7 @@ export function AnimatedBadge({
   delay?: number;
 }) {
   return (
-    <Suspense fallback={<StaticWrapper className={className}>{children}</StaticWrapper>}>
+    <Suspense fallback={null}>
       <DynamicAnimatedBadge className={className} delay={delay}>
         {children}
       </DynamicAnimatedBadge>
@@ -137,7 +132,7 @@ export function AnimatedStepCard({
   delay?: number;
 }) {
   return (
-    <Suspense fallback={<StaticWrapper className={className}>{children}</StaticWrapper>}>
+    <Suspense fallback={null}>
       <DynamicAnimatedStepCard className={className} delay={delay}>
         {children}
       </DynamicAnimatedStepCard>
@@ -155,7 +150,7 @@ export function TextReveal({
   delay?: number;
 }) {
   return (
-    <Suspense fallback={<StaticWrapper className={className}>{children}</StaticWrapper>}>
+    <Suspense fallback={null}>
       <DynamicTextReveal className={className} delay={delay}>
         {children}
       </DynamicTextReveal>

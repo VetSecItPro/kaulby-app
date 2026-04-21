@@ -10,18 +10,9 @@ test.describe("Accessibility", () => {
     test.setTimeout(120_000);
     await page.goto("/", { timeout: 60_000, waitUntil: "domcontentloaded" });
 
-    // At least one visible h1 must render. Use .first() to tolerate the known
-    // Suspense/dynamic-import duplicate tree from
-    // src/components/shared/home-animations-lazy.tsx — its Suspense fallback
-    // renders children AND the dynamic component renders them, producing 2 h1
-    // nodes in the DOM during SSR hydration. Only one is visible. Tracked as
-    // a separate bug; this test just confirms the heading exists.
-    await expect(page.locator("h1").first()).toBeVisible({ timeout: 30_000 });
-
-    // Should have at most 2 h1s (the duplicate above). 3+ would be a
-    // regression worth investigating.
+    await expect(page.locator("h1")).toBeVisible({ timeout: 30_000 });
     const h1Count = await page.locator("h1").count();
-    expect(h1Count).toBeLessThanOrEqual(2);
+    expect(h1Count).toBe(1);
   });
 
   test("homepage images have alt text", async ({ page }) => {
