@@ -19,8 +19,13 @@ test.describe("Authentication Pages", () => {
   test("sign-up page loads", async ({ page }) => {
     await page.goto("/sign-up");
 
-    // Clerk sign-up component should load
-    await expect(page.locator("[data-clerk-component]").first()).toBeVisible({ timeout: 10000 });
+    // Sign-up page uses a custom React form built on Clerk's useSignUp() hook
+    // rather than Clerk's drop-in <SignUp> widget, so there's no
+    // [data-clerk-component] attribute to match (that still works for sign-in).
+    // Assert on the page's actual h1 instead.
+    await expect(
+      page.getByRole("heading", { name: /create your account/i, level: 1 })
+    ).toBeVisible({ timeout: 10000 });
   });
 });
 
