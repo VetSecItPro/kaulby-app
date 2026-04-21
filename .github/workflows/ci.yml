@@ -138,9 +138,12 @@ jobs:
   # ─── E2E (Playwright against real app + test Clerk + E2E Neon branch) ───
   # Runs on pull_request only — main-branch pushes skip to keep deploys fast.
   # Uses the built artifact from the `build` job to avoid a second compile.
-  # Auth-gated specs (dashboard/monitors/results/settings/onboarding) self-skip
-  # in CI via `test.skip(!isLocalDev, ...)`; the 5 remaining specs cover
-  # homepage, pricing, sign-in widget, SEO pages, and accessibility.
+  # Task 0.3c: ALL 10 specs run, including 5 auth-gated ones
+  # (dashboard/monitors/results/settings/onboarding). The dev-auth bypass in
+  # src/lib/dev-auth.ts activates in CI via `CI=true` + `ALLOW_DEV_AUTH_BYPASS=true`
+  # (both required). The bypass is HARD-BLOCKED on Vercel, so production stays
+  # safe even with this flag set. An `e2e-admin-user` is seeded into the E2E
+  # Neon branch so the bypass returns a real admin row.
   e2e:
     name: E2E Tests
     runs-on: ubuntu-latest
@@ -165,13 +168,19 @@ jobs:
       - name: Install Playwright browser (chromium only)
         run: pnpm exec playwright install --with-deps chromium
 
+      - name: Seed E2E admin user
+        # The dev-auth bypass returns the first admin user from the DB.
+        # Idempotent; safe to re-run. Refuses on Vercel (see script).
+        run: pnpm exec tsx scripts/seed-e2e-admin.ts
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          ALLOW_DEV_AUTH_BYPASS: "true"
+
       - name: Run E2E tests
-        # Task 0.3b fix: build job now has NEXT_PUBLIC_* env (Clerk keys + App URL +
-        # PostHog), so the client bundle compiles with a valid Clerk key. /sign-in
-        # and /pricing no longer hit the error boundary. 5 specs now running.
-        # Task 0.3c tracks the 5 remaining auth-gated specs (dashboard/monitors/
-        # results/settings/onboarding) — those self-skip via test.skip(!isLocalDev)
-        # and need test-user seeding + dev-auth bypass in CI to unblock.
+        # Task 0.3c: all 10 specs now run. Dev-auth bypass activates here via
+        # CI=true (GitHub sets it) + ALLOW_DEV_AUTH_BYPASS=true (we set it).
+        # Vercel production is NOT bypassable — dev-auth.ts hard-blocks on
+        # VERCEL / VERCEL_ENV regardless of ALLOW_DEV_AUTH_BYPASS.
         run: >-
           pnpm exec playwright test --project=chromium
           e2e/accessibility.spec.ts
@@ -179,6 +188,11 @@ jobs:
           e2e/auth.spec.ts
           e2e/billing.spec.ts
           e2e/marketing.spec.ts
+          e2e/dashboard.spec.ts
+          e2e/monitors.spec.ts
+          e2e/results.spec.ts
+          e2e/settings.spec.ts
+          e2e/onboarding.spec.ts
         env:
           # App runtime
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -188,6 +202,11 @@ jobs:
           NEXT_PUBLIC_CLERK_SIGN_UP_URL: /sign-up
           NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL: /dashboard
           NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL: /pricing
+          # Dev-auth bypass: CI flag is set by GitHub automatically;
+          # ALLOW_DEV_AUTH_BYPASS is the explicit opt-in guard. The bypass
+          # still refuses to activate on Vercel (not set here). NEVER add
+          # this env var to Vercel project settings.
+          ALLOW_DEV_AUTH_BYPASS: "true"
 
       - name: Upload Playwright report on failure
         if: failure()
