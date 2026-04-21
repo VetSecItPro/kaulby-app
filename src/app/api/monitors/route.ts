@@ -4,7 +4,6 @@ import { db } from "@/lib/db";
 import { monitors, users } from "@/lib/db/schema";
 import { eq, count } from "drizzle-orm";
 import {
-  canCreateMonitor,
   checkKeywordsLimit,
   getUserPlan,
   filterAllowedPlatforms,
@@ -107,58 +106,6 @@ function sanitizeMonitorFields(data: z.infer<typeof createMonitorSchema>) {
   };
 }
 
-/** Check plan limits for monitor creation */
-async function checkMonitorLimits(
-  userId: string,
-  plan: "free" | "pro" | "team",
-  keywords: string[],
-  platforms: string[]
-) {
-  // Check monitor limit
-  const monitorCheck = await canCreateMonitor(userId);
-  if (!monitorCheck.allowed) {
-    const prompt = getUpgradePrompt(plan, "monitors");
-    return {
-      error: monitorCheck.message,
-      upgradePrompt: prompt,
-      status: 403 as const,
-      current: monitorCheck.current,
-      limit: monitorCheck.limit,
-    };
-  }
-
-  // Check keywords limit (only if keywords provided)
-  if (keywords.length > 0) {
-    const keywordCheck = checkKeywordsLimit(keywords, plan);
-    if (!keywordCheck.allowed) {
-      const prompt = getUpgradePrompt(plan, "keywords");
-      return {
-        error: keywordCheck.message,
-        upgradePrompt: prompt,
-        status: 403 as const,
-        current: keywordCheck.current,
-        limit: keywordCheck.limit,
-      };
-    }
-  }
-
-  // Filter platforms to only allowed ones for user's plan
-  const allowedPlatforms = await filterAllowedPlatforms(userId, platforms as Platform[]);
-
-  if (allowedPlatforms.length === 0) {
-    const prompt = getUpgradePrompt(plan, "platform", { platformName: platforms[0] });
-    return {
-      error: `Your plan doesn't have access to ${platforms.join(", ")}. ${prompt.description}`,
-      upgradePrompt: prompt,
-      status: 403 as const,
-    };
-  }
-
-  // Warn if some platforms were filtered out
-  const filteredOut = platforms.filter((p: string) => !allowedPlatforms.includes(p as Platform));
-
-  return { allowedPlatforms, filteredOut };
-}
 
 /** Sanitize platform URLs */
 function sanitizePlatformUrls(platformUrls: Record<string, string>): Record<string, string> {

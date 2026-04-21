@@ -1,6 +1,6 @@
 import { inngest } from "../client";
 import { pooledDb, alerts, monitors, results, users } from "@/lib/db";
-import { eq, and, gte, inArray, isNull, sql } from "drizzle-orm";
+import { eq, and, gte, inArray, isNull, ne, or, sql } from "drizzle-orm";
 import { sendAlertEmail, sendDigestEmail, type WeeklyInsights } from "@/lib/email";
 import { getPlanLimits } from "@/lib/plans";
 import { generateWeeklyInsights } from "@/lib/ai";
@@ -125,10 +125,15 @@ export const sendAlert = inngest.createFunction(
       monitor: typeof monitors.$inferSelect & { user: typeof users.$inferSelect | null };
     };
 
-    // Get the results
+    // Get the results.
+    // Exclude rows where aiAnalyzed=false (analysis failed, sentiment unfabricated);
+    // include NULL (legacy rows from before the aiAnalyzed column) and TRUE (success).
     const matchingResults = await step.run("get-results", async () => {
       return pooledDb.query.results.findMany({
-        where: inArray(results.id, resultIds),
+        where: and(
+          inArray(results.id, resultIds),
+          or(ne(results.aiAnalyzed, false), isNull(results.aiAnalyzed))
+        ),
       });
     });
 
@@ -469,7 +474,10 @@ async function sendDigestForTimezone(
         where: and(
           inArray(results.monitorId, monitorIds),
           gte(results.createdAt, cutoffDate),
-          isNull(results.lastSentInDigestAt)
+          isNull(results.lastSentInDigestAt),
+          // Exclude rows whose AI analysis failed — sentiment is null on those,
+          // including them produces misleading digest summaries.
+          or(ne(results.aiAnalyzed, false), isNull(results.aiAnalyzed))
         ),
         orderBy: (results, { desc }) => [desc(results.createdAt)],
         limit: 5000, // Safety limit to prevent OOM on large digests

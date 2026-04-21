@@ -67,7 +67,7 @@ export function AiSection() {
 
           {/* Right: Feature bullets */}
           <div className="space-y-6">
-            {features.map((feature, i) => {
+            {features.map((feature) => {
               const Icon = feature.icon;
               return (
                 <div key={feature.title} className="flex gap-4">

@@ -16,6 +16,7 @@ const {
   mockDbInsert,
   mockDbDelete,
   mockDbUpdate,
+  mockDbTransaction,
 } = vi.hoisted(() => {
   return {
     mockAuth: vi.fn(),
@@ -39,6 +40,7 @@ const {
     mockDbInsert: vi.fn(),
     mockDbDelete: vi.fn(),
     mockDbUpdate: vi.fn(),
+    mockDbTransaction: vi.fn(),
   };
 });
 
@@ -93,6 +95,7 @@ vi.mock("@/lib/db", () => ({
     insert: () => mockDbInsert(),
     delete: () => mockDbDelete(),
     update: () => mockDbUpdate(),
+    transaction: (cb: (tx: unknown) => unknown) => mockDbTransaction(cb),
   },
   monitors: { id: "id", userId: "user_id" },
   users: { id: "id" },
@@ -108,6 +111,7 @@ vi.mock("drizzle-orm", () => ({
   and: vi.fn(),
   relations: vi.fn(),
   sql: vi.fn(),
+  count: vi.fn(),
 }));
 
 vi.mock("@/lib/inngest/client", () => ({
@@ -214,31 +218,49 @@ describe("POST /api/monitors", () => {
     mockGetEffectiveUserId.mockResolvedValue("user_1");
     mockDbQuery.users.findFirst.mockResolvedValue({ id: "user_1" });
     mockGetUserPlan.mockResolvedValue("free");
-    mockCanCreateMonitor.mockResolvedValue({ allowed: false, message: "Monitor limit reached", current: 1, limit: 1 });
+    mockCheckKeywordsLimit.mockReturnValue({ allowed: true });
+    mockFilterAllowedPlatforms.mockResolvedValue(["reddit"]);
+    // Simulate transaction hitting the monitor limit. Route throws
+    // "MONITOR_LIMIT:..." inside the transaction callback when count >= limit;
+    // the catch block converts that to 403.
+    mockDbTransaction.mockImplementation(async () => {
+      throw new Error("MONITOR_LIMIT:You've reached your limit of 1 monitor. Upgrade to Pro for more.");
+    });
     const res = await createMonitor(makeRequest("POST", "/api/monitors", validBody));
     expect(res.status).toBe(403);
     const json = await res.json();
-    expect(json.error).toContain("Monitor limit");
+    expect(json.error).toContain("reached your limit");
   });
 
   it("returns 201 when monitor is created successfully", async () => {
     mockGetEffectiveUserId.mockResolvedValue("user_1");
     mockDbQuery.users.findFirst.mockResolvedValue({ id: "user_1" });
     mockGetUserPlan.mockResolvedValue("pro");
-    mockCanCreateMonitor.mockResolvedValue({ allowed: true });
     mockCheckKeywordsLimit.mockReturnValue({ allowed: true });
     mockFilterAllowedPlatforms.mockResolvedValue(["reddit"]);
-    mockDbInsert.mockReturnValue({
-      values: vi.fn().mockReturnValue({
-        returning: vi.fn().mockResolvedValue([{
-          id: "mon_1",
-          name: "My Monitor",
-          companyName: "Acme Inc",
-          keywords: ["test", "acme"],
-          platforms: ["reddit"],
-          userId: "user_1",
-        }]),
-      }),
+    // Transaction succeeds: select returns 0 rows (under limit), insert returns the new monitor.
+    const createdMonitor = {
+      id: "mon_1",
+      name: "My Monitor",
+      companyName: "Acme Inc",
+      keywords: ["test", "acme"],
+      platforms: ["reddit"],
+      userId: "user_1",
+    };
+    mockDbTransaction.mockImplementation(async (cb: (tx: unknown) => unknown) => {
+      const tx = {
+        select: () => ({
+          from: () => ({
+            where: vi.fn().mockResolvedValue([{ count: 0 }]),
+          }),
+        }),
+        insert: () => ({
+          values: () => ({
+            returning: vi.fn().mockResolvedValue([createdMonitor]),
+          }),
+        }),
+      };
+      return cb(tx);
     });
 
     const res = await createMonitor(makeRequest("POST", "/api/monitors", validBody));

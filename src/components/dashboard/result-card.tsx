@@ -60,6 +60,8 @@ interface ResultCardProps {
     author: string | null;
     postedAt: Date | null;
     sentiment: "positive" | "negative" | "neutral" | null;
+    /** null = legacy row (no column), true = AI analysis succeeded, false = AI failed (sentiment will be null, render "Analyzing…"). */
+    aiAnalyzed?: boolean | null;
     painPointCategory: string | null;
     conversationCategory: ConversationCategory | null;
     aiSummary: string | null;
@@ -197,6 +199,15 @@ export const ResultCard = memo(function ResultCard({
               </Badge>
               <SourceAuthorityBadge platform={result.platform} />
               {result.sentiment && sentimentIcons[result.sentiment]}
+              {result.aiAnalyzed === false && (
+                <Badge
+                  variant="secondary"
+                  className="text-xs font-medium gap-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
+                  title="AI analysis failed; will retry on next cycle"
+                >
+                  Analyzing…
+                </Badge>
+              )}
               {/* Conversation Category Badge - GummySearch-style high-value classification */}
               {result.conversationCategory && conversationCategoryStyles[result.conversationCategory] && (() => {
                 const { Icon, bg, text, label } = conversationCategoryStyles[result.conversationCategory];
