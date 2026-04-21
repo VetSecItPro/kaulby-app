@@ -179,19 +179,19 @@ async function searchRedditApify(
   }
 
   try {
-    // Start the Reddit scraper actor
+    // Actor: automation-lab/reddit-scraper — schema: { urls, maxPostsPerSource, sort }
+    // Empirical cost: $0.003 for 25 items @ 2026-04-21 — see .mdmp/reddit-spike-results-2026-04-21.md
+    // Note: this actor returns POSTS ONLY (no comments support). Comments must come from Public JSON fallback if needed.
     const runResponse = await fetch(
-      "https://api.apify.com/v2/acts/trudax~reddit-scraper/runs?token=" + apiKey,
+      "https://api.apify.com/v2/acts/automation-lab~reddit-scraper/runs?token=" + apiKey,
       {
         method: "POST",
         signal: AbortSignal.timeout(30000),
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          startUrls: [{ url: `https://www.reddit.com/r/${subreddit}/new/` }],
-          maxItems: limit,
-          maxPostCount: limit,
-          scrollTimeout: 40,
-          proxy: { useApifyProxy: true },
+          urls: [`https://www.reddit.com/r/${subreddit}/`],
+          maxPostsPerSource: limit,
+          sort: "new",
         }),
       }
     );
@@ -230,27 +230,28 @@ async function searchRedditApify(
     );
     const results = await resultsResponse.json();
 
+    // automation-lab field mapping (measured): type/id/title/author/subreddit/score/numComments/selfText/createdAt (ISO)
     return results.map((item: {
       id: string;
       title: string;
-      body: string;
+      selfText?: string;
       author: string;
       subreddit: string;
       permalink: string;
       url: string;
       score: number;
-      numberOfComments: number;
+      numComments?: number;
       createdAt: string;
     }) => ({
       id: item.id,
       title: item.title,
-      selftext: item.body || "",
+      selftext: item.selfText || "",
       author: item.author,
       subreddit: item.subreddit,
       permalink: item.permalink,
       url: item.url,
       score: item.score,
-      num_comments: item.numberOfComments,
+      num_comments: item.numComments ?? 0,
       created_utc: new Date(item.createdAt).getTime() / 1000,
     }));
   } catch (error) {
@@ -324,14 +325,16 @@ async function searchRedditPublic(
 // ============================================================================
 
 /**
- * Search Reddit with automatic fallback between providers
- * Includes caching to reduce API costs by 60-80%
+ * Search Reddit with automatic fallback between providers.
+ * Re-ordered 2026-04-21 after spike measured costs + legal review.
  *
  * Tries in order:
- * 1. Cache - Check if we have recent results
- * 2. Serper (Google Search) - Primary, best value ($50/mo for 50k searches)
- * 3. Apify - Backup
- * 4. Public JSON API - Last resort (risky)
+ * 1. Cache (via cachedQuery wrapper)
+ * 2. Apify automation-lab/reddit-scraper (PRIMARY) — measured $0.003/25 items; posts only
+ * 3. Reddit Public JSON API (FALLBACK) — free, rate-limited, no auth, includes comments
+ * 4. Serper site:reddit.com (LEGACY SAFETY NET, disabled-by-default) — Reddit sued SerpAPI Oct 2025
+ *    for this exact technique under DMCA §1201. Kept behind KAULBY_ALLOW_SERPER_REDDIT=true for
+ *    emergency only; do NOT enable without legal sign-off.
  */
 export async function searchRedditResilient(
   subreddit: string,
@@ -348,32 +351,7 @@ export async function searchRedditResilient(
   // Get optimal TTL based on subreddit activity
   const cacheTTL = getRedditCacheTTL(subreddit);
 
-  // Try Serper first (PRIMARY - best value) with caching
-  const hasSerper = process.env.SERPER_API_KEY;
-  if (hasSerper && !isCircuitOpen("serper")) {
-    try {
-      const { data: posts, cached } = await cachedQuery<RedditPost[]>(
-        "serper:reddit",
-        cacheParams,
-        () => searchRedditSerper(subreddit, keywords, limit),
-        cacheTTL
-      );
-
-      if (cached) {
-        logger.debug("[Reddit] Cache hit", { subreddit, provider: "serper" });
-      }
-
-      recordSuccess("serper");
-      return { posts, source: "serper" };
-    } catch (error) {
-      recordFailure("serper");
-      logger.warn("[Reddit] Serper failed, trying Apify", { error: error instanceof Error ? error.message : String(error) });
-    }
-  } else if (hasSerper && isCircuitOpen("serper")) {
-    logger.debug("[Reddit] Skipping Serper — circuit breaker open", { subreddit });
-  }
-
-  // Try Apify as backup with caching
+  // PRIMARY: Apify automation-lab/reddit-scraper. Measured $0.003/25 items 2026-04-21.
   const hasApify = process.env.APIFY_API_KEY;
   if (hasApify && !isCircuitOpen("apify")) {
     try {
@@ -381,7 +359,7 @@ export async function searchRedditResilient(
         "apify:reddit",
         cacheParams,
         () => searchRedditApify(subreddit, limit),
-        CACHE_TTL.REDDIT_SEARCH
+        cacheTTL
       );
 
       if (cached) {
@@ -392,22 +370,20 @@ export async function searchRedditResilient(
       return { posts, source: "apify" };
     } catch (error) {
       recordFailure("apify");
-      logger.warn("[Reddit] Apify failed, falling back to public API", { error: error instanceof Error ? error.message : String(error) });
+      logger.warn("[Reddit] Apify failed, falling back to public JSON", { error: error instanceof Error ? error.message : String(error) });
     }
   } else if (hasApify && isCircuitOpen("apify")) {
     logger.debug("[Reddit] Skipping Apify — circuit breaker open", { subreddit });
   }
 
-  // Last resort: Public JSON API (risky but works for now) - shorter cache
+  // FALLBACK: Reddit Public JSON API (no auth, rate-limited).
   if (!isCircuitOpen("public")) {
     try {
-      logger.warn("[Reddit] Using public JSON API - NOT RECOMMENDED for production", { subreddit });
-
       const { data: posts, cached } = await cachedQuery<RedditPost[]>(
         "public:reddit",
         cacheParams,
         () => searchRedditPublic(subreddit, limit, keywords),
-        CACHE_TTL.REDDIT_HOT // Shorter TTL for public API since it's risky
+        CACHE_TTL.REDDIT_HOT
       );
 
       if (cached) {
@@ -415,27 +391,45 @@ export async function searchRedditResilient(
       }
 
       recordSuccess("public");
-      return {
-        posts,
-        source: "public",
-        error: "Using risky public API - configure SERPER_API_KEY for reliability"
-      };
+      return { posts, source: "public" };
     } catch (error) {
       recordFailure("public");
+      logger.warn("[Reddit] Public JSON failed", { error: error instanceof Error ? error.message : String(error) });
+    }
+  }
+
+  // LEGACY SAFETY NET: Serper site:reddit.com — disabled by default due to Reddit's Oct 2025
+  // DMCA §1201 suit against SerpAPI for this exact technique. Opt-in via env var only.
+  const allowSerperReddit = process.env.KAULBY_ALLOW_SERPER_REDDIT === "true";
+  const hasSerper = process.env.SERPER_API_KEY;
+  if (allowSerperReddit && hasSerper && !isCircuitOpen("serper")) {
+    try {
+      logger.warn("[Reddit] Using LEGACY Serper path — Oct 2025 DMCA risk, remove ASAP", { subreddit });
+      const { data: posts, cached } = await cachedQuery<RedditPost[]>(
+        "serper:reddit",
+        cacheParams,
+        () => searchRedditSerper(subreddit, keywords, limit),
+        cacheTTL
+      );
+      if (cached) logger.debug("[Reddit] Cache hit", { subreddit, provider: "serper" });
+      recordSuccess("serper");
+      return { posts, source: "serper", error: "Used legacy Serper path — disable KAULBY_ALLOW_SERPER_REDDIT ASAP" };
+    } catch (error) {
+      recordFailure("serper");
       logger.error("[Reddit] All providers failed", { subreddit, error: error instanceof Error ? error.message : String(error) });
       return {
         posts: [],
-        source: "public",
+        source: "serper",
         error: `All Reddit providers failed: ${error instanceof Error ? error.message : "Unknown error"}`,
       };
     }
   }
 
-  logger.error("[Reddit] All providers have open circuit breakers", { subreddit });
+  logger.error("[Reddit] All providers exhausted (Apify primary + Public JSON fallback both unavailable or circuits open)", { subreddit });
   return {
     posts: [],
     source: "public",
-    error: "All Reddit providers temporarily unavailable (circuit breakers open)",
+    error: "Apify + Public JSON unavailable. Set APIFY_API_KEY, or opt into legacy Serper via KAULBY_ALLOW_SERPER_REDDIT=true (not recommended).",
   };
 }
 
@@ -449,6 +443,15 @@ export async function searchRedditSiteWide(
   keywords: string[],
   limit: number = 50
 ): Promise<RedditSearchResult> {
+  // Disabled 2026-04-21 — this used `site:reddit.com` Serper queries which is the exact technique
+  // Reddit sued SerpAPI over in Oct 2025 (DMCA §1201). Re-enable only with legal sign-off by
+  // setting KAULBY_ALLOW_SERPER_REDDIT=true.
+  if (process.env.KAULBY_ALLOW_SERPER_REDDIT !== "true") {
+    logger.debug("[Reddit] Site-wide Serper search disabled (set KAULBY_ALLOW_SERPER_REDDIT=true to force-enable)", {
+      keywordCount: keywords.length,
+    });
+    return { posts: [], source: "serper", error: "Site-wide Serper disabled (DMCA risk)" };
+  }
   const apiKey = process.env.SERPER_API_KEY;
   if (!apiKey) {
     return { posts: [], source: "serper", error: "Serper not configured" };
