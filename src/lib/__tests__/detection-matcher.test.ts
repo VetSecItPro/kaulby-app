@@ -178,6 +178,104 @@ describe("matchDetectionKeywords", () => {
   });
 });
 
+describe("matchDetectionKeywords - fuzzy matching (Task 1.6)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (cache.get as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+  });
+
+  it("fuzzy matches a 1-char typo (pricing -> priceing)", async () => {
+    (db.query.userDetectionKeywords.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { category: "pain_point", keywords: ["pricing"], isActive: true },
+    ]);
+
+    const result = await matchDetectionKeywords(
+      "Their priceing is confusing",
+      "user-1"
+    );
+    expect(result).not.toBeNull();
+    expect(result!.matchedKeyword).toBe("pricing");
+  });
+
+  it("fuzzy matches a 2-char typo (pricing -> priiceing)", async () => {
+    (db.query.userDetectionKeywords.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { category: "pain_point", keywords: ["pricing"], isActive: true },
+    ]);
+
+    const result = await matchDetectionKeywords(
+      "Their priiceing model is weird",
+      "user-1"
+    );
+    expect(result).not.toBeNull();
+    expect(result!.matchedKeyword).toBe("pricing");
+  });
+
+  it("rejects a 3-char-distance typo (pricing -> priiccieng)", async () => {
+    (db.query.userDetectionKeywords.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { category: "pain_point", keywords: ["pricing"], isActive: true },
+    ]);
+
+    const result = await matchDetectionKeywords(
+      "something priiccieng over here",
+      "user-1"
+    );
+    expect(result).toBeNull();
+  });
+
+  it("skips fuzzy matching for short keywords (<5 chars)", async () => {
+    (db.query.userDetectionKeywords.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { category: "pain_point", keywords: ["app"], isActive: true },
+    ]);
+
+    // "pap" and "apk" are 1 edit away from "app" but should NOT match because
+    // the keyword is below the fuzzy minimum length (too many false positives).
+    const result = await matchDetectionKeywords(
+      "I tried pap and apk versions",
+      "user-1"
+    );
+    expect(result).toBeNull();
+  });
+
+  it("exact match still beats fuzzy match when both appear", async () => {
+    (db.query.userDetectionKeywords.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { category: "pain_point", keywords: ["pricing"], isActive: true },
+    ]);
+
+    // Content contains both the typo AND the real word - the exact match
+    // should be the one that sets confidence (baseConfidence, no penalty).
+    const result = await matchDetectionKeywords(
+      "priceing sucks and pricing is high",
+      "user-1"
+    );
+    expect(result).not.toBeNull();
+    // Base confidence for length 7 = 0.6 + 7*0.02 = 0.74. Exact match keeps that.
+    // Fuzzy path would yield 0.74 - 0.15 = 0.59. Exact must win.
+    expect(result!.confidence).toBeCloseTo(0.74, 5);
+  });
+
+  it("fuzzy confidence is lower than exact for the same keyword", async () => {
+    // Exact hit
+    (db.query.userDetectionKeywords.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { category: "pain_point", keywords: ["pricing"], isActive: true },
+    ]);
+    const exactResult = await matchDetectionKeywords("the pricing model", "user-1");
+
+    // Fuzzy hit only
+    vi.clearAllMocks();
+    (cache.get as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (db.query.userDetectionKeywords.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { category: "pain_point", keywords: ["pricing"], isActive: true },
+    ]);
+    const fuzzyResult = await matchDetectionKeywords("the priceing model", "user-1");
+
+    expect(exactResult).not.toBeNull();
+    expect(fuzzyResult).not.toBeNull();
+    expect(fuzzyResult!.confidence).toBeLessThan(exactResult!.confidence);
+    // Penalty is exactly 0.15.
+    expect(exactResult!.confidence - fuzzyResult!.confidence).toBeCloseTo(0.15, 5);
+  });
+});
+
 describe("invalidateKeywordsCache", () => {
   beforeEach(() => {
     vi.clearAllMocks();
