@@ -43,6 +43,10 @@ const ALLOWLIST: Record<string, string> = {
   "src/app/api/integrations/slack/callback/route.ts": "OAuth callback; state-validated, single-use code",
   "src/app/api/integrations/hubspot/callback/route.ts": "OAuth callback; state-validated, single-use code",
   "src/app/api/integrations/discord/callback/route.ts": "OAuth callback; state-validated, single-use code",
+
+  // Email one-click unsubscribe — HMAC-signed link from our own email templates.
+  // Signature verification is the abuse gate; Monday-morning bursts are expected.
+  "src/app/api/user/weekly-digest-unsubscribe/route.ts": "HMAC-signed unsubscribe link; sig is the abuse gate",
 };
 
 /**
