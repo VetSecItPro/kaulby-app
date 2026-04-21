@@ -546,6 +546,8 @@ export const errorLogs = pgTable("error_logs", {
   resolvedBy: text("resolved_by"), // Admin who resolved it
   notes: text("notes"), // Admin notes about resolution
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  // Soft-delete marker for retention policy (90d resolved / 1y unresolved, then 30d grace)
+  deletedAt: timestamp("deleted_at"),
 }, (table) => [
   index("error_logs_level_idx").on(table.level),
   index("error_logs_source_idx").on(table.source),
@@ -718,6 +720,8 @@ export const emailEvents = pgTable("email_events", {
     monitorId?: string;
   }>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  // Soft-delete marker for retention policy (90d 'sent' / 1y 'opened'+'clicked', then 30d grace)
+  deletedAt: timestamp("deleted_at"),
 }, (table) => [
   index("email_events_user_id_idx").on(table.userId),
   index("email_events_email_id_idx").on(table.emailId),
@@ -1084,6 +1088,8 @@ export const aiVisibilityChecks = pgTable("ai_visibility_checks", {
   context: text("context"),
   competitors: jsonb("competitors").$type<string[]>(),
   checkedAt: timestamp("checked_at").defaultNow().notNull(),
+  // Soft-delete marker for tier-keyed retention (90d free / 1y pro / 2y team, then 30d grace)
+  deletedAt: timestamp("deleted_at"),
 }, (table) => [
   index("ai_visibility_checks_user_id_idx").on(table.userId),
   index("ai_visibility_checks_monitor_id_idx").on(table.monitorId),
@@ -1140,6 +1146,8 @@ export const chatMessages = pgTable("chat_messages", {
   }[]>(),
   toolsUsed: jsonb("tools_used").$type<{ name: string; label: string }[]>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  // Soft-delete marker for retention (1y soft-delete, 2y hard-delete)
+  deletedAt: timestamp("deleted_at"),
 }, (table) => [
   index("chat_messages_conversation_id_idx").on(table.conversationId),
   index("chat_messages_created_at_idx").on(table.createdAt),

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { aiVisibilityChecks, monitors } from "@/lib/db/schema";
-import { eq, inArray, desc } from "drizzle-orm";
+import { eq, inArray, desc, and, isNull } from "drizzle-orm";
 import { getEffectiveUserId } from "@/lib/dev-auth";
 import { checkApiRateLimit } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
@@ -41,7 +41,11 @@ export async function GET() {
 
     // Get the latest visibility checks for this user's monitors
     const checks = await db.query.aiVisibilityChecks.findMany({
-      where: inArray(aiVisibilityChecks.monitorId, monitorIds),
+      // Retention: exclude soft-deleted rows from user-facing dashboard (Task 1.2)
+      where: and(
+        inArray(aiVisibilityChecks.monitorId, monitorIds),
+        isNull(aiVisibilityChecks.deletedAt)
+      ),
       orderBy: desc(aiVisibilityChecks.checkedAt),
       limit: 100, // Last 100 check results (covers ~20 brands x 5 queries)
     });

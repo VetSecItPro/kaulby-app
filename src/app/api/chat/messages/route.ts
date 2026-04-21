@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { chatConversations, chatMessages } from "@/lib/db/schema";
-import { eq, and, asc } from "drizzle-orm";
+import { eq, and, asc, isNull } from "drizzle-orm";
 import { getEffectiveUserId } from "@/lib/dev-auth";
 import { isValidUuid } from "@/lib/security";
 import { checkApiRateLimit } from "@/lib/rate-limit";
@@ -50,7 +50,11 @@ export async function GET(req: Request) {
     }
 
     const messages = await db.query.chatMessages.findMany({
-      where: eq(chatMessages.conversationId, conversationId),
+      // Retention: exclude soft-deleted rows from user-facing chat load (Task 1.2)
+      where: and(
+        eq(chatMessages.conversationId, conversationId),
+        isNull(chatMessages.deletedAt)
+      ),
       orderBy: [asc(chatMessages.createdAt)],
     });
 
