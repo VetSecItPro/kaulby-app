@@ -25,6 +25,7 @@ export { instantScan } from "./functions/instant-scan";
 export { analyzeContent } from "./functions/analyze-content";
 export { analyzeContentBatch } from "./functions/analyze-content-batch";
 export { sendAlert, sendDailyDigest, sendWeeklyDigest, sendMonthlyDigest } from "./functions/send-alerts";
+export { sendWeeklyDigestCron } from "./functions/send-weekly-digest";
 export { dataRetention, resetUsageCounters, cleanupAiLogs } from "./functions/data-retention";
 export { sendWebhookEvent, processWebhookDelivery, retryWebhookDeliveries, cleanupWebhookDeliveries } from "./functions/webhook-delivery";
 export { scheduledAccountDeletion } from "./functions/account-deletion";
@@ -71,6 +72,7 @@ import { instantScan } from "./functions/instant-scan";
 import { analyzeContent } from "./functions/analyze-content";
 import { analyzeContentBatch } from "./functions/analyze-content-batch";
 import { sendAlert, sendDailyDigest, sendWeeklyDigest, sendMonthlyDigest } from "./functions/send-alerts";
+import { sendWeeklyDigestCron } from "./functions/send-weekly-digest";
 import { dataRetention, resetUsageCounters, cleanupAiLogs } from "./functions/data-retention";
 import { sendWebhookEvent, processWebhookDelivery, retryWebhookDeliveries, cleanupWebhookDeliveries } from "./functions/webhook-delivery";
 import { scheduledAccountDeletion } from "./functions/account-deletion";
@@ -119,6 +121,7 @@ export const functions = [
   sendAlert,
   sendDailyDigest,
   sendWeeklyDigest,
+  sendWeeklyDigestCron,
   sendMonthlyDigest,
   dataRetention,
   resetUsageCounters,

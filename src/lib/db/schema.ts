@@ -228,6 +228,8 @@ export const users = pgTable("users", {
   }>(),
   // Email digest pause feature
   digestPaused: boolean("digest_paused").default(false).notNull(), // Pause emails while keeping monitors active
+  // Weekly digest opt-out (Task 2.4 — Monday 9am cron for pro/team users)
+  weeklyDigestEnabled: boolean("weekly_digest_enabled").default(true).notNull(),
   // Terms of Service acceptance tracking — legal paper trail
   tosAcceptedAt: timestamp("tos_accepted_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -1160,6 +1162,40 @@ export const chatMessagesRelations = relations(chatMessages, ({ one }) => ({
   }),
 }));
 
+// ---------------------------------------------------------------------------
+// Task 2.1 Phase A — cross-monitor result dedup (join table).
+//
+// Before this table, `results` was keyed 1:1 with a monitor, so if two of a
+// user's monitors matched the same Reddit post we'd write two rows and run AI
+// twice. `monitor_results` is a many-to-many join that lets a single canonical
+// `results` row be linked to every monitor that matched it, keyed by the
+// ingest-layer dedup tuple `(userId, sourceUrl)`.
+//
+// Phase A keeps `results.monitor_id` for read-path backward compatibility
+// (dashboards, digests, alerts still filter by it). Phase B will drop that
+// column and migrate readers through this join table.
+// ---------------------------------------------------------------------------
+export const monitorResults = pgTable("monitor_results", {
+  monitorId: uuid("monitor_id").notNull().references(() => monitors.id, { onDelete: "cascade" }),
+  resultId: uuid("result_id").notNull().references(() => results.id, { onDelete: "cascade" }),
+  matchedAt: timestamp("matched_at").defaultNow().notNull(),
+}, (table) => [
+  primaryKey({ columns: [table.monitorId, table.resultId] }),
+  index("monitor_results_monitor_idx").on(table.monitorId),
+  index("monitor_results_result_idx").on(table.resultId),
+]);
+
+export const monitorResultsRelations = relations(monitorResults, ({ one }) => ({
+  monitor: one(monitors, {
+    fields: [monitorResults.monitorId],
+    references: [monitors.id],
+  }),
+  result: one(results, {
+    fields: [monitorResults.resultId],
+    references: [results.id],
+  }),
+}));
+
 // Type exports
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -1176,6 +1212,8 @@ export type SharedReport = typeof sharedReports.$inferSelect;
 export type AIVisibilityCheck = typeof aiVisibilityChecks.$inferSelect;
 export type ChatConversation = typeof chatConversations.$inferSelect;
 export type ChatMessage = typeof chatMessages.$inferSelect;
+export type MonitorResult = typeof monitorResults.$inferSelect;
+export type NewMonitorResult = typeof monitorResults.$inferInsert;
 
 // Task 2.2: Saved Views - persist filter combinations on the Results page so
 // users can recall triage contexts (e.g. "Hot pain points", "Unread saved")

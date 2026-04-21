@@ -5,6 +5,9 @@ const mockFindMany = vi.fn();
 const mockInsert = vi.fn().mockReturnValue({
   values: vi.fn().mockReturnValue({
     returning: vi.fn().mockResolvedValue([]),
+    onConflictDoNothing: vi.fn().mockReturnValue({
+      returning: vi.fn().mockResolvedValue([]),
+    }),
   }),
 });
 const mockUpdate = vi.fn().mockReturnValue({
@@ -12,6 +15,16 @@ const mockUpdate = vi.fn().mockReturnValue({
     where: vi.fn().mockResolvedValue(undefined),
   }),
 });
+// Task 2.1: saveNewResults now uses pooledDb.select().from().innerJoin().where()
+// for cross-monitor dedup lookup. Returns rows with {id, sourceUrl}.
+const mockSelectRows = vi.fn().mockResolvedValue([]);
+const mockSelect = vi.fn().mockImplementation(() => ({
+  from: () => ({
+    innerJoin: () => ({
+      where: () => mockSelectRows(),
+    }),
+  }),
+}));
 
 vi.mock("@/lib/db", () => ({
   pooledDb: {
@@ -24,14 +37,16 @@ vi.mock("@/lib/db", () => ({
         findMany: (...args: unknown[]) => mockFindMany(...args),
       },
     },
+    select: (...args: unknown[]) => mockSelect(...args),
     insert: (...args: unknown[]) => mockInsert(...args),
     update: (...args: unknown[]) => mockUpdate(...args),
   },
 }));
 
 vi.mock("@/lib/db/schema", () => ({
-  monitors: { isActive: "isActive", platforms: "platforms", id: "id", lastCheckedAt: "lastCheckedAt" },
-  results: { sourceUrl: "sourceUrl", id: "id" },
+  monitors: { isActive: "isActive", platforms: "platforms", id: "id", lastCheckedAt: "lastCheckedAt", userId: "userId" },
+  results: { sourceUrl: "sourceUrl", id: "id", monitorId: "monitorId" },
+  monitorResults: { monitorId: "mr_monitorId", resultId: "mr_resultId" },
 }));
 
 vi.mock("drizzle-orm", () => ({
@@ -272,26 +287,42 @@ describe("inngest monitor-helpers", () => {
       expect(mockStep.run).not.toHaveBeenCalled();
     });
 
-    it("filters out existing results by URL", async () => {
+    it("filters out existing results by URL (now: cross-monitor via monitor_results link)", async () => {
       const items = [
         { url: "https://example.com/1", title: "Post 1" },
         { url: "https://example.com/2", title: "Post 2" },
         { url: "https://example.com/3", title: "Post 3" },
       ];
 
-      // Mock existing results
-      mockFindMany.mockResolvedValueOnce([
-        { sourceUrl: "https://example.com/1" },
-        { sourceUrl: "https://example.com/2" },
+      // Task 2.1: select() returns rows already present for THIS user (any monitor).
+      mockSelectRows.mockResolvedValueOnce([
+        { id: "r-existing-1", sourceUrl: "https://example.com/1" },
+        { id: "r-existing-2", sourceUrl: "https://example.com/2" },
       ]);
 
-      // Mock insert returning only new result
-      const mockInsertChain = {
+      // insert(results) returns only the new canonical row for URL /3.
+      // insert(monitor_results) returns all 3 links (new for this monitor).
+      const insertResultsChain = {
         values: vi.fn().mockReturnValue({
-          returning: vi.fn().mockResolvedValue([{ id: "r3" }]),
+          returning: vi.fn().mockResolvedValue([
+            { id: "r3", sourceUrl: "https://example.com/3" },
+          ]),
         }),
       };
-      mockInsert.mockReturnValueOnce(mockInsertChain);
+      const insertLinksChain = {
+        values: vi.fn().mockReturnValue({
+          onConflictDoNothing: vi.fn().mockReturnValue({
+            returning: vi.fn().mockResolvedValue([
+              { resultId: "r3" },
+              { resultId: "r-existing-1" },
+              { resultId: "r-existing-2" },
+            ]),
+          }),
+        }),
+      };
+      mockInsert
+        .mockReturnValueOnce(insertResultsChain)
+        .mockReturnValueOnce(insertLinksChain);
 
       const result = await saveNewResults({
         items,
@@ -307,8 +338,11 @@ describe("inngest monitor-helpers", () => {
         step: mockStep as never,
       });
 
-      expect(result.count).toBe(1);
-      expect(result.ids).toEqual(["r3"]);
+      // All 3 are "new for this monitor" (new link rows), even though only 1
+      // required a new canonical results row.
+      expect(result.count).toBe(3);
+      expect(result.ids).toEqual(["r3", "r-existing-1", "r-existing-2"]);
+      // Usage only counts the new canonical row.
       expect(mockIncrementResultsCount).toHaveBeenCalledWith("user1", 1);
     });
 
@@ -318,14 +352,28 @@ describe("inngest monitor-helpers", () => {
         { url: "https://example.com/2", title: "Post 2" },
       ];
 
-      mockFindMany.mockResolvedValueOnce([]);
+      mockSelectRows.mockResolvedValueOnce([]);
 
-      const mockInsertChain = {
+      const insertResultsChain = {
         values: vi.fn().mockReturnValue({
-          returning: vi.fn().mockResolvedValue([{ id: "r1" }, { id: "r2" }]),
+          returning: vi.fn().mockResolvedValue([
+            { id: "r1", sourceUrl: "https://example.com/1" },
+            { id: "r2", sourceUrl: "https://example.com/2" },
+          ]),
         }),
       };
-      mockInsert.mockReturnValueOnce(mockInsertChain);
+      const insertLinksChain = {
+        values: vi.fn().mockReturnValue({
+          onConflictDoNothing: vi.fn().mockReturnValue({
+            returning: vi
+              .fn()
+              .mockResolvedValue([{ resultId: "r1" }, { resultId: "r2" }]),
+          }),
+        }),
+      };
+      mockInsert
+        .mockReturnValueOnce(insertResultsChain)
+        .mockReturnValueOnce(insertLinksChain);
 
       const result = await saveNewResults({
         items,
@@ -347,13 +395,24 @@ describe("inngest monitor-helpers", () => {
     });
 
     it("uses custom step suffix in step name", async () => {
-      mockFindMany.mockResolvedValueOnce([]);
-      const mockInsertChain = {
+      mockSelectRows.mockResolvedValueOnce([]);
+      const insertResultsChain = {
         values: vi.fn().mockReturnValue({
-          returning: vi.fn().mockResolvedValue([]),
+          returning: vi
+            .fn()
+            .mockResolvedValue([{ id: "r1", sourceUrl: "https://example.com/1" }]),
         }),
       };
-      mockInsert.mockReturnValueOnce(mockInsertChain);
+      const insertLinksChain = {
+        values: vi.fn().mockReturnValue({
+          onConflictDoNothing: vi.fn().mockReturnValue({
+            returning: vi.fn().mockResolvedValue([{ resultId: "r1" }]),
+          }),
+        }),
+      };
+      mockInsert
+        .mockReturnValueOnce(insertResultsChain)
+        .mockReturnValueOnce(insertLinksChain);
 
       await saveNewResults({
         items: [{ url: "https://example.com/1" }],
@@ -496,14 +555,25 @@ describe("inngest monitor-helpers", () => {
       await applyStagger(1, 2, "reddit", "m2", mockStep as never);
       expect(mockStep.sleep).not.toHaveBeenCalled(); // Only 2 monitors (<=3)
 
-      // Save results
-      mockFindMany.mockResolvedValueOnce([]);
-      const mockInsertChain = {
+      // Save results — Task 2.1 dedup flow: select → insert(results) → insert(monitor_results)
+      mockSelectRows.mockResolvedValueOnce([]);
+      const insertResultsChain = {
         values: vi.fn().mockReturnValue({
-          returning: vi.fn().mockResolvedValue([{ id: "r1" }]),
+          returning: vi
+            .fn()
+            .mockResolvedValue([{ id: "r1", sourceUrl: "https://reddit.com/1" }]),
         }),
       };
-      mockInsert.mockReturnValueOnce(mockInsertChain);
+      const insertLinksChain = {
+        values: vi.fn().mockReturnValue({
+          onConflictDoNothing: vi.fn().mockReturnValue({
+            returning: vi.fn().mockResolvedValue([{ resultId: "r1" }]),
+          }),
+        }),
+      };
+      mockInsert
+        .mockReturnValueOnce(insertResultsChain)
+        .mockReturnValueOnce(insertLinksChain);
 
       const saveResult = await saveNewResults({
         items: [{ url: "https://reddit.com/1" }],

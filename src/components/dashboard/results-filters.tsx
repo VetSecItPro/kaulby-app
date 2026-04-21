@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { ArrowUpDown, X } from "lucide-react";
 import { getPlatformDisplayName } from "@/lib/platform-utils";
+import { track as trackClient } from "@/lib/analytics-client";
 
 interface ResultsFiltersProps {
   /** Platforms this monitor is configured for */
@@ -95,11 +96,19 @@ export function ResultsFilters({
                   ? "h-7 text-xs bg-teal-500 text-black hover:bg-teal-600"
                   : "h-7 text-xs"
               }
-              onClick={() =>
+              onClick={() => {
+                // Analytics: platform filter usage tells us which platforms users
+                // actually slice by (informs which platforms to surface by default).
+                // Fires on both select and deselect — "value" reflects the new state.
+                const nextValue = activePlatform === platform ? "all" : platform;
+                trackClient("ui.filter_applied", {
+                  filterType: "platform",
+                  value: nextValue,
+                });
                 updateParams({
                   platform: activePlatform === platform ? null : platform,
-                })
-              }
+                });
+              }}
             >
               {getPlatformDisplayName(platform)}
             </Button>
@@ -115,9 +124,10 @@ export function ResultsFilters({
       {/* Time range filter */}
       <Select
         value={activeTimeRange || "all"}
-        onValueChange={(value) =>
-          updateParams({ time: value === "all" ? null : value })
-        }
+        onValueChange={(value) => {
+          trackClient("ui.filter_applied", { filterType: "time_range", value });
+          updateParams({ time: value === "all" ? null : value });
+        }}
       >
         <SelectTrigger className="h-7 w-[140px] text-xs">
           <SelectValue placeholder="Time range" />
@@ -137,9 +147,11 @@ export function ResultsFilters({
         variant="outline"
         size="sm"
         className="h-7 text-xs gap-1"
-        onClick={() =>
-          updateParams({ sort: sortOrder === "desc" ? "asc" : "desc" })
-        }
+        onClick={() => {
+          const nextSort = sortOrder === "desc" ? "asc" : "desc";
+          trackClient("ui.filter_applied", { filterType: "sort", value: nextSort });
+          updateParams({ sort: nextSort });
+        }}
       >
         <ArrowUpDown className="h-3 w-3" />
         {sortOrder === "desc" ? "Newest first" : "Oldest first"}

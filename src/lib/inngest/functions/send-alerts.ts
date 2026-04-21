@@ -3,8 +3,7 @@ import { pooledDb, alerts, monitors, results, users } from "@/lib/db";
 import { eq, and, gte, inArray, isNull, ne, or, sql } from "drizzle-orm";
 import { sendAlertEmail, sendDigestEmail, type WeeklyInsights } from "@/lib/email";
 import { getPlanLimits } from "@/lib/plans";
-import { generateWeeklyInsights } from "@/lib/ai";
-import { logAiCall } from "@/lib/ai/log";
+import { computeWeeklyInsightsFor } from "./weekly-insights-helper";
 import { sendWebhookNotification, type NotificationResult } from "@/lib/notifications";
 import { sendDiscordBotMessage } from "@/lib/integrations/discord";
 import { sendTeamsMessage, formatTeamsAlert } from "@/lib/integrations/teams";
@@ -495,46 +494,26 @@ async function sendDigestForTimezone(
       config.includeCategories
     );
 
-    // Generate AI insights for Pro+ users (weekly/monthly only)
+    // Generate AI insights for Pro+ users (weekly/monthly only).
+    // Behavior preserved: gate on plan access, require >=5 results.
+    // The helper wraps the AI call + cost logging and swallows errors
+    // (so a failed insights call never blocks the digest email).
     let aiInsights: WeeklyInsights | undefined;
-    if (config.includeAiInsights && userResults.length >= 5) {
+    if (config.includeAiInsights) {
       const limits = getPlanLimits(user.subscriptionStatus);
       if (limits.aiFeatures.unlimitedAiAnalysis) {
-        try {
-          const insightsResult = await step.run(`generate-insights-${user.id}`, async () => {
-            const analysisResults = userResults.map(r => ({
-              title: r.title,
-              content: r.content,
-              platform: r.platform,
-              sentiment: r.sentiment,
-              painPointCategory: r.painPointCategory,
-              aiSummary: r.aiSummary,
-            }));
-            return generateWeeklyInsights(analysisResults);
-          });
-          const raw = insightsResult.result;
-
-          // Log AI cost for weekly insights generation
-          await logAiCall({
-            userId: user.id,
-            model: insightsResult.meta.model,
-            promptTokens: 0, // generateWeeklyInsights doesn't return token counts
-            completionTokens: 0,
-            costUsd: insightsResult.meta.cost,
-            latencyMs: insightsResult.meta.latencyMs,
-            analysisType: "weekly-insights",
-          });
-
-          aiInsights = {
-            ...raw,
-            // Normalize opportunities to string[] (WeeklyInsightsResult may return objects)
-            opportunities: raw.opportunities.map((o) =>
-              typeof o === "string" ? o : o.description
-            ),
-          };
-        } catch (error) {
-          logger.error("Failed to generate AI insights", { userId: user.id, error: error instanceof Error ? error.message : String(error) });
-        }
+        aiInsights = await computeWeeklyInsightsFor(
+          user.id,
+          userResults.map((r) => ({
+            title: r.title,
+            content: r.content,
+            platform: r.platform,
+            sentiment: r.sentiment,
+            painPointCategory: r.painPointCategory,
+            aiSummary: r.aiSummary,
+          })),
+          step
+        );
       }
     }
 
