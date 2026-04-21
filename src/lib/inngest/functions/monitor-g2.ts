@@ -126,7 +126,7 @@ export const monitorG2 = inngest.createFunction(
       await triggerAiAnalysis(newResultIds, monitor.id, monitor.userId, "g2", step);
 
       monitorResults[monitor.id] = count;
-      await updateMonitorStats(monitor.id, count, step);
+      await updateMonitorStats(monitor.id, count, step, { userId: monitor.userId, platform: "g2" });
     }
 
     return {

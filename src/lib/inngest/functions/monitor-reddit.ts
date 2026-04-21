@@ -212,7 +212,7 @@ export const monitorReddit = inngest.createFunction(
       await triggerAiAnalysis(newResultIds, monitor.id, monitor.userId, "reddit", step);
 
       monitorResults[monitor.id] = monitorMatchCount;
-      await updateMonitorStats(monitor.id, monitorMatchCount, step);
+      await updateMonitorStats(monitor.id, monitorMatchCount, step, { userId: monitor.userId, platform: "reddit" });
     }
 
     return {

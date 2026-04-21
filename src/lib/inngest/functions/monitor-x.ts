@@ -307,7 +307,8 @@ export const monitorX = inngest.createFunction(
       await updateMonitorStats(
         monitor.id,
         monitorResults[monitor.id],
-        step
+        step,
+        { userId: monitor.userId, platform: "x" }
       );
     }
 

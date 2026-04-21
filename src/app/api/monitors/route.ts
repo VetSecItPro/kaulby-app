@@ -12,6 +12,7 @@ import {
 import { Platform, ALL_PLATFORMS, getPlanLimits } from "@/lib/plans";
 import { sanitizeMonitorInput, isValidKeyword } from "@/lib/security";
 import { captureEvent } from "@/lib/posthog";
+import { track } from "@/lib/analytics";
 import { logError } from "@/lib/error-logger";
 import { getEffectiveUserId, verifyUserInDb, isLocalDev as checkIsLocalDev } from "@/lib/dev-auth";
 import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
@@ -315,6 +316,16 @@ export async function POST(request: Request) {
 
     // Revalidate cache
     revalidateTag("monitors");
+
+    // Task 1.4: typed taxonomy event — fires once per monitor create for the
+    // activation funnel. Kept alongside the legacy `monitor_created` event
+    // because existing PostHog dashboards may depend on the legacy name.
+    track("monitor.created", {
+      userId: dbUserId,
+      monitorId: newMonitor.id,
+      platform: allowedPlatforms[0] ?? "unknown",
+      plan: plan as "free" | "pro" | "team",
+    });
 
     return NextResponse.json({
       monitor: newMonitor,

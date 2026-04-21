@@ -117,7 +117,7 @@ export const monitorQuora = inngest.createFunction(
       await triggerAiAnalysis(allNewResultIds, monitor.id, monitor.userId, "quora", step);
 
       monitorResults[monitor.id] = monitorCount;
-      await updateMonitorStats(monitor.id, monitorCount, step);
+      await updateMonitorStats(monitor.id, monitorCount, step, { userId: monitor.userId, platform: "quora" });
     }
 
     return {

@@ -311,7 +311,7 @@ export const monitorGitHub = inngest.createFunction(
       await triggerAiAnalysis(newResultIds, monitor.id, monitor.userId, "github", step);
 
       monitorResults[monitor.id] = monitorMatchCount;
-      await updateMonitorStats(monitor.id, monitorMatchCount, step);
+      await updateMonitorStats(monitor.id, monitorMatchCount, step, { userId: monitor.userId, platform: "github" });
     }
 
     return {

@@ -10,6 +10,7 @@ import { workspaces } from "@/lib/db/schema";
 export const maxDuration = 60;
 import { upsertContact, sendSubscriptionEmail } from "@/lib/email";
 import { captureEvent } from "@/lib/posthog";
+import { track } from "@/lib/analytics";
 import { activateDayPass } from "@/lib/day-pass";
 import { logger } from "@/lib/logger";
 
@@ -157,6 +158,15 @@ export async function POST(request: NextRequest) {
               expiresAt: dayPassResult.expiresAt.toISOString(),
               purchaseCount: dayPassResult.purchaseCount,
             },
+          });
+
+          // Task 1.4: typed revenue event — day pass grants pro-tier access,
+          // so we attribute it to the pro tier with a day_pass interval so
+          // LTV/conversion dashboards can distinguish one-time vs recurring.
+          track("payment.succeeded", {
+            userId,
+            tier: "pro",
+            interval: "day_pass",
           });
 
           logger.info(`Day pass activated for user ${userId} via Polar webhook`);
@@ -334,6 +344,18 @@ export async function POST(request: NextRequest) {
             foundingMemberNumber,
           },
         });
+
+        // Task 1.4: typed revenue event — only paid tiers. Interval defaults
+        // to monthly; Polar product IDs don't reliably tell us annual vs
+        // monthly here, so annual detection is left to Task 1.4b once we wire
+        // product metadata. Skipping on "free" keeps the funnel clean.
+        if (subscriptionStatus === "pro" || subscriptionStatus === "team") {
+          track("payment.succeeded", {
+            userId: user.id,
+            tier: subscriptionStatus,
+            interval: "monthly",
+          });
+        }
         break;
       }
 

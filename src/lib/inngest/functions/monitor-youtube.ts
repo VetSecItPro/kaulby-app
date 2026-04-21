@@ -118,7 +118,7 @@ export const monitorYouTube = inngest.createFunction(
       await triggerAiAnalysis(newResultIds, monitor.id, monitor.userId, "youtube", step);
 
       monitorResults[monitor.id] = count;
-      await updateMonitorStats(monitor.id, count, step);
+      await updateMonitorStats(monitor.id, count, step, { userId: monitor.userId, platform: "youtube" });
     }
 
     return {
