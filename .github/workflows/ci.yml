@@ -126,8 +126,9 @@ jobs:
   # Runs on pull_request only — main-branch pushes skip to keep deploys fast.
   # Uses the built artifact from the `build` job to avoid a second compile.
   # Auth-gated specs (dashboard/monitors/results/settings/onboarding) self-skip
-  # in CI via `test.skip(!isLocalDev, ...)`; the 5 remaining specs cover
-  # homepage, pricing, sign-in widget, SEO pages, and accessibility.
+  # in CI via `test.skip(!isLocalDev, ...)` pending Task 0.3c (test-user seeding).
+  # The 5 specs below cover homepage, pricing, sign-in widget, marketing, SEO,
+  # and accessibility.
   e2e:
     name: E2E Tests
     runs-on: ubuntu-latest
@@ -153,18 +154,19 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
 
       - name: Run E2E tests
-        # Narrowed to the 2 spec files that pass cleanly in the minimal CI env:
-        # accessibility + seo-pages (static pages, no deep server-side data needs).
-        # Task 0.3b tracks re-enabling auth/billing/marketing/dashboard/monitors/
-        # results/settings/onboarding — those require either additional env vars
-        # for pages that currently hit the error boundary (/sign-in, /pricing) or
-        # test-user seeding for authenticated flows. See GitHub issue #TBD.
+        # Runs the 5 auth-free specs: accessibility, seo-pages, auth (sign-in
+        # widget render), billing (pricing page), and marketing. Dashboard /
+        # monitors / results / settings / onboarding specs self-skip in CI via
+        # `test.skip(!isLocalDev, ...)` pending Task 0.3c (test-user seeding).
         run: >-
           pnpm exec playwright test --project=chromium
           e2e/accessibility.spec.ts
           e2e/seo-pages.spec.ts
+          e2e/auth.spec.ts
+          e2e/billing.spec.ts
+          e2e/marketing.spec.ts
         env:
-          # App runtime
+          # ── Core runtime (real values from CI secrets) ──
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
           CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
@@ -172,6 +174,33 @@ jobs:
           NEXT_PUBLIC_CLERK_SIGN_UP_URL: /sign-up
           NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL: /dashboard
           NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL: /pricing
+          # ── App URL (used in metadataBase, HTTP-Referer, redirect URLs) ──
+          NEXT_PUBLIC_APP_URL: http://localhost:3000
+          # ── Sentry (empty DSN disables client init, no throw) ──
+          NEXT_PUBLIC_SENTRY_DSN: ""
+          # ── Clerk webhook secret (not hit at page render; dummy satisfies any
+          #    module-level validation in webhook handlers that might be imported
+          #    transitively) ──
+          CLERK_WEBHOOK_SECRET: whsec_dummy_ci_value_not_used
+          # ── Polar (pricing page reads subscription status client-side; APIs
+          #    return errors which the UI tolerates. Dummy tokens avoid throws
+          #    in any module-level Polar SDK init.) ──
+          POLAR_ACCESS_TOKEN: dummy_polar_token
+          POLAR_WEBHOOK_SECRET: dummy_polar_webhook_secret
+          POLAR_ORG_ID: dummy-org-id
+          POLAR_PRO_MONTHLY_PRODUCT_ID: dummy-pro-monthly
+          POLAR_PRO_ANNUAL_PRODUCT_ID: dummy-pro-annual
+          POLAR_TEAM_MONTHLY_PRODUCT_ID: dummy-team-monthly
+          POLAR_TEAM_ANNUAL_PRODUCT_ID: dummy-team-annual
+          POLAR_DAY_PASS_PRODUCT_ID: dummy-day-pass
+          POLAR_TEAM_SEAT_MONTHLY_PRODUCT_ID: dummy-seat-monthly
+          POLAR_TEAM_SEAT_ANNUAL_PRODUCT_ID: dummy-seat-annual
+          # ── Server-only keys (not used at page render but some modules
+          #    validate at import time) ──
+          OPENROUTER_API_KEY: dummy_openrouter_key
+          RESEND_API_KEY: dummy_resend_key
+          ENCRYPTION_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
+          # ── Upstash Redis left unset → in-memory fallback kicks in ──
 
       - name: Upload Playwright report on failure
         if: failure()
