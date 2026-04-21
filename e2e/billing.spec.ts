@@ -256,13 +256,16 @@ test.describe("Pricing Page - CTAs", () => {
     await expect(proCtaLink).toHaveAttribute("href", "/sign-up?plan=pro");
   });
 
-  test("team plan CTA links to sign-up with enterprise parameter", async ({ page }) => {
+  test("team plan CTA links to sign-up with team parameter", async ({ page }) => {
     test.setTimeout(60_000);
     await page.goto("/pricing", GOTO_OPTS);
 
     const teamCtaLink = page.getByRole("link", { name: /sign up for team/i });
     await expect(teamCtaLink).toBeVisible(VISIBLE_OPTS);
-    await expect(teamCtaLink).toHaveAttribute("href", "/sign-up?plan=enterprise");
+    // Pricing page uses ?plan=team (see src/app/pricing/page.tsx). Test was
+    // previously checking ?plan=enterprise, which pre-dated the Team tier
+    // rename and would never match current code.
+    await expect(teamCtaLink).toHaveAttribute("href", "/sign-up?plan=team");
   });
 
   test("trust signals are displayed below heading", async ({ page }) => {

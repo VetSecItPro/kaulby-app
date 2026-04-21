@@ -83,6 +83,19 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     needs: quality
+    # NEXT_PUBLIC_* vars are BAKED INTO THE BUNDLE at build time. Pages using
+    # Clerk (/sign-in, /pricing, anything behind useUser) crash at runtime when
+    # the bundle was compiled with an undefined key, even if the e2e job
+    # later provides one. Keep this in lockstep with the `e2e` job env block.
+    env:
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+      NEXT_PUBLIC_CLERK_SIGN_IN_URL: /sign-in
+      NEXT_PUBLIC_CLERK_SIGN_UP_URL: /sign-up
+      NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL: /dashboard
+      NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL: /pricing
+      NEXT_PUBLIC_APP_URL: https://kaulbyapp.com
+      NEXT_PUBLIC_POSTHOG_KEY: ${{ secrets.NEXT_PUBLIC_POSTHOG_KEY }}
+      NEXT_PUBLIC_POSTHOG_HOST: ${{ secrets.NEXT_PUBLIC_POSTHOG_HOST }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -153,16 +166,19 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
 
       - name: Run E2E tests
-        # Narrowed to the 2 spec files that pass cleanly in the minimal CI env:
-        # accessibility + seo-pages (static pages, no deep server-side data needs).
-        # Task 0.3b tracks re-enabling auth/billing/marketing/dashboard/monitors/
-        # results/settings/onboarding — those require either additional env vars
-        # for pages that currently hit the error boundary (/sign-in, /pricing) or
-        # test-user seeding for authenticated flows. See GitHub issue #TBD.
+        # Task 0.3b fix: build job now has NEXT_PUBLIC_* env (Clerk keys + App URL +
+        # PostHog), so the client bundle compiles with a valid Clerk key. /sign-in
+        # and /pricing no longer hit the error boundary. 5 specs now running.
+        # Task 0.3c tracks the 5 remaining auth-gated specs (dashboard/monitors/
+        # results/settings/onboarding) — those self-skip via test.skip(!isLocalDev)
+        # and need test-user seeding + dev-auth bypass in CI to unblock.
         run: >-
           pnpm exec playwright test --project=chromium
           e2e/accessibility.spec.ts
           e2e/seo-pages.spec.ts
+          e2e/auth.spec.ts
+          e2e/billing.spec.ts
+          e2e/marketing.spec.ts
         env:
           # App runtime
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
