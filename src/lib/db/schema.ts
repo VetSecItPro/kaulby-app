@@ -228,6 +228,8 @@ export const users = pgTable("users", {
   }>(),
   // Email digest pause feature
   digestPaused: boolean("digest_paused").default(false).notNull(), // Pause emails while keeping monitors active
+  // Weekly digest opt-out (Task 2.4 — Monday 9am cron for pro/team users)
+  weeklyDigestEnabled: boolean("weekly_digest_enabled").default(true).notNull(),
   // Terms of Service acceptance tracking — legal paper trail
   tosAcceptedAt: timestamp("tos_accepted_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

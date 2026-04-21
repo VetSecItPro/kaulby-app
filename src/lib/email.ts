@@ -308,6 +308,155 @@ function buildBreakdownHtml(
     `;
 }
 
+// Weekly digest (Task 2.4) — Monday 9am insights roll-up for pro/team users.
+// Uses the same AI insights payload shape as sendDigestEmail, but a distinct
+// "week at a glance" template so unsubscribe wires to weeklyDigestEnabled
+// (not the broader digestPaused flag shared by daily/weekly/monthly alerts).
+export async function sendWeeklyDigestEmail(params: {
+  to: string;
+  userName: string;
+  userId: string;
+  totalMentions: number;
+  insights?: WeeklyInsights;
+  topMonitors: Array<{ name: string; resultsCount: number }>;
+  unsubscribeUrl: string;
+}) {
+  const emailId = crypto.randomUUID();
+  const sentimentPct =
+    params.insights && params.totalMentions > 0
+      ? Math.round(
+          (params.insights.sentimentBreakdown.positive / params.totalMentions) *
+            100
+        )
+      : 0;
+
+  await getResend().emails.send({
+    from: FROM_EMAIL,
+    to: params.to,
+    subject: `Your week at a glance · ${params.totalMentions} mention${
+      params.totalMentions === 1 ? "" : "s"
+    }`,
+    html:
+      getWeeklyDigestEmailHtml({
+        userName: params.userName,
+        totalMentions: params.totalMentions,
+        sentimentPct,
+        insights: params.insights,
+        topMonitors: params.topMonitors,
+        unsubscribeUrl: params.unsubscribeUrl,
+      }) + trackingPixel(emailId, params.userId, "weekly-digest"),
+  });
+}
+
+function getWeeklyDigestEmailHtml(params: {
+  userName: string;
+  totalMentions: number;
+  sentimentPct: number;
+  insights?: WeeklyInsights;
+  topMonitors: Array<{ name: string; resultsCount: number }>;
+  unsubscribeUrl: string;
+}): string {
+  const { userName, totalMentions, sentimentPct, insights, topMonitors, unsubscribeUrl } = params;
+
+  // Top 3 monitors by mention count
+  const monitorsHtml = topMonitors
+    .slice(0, 3)
+    .map(
+      (m) => `
+        <tr>
+          <td style="padding: 10px 0; border-bottom: 1px solid ${COLORS.cardBorder};">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+              <tr>
+                <td style="color: ${COLORS.text}; font-size: 14px; font-weight: 500;">${escapeHtml(m.name)}</td>
+                <td align="right" style="color: ${COLORS.accent}; font-size: 13px; font-weight: 600;">${m.resultsCount}</td>
+              </tr>
+            </table>
+          </td>
+        </tr>`
+    )
+    .join("");
+
+  const painPointsHtml = insights?.topPainPoints.slice(0, 3).map(
+    (p) => `<li style="margin: 0 0 6px; font-size: 14px; line-height: 1.6; color: ${COLORS.textMuted};">${escapeHtml(p)}</li>`
+  ).join("") || "";
+
+  const opportunitiesHtml = insights?.opportunities.slice(0, 3).map(
+    (o) => `<li style="margin: 0 0 6px; font-size: 14px; line-height: 1.6; color: ${COLORS.textMuted};">${escapeHtml(o)}</li>`
+  ).join("") || "";
+
+  const content = `
+    <tr>
+      <td style="padding: 40px 32px 24px; text-align: center;">
+        <span style="font-size: 11px; font-weight: 600; letter-spacing: 1.5px; color: ${COLORS.accent}; text-transform: uppercase;">Weekly Digest</span>
+        <h1 style="margin: 12px 0 8px; font-size: 28px; font-weight: 700; color: ${COLORS.text};">Your week at a glance</h1>
+        <p style="margin: 0; font-size: 15px; color: ${COLORS.textMuted};">Hey ${escapeHtml(userName)}, here's what happened across your monitors.</p>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 0 32px 24px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: ${COLORS.bg}; border: 1px solid ${COLORS.cardBorder}; border-radius: 12px;">
+          <tr>
+            <td style="padding: 24px; text-align: center;" width="50%">
+              <p style="margin: 0 0 4px; font-size: 11px; font-weight: 600; color: ${COLORS.textDim}; text-transform: uppercase; letter-spacing: 0.5px;">Mentions</p>
+              <p style="margin: 0; font-size: 32px; font-weight: 700; color: ${COLORS.text};">${totalMentions}</p>
+            </td>
+            <td style="padding: 24px; text-align: center; border-left: 1px solid ${COLORS.cardBorder};" width="50%">
+              <p style="margin: 0 0 4px; font-size: 11px; font-weight: 600; color: ${COLORS.textDim}; text-transform: uppercase; letter-spacing: 0.5px;">Positive</p>
+              <p style="margin: 0; font-size: 32px; font-weight: 700; color: ${COLORS.success};">${sentimentPct}%</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    ${insights ? `
+    <tr>
+      <td style="padding: 0 32px 8px;">
+        <p style="margin: 0; font-size: 15px; line-height: 1.6; color: ${COLORS.text}; font-weight: 500;">${escapeHtml(insights.headline)}</p>
+      </td>
+    </tr>
+    ` : ""}
+    ${painPointsHtml ? `
+    <tr>
+      <td style="padding: 16px 32px 8px;">
+        <p style="margin: 0 0 10px; font-size: 12px; font-weight: 600; color: ${COLORS.textDim}; text-transform: uppercase; letter-spacing: 0.5px;">Top Pain Points</p>
+        <ul style="margin: 0; padding-left: 18px;">${painPointsHtml}</ul>
+      </td>
+    </tr>
+    ` : ""}
+    ${opportunitiesHtml ? `
+    <tr>
+      <td style="padding: 16px 32px 8px;">
+        <p style="margin: 0 0 10px; font-size: 12px; font-weight: 600; color: ${COLORS.textDim}; text-transform: uppercase; letter-spacing: 0.5px;">Opportunities</p>
+        <ul style="margin: 0; padding-left: 18px;">${opportunitiesHtml}</ul>
+      </td>
+    </tr>
+    ` : ""}
+    ${monitorsHtml ? `
+    <tr>
+      <td style="padding: 16px 32px 8px;">
+        <p style="margin: 0 0 10px; font-size: 12px; font-weight: 600; color: ${COLORS.textDim}; text-transform: uppercase; letter-spacing: 0.5px;">Top Monitors</p>
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0">${monitorsHtml}</table>
+      </td>
+    </tr>
+    ` : ""}
+    <tr>
+      <td style="padding: 24px 32px 40px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+          <tr>
+            <td align="center">
+              <a href="${APP_URL}/dashboard" style="display: inline-block; padding: 14px 32px; background: ${COLORS.accent}; color: ${COLORS.bg}; text-decoration: none; font-weight: 600; font-size: 14px; border-radius: 50px;">View in dashboard</a>
+            </td>
+          </tr>
+        </table>
+        <p style="margin: 24px 0 0; font-size: 11px; color: ${COLORS.textDim}; text-align: center;">
+          Don't want these? <a href="${unsubscribeUrl}" style="color: ${COLORS.textDim}; text-decoration: underline;">Unsubscribe from weekly digests</a>.
+        </p>
+      </td>
+    </tr>
+  `;
+  return getEmailWrapper(content);
+}
+
 // Send digest email
 export async function sendDigestEmail(params: {
   to: string;
