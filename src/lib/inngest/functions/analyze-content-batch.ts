@@ -1,9 +1,9 @@
 import { inngest } from "../client";
 import { logger } from "@/lib/logger";
 import { pooledDb } from "@/lib/db";
-import { results, monitors } from "@/lib/db/schema";
+import { results, monitors, resultAnalyses } from "@/lib/db/schema";
 import { logAiCall } from "@/lib/ai/log";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { analyzeBatchSentiment } from "@/lib/ai/analyzers/batch-summary";
 import { selectRepresentativeSample, AI_BATCH_CONFIG, getAdaptiveSamplingConfig, getAdaptiveSampleSize, type SampleableItem } from "@/lib/ai/sampling";
 import { createTrace, flushAI } from "@/lib/ai";
@@ -146,23 +146,47 @@ export const analyzeContentBatch = inngest.createFunction(
         ? "neutral"
         : batchAnalysis.overallSentiment;
 
+      const batchAnalysisPayload = {
+        tier: "batch" as const,
+        batchAnalyzed: true,
+        monitorId,
+        overallSentiment: batchAnalysis.overallSentiment,
+        sentimentScore: batchAnalysis.sentimentScore,
+        analyzedAt: new Date().toISOString(),
+      };
+
       await pooledDb
         .update(results)
         .set({
           batchAnalyzed: true,
           sentiment,
           sentimentScore: batchAnalysis.sentimentScore,
-          // Store reference to batch analysis
-          aiAnalysis: JSON.stringify({
-            tier: "batch",
-            batchAnalyzed: true,
-            monitorId,
-            overallSentiment: batchAnalysis.overallSentiment,
-            sentimentScore: batchAnalysis.sentimentScore,
-            analyzedAt: new Date().toISOString(),
-          }),
+          // Legacy column (Phase 3 drops this); Phase 1 dual-writes below
+          aiAnalysis: JSON.stringify(batchAnalysisPayload),
         })
         .where(inArray(results.id, resultIds));
+
+      // Task DL.2 Phase 1 — dual-write to extracted `result_analyses` table.
+      // Same payload for every result in the batch (shared monitor-wide summary).
+      if (resultIds.length > 0) {
+        await pooledDb
+          .insert(resultAnalyses)
+          .values(
+            resultIds.map((rid: string) => ({
+              resultId: rid,
+              analysis: batchAnalysisPayload,
+              tier: "batch",
+            }))
+          )
+          .onConflictDoUpdate({
+            target: resultAnalyses.resultId,
+            set: {
+              analysis: batchAnalysisPayload,
+              tier: "batch",
+              updatedAt: sql`NOW()`,
+            },
+          });
+      }
     });
 
     // Log AI usage

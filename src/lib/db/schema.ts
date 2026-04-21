@@ -1241,3 +1241,39 @@ export const savedViews = pgTable("saved_views", {
 
 export type SavedView = typeof savedViews.$inferSelect;
 export type NewSavedView = typeof savedViews.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// Task DL.2 Phase 1 — extract aiAnalysis JSONB out of the hot `results` table.
+//
+// `results.aiAnalysis` holds 2-5KB of JSON per row. At 10M rows that's
+// 20-50GB of analysis JSON bloating the row cache and slowing every
+// sequential/index scan of `results`, even when queries never touch the
+// analysis column. Extracting it into a sibling 1:1 table cuts the working
+// set of `results` scans by 30-50%.
+//
+// Phase 1 (this table, additive): writers dual-write to both columns.
+// Phase 2 (future PR): one-shot backfill copies legacy rows.
+// Phase 3 (future PR): drop `results.aiAnalysis`.
+// ---------------------------------------------------------------------------
+export const resultAnalyses = pgTable("result_analyses", {
+  resultId: uuid("result_id")
+    .primaryKey()
+    .references(() => results.id, { onDelete: "cascade" }),
+  analysis: jsonb("analysis").notNull(),
+  // "pro" | "team" | "batch" — mirrors the tier field inside the analysis JSON.
+  // Column-level so we can filter analyses by tier without deserializing JSON
+  // (e.g. "find all team-tier analyses in the last hour").
+  tier: text("tier").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const resultAnalysesRelations = relations(resultAnalyses, ({ one }) => ({
+  result: one(results, {
+    fields: [resultAnalyses.resultId],
+    references: [results.id],
+  }),
+}));
+
+export type ResultAnalysis = typeof resultAnalyses.$inferSelect;
+export type NewResultAnalysis = typeof resultAnalyses.$inferInsert;
