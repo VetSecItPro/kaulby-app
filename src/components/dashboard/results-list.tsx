@@ -18,6 +18,7 @@ interface Result {
   author: string | null;
   postedAt: Date | null;
   sentiment: "positive" | "negative" | "neutral" | null;
+  aiAnalyzed?: boolean | null;
   painPointCategory: string | null;
   conversationCategory: ConversationCategory | null;
   aiSummary: string | null;

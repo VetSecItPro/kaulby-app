@@ -5,7 +5,15 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "node",
-    exclude: ["e2e/**", "node_modules/**"],
+    // Exclude Playwright, all nested node_modules (remotion has its own),
+    // and the remotion sub-project (it has its own tests/build pipeline).
+    exclude: [
+      "e2e/**",
+      "**/node_modules/**",
+      "remotion/**",
+      ".next/**",
+      "dist/**",
+    ],
   },
   resolve: {
     alias: {

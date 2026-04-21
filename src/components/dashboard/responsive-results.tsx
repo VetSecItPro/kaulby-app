@@ -136,7 +136,7 @@ function MobileResultsView({
   const [selectedSentiment, setSelectedSentiment] = useState<string | null>(null);
 
   // Infinite scroll via shared hook
-  const { allResults, loadMoreRef, hasMore, loadingMore } = useInfiniteResults({
+  const { allResults, loadMoreRef, hasMore } = useInfiniteResults({
     visibleResults,
     totalPages,
   });

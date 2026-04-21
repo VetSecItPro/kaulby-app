@@ -21,6 +21,24 @@ import { logger } from "@/lib/logger";
 import crypto from "crypto";
 
 /**
+ * Mark a result as analysis-failed without fabricating sentiment values.
+ * Prior behavior set sentiment="neutral" on AI failures, silently converting
+ * negative sentiment to neutral in the warehouse. Now we set aiAnalyzed=false
+ * with the error message; dashboards render a "pending" state and alerts
+ * skip these rows until a retry succeeds.
+ */
+async function saveAnalysisFailure(resultId: string, error: unknown): Promise<void> {
+  const errorMessage = (error instanceof Error ? error.message : String(error)).slice(0, 500);
+  await pooledDb
+    .update(results)
+    .set({
+      aiAnalyzed: false,
+      aiError: errorMessage,
+    })
+    .where(eq(results.id, resultId));
+}
+
+/**
  * Generate a hash of content for cache key
  * This enables cross-user caching - if two users have the same content,
  * we can reuse the AI analysis instead of running it again
@@ -273,6 +291,8 @@ export const analyzeContent = inngest.createFunction(
             conversationCategoryConfidence: cachedAnalysis.conversationCategoryConfidence,
             aiSummary: cachedAnalysis.aiSummary,
             aiAnalysis: cachedAnalysis.aiAnalysis,
+            aiAnalyzed: true,
+            aiError: null,
           })
           .where(eq(results.id, resultId));
       });
@@ -371,6 +391,8 @@ export const analyzeContent = inngest.createFunction(
                 executiveSummary: analysis.executiveSummary,
                 analyzedAt: new Date().toISOString(),
               }),
+              aiAnalyzed: true,
+              aiError: null,
             })
             .where(eq(results.id, resultId));
         });
@@ -472,24 +494,17 @@ export const analyzeContent = inngest.createFunction(
           error: teamError instanceof Error ? teamError.message : String(teamError),
         });
 
-        // Fallback: mark result as analyzed with neutral defaults
-        await step.run("fallback-update-team", async () => {
-          await pooledDb
-            .update(results)
-            .set({
-              sentiment: "neutral",
-              sentimentScore: 50,
-              aiSummary: "Analysis temporarily unavailable. Content has been saved and will be analyzed on the next cycle.",
-              painPointCategory: "general_discussion",
-            })
-            .where(eq(results.id, resultId));
+        // Mark result as analysis-failed; do NOT fabricate sentiment values.
+        // Inngest retries + future scans will re-attempt analysis.
+        await step.run("mark-team-analysis-failed", async () => {
+          await saveAnalysisFailure(resultId, teamError);
         });
 
         return {
           tier: analysisTier,
           cached: false,
-          fallback: true,
-          message: "AI analysis failed — applied fallback values",
+          analyzed: false,
+          message: "AI analysis failed — marked for retry",
         };
       }
     }
@@ -532,6 +547,8 @@ export const analyzeContent = inngest.createFunction(
               conversationCategory: proAnalysisResult.conversationCategory,
               analyzedAt: new Date().toISOString(),
             }),
+            aiAnalyzed: true,
+            aiError: null,
           })
           .where(eq(results.id, resultId));
       });
@@ -636,24 +653,17 @@ export const analyzeContent = inngest.createFunction(
         error: proError instanceof Error ? proError.message : String(proError),
       });
 
-      // Fallback: mark result as analyzed with neutral defaults
-      await step.run("fallback-update-pro", async () => {
-        await pooledDb
-          .update(results)
-          .set({
-            sentiment: "neutral",
-            sentimentScore: 50,
-            aiSummary: "Analysis temporarily unavailable. Content has been saved and will be analyzed on the next cycle.",
-            painPointCategory: "general_discussion",
-          })
-          .where(eq(results.id, resultId));
+      // Mark result as analysis-failed; do NOT fabricate sentiment values.
+      // Inngest retries + future scans will re-attempt analysis.
+      await step.run("mark-pro-analysis-failed", async () => {
+        await saveAnalysisFailure(resultId, proError);
       });
 
       return {
         tier: analysisTier,
         cached: false,
-        fallback: true,
-        message: "AI analysis failed — applied fallback values",
+        analyzed: false,
+        message: "AI analysis failed — marked for retry",
       };
     }
   }

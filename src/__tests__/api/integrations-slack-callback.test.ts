@@ -36,6 +36,10 @@ vi.mock("@/lib/db", () => ({
 
 vi.mock("drizzle-orm", () => ({
   eq: vi.fn(),
+  // schema.ts imports relations() at load time; without this, the test file fails to import.
+  relations: vi.fn(),
+  sql: vi.fn(),
+  and: vi.fn(),
 }));
 
 vi.mock("@/lib/integrations/slack", () => ({

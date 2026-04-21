@@ -256,8 +256,7 @@ export async function getResultsVisibility(userId: string): Promise<{
  */
 export async function canViewAiAnalysis(
   userId: string,
-  resultIndex: number, // 0-based index, 0 = oldest/first result
-  _totalResults: number
+  resultIndex: number // 0-based index, 0 = oldest/first result
 ): Promise<{
   canView: boolean;
   isBlurred: boolean;

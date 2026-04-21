@@ -30,17 +30,19 @@ vi.mock("@/lib/security", () => ({
   sanitizeForLog: (s: string) => s,
 }));
 
+// vi.mock calls are hoisted to the top regardless of where they're written.
+// Keeping this at the top surfaces that fact and silences the vitest warning.
+vi.mock("resend", () => ({
+  Resend: class {
+    constructor() {}
+    emails = {
+      send: vi.fn().mockResolvedValue({ error: null }),
+    };
+  },
+}));
+
 import { POST } from "@/app/api/webhooks/email/route";
 import { NextRequest } from "next/server";
-
-function makeRequest(method: string, url: string, body?: unknown): NextRequest {
-  const init: { method: string; body?: string; headers?: Record<string, string> } = { method };
-  if (body) {
-    init.body = JSON.stringify(body);
-    init.headers = { "Content-Type": "application/json" };
-  }
-  return new NextRequest(`http://localhost${url}`, init);
-}
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -75,16 +77,7 @@ describe("POST /api/webhooks/email", () => {
       },
     });
 
-    // Mock Resend emails.send
-    vi.mock("resend", () => ({
-      Resend: class {
-        constructor() {}
-        emails = {
-          send: vi.fn().mockResolvedValue({ error: null }),
-        };
-      },
-    }));
-
+    // Resend is mocked at the top level (see vi.mock above).
     const res = await POST(req);
     expect(res.status).toBe(200);
   });

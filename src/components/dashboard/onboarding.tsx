@@ -854,30 +854,3 @@ export function QuickStartGuide({ hasMonitors, hasResults, hasAlerts = false, on
   );
 }
 
-function ChecklistItem({
-  completed,
-  label,
-  onClick,
-}: {
-  completed: boolean;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "flex items-center gap-2 w-full text-left text-sm rounded px-2 py-1 transition-colors",
-        completed ? "text-green-600 dark:text-green-400" : "hover:bg-muted"
-      )}
-    >
-      <div className={cn(
-        "h-4 w-4 rounded-full flex items-center justify-center",
-        completed ? "bg-green-100 dark:bg-green-900/30" : "border border-muted-foreground/30"
-      )}>
-        {completed && <Check className="h-2.5 w-2.5" />}
-      </div>
-      <span className={completed ? "line-through" : ""}>{label}</span>
-    </button>
-  );
-}

@@ -417,9 +417,15 @@ export const results = pgTable("results", {
   isHidden: boolean("is_hidden").default(false).notNull(),
   // Batch analysis flag - true if this result was part of a batch analysis instead of individual AI analysis
   batchAnalyzed: boolean("batch_analyzed").default(false).notNull(),
+  // AI analysis outcome tracking — nullable so legacy rows (pre-migration) stay null.
+  // true = analyzed successfully. false = analysis failed, sentiment is null (not fabricated).
+  // Why: prior fallback set sentiment='neutral' on AI failure, silently poisoning sentiment data.
+  aiAnalyzed: boolean("ai_analyzed"),
+  aiError: text("ai_error"), // truncated error message when aiAnalyzed=false; null otherwise
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("results_batch_analyzed_idx").on(table.batchAnalyzed),
+  index("results_ai_analyzed_idx").on(table.aiAnalyzed),
   index("results_created_at_idx").on(table.createdAt),
   index("results_platform_idx").on(table.platform),
   index("results_sentiment_idx").on(table.sentiment),

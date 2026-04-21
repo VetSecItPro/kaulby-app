@@ -71,6 +71,7 @@ ARCHITECTURE.md
 .compliance/
 .db/
 .mdmp/
+.mdmp-state/
 .claude/audits/
 
 # Skill JSON outputs

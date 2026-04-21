@@ -25,16 +25,23 @@ vi.mock("next/headers", () => ({
   ),
 }));
 
-describe("activity-log", () => {
-  let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+const mockLoggerError = vi.fn();
+vi.mock("@/lib/logger", () => ({
+  logger: {
+    error: (...args: unknown[]) => mockLoggerError(...args),
+    info: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+  },
+}));
 
+describe("activity-log", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
   afterEach(() => {
-    consoleErrorSpy.mockRestore();
+    mockLoggerError.mockClear();
   });
 
   describe("logActivity", () => {
@@ -117,10 +124,11 @@ describe("activity-log", () => {
       // Wait for async promise rejection to be handled
       await new Promise(resolve => setTimeout(resolve, 50));
 
-      // Should log error to console
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        "Failed to log activity:",
-        expect.any(Error)
+      // activity-log.ts catches insert failures and logs via the central logger
+      // (not console.error) so production logs stay structured.
+      expect(mockLoggerError).toHaveBeenCalledWith(
+        "Failed to log activity",
+        expect.objectContaining({ error: expect.any(String) })
       );
     });
 
