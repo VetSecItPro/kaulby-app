@@ -78,7 +78,45 @@ jobs:
             p/nextjs
         continue-on-error: true
 
-  # ─── Build (gates e2e, lighthouse, bundle-size) ───
+  # ─── Schema drift safety gate (pull_request only) ───
+  # Fails the PR if a migration under drizzle/*.sql contains destructive SQL
+  # (DROP COLUMN/TABLE/CONSTRAINT, ALTER COLUMN TYPE, SET NOT NULL) without an
+  # explicit opt-in. Opt in by including "[approve-destructive-migration]" in
+  # any commit message on the PR branch, or by adding the
+  # `destructive-migration-approved` label (sets KAULBY_ALLOW_DESTRUCTIVE=1).
+  schema-drift-check:
+    name: Schema Drift Safety Gate
+    runs-on: ubuntu-latest
+    needs: quality
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Need full history so `git diff origin/main...HEAD` resolves.
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Check for destructive schema changes
+        env:
+          BASE_REF: origin/${{ github.base_ref }}
+          # Surface PR title + body to the script so reviewers can opt in from
+          # the PR description instead of having to amend a commit message.
+          KAULBY_COMMIT_MESSAGES: |
+            ${{ github.event.pull_request.title }}
+            ${{ github.event.pull_request.body }}
+          # PR label bypass: setting `destructive-migration-approved` flips
+          # the env flag so the gate passes.
+          KAULBY_ALLOW_DESTRUCTIVE: ${{ contains(github.event.pull_request.labels.*.name, 'destructive-migration-approved') && '1' || '0' }}
+        run: |
+          git fetch origin ${{ github.base_ref }} --depth=50 || true
+          pnpm check:schema-drift
+
+
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -282,7 +320,7 @@ jobs:
   summary:
     name: CI Summary
     runs-on: ubuntu-latest
-    needs: [quality, security, build, e2e, lighthouse, bundle-size]
+    needs: [quality, security, schema-drift-check, build, e2e, lighthouse, bundle-size]
     if: always()
     steps:
       - name: Evaluate results
@@ -308,6 +346,7 @@ jobs:
 
           check_job "Quality" "${{ needs.quality.result }}"
           check_job "Security" "${{ needs.security.result }}"
+          check_job "Schema Drift" "${{ needs.schema-drift-check.result }}"
           check_job "Build" "${{ needs.build.result }}"
           check_job "E2E" "${{ needs.e2e.result }}"
           check_job "Lighthouse" "${{ needs.lighthouse.result }}"
