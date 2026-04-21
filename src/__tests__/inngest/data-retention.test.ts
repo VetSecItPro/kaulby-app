@@ -107,6 +107,12 @@ describe("runDataRetention — Task 1.2 unbounded-table cleanup", () => {
     expect(ran).toContain("hard-delete-error-logs");
     expect(ran).toContain("soft-delete-chat-messages");
     expect(ran).toContain("hard-delete-chat-messages");
+
+    // Task DL.3 adds 4 more: activity_logs + webhook_deliveries (soft + hard each)
+    expect(ran).toContain("soft-delete-activity-logs");
+    expect(ran).toContain("hard-delete-activity-logs");
+    expect(ran).toContain("soft-delete-webhook-deliveries");
+    expect(ran).toContain("hard-delete-webhook-deliveries");
   });
 
   it("aggregates aiVisibilityChecks soft/hard deletion counts into the return payload", async () => {
@@ -161,11 +167,35 @@ describe("runDataRetention — Task 1.2 unbounded-table cleanup", () => {
     expect(shared.state.writeOps).toContainEqual({ stepId: "hard-delete-chat-messages", kind: "delete" });
   });
 
-  it("skips UPDATE/DELETE writes when a step has 0 rows to process", async () => {
-    // All 8 new step counts default to 0 via beforeEach.
+  it("aggregates activityLogs soft/hard deletion counts into the return payload", async () => {
+    setCounts({
+      "soft-delete-activity-logs": 41,
+      "hard-delete-activity-logs": 9,
+    });
     const { step } = makeStep();
     const out = await runDataRetention({ step, logger: silentLogger });
-    // With zero counts, no write ops should fire for the 8 new steps.
+    expect(out.unboundedTables.activityLogs).toEqual({ softDeleted: 41, hardDeleted: 9 });
+    expect(shared.state.writeOps).toContainEqual({ stepId: "soft-delete-activity-logs", kind: "update" });
+    expect(shared.state.writeOps).toContainEqual({ stepId: "hard-delete-activity-logs", kind: "delete" });
+  });
+
+  it("aggregates webhookDeliveries soft/hard deletion counts into the return payload", async () => {
+    setCounts({
+      "soft-delete-webhook-deliveries": 200,
+      "hard-delete-webhook-deliveries": 18,
+    });
+    const { step } = makeStep();
+    const out = await runDataRetention({ step, logger: silentLogger });
+    expect(out.unboundedTables.webhookDeliveries).toEqual({ softDeleted: 200, hardDeleted: 18 });
+    expect(shared.state.writeOps).toContainEqual({ stepId: "soft-delete-webhook-deliveries", kind: "update" });
+    expect(shared.state.writeOps).toContainEqual({ stepId: "hard-delete-webhook-deliveries", kind: "delete" });
+  });
+
+  it("skips UPDATE/DELETE writes when a step has 0 rows to process", async () => {
+    // All 12 new step counts default to 0 via beforeEach.
+    const { step } = makeStep();
+    const out = await runDataRetention({ step, logger: silentLogger });
+    // With zero counts, no write ops should fire for the 12 new steps.
     const newStepIds = new Set([
       "soft-delete-ai-visibility",
       "hard-delete-ai-visibility",
@@ -175,13 +205,19 @@ describe("runDataRetention — Task 1.2 unbounded-table cleanup", () => {
       "hard-delete-error-logs",
       "soft-delete-chat-messages",
       "hard-delete-chat-messages",
+      "soft-delete-activity-logs",
+      "hard-delete-activity-logs",
+      "soft-delete-webhook-deliveries",
+      "hard-delete-webhook-deliveries",
     ]);
     const newWrites = shared.state.writeOps.filter((w) => newStepIds.has(w.stepId));
     expect(newWrites).toHaveLength(0);
-    // All four table breakdowns should be zero.
+    // All six table breakdowns should be zero.
     expect(out.unboundedTables.aiVisibilityChecks).toEqual({ softDeleted: 0, hardDeleted: 0 });
     expect(out.unboundedTables.emailEvents).toEqual({ softDeleted: 0, hardDeleted: 0 });
     expect(out.unboundedTables.errorLogs).toEqual({ softDeleted: 0, hardDeleted: 0 });
     expect(out.unboundedTables.chatMessages).toEqual({ softDeleted: 0, hardDeleted: 0 });
+    expect(out.unboundedTables.activityLogs).toEqual({ softDeleted: 0, hardDeleted: 0 });
+    expect(out.unboundedTables.webhookDeliveries).toEqual({ softDeleted: 0, hardDeleted: 0 });
   });
 });

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getEffectiveUserId } from "@/lib/dev-auth";
 import { db, activityLogs, users } from "@/lib/db";
-import { eq, desc, and, lt } from "drizzle-orm";
+import { eq, desc, and, lt, isNull } from "drizzle-orm";
 import { checkApiRateLimit } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
 
@@ -40,7 +40,11 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get("limit") || "20"), 50);
 
     // Build query conditions
-    const conditions = [eq(activityLogs.workspaceId, user.workspaceId)];
+    // Task DL.3: exclude soft-deleted rows so users don't see records inside the 30d grace window.
+    const conditions = [
+      eq(activityLogs.workspaceId, user.workspaceId),
+      isNull(activityLogs.deletedAt),
+    ];
     if (cursor) {
       conditions.push(lt(activityLogs.createdAt, new Date(cursor)));
     }

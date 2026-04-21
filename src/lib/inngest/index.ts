@@ -27,7 +27,8 @@ export { analyzeContentBatch } from "./functions/analyze-content-batch";
 export { sendAlert, sendDailyDigest, sendWeeklyDigest, sendMonthlyDigest } from "./functions/send-alerts";
 export { sendWeeklyDigestCron } from "./functions/send-weekly-digest";
 export { dataRetention, resetUsageCounters, cleanupAiLogs } from "./functions/data-retention";
-export { sendWebhookEvent, processWebhookDelivery, retryWebhookDeliveries, cleanupWebhookDeliveries } from "./functions/webhook-delivery";
+// Task DL.3: cleanupWebhookDeliveries was removed — retention now handled by dataRetention.
+export { sendWebhookEvent, processWebhookDelivery, retryWebhookDeliveries } from "./functions/webhook-delivery";
 export { scheduledAccountDeletion } from "./functions/account-deletion";
 export { detectCrisis } from "./functions/crisis-detection";
 export { resetStuckScans } from "./functions/reset-stuck-scans";
@@ -74,7 +75,7 @@ import { analyzeContentBatch } from "./functions/analyze-content-batch";
 import { sendAlert, sendDailyDigest, sendWeeklyDigest, sendMonthlyDigest } from "./functions/send-alerts";
 import { sendWeeklyDigestCron } from "./functions/send-weekly-digest";
 import { dataRetention, resetUsageCounters, cleanupAiLogs } from "./functions/data-retention";
-import { sendWebhookEvent, processWebhookDelivery, retryWebhookDeliveries, cleanupWebhookDeliveries } from "./functions/webhook-delivery";
+import { sendWebhookEvent, processWebhookDelivery, retryWebhookDeliveries } from "./functions/webhook-delivery";
 import { scheduledAccountDeletion } from "./functions/account-deletion";
 import { detectCrisis } from "./functions/crisis-detection";
 import { resetStuckScans } from "./functions/reset-stuck-scans";
@@ -129,7 +130,6 @@ export const functions = [
   sendWebhookEvent,
   processWebhookDelivery,
   retryWebhookDeliveries,
-  cleanupWebhookDeliveries,
   scheduledAccountDeletion,
   detectCrisis,
   resetStuckScans,
