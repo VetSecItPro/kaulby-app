@@ -122,8 +122,63 @@ jobs:
           du -sh .next/static/chunks/*.js 2>/dev/null | sort -rh | head -20 >> $GITHUB_STEP_SUMMARY || echo "No chunks found" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
 
-  # E2E tests removed — all tests require Clerk auth secrets not
-  # available in CI. Run locally: pnpm exec playwright test
+  # ─── E2E (Playwright against real app + test Clerk + E2E Neon branch) ───
+  # Runs on pull_request only — main-branch pushes skip to keep deploys fast.
+  # Uses the built artifact from the `build` job to avoid a second compile.
+  # Auth-gated specs (dashboard/monitors/results/settings/onboarding) self-skip
+  # in CI via `test.skip(!isLocalDev, ...)`; the 5 remaining specs cover
+  # homepage, pricing, sign-in widget, SEO pages, and accessibility.
+  e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'pull_request'
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: nextjs-build
+          path: .next
+
+      - name: Install Playwright browser (chromium only)
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        run: pnpm exec playwright test --project=chromium
+        env:
+          # App runtime
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          NEXT_PUBLIC_CLERK_SIGN_IN_URL: /sign-in
+          NEXT_PUBLIC_CLERK_SIGN_UP_URL: /sign-up
+          NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL: /dashboard
+          NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL: /pricing
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+      - name: Upload test results (traces + screenshots) on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 7
 
   # ─── Lighthouse (reuses build artifact) ───
   lighthouse:
@@ -202,7 +257,7 @@ jobs:
   summary:
     name: CI Summary
     runs-on: ubuntu-latest
-    needs: [quality, security, build, lighthouse, bundle-size]
+    needs: [quality, security, build, e2e, lighthouse, bundle-size]
     if: always()
     steps:
       - name: Evaluate results
@@ -229,6 +284,7 @@ jobs:
           check_job "Quality" "${{ needs.quality.result }}"
           check_job "Security" "${{ needs.security.result }}"
           check_job "Build" "${{ needs.build.result }}"
+          check_job "E2E" "${{ needs.e2e.result }}"
           check_job "Lighthouse" "${{ needs.lighthouse.result }}"
           check_job "Bundle Size" "${{ needs.bundle-size.result }}"
 
