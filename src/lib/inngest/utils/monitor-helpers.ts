@@ -9,7 +9,7 @@
  */
 
 import { pooledDb } from "@/lib/db";
-import { monitors, results } from "@/lib/db/schema";
+import { monitors, results, monitorResults } from "@/lib/db/schema";
 import { eq, and, sql, inArray } from "drizzle-orm";
 import {
   incrementResultsCount,
@@ -178,12 +178,36 @@ export async function applyStagger(
 // ---------------------------------------------------------------------------
 
 /**
- * Batch duplicate-check, insert new results, and increment usage.
- * Returns the count and IDs of newly inserted results.
+ * Task 2.1 Phase A — cross-monitor dedup.
+ *
+ * Batch duplicate-check, insert new results, and increment usage. Returns the
+ * count and IDs of results that are NEW for this monitor (the caller uses this
+ * list to trigger AI analysis). A result is "new for this monitor" when the
+ * `monitor_results` link row didn't exist before this call.
+ *
+ * Dedup scope is `(userId, sourceUrl)` across ALL of the user's monitors (not
+ * just the calling monitor). If another monitor owned by the same user already
+ * saved+analyzed the same URL:
+ *   - we reuse the existing `results` row (no new `results` insert, no new AI
+ *     call, no usage increment for that row),
+ *   - we still insert a `monitor_results` link for the calling monitor so it
+ *     shows up on that monitor's dashboard / alerts / digests.
+ *
+ * Net effect: a 5-monitor account tracking the same subreddit on overlapping
+ * keywords pays for AI analysis once instead of 5x.
+ *
+ * Phase A keeps writing `results.monitor_id` on the canonical row (set to the
+ * first monitor that discovered the URL) for read-path compatibility. Phase B
+ * will remove that column and switch readers to `monitor_results`.
+ *
+ * Returned `count`/`ids` are strictly the monitor-scoped NEW items. If the
+ * same saveNewResults call is retried by Inngest, the ON CONFLICT DO NOTHING
+ * link insert plus a post-insert re-read means we return 0 new ids on replay
+ * (idempotent) — AI won't be re-triggered.
  *
  * @param items - Raw items to process
- * @param monitorId - Monitor ID for step naming
- * @param userId - User ID for usage tracking
+ * @param monitorId - Monitor ID for step naming + link insertion
+ * @param userId - User ID for dedup scope + usage tracking
  * @param getSourceUrl - Extract source URL from item (for dedup)
  * @param mapToResult - Map item to database insert values
  * @param step - Inngest step tools
@@ -213,31 +237,101 @@ export async function saveNewResults<T>(params: {
   return step.run(
     `save-results-${monitorId}${stepSuffix ? `-${stepSuffix}` : ""}`,
     async () => {
-      // Batch check for existing results
-      const urls = items.map(getSourceUrl);
-      const existing = await pooledDb.query.results.findMany({
-        where: and(eq(results.monitorId, monitorId), inArray(results.sourceUrl, urls)),
-        columns: { sourceUrl: true },
-      });
-      const existingUrls = new Set(existing.map((r) => r.sourceUrl));
+      // Deduplicate incoming items by sourceUrl — upstream scrapers occasionally
+      // emit the same post twice (e.g. Reddit "new" + "rising"). Keep first.
+      const urls = Array.from(new Set(items.map(getSourceUrl)));
+      const itemByUrl = new Map<string, T>();
+      for (const item of items) {
+        const url = getSourceUrl(item);
+        if (!itemByUrl.has(url)) itemByUrl.set(url, item);
+      }
 
-      // Filter to only new items
-      const newItems = items.filter(
-        (item) => !existingUrls.has(getSourceUrl(item))
-      );
+      // Cross-monitor dedup: look up any existing `results` rows for this USER
+      // that already cover these URLs. We join through the user's monitors so
+      // the dedup scope is per-user (not per-monitor, not global).
+      //
+      // Phase A still relies on `results.monitor_id` → `monitors.user_id` for
+      // ownership. Phase B will read user ownership off `monitor_results`.
+      const existing = await pooledDb
+        .select({
+          id: results.id,
+          sourceUrl: results.sourceUrl,
+        })
+        .from(results)
+        .innerJoin(monitors, eq(results.monitorId, monitors.id))
+        .where(
+          and(
+            eq(monitors.userId, userId),
+            inArray(results.sourceUrl, urls)
+          )
+        );
 
-      if (newItems.length === 0) return { ids: [] as string[], count: 0 };
+      const existingByUrl = new Map<string, string>();
+      for (const row of existing) {
+        // Multiple rows per URL can exist transiently if older per-monitor
+        // duplicates predate this migration; keep the first (any will do —
+        // the link table collapses them going forward).
+        if (!existingByUrl.has(row.sourceUrl)) {
+          existingByUrl.set(row.sourceUrl, row.id);
+        }
+      }
 
-      // Batch insert
-      const inserted = await pooledDb
-        .insert(results)
-        .values(newItems.map(mapToResult))
-        .returning({ id: results.id });
+      // Split URLs into "need new results row" vs "already exists for user".
+      const urlsNeedingInsert = urls.filter((u) => !existingByUrl.has(u));
+      const urlsExistingElsewhere = urls.filter((u) => existingByUrl.has(u));
 
-      // Increment usage
-      await incrementResultsCount(userId, inserted.length);
+      // Insert brand-new result rows (first time this user has seen the URL).
+      // Keep monitor_id set on the canonical row for Phase A read-path compat.
+      let insertedIds: { id: string; sourceUrl: string }[] = [];
+      if (urlsNeedingInsert.length > 0) {
+        const newInserts = urlsNeedingInsert
+          .map((url) => itemByUrl.get(url))
+          .filter((x): x is T => x !== undefined)
+          .map(mapToResult);
 
-      return { ids: inserted.map((r) => r.id), count: inserted.length };
+        insertedIds = await pooledDb
+          .insert(results)
+          .values(newInserts)
+          .returning({ id: results.id, sourceUrl: results.sourceUrl });
+
+        // Usage counter counts canonical analyzable rows, not link rows — a
+        // linked-only match didn't spend a fresh AI call or storage budget.
+        await incrementResultsCount(userId, insertedIds.length);
+      }
+
+      // Build the full set of result ids this monitor should be linked to:
+      // every URL from the scan, either newly inserted or previously existing.
+      const allLinks: { monitorId: string; resultId: string }[] = [];
+      for (const row of insertedIds) {
+        allLinks.push({ monitorId, resultId: row.id });
+      }
+      for (const url of urlsExistingElsewhere) {
+        const resultId = existingByUrl.get(url)!;
+        allLinks.push({ monitorId, resultId });
+      }
+
+      if (allLinks.length === 0) {
+        return { ids: [] as string[], count: 0 };
+      }
+
+      // Insert monitor_results links; the (monitorId, resultId) PK means a
+      // replay of this step is idempotent — ON CONFLICT DO NOTHING skips links
+      // that already exist, and `returning` gives us exactly the links that
+      // were newly created. Those are the resultIds that should trigger AI for
+      // THIS monitor (the canonical AI analysis may have already run for
+      // linked-only results — analyze-content handles that check — but we do
+      // still want per-monitor notifications + digest pickup).
+      const insertedLinks = await pooledDb
+        .insert(monitorResults)
+        .values(allLinks)
+        .onConflictDoNothing({
+          target: [monitorResults.monitorId, monitorResults.resultId],
+        })
+        .returning({ resultId: monitorResults.resultId });
+
+      const newResultIds = insertedLinks.map((r) => r.resultId);
+
+      return { ids: newResultIds, count: newResultIds.length };
     }
   );
 }
