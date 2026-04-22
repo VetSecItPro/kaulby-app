@@ -217,7 +217,7 @@ const toolPages: Record<string, {
         description: "Discover what questions your audience is asking. Create content that answers their real problems.",
       },
     ],
-    platforms: ["reddit", "hackernews", "producthunt", "googlereviews", "trustpilot", "appstore", "playstore", "quora", "youtube", "g2", "yelp", "amazonreviews"],
+    platforms: ["reddit", "hackernews", "producthunt", "googlereviews", "trustpilot", "appstore", "playstore", "youtube", "g2", "yelp", "amazonreviews"],
     ctaText: "Start Free Social Listening",
     faqs: [
       {
@@ -320,7 +320,7 @@ const toolPages: Record<string, {
         description: "Stay on top of reviews across all platforms. Respond professionally to build trust.",
       },
     ],
-    platforms: ["reddit", "hackernews", "producthunt", "googlereviews", "trustpilot", "appstore", "playstore", "quora", "youtube", "g2", "yelp", "amazonreviews"],
+    platforms: ["reddit", "hackernews", "producthunt", "googlereviews", "trustpilot", "appstore", "playstore", "youtube", "g2", "yelp", "amazonreviews"],
     ctaText: "Start Brand Monitoring Free",
     faqs: [
       {
@@ -423,7 +423,7 @@ const toolPages: Record<string, {
         description: "Understand why customers choose competitors. Improve your offering based on real feedback.",
       },
     ],
-    platforms: ["reddit", "hackernews", "producthunt", "googlereviews", "trustpilot", "appstore", "playstore", "quora", "youtube", "g2", "yelp", "amazonreviews"],
+    platforms: ["reddit", "hackernews", "producthunt", "googlereviews", "trustpilot", "appstore", "playstore", "youtube", "g2", "yelp", "amazonreviews"],
     ctaText: "Start Competitor Monitoring Free",
     faqs: [
       {

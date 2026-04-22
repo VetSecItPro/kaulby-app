@@ -77,7 +77,6 @@ const platforms = [
   "Trustpilot",
   "App Store",
   "Play Store",
-  "Quora",
   "YouTube",
   "G2",
   "Yelp",

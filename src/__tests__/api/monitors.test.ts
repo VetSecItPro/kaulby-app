@@ -67,7 +67,7 @@ vi.mock("@/lib/limits", () => ({
 }));
 
 vi.mock("@/lib/plans", () => ({
-  ALL_PLATFORMS: ["reddit", "hackernews", "producthunt", "devto", "google_reviews", "trustpilot", "appstore", "playstore", "quora", "youtube", "g2", "yelp", "amazon_reviews", "indiehackers", "github", "hashnode", "twitter"],
+  ALL_PLATFORMS: ["reddit", "hackernews", "producthunt", "devto", "google_reviews", "trustpilot", "appstore", "playstore", "youtube", "g2", "yelp", "amazon_reviews", "indiehackers", "github", "hashnode", "twitter"],
   getPlanLimits: () => ({}),
 }));
 

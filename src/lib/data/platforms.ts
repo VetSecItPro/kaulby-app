@@ -806,69 +806,8 @@ export const PLATFORMS: PlatformData[] = [
       },
     ],
   },
-  {
-    slug: "quora",
-    name: "Quora",
-    shortName: "Quora",
-    tier: "team",
-    description:
-      "Monitor Quora questions and answers about your brand. Track industry discussions and find opportunities to demonstrate expertise.",
-    heroHeadline: "Monitor Quora Mentions",
-    heroDescription:
-      "Track Quora questions and answers that mention your brand, competitors, or industry topics. Find opportunities to position your product as a solution in high-traffic Q&A threads.",
-    features: [
-      {
-        title: "Question Monitoring",
-        description:
-          "Find Quora questions where users ask about products or solutions in your category.",
-      },
-      {
-        title: "Answer Tracking",
-        description:
-          "Monitor when your brand is mentioned in Quora answers, whether positively or negatively.",
-      },
-      {
-        title: "Topic Trend Analysis",
-        description:
-          "Track trending Quora topics in your industry to stay ahead of market shifts.",
-      },
-      {
-        title: "Lead Opportunity Alerts",
-        description:
-          "Get alerted when users ask questions your product directly answers.",
-      },
-    ],
-    useCases: [
-      "Find questions where your product is a relevant answer",
-      "Track competitor mentions in Q&A threads",
-      "Monitor industry topic trends",
-      "Build thought leadership by engaging with relevant questions",
-    ],
-    exampleKeywords: [
-      "What is the best",
-      "How do I",
-      "alternatives to",
-      "vs comparison",
-      "worth the price",
-    ],
-    faqs: [
-      {
-        question: "Why is Quora monitoring valuable?",
-        answer:
-          "Quora questions rank highly in Google search results. Monitoring them helps you find SEO-relevant discussions where your product can be positioned as a solution.",
-      },
-      {
-        question: "Which plan includes Quora monitoring?",
-        answer:
-          "Quora monitoring is available on the Team plan ($99/mo), which includes all 16 platforms.",
-      },
-      {
-        question: "Does Kaulby track both Quora questions and answers?",
-        answer:
-          "Yes. Kaulby monitors both questions and answers for your keywords. This means you catch mentions whether someone is asking about your product category or recommending (or criticizing) a specific tool in an answer.",
-      },
-    ],
-  },
+  // quora entry removed 2026-04-22 — platform deferred, /monitor/quora SEO page no
+  // longer generated. See .mdmp/apify-platform-cost-audit-2026-04-21.md.
   {
     slug: "g2",
     name: "G2",

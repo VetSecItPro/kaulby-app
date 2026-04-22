@@ -104,7 +104,7 @@ export const TOOL_METADATA: Record<string, ToolMeta> = {
 
 const platformValues = [
   "reddit", "hackernews", "producthunt", "devto", "googlereviews",
-  "trustpilot", "appstore", "playstore", "quora", "youtube",
+  "trustpilot", "appstore", "playstore", "youtube",
   "g2", "yelp", "amazonreviews", "indiehackers", "github", "hashnode", "x",
 ] as const;
 

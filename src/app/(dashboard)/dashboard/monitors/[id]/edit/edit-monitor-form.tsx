@@ -39,7 +39,7 @@ const ALL_PLATFORMS: PlatformDef[] = [
   { id: "x", name: "X (Twitter)", description: "Posts and conversations on X", tier: "pro", needsUrl: false, category: "keyword" },
   { id: "devto", name: "Dev.to", description: "Developer blog posts and discussions", tier: "team", needsUrl: false, category: "keyword" },
   { id: "hashnode", name: "Hashnode", description: "Tech blog network", tier: "team", needsUrl: false, category: "keyword" },
-  { id: "quora", name: "Quora", description: "Q&A discussions", tier: "team", needsUrl: false, category: "keyword" },
+  // quora: deferred — see .mdmp/apify-platform-cost-audit-2026-04-21.md
   // URL-required
   { id: "youtube", name: "YouTube", description: "Video comments and discussions", tier: "pro", needsUrl: true, category: "url_required", urlPlaceholder: "https://www.youtube.com/@channel or video URL", urlHelp: "Paste your YouTube channel URL or a specific video URL to monitor comments." },
   { id: "appstore", name: "App Store", description: "iOS app reviews", tier: "team", needsUrl: true, category: "url_required", urlPlaceholder: "https://apps.apple.com/us/app/name/id123456", urlHelp: "Open your app in the App Store, tap Share, and copy the link." },
