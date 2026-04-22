@@ -35,7 +35,6 @@ const PLATFORM_GUIDELINES: Record<string, string> = {
   reddit: "Be authentic, avoid promotion, share personal experience, use paragraphs.",
   hackernews: "Be concise, technically accurate, avoid marketing speak, be direct.",
   producthunt: "Be supportive, share specific feedback, connect with maker's vision.",
-  quora: "Answer directly, provide context, use educational tone, include examples.",
   default: "Be helpful, genuine, add value, avoid being promotional.",
 };
 
@@ -94,7 +93,7 @@ export async function POST(req: Request) {
     const cleanProductContext = productContext ? sanitizeInput(productContext, 200) : "";
 
     // Security: Validate platform against allowlist to prevent prompt injection via platform field
-    const ALLOWED_PLATFORMS = ["reddit", "hackernews", "producthunt", "devto", "hashnode", "github", "quora", "youtube", "trustpilot", "googlereviews", "g2", "yelp", "amazon", "appstore", "playstore", "indiehackers", "x"];
+    const ALLOWED_PLATFORMS = ["reddit", "hackernews", "producthunt", "devto", "hashnode", "github", "youtube", "trustpilot", "googlereviews", "g2", "yelp", "amazon", "appstore", "playstore", "indiehackers", "x"];
     const normalizedPlatform = platform.toLowerCase().trim();
     if (!ALLOWED_PLATFORMS.includes(normalizedPlatform)) {
       return NextResponse.json({ error: "Invalid platform" }, { status: 400 });

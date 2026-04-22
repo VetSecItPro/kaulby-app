@@ -30,7 +30,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "GummySearch Alternative | Migrate to Kaulby - 17 Platform Monitoring",
   description:
-    "GummySearch is shutting down. Migrate to Kaulby for AI-powered community monitoring across 17 platforms including Reddit, Hacker News, Product Hunt, and more. Free migration available.",
+    "GummySearch is shutting down. Migrate to Kaulby for AI-powered community monitoring across 16 platforms including Reddit, Hacker News, Product Hunt, and more. Free migration available.",
   keywords: [
     "GummySearch alternative",
     "GummySearch replacement",

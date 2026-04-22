@@ -149,7 +149,7 @@ async function SettingsContent() {
       features: [
         "Everything in Pro",
         "30 monitors",
-        "All 17 platforms",
+        "All 16 platforms",
         "20 keywords per monitor",
         "1-year history",
         "2-hour refresh cycle",

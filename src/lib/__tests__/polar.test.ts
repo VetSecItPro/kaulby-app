@@ -218,8 +218,8 @@ describe("polar", () => {
       expect(POLAR_PLANS.pro.limits.platforms).toHaveLength(9);
     });
 
-    it("team tier has all 17 platforms", () => {
-      expect(POLAR_PLANS.team.limits.platforms).toHaveLength(17);
+    it("team tier has all 16 platforms", () => {
+      expect(POLAR_PLANS.team.limits.platforms).toHaveLength(16);
     });
   });
 });

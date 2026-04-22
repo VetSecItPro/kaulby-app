@@ -34,7 +34,7 @@ interface PlatformDef {
   keywordTips?: string;
 }
 
-// All 17 platforms with tier-based access and category grouping
+// All 16 platforms with tier-based access and category grouping
 const ALL_PLATFORMS: PlatformDef[] = [
   // Keyword-searchable platforms (search by terms, no URL needed)
   { id: "reddit", name: "Reddit", description: "Track subreddits and discussions", tier: "free", needsUrl: false, category: "keyword", keywordTips: "Use broad topic terms, industry phrases, and competitor names" },
@@ -45,7 +45,7 @@ const ALL_PLATFORMS: PlatformDef[] = [
   { id: "x", name: "X (Twitter)", description: "Posts and conversations on X", tier: "pro", needsUrl: false, category: "keyword", keywordTips: "Include hashtags (#industry) and @handles for better results" },
   { id: "devto", name: "Dev.to", description: "Developer blog posts and discussions", tier: "team", needsUrl: false, category: "keyword", keywordTips: "Tech topics, frameworks, and programming concepts" },
   { id: "hashnode", name: "Hashnode", description: "Tech blog network", tier: "team", needsUrl: false, category: "keyword", keywordTips: "Developer topics, frameworks, and technical tutorials" },
-  { id: "quora", name: "Quora", description: "Q&A discussions", tier: "team", needsUrl: false, category: "keyword", keywordTips: "Questions people ask about your industry or product" },
+  // quora: deferred — see .mdmp/apify-platform-cost-audit-2026-04-21.md
   // URL-required platforms (need a specific product/app/video URL)
   { id: "youtube", name: "YouTube", description: "Video comments and discussions", tier: "pro", needsUrl: true, category: "url_required", urlPlaceholder: "https://www.youtube.com/@channel or video URL", urlHelp: "Paste your YouTube channel URL or a specific video URL to monitor comments." },
   { id: "appstore", name: "App Store", description: "iOS app reviews", tier: "team", needsUrl: true, category: "url_required", urlPlaceholder: "https://apps.apple.com/us/app/name/id123456", urlHelp: "Open your app in the App Store, tap Share, and copy the link." },
@@ -531,7 +531,7 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
               <CardTitle>Platforms</CardTitle>
               <CardDescription>
                 {isTeamUser
-                  ? "All 17 platforms available. Different platforms need different inputs — we'll guide you."
+                  ? "All 16 platforms available. Different platforms need different inputs — we'll guide you."
                   : isPaidUser
                     ? "9 Pro platforms available. Upgrade to Team for all 17."
                     : "Upgrade to Pro for 9 platforms or Team for all 17."}

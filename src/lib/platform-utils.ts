@@ -16,29 +16,31 @@ export const proPlatforms = [
   "x",              // X (Twitter) via xAI x_search API
 ] as const;
 
-// Team-only platforms (8 additional)
+// Team-only platforms (7 additional)
 export const teamOnlyPlatforms = [
   "devto",          // Reactivated: Dev.to articles
   "hashnode",       // NEW: Hashnode articles
   "appstore",
   "playstore",
-  "quora",
   "g2",
   "yelp",
   "amazonreviews",
 ] as const;
 
-// All active platforms (17 total)
+// All active platforms (16 total)
 export const platforms = [...proPlatforms, ...teamOnlyPlatforms] as const;
 export type Platform = (typeof platforms)[number];
 
-// Legacy platforms kept for historical data display only
-type LegacyPlatform = "twitter";
+// Deferred platforms: not user-selectable, kept for historical data display only.
+// quora: see .mdmp/apify-platform-cost-audit-2026-04-21.md — dropped 2026-04-22 pending
+// a Team-tier-only Crawlee-based reactivation (no official API, Apify actor sunset Oct 2026).
+// twitter: replaced by x (Twitter rebrand).
+type DeferredPlatform = "twitter" | "quora";
 
 /**
  * Human-readable display names for platforms
  */
-export const platformDisplayNames: Record<Platform | LegacyPlatform, string> = {
+export const platformDisplayNames: Record<Platform | DeferredPlatform, string> = {
   // Pro tier platforms
   reddit: "Reddit",
   hackernews: "Hacker News",
@@ -54,11 +56,11 @@ export const platformDisplayNames: Record<Platform | LegacyPlatform, string> = {
   hashnode: "Hashnode",
   appstore: "App Store",
   playstore: "Play Store",
-  quora: "Quora",
   g2: "G2",
   yelp: "Yelp",
   amazonreviews: "Amazon Reviews",
-  // Legacy platforms (kept for historical data)
+  // Deferred platforms (kept for historical data only — not selectable)
+  quora: "Quora",
   twitter: "Twitter",
 };
 

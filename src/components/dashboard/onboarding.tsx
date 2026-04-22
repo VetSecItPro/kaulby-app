@@ -107,7 +107,6 @@ const ALL_PLATFORMS = [
   { id: "trustpilot", name: "Trustpilot", description: "Company reviews" },
   { id: "appstore", name: "App Store", description: "iOS app reviews" },
   { id: "playstore", name: "Play Store", description: "Android app reviews" },
-  { id: "quora", name: "Quora", description: "Q&A discussions" },
   { id: "youtube", name: "YouTube", description: "Video comments" },
   { id: "g2", name: "G2", description: "Software reviews" },
   { id: "yelp", name: "Yelp", description: "Local business reviews" },

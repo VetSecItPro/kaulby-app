@@ -42,7 +42,7 @@ const useCases: UseCase[] = [
     icon: Target,
     title: "Track Competitor Complaints and Feature Gaps",
     description:
-      "Monitor your competitors' names across 17 platforms. When their users complain about missing features or poor experiences, you'll see it first — and can position your product as the answer.",
+      "Monitor your competitors' names across 16 platforms. When their users complain about missing features or poor experiences, you'll see it first — and can position your product as the answer.",
     highlight: "Every competitor complaint is your opportunity.",
     accentFrom: "from-teal-500/20",
     accentTo: "to-teal-600/5",

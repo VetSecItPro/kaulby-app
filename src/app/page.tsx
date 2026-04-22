@@ -94,7 +94,7 @@ export default function HomePage() {
             </h1>
 
             <p className="text-base md:text-lg lg:text-xl text-muted-foreground mb-8 md:mb-10 max-w-2xl mx-auto animate-fade-up px-2" style={{ animationDelay: "0.2s" }}>
-              Kaulby monitors Reddit, reviews, Hacker News, and 17 platforms to surface
+              Kaulby monitors Reddit, reviews, Hacker News, and 16 platforms to surface
               <br className="hidden md:block" />
               <span className="font-medium text-foreground">the conversations that drive product, marketing, and sales decisions.</span>
             </p>
@@ -150,7 +150,7 @@ export default function HomePage() {
                 <StepCard
                   number={2}
                   title="AI Scans and Analyzes"
-                  description="Kaulby scans 17 platforms every 2-4 hours, scoring sentiment, pain points, and buying intent automatically."
+                  description="Kaulby scans 16 platforms every 2-4 hours, scoring sentiment, pain points, and buying intent automatically."
                 />
               </AnimatedStepCard>
               <AnimatedStepCard delay={0.3}>
@@ -231,9 +231,6 @@ export default function HomePage() {
               </AnimatedBadge>
               <AnimatedBadge delay={0.5}>
                 <PlatformBadgeItem platform="hashnode" name="Hashnode" color="text-blue-500" />
-              </AnimatedBadge>
-              <AnimatedBadge delay={0.55}>
-                <PlatformBadgeItem platform="quora" name="Quora" color="text-red-600" />
               </AnimatedBadge>
             </div>
             {/* Row 3: 5 platforms */}

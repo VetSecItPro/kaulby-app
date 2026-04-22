@@ -46,7 +46,6 @@ const PLATFORMS = [
   "trustpilot",
   "appstore",
   "playstore",
-  "quora",
   "youtube",
   "g2",
   "yelp",

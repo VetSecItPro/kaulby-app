@@ -8,11 +8,11 @@ import { Check, ArrowRight, Zap } from "lucide-react";
 export const metadata: Metadata = {
   title: "Switch from GummySearch to Kaulby — Migration Guide",
   description:
-    "GummySearch only monitors Reddit. Kaulby monitors 17 platforms with AI-powered pain point detection, lead scoring, and competitor intelligence. Here's how to switch.",
+    "GummySearch only monitors Reddit. Kaulby monitors 16 platforms with AI-powered pain point detection, lead scoring, and competitor intelligence. Here's how to switch.",
   openGraph: {
     title: "Switch from GummySearch to Kaulby",
     description:
-      "Monitor 17 platforms instead of just Reddit. AI pain points, lead scoring, and competitor intelligence included.",
+      "Monitor 16 platforms instead of just Reddit. AI pain points, lead scoring, and competitor intelligence included.",
   },
 };
 
@@ -20,7 +20,7 @@ const comparisonRows = [
   {
     feature: "Platforms Monitored",
     gummysearch: "Reddit only",
-    kaulby: "17 platforms (Reddit, HN, Google Reviews, Trustpilot, YouTube, X, G2, and more)",
+    kaulby: "16 platforms (Reddit, HN, Google Reviews, Trustpilot, YouTube, X, G2, and more)",
     kaulbyWins: true,
   },
   {
@@ -218,7 +218,7 @@ export default function GummySearchMigrationPage() {
                 <CardTitle className="text-base">Same price, more value</CardTitle>
               </CardHeader>
               <CardContent className="text-sm text-muted-foreground">
-                Both tools are $29/mo for Pro. But Kaulby includes 17 platforms,
+                Both tools are $29/mo for Pro. But Kaulby includes 16 platforms,
                 lead scoring, team workspaces, API access, scheduled reports, and
                 webhook integrations — all included.
               </CardContent>
@@ -282,7 +282,7 @@ export default function GummySearchMigrationPage() {
                 name: "How is Kaulby different from GummySearch?",
                 acceptedAnswer: {
                   "@type": "Answer",
-                  text: "GummySearch monitors Reddit only. Kaulby monitors 17 platforms including Reddit, Hacker News, Google Reviews, Trustpilot, G2, YouTube, and more. Kaulby also includes AI pain point detection, lead scoring, and team workspaces.",
+                  text: "GummySearch monitors Reddit only. Kaulby monitors 16 platforms including Reddit, Hacker News, Google Reviews, Trustpilot, G2, YouTube, and more. Kaulby also includes AI pain point detection, lead scoring, and team workspaces.",
                 },
               },
               {

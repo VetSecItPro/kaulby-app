@@ -7,7 +7,9 @@ export { monitorGoogleReviews } from "./functions/monitor-googlereviews";
 export { monitorTrustpilot } from "./functions/monitor-trustpilot";
 export { monitorAppStore } from "./functions/monitor-appstore";
 export { monitorPlayStore } from "./functions/monitor-playstore";
-export { monitorQuora } from "./functions/monitor-quora";
+// monitorQuora: deferred 2026-04-22 — platform removed from active tier list pending
+// Team-tier-only reactivation with a custom Crawlee actor. See
+// .mdmp/apify-platform-cost-audit-2026-04-21.md (§Quora) and monitor-quora.ts header.
 // New platforms (Phase 3)
 export { monitorYouTube } from "./functions/monitor-youtube";
 export { monitorG2 } from "./functions/monitor-g2";
@@ -55,7 +57,7 @@ import { monitorGoogleReviews } from "./functions/monitor-googlereviews";
 import { monitorTrustpilot } from "./functions/monitor-trustpilot";
 import { monitorAppStore } from "./functions/monitor-appstore";
 import { monitorPlayStore } from "./functions/monitor-playstore";
-import { monitorQuora } from "./functions/monitor-quora";
+// monitorQuora deferred — see export block above
 // New platforms (Phase 3)
 import { monitorYouTube } from "./functions/monitor-youtube";
 import { monitorG2 } from "./functions/monitor-g2";
@@ -102,7 +104,7 @@ export const functions = [
   monitorTrustpilot,
   monitorAppStore,
   monitorPlayStore,
-  monitorQuora,
+  // monitorQuora deferred — not registered as an Inngest function
   // New platforms (Phase 3)
   monitorYouTube,
   monitorG2,

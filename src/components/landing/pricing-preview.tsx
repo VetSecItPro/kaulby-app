@@ -56,7 +56,7 @@ const tiers: PricingTier[] = [
     period: "/month",
     features: [
       "30 monitors",
-      "All 17 platforms",
+      "All 16 platforms",
       "20 keywords per monitor",
       "2hr refresh cycle",
       "Comprehensive AI + API access",

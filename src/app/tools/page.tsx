@@ -49,7 +49,7 @@ const tools = [
   {
     slug: "brand-monitoring",
     name: "Brand Monitoring",
-    description: "Monitor your brand across 17 platforms. Get instant alerts when customers mention you on Reddit, HN, reviews, and more.",
+    description: "Monitor your brand across 16 platforms. Get instant alerts when customers mention you on Reddit, HN, reviews, and more.",
     icon: Building2,
     features: ["12 platform coverage", "Sentiment tracking", "Share of voice", "Team collaboration"],
   },
@@ -77,7 +77,6 @@ const platforms = [
   "Trustpilot",
   "App Store",
   "Play Store",
-  "Quora",
   "YouTube",
   "G2",
   "Yelp",
@@ -91,7 +90,7 @@ const faqs = [
   },
   {
     question: "What platforms does Kaulby monitor?",
-    answer: "Kaulby monitors 17 platforms: Reddit, Hacker News, Product Hunt, Google Reviews, Trustpilot, App Store reviews, Play Store reviews, Quora, YouTube, G2, Yelp, and Amazon Reviews. These are the communities where startup customers actively discuss products.",
+    answer: "Kaulby monitors 16 platforms: Reddit, Hacker News, Product Hunt, Google Reviews, Trustpilot, App Store reviews, Play Store reviews, YouTube, G2, Yelp, and Amazon Reviews. These are the communities where startup customers actively discuss products.",
   },
   {
     question: "How is Kaulby different from other social listening tools?",

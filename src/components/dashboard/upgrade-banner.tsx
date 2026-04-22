@@ -45,7 +45,7 @@ export function UpgradeBanner({ plan, variant = "full", context = "dashboard" }:
       icon: Eye,
       title: "Reddit only",
       description: "Missing pain points on 16 other platforms",
-      cta: "See all 17 platforms",
+      cta: "See all 16 platforms",
     },
     {
       icon: Bell,

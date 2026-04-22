@@ -111,12 +111,6 @@ const PLATFORM_RECOMMENDATIONS: Record<Platform, {
     bestFor: "Android apps and market research",
     tip: "Compare ratings with iOS versions",
   },
-  quora: {
-    headline: "Question & Answer Hub",
-    description: "Where people ask genuine questions",
-    bestFor: "Thought leadership and SEO content ideas",
-    tip: "Find questions your product can answer",
-  },
   youtube: {
     headline: "Video Comment Insights",
     description: "Track discussions in video comments",
@@ -377,7 +371,7 @@ export function DiscoverView({
           Discover
         </h1>
         <p className="text-muted-foreground mt-1">
-          Expand your monitoring coverage and find new opportunities across all 17 platforms.
+          Expand your monitoring coverage and find new opportunities across all 16 platforms.
         </p>
       </div>
 

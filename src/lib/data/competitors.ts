@@ -140,7 +140,7 @@ export const COMPETITORS: CompetitorData[] = [
     category: "Reddit Research",
     pricing: "From $19/mo",
     kaulbyAdvantages: [
-      "Monitors 17 platforms vs Reddit only",
+      "Monitors 16 platforms vs Reddit only",
       "Real-time alerts via email, Slack, and webhooks",
       "AI-powered sentiment analysis and categorization",
       "Review site monitoring (Trustpilot, G2, app stores)",
@@ -295,7 +295,7 @@ export const COMPETITORS: CompetitorData[] = [
     ],
     features: [
       { name: "Reddit Monitoring", kaulby: true, competitor: "Limited" },
-      { name: "Community Platforms", kaulby: "17 platforms", competitor: "Limited" },
+      { name: "Community Platforms", kaulby: "16 platforms", competitor: "Limited" },
       { name: "Social Publishing", kaulby: false, competitor: true },
       { name: "CRM Integration", kaulby: false, competitor: true },
       { name: "AI Analysis", kaulby: true, competitor: true },
@@ -479,7 +479,7 @@ export const COMPETITORS: CompetitorData[] = [
       {
         question: "Why pay for Kaulby when Social Searcher is free?",
         answer:
-          "Social Searcher is a search tool - you manually search and browse results. Kaulby is an automated monitoring platform that continuously scans 17 platforms, analyzes sentiment with AI, and sends you alerts. If you need ongoing monitoring rather than one-off searches, Kaulby provides significantly more value.",
+          "Social Searcher is a search tool - you manually search and browse results. Kaulby is an automated monitoring platform that continuously scans 16 platforms, analyzes sentiment with AI, and sends you alerts. If you need ongoing monitoring rather than one-off searches, Kaulby provides significantly more value.",
       },
     ],
   },

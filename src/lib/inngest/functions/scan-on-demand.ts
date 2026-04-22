@@ -3,6 +3,7 @@ import { pooledDb } from "@/lib/db";
 import { monitors, results, audiences } from "@/lib/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
 import { incrementResultsCount, getUserPlan, canAccessPlatformWithPlan } from "@/lib/limits";
+import type { Platform } from "@/lib/plans";
 import {
   fetchGoogleReviews,
   fetchYelpReviews,
@@ -19,7 +20,6 @@ import {
   searchTrustpilotSerper,
   searchG2Serper,
   searchYelpSerper,
-  searchQuoraSerper,
   searchAmazonSerper,
   searchGoogleReviewsSerper,
   searchAppStoreSerper,
@@ -73,8 +73,15 @@ export const scanOnDemand = inngest.createFunction(
       return getUserPlan(userId);
     });
 
+    // Filter out deferred platforms (quora) — DB enum still accepts them for historical
+    // rows, but they are not scannable. Predicate narrows union to the active Platform type.
+    const DEFERRED_PLATFORMS = new Set(["quora"]);
+    const activePlatforms = monitor.platforms.filter(
+      (p): p is Platform => !DEFERRED_PLATFORMS.has(p)
+    );
+
     // Calculate accessible platforms for progress tracking
-    const accessiblePlatforms = monitor.platforms.filter(p => canAccessPlatformWithPlan(userPlan, p));
+    const accessiblePlatforms = activePlatforms.filter(p => canAccessPlatformWithPlan(userPlan, p));
 
     // Mark as scanning with initial progress
     await step.run("mark-scanning", async () => {
@@ -100,7 +107,7 @@ export const scanOnDemand = inngest.createFunction(
 
     try {
       // Scan each platform configured for this monitor
-      for (const platform of monitor.platforms) {
+      for (const platform of activePlatforms) {
         // Check platform access using pre-fetched plan (no DB hit)
         if (!canAccessPlatformWithPlan(userPlan, platform)) continue;
 
@@ -163,14 +170,6 @@ export const scanOnDemand = inngest.createFunction(
             if (isApifyConfigured()) {
               platformCount = await step.run(`scan-playstore-${monitorId}`, async () => {
                 return scanPlayStoreForMonitor(monitor);
-              });
-            }
-            break;
-
-          case "quora":
-            if (isSerperConfigured()) {
-              platformCount = await step.run(`scan-quora-${monitorId}`, async () => {
-                return scanQuoraForMonitor(monitor);
               });
             }
             break;
@@ -1074,75 +1073,8 @@ async function scanPlayStoreForMonitor(monitor: MonitorData): Promise<number> {
   return count;
 }
 
-async function scanQuoraForMonitor(monitor: MonitorData): Promise<number> {
-  let count = 0;
-
-  const searchTerms = monitor.keywords.length > 0
-    ? monitor.keywords
-    : monitor.companyName
-      ? [monitor.companyName]
-      : [];
-
-  for (const term of searchTerms) {
-    try {
-      const answers = await searchQuoraSerper(term, 15);
-
-      // Batch check for existing results
-      const urls = answers.map(answer => answer.answerUrl || answer.questionUrl || `quora-${answer.questionId}-${answer.answerId || "q"}`);
-      const existing = await pooledDb.query.results.findMany({
-        where: and(eq(results.monitorId, monitor.id), inArray(results.sourceUrl, urls)),
-        columns: { sourceUrl: true },
-      });
-      const existingUrls = new Set(existing.map(r => r.sourceUrl));
-
-      // Filter to only new answers
-      const newAnswers = answers.filter(answer => {
-        const sourceUrl = answer.answerUrl || answer.questionUrl || `quora-${answer.questionId}-${answer.answerId || "q"}`;
-        return !existingUrls.has(sourceUrl);
-      });
-
-      if (newAnswers.length > 0) {
-        // Batch insert all new results
-        const inserted = await pooledDb.insert(results).values(
-          newAnswers.map(answer => ({
-            monitorId: monitor.id,
-            platform: "quora" as const,
-            sourceUrl: answer.answerUrl || answer.questionUrl || `quora-${answer.questionId}-${answer.answerId || "q"}`,
-            title: answer.questionTitle,
-            content: answer.answerText,
-            author: answer.answerAuthor,
-            postedAt: answer.answerDate ? new Date(answer.answerDate) : new Date(),
-            metadata: {
-              quoraQuestionId: answer.questionId,
-              quoraAnswerId: answer.answerId,
-              upvotes: answer.upvotes,
-              views: answer.views,
-            },
-          }))
-        ).returning();
-
-        count += inserted.length;
-
-        // Single batch usage increment
-        await incrementResultsCount(monitor.userId, inserted.length);
-
-        // Batch send analysis events
-        if (inserted.length > 0) {
-          await inngest.send(
-            inserted.map(result => ({
-              name: "content/analyze" as const,
-              data: { resultId: result.id, userId: monitor.userId },
-            }))
-          );
-        }
-      }
-    } catch (error) {
-      logger.error("[Quora] Error scanning", { term, error: error instanceof Error ? error.message : String(error) });
-    }
-  }
-
-  return count;
-}
+// scanQuoraForMonitor removed 2026-04-22 — Quora deferred. See monitor-quora.ts for
+// the reference implementation kept for reactivation reference.
 
 /** Process Product Hunt posts: match, deduplicate, insert, and trigger analysis */
 async function processProductHuntPosts(

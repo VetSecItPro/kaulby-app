@@ -40,7 +40,7 @@ export const ALTERNATIVES: AlternativeData[] = [
     description:
       "GummySearch is a Reddit-focused community research tool that helps you find audience insights and content ideas from subreddits. While useful for Reddit-only research, it lacks multi-platform monitoring, real-time alerts, and AI-driven analysis.",
     metaDescription:
-      "Looking for a GummySearch alternative? Kaulby monitors 17 platforms (not just Reddit), adds AI sentiment analysis, lead scoring, and real-time alerts — starting free.",
+      "Looking for a GummySearch alternative? Kaulby monitors 16 platforms (not just Reddit), adds AI sentiment analysis, lead scoring, and real-time alerts — starting free.",
     website: "https://gummysearch.com",
     pricing: "$29/mo (Pro)",
     platformCount: "Reddit only",
@@ -56,7 +56,7 @@ export const ALTERNATIVES: AlternativeData[] = [
     comparisonRows: [
       {
         feature: "Platforms Monitored",
-        kaulby: "17 platforms",
+        kaulby: "16 platforms",
         competitor: "Reddit only",
       },
       {
@@ -99,7 +99,7 @@ export const ALTERNATIVES: AlternativeData[] = [
       {
         question: "How does pricing compare between Kaulby and GummySearch?",
         answer:
-          "Both offer Pro plans at $29/mo, but Kaulby includes a free tier with Reddit monitoring and no credit card required. GummySearch has no free tier. For the same price, Kaulby gives you 17 platforms versus Reddit only.",
+          "Both offer Pro plans at $29/mo, but Kaulby includes a free tier with Reddit monitoring and no credit card required. GummySearch has no free tier. For the same price, Kaulby gives you 16 platforms versus Reddit only.",
       },
     ],
   },
@@ -185,7 +185,7 @@ export const ALTERNATIVES: AlternativeData[] = [
     description:
       "Brand24 is a social listening platform with broad online monitoring capabilities. It covers social media, news, and blogs, but lacks depth on community platforms and developer ecosystems that matter to SaaS and startup teams.",
     metaDescription:
-      "Looking for a Brand24 alternative? Kaulby offers deeper community monitoring across 17 platforms with AI analysis and lead scoring — starting at $0/mo.",
+      "Looking for a Brand24 alternative? Kaulby offers deeper community monitoring across 16 platforms with AI analysis and lead scoring — starting at $0/mo.",
     website: "https://brand24.com",
     pricing: "From $79/mo",
     platformCount: "Social + news + blogs",
@@ -262,7 +262,7 @@ export const ALTERNATIVES: AlternativeData[] = [
     description:
       "Syften is a community monitoring tool that tracks mentions across Reddit, Hacker News, and other forums. It is affordable and focused, but lacks AI-powered analysis, lead scoring, and the breadth of platform coverage that modern teams need.",
     metaDescription:
-      "Looking for a Syften alternative? Kaulby monitors 17 platforms with AI sentiment analysis, lead scoring, and team features — with a free tier to start.",
+      "Looking for a Syften alternative? Kaulby monitors 16 platforms with AI sentiment analysis, lead scoring, and team features — with a free tier to start.",
     website: "https://syften.com",
     pricing: "$17/mo",
     platformCount: "Reddit + a few forums",
@@ -284,7 +284,7 @@ export const ALTERNATIVES: AlternativeData[] = [
     comparisonRows: [
       {
         feature: "Platforms Monitored",
-        kaulby: "17 platforms",
+        kaulby: "16 platforms",
         competitor: "~5 forums",
       },
       {
@@ -353,7 +353,7 @@ export const ALTERNATIVES: AlternativeData[] = [
     comparisonRows: [
       {
         feature: "Platforms Monitored",
-        kaulby: "17 platforms",
+        kaulby: "16 platforms",
         competitor: "3 platforms",
       },
       {
@@ -386,7 +386,7 @@ export const ALTERNATIVES: AlternativeData[] = [
       {
         question: "Is Kaulby better than F5Bot?",
         answer:
-          "F5Bot is a great free tool for basic keyword alerts on Reddit and Hacker News. Kaulby is a full monitoring platform with 17 platforms, AI analysis, lead scoring, dashboards, and team features. If you have outgrown F5Bot, Kaulby is the natural upgrade — and it also has a free tier.",
+          "F5Bot is a great free tool for basic keyword alerts on Reddit and Hacker News. Kaulby is a full monitoring platform with 16 platforms, AI analysis, lead scoring, dashboards, and team features. If you have outgrown F5Bot, Kaulby is the natural upgrade — and it also has a free tier.",
       },
       {
         question: "Is Kaulby free like F5Bot?",
@@ -396,7 +396,7 @@ export const ALTERNATIVES: AlternativeData[] = [
       {
         question: "Why switch from F5Bot to Kaulby?",
         answer:
-          "F5Bot gives you keyword alerts but nothing else. Kaulby gives you a full monitoring dashboard, AI-powered sentiment analysis, pain point detection, lead scoring, team workspaces, and coverage of 17 platforms including review sites and YouTube.",
+          "F5Bot gives you keyword alerts but nothing else. Kaulby gives you a full monitoring dashboard, AI-powered sentiment analysis, pain point detection, lead scoring, team workspaces, and coverage of 16 platforms including review sites and YouTube.",
       },
     ],
   },

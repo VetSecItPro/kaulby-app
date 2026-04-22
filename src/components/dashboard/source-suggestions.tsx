@@ -77,11 +77,6 @@ const platformMetadata: Record<Platform, {
     bestFor: ["Android apps", "mobile products", "competitor apps"],
     suggestFor: ["app", "mobile", "Android", "consumer"],
   },
-  quora: {
-    description: "Q&A platform with high search visibility",
-    bestFor: ["thought leadership", "long-form questions", "SEO"],
-    suggestFor: ["question", "how to", "why", "best"],
-  },
   youtube: {
     description: "Video comments and discussions",
     bestFor: ["consumer products", "tech reviews", "tutorials"],
@@ -264,7 +259,7 @@ const SuggestionCard = memo(function SuggestionCard({
  * Source Suggestions Component
  *
  * Intelligently suggests platforms users should consider monitoring
- * based on their current setup and keywords. Works across all 17 platforms.
+ * based on their current setup and keywords. Works across all 16 platforms.
  */
 export const SourceSuggestions = memo(function SourceSuggestions({
   currentPlatforms,

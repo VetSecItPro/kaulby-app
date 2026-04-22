@@ -113,7 +113,7 @@ const plans: Plan[] = [
     features: [
       { text: "Everything in Pro" },
       { text: "30 monitors" },
-      { text: "All 17 platforms" },
+      { text: "All 16 platforms" },
       { text: "20 keywords per monitor" },
       { text: "1-year history" },
       { text: "2-hour refresh cycle" },
@@ -133,7 +133,7 @@ const plans: Plan[] = [
 const featureComparison = [
   { feature: "Monitors", free: "1", pro: "10", team: "30" },
   { feature: "Keywords per monitor", free: "3", pro: "10", team: "20" },
-  { feature: "Platforms", free: "Reddit only", pro: "9 platforms", team: "All 17 platforms" },
+  { feature: "Platforms", free: "Reddit only", pro: "9 platforms", team: "All 16 platforms" },
   { feature: "Results visible", free: "Last 3", pro: "Unlimited", team: "Unlimited" },
   { feature: "History retention", free: "3 days", pro: "90 days", team: "1 year" },
   { feature: "Refresh cycle", free: "24 hours", pro: "4 hours", team: "2 hours" },
@@ -594,8 +594,8 @@ export default function PricingPage() {
             { question: "Is there really a free plan?", answer: "Yes! The Free plan is free forever. You can monitor 1 keyword on Reddit with basic AI analysis and daily refresh." },
             { question: "How does the 14-day free trial work?", answer: "Pro and Team plans include a 14-day free trial with full access to all features. You won't be charged until the trial ends. Cancel anytime during the trial." },
             { question: "Can I cancel anytime?", answer: "Yes, you can cancel your subscription at any time from your account settings. You'll continue to have access until the end of your current billing period." },
-            { question: "What platforms does Kaulby monitor?", answer: "Kaulby monitors 17 platforms: Reddit, Hacker News, Indie Hackers, Product Hunt, Google Reviews, YouTube, GitHub, Trustpilot, X (Twitter), Dev.to, Hashnode, App Store, Play Store, Quora, G2, Yelp, and Amazon Reviews." },
-            { question: "How is Kaulby different from Brand24?", answer: "Kaulby focuses on community monitoring with AI-powered pain point detection and sentiment analysis across 17 platforms, starting at $29/mo. Brand24 starts at $99/mo and focuses on broader social media monitoring." },
+            { question: "What platforms does Kaulby monitor?", answer: "Kaulby monitors 16 platforms: Reddit, Hacker News, Indie Hackers, Product Hunt, Google Reviews, YouTube, GitHub, Trustpilot, X (Twitter), Dev.to, Hashnode, App Store, Play Store, G2, Yelp, and Amazon Reviews." },
+            { question: "How is Kaulby different from Brand24?", answer: "Kaulby focuses on community monitoring with AI-powered pain point detection and sentiment analysis across 16 platforms, starting at $29/mo. Brand24 starts at $99/mo and focuses on broader social media monitoring." },
             { question: "What replaced GummySearch?", answer: "Kaulby is the best GummySearch alternative. It covers Reddit plus 16 additional platforms, includes AI-powered analysis, and offers a free tier. Visit kaulbyapp.com/gummysearch for migration details." },
             { question: "What is the Day Pass?", answer: "The Day Pass gives you full Pro access for 24 hours with a one-time $10 payment. Perfect for quick research without committing to a subscription." },
             { question: "How often are results refreshed?", answer: "Free plans refresh once per day. Pro plans refresh every 4 hours. Team plans refresh every 2 hours with twice-daily email digests." },
@@ -653,11 +653,11 @@ export default function PricingPage() {
               <AccordionItem value="platforms">
                 <AccordionTrigger>What platforms do you monitor?</AccordionTrigger>
                 <AccordionContent>
-                  We monitor 17 platforms total: Reddit, Hacker News, Indie Hackers, Product Hunt,
+                  We monitor 16 platforms total: Reddit, Hacker News, Indie Hackers, Product Hunt,
                   Google Reviews, YouTube, GitHub, Trustpilot, X (Twitter), Dev.to, Hashnode, App Store, Play Store,
-                  Quora, G2, Yelp, and Amazon Reviews. The Free plan includes Reddit only.
+                  G2, Yelp, and Amazon Reviews. The Free plan includes Reddit only.
                   Pro includes 9 core platforms (Reddit, HN, Indie Hackers, Product Hunt, Google Reviews, YouTube, GitHub, Trustpilot, X).
-                  Team includes all 17 platforms.
+                  Team includes all 16 platforms.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="refresh">
