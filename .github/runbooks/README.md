@@ -13,6 +13,8 @@ One-page playbooks for common operational tasks. Each runbook is self-contained:
 | [ci-env-drift.md](./ci-env-drift.md) | Diagnose "works locally, fails in CI" — env var drift between `.env.example` and GitHub Actions |
 | [schema-migration.md](./schema-migration.md) | Apply schema changes safely — additive direct-push vs destructive multi-deploy flow |
 | [scripts-inventory.md](./scripts-inventory.md) | What's in `scripts/` — each script, purpose, when to run, safety notes |
+| [github-webhooks.md](./github-webhooks.md) | GitHub webhook event list, HMAC-SHA256 signature verification, GitHub App installation model, Kaulby receiver wiring |
+| [reddit-safety.md](./reddit-safety.md) | Reddit data-path policy (R12): Apify primary + Public JSON fallback + Serper legacy opt-in. Hard rules, cease-and-desist playbook, GummySearch lesson |
 
 ## Conventions
 

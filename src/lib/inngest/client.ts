@@ -87,4 +87,17 @@ export type Events = {
       };
     };
   };
+  // COA 4 W2.4: GitHub webhook receiver fan-out. The receiver verifies the
+  // signature and immediately responds 200; actual payload processing happens
+  // asynchronously in the github-webhook-processor Inngest function.
+  "github/webhook.received": {
+    data: {
+      event: string; // value of X-GitHub-Event header (issues, pull_request, ...)
+      deliveryId: string; // value of X-GitHub-Delivery header (replay-detection id)
+      installationId: number | null;
+      repoFullName: string | null; // "owner/name"
+      action: string | null; // payload.action (opened, edited, created, ...)
+      payload: Record<string, unknown>; // raw JSON-parsed payload
+    };
+  };
 };

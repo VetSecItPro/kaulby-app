@@ -48,6 +48,8 @@ export { syncHubspotContacts } from "./functions/sync-hubspot-contacts";
 export { checkAIVisibilityJob } from "./functions/ai-visibility";
 // Chat cleanup
 export { chatCleanup } from "./functions/chat-cleanup";
+// COA 4 W2.4: GitHub webhook async processor
+export { githubWebhookProcessor } from "./functions/github-webhook-processor";
 
 // All functions for the Inngest handler
 import { monitorReddit } from "./functions/monitor-reddit";
@@ -95,6 +97,7 @@ import { syncHubspotContacts } from "./functions/sync-hubspot-contacts";
 import { checkAIVisibilityJob } from "./functions/ai-visibility";
 // Chat cleanup
 import { chatCleanup } from "./functions/chat-cleanup";
+import { githubWebhookProcessor } from "./functions/github-webhook-processor";
 
 export const functions = [
   monitorReddit,
@@ -154,4 +157,6 @@ export const functions = [
   checkAIVisibilityJob,
   // Chat cleanup
   chatCleanup,
+  // COA 4 W2.4
+  githubWebhookProcessor,
 ];

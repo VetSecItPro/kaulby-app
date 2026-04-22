@@ -1,3 +1,7 @@
+// Reddit scheduled monitor.
+// Read `.github/runbooks/reddit-safety.md` (R12) before editing. Key rules:
+// Apify primary → Public JSON fallback → Serper disabled by default. Actor
+// swap or cadence changes require runbook update.
 import { inngest } from "../client";
 import { logger } from "@/lib/logger";
 import { pooledDb } from "@/lib/db";
