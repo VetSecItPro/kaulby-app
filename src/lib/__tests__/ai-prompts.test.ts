@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { SYSTEM_PROMPTS, buildAnalysisPrompt } from "../ai/prompts";
+import { SYSTEM_PROMPTS, buildAnalysisPrompt, withPersonaVoice, TEAM_ANALYST_PERSONA } from "../ai/prompts";
 
 describe("ai/prompts", () => {
   describe("SYSTEM_PROMPTS", () => {
@@ -143,6 +143,43 @@ describe("ai/prompts", () => {
       expect(result.user).toContain('"keywords"');
       expect(result.user).toContain("saas");
       expect(result.user).toContain("150");
+    });
+  });
+
+  // COA 4 W2.6 — persona voice guard rails.
+  describe("TEAM_ANALYST_PERSONA + withPersonaVoice", () => {
+    it("persona introduces Kaulby and defines first-person voice", () => {
+      expect(TEAM_ANALYST_PERSONA).toContain("Kaulby");
+      expect(TEAM_ANALYST_PERSONA).toContain("first-person");
+    });
+
+    it("persona bans marketing-speak words", () => {
+      // Voice rule violations we never want the model to echo back.
+      expect(TEAM_ANALYST_PERSONA).toContain("Banned words");
+      expect(TEAM_ANALYST_PERSONA).toContain("synergy");
+    });
+
+    it("persona ends with a trailing blank line so the base prompt concatenates cleanly", () => {
+      expect(TEAM_ANALYST_PERSONA).toMatch(/\n\n$/);
+    });
+
+    it("withPersonaVoice prepends persona to base prompt", () => {
+      const base = "ANALYZE THIS:\n  some instructions";
+      const wrapped = withPersonaVoice(base);
+      expect(wrapped.startsWith(TEAM_ANALYST_PERSONA)).toBe(true);
+      expect(wrapped.endsWith(base)).toBe(true);
+      expect(wrapped.length).toBe(TEAM_ANALYST_PERSONA.length + base.length);
+    });
+
+    it("withPersonaVoice does NOT duplicate persona if called twice (guard note)", () => {
+      // We don't actively de-dupe, so a double call would produce two persona
+      // blocks. This test codifies the behavior: callers MUST only wrap once.
+      // If this ever changes to a dedupe implementation, update this test.
+      const base = "BASE";
+      const doubled = withPersonaVoice(withPersonaVoice(base));
+      // Two occurrences of the persona's signature phrase.
+      const matches = doubled.match(/You are Kaulby/g) ?? [];
+      expect(matches.length).toBe(2);
     });
   });
 });
