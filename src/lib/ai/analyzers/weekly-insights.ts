@@ -1,5 +1,5 @@
-import { jsonCompletion } from "../openrouter";
-import { SYSTEM_PROMPTS } from "../prompts";
+import { jsonCompletion, MODELS } from "../openrouter";
+import { SYSTEM_PROMPTS, withPersonaVoice } from "../prompts";
 
 export interface WeeklyInsightsResult {
   headline: string;
@@ -36,7 +36,8 @@ interface ResultForAnalysis {
 }
 
 export async function generateWeeklyInsights(
-  results: ResultForAnalysis[]
+  results: ResultForAnalysis[],
+  options?: { model?: string }
 ): Promise<{ result: WeeklyInsightsResult; meta: { model: string; cost: number; latencyMs: number } }> {
   // Prepare data for analysis
   const sentimentCounts = {
@@ -82,11 +83,20 @@ ${i + 1}. "${r.title}"
 `).join("\n")}
 `;
 
+  // COA 4 W2.7 — Team tier gets Kaulby's persona voice prepended; Pro/Free
+  // use the base prompt. Model selection is also caller-driven so Team tier
+  // can run the weekly digest on Sonnet 4.5.
+  const useTeamPersona = options?.model === MODELS.team;
+  const systemPrompt = useTeamPersona
+    ? withPersonaVoice(SYSTEM_PROMPTS.weeklyInsights)
+    : SYSTEM_PROMPTS.weeklyInsights;
+
   const { data, meta } = await jsonCompletion<WeeklyInsightsResult>({
     messages: [
-      { role: "system", content: SYSTEM_PROMPTS.weeklyInsights },
+      { role: "system", content: systemPrompt },
       { role: "user", content },
     ],
+    model: options?.model ?? MODELS.primary,
   });
 
   // Supplement AI response with actual counts

@@ -12,6 +12,7 @@
 
 import type { WeeklyInsights } from "@/lib/email";
 import { generateWeeklyInsights } from "@/lib/ai";
+import { MODELS } from "@/lib/ai/openrouter";
 import { logAiCall } from "@/lib/ai/log";
 import { logger } from "@/lib/logger";
 
@@ -48,13 +49,20 @@ export async function computeWeeklyInsightsFor(
   userId: string,
   results: InsightResult[],
   step: InsightsStep,
-  minResults = 5
+  minResults = 5,
+  plan?: "free" | "pro" | "team"
 ): Promise<WeeklyInsights | undefined> {
   if (results.length < minResults) return undefined;
 
   try {
+    // COA 4 W2.7: Team tier → Sonnet 4.5 + persona voice; Pro/Free → Flash.
+    // The weekly digest is user-visible, so consistent voice across
+    // comprehensive analysis (W1.7), /ai/ask (W2.8), and now the digest
+    // is what makes "one analyst, one story" feel real.
+    const modelForTier = plan === "team" ? MODELS.team : MODELS.primary;
+
     const insightsResult = await step.run(`generate-insights-${userId}`, async () => {
-      return generateWeeklyInsights(results);
+      return generateWeeklyInsights(results, { model: modelForTier });
     });
     const raw = insightsResult.result;
 

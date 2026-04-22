@@ -114,6 +114,8 @@ export async function runSendWeeklyDigest({ step }: { step: WeeklyDigestStep }) 
         }
 
         // Compute AI insights (shared helper — also used by send-alerts.ts).
+        // COA 4 W2.7: pass plan so Team tier runs the digest on Sonnet 4.5
+        // with Kaulby's persona voice. Pro → Flash (base voice).
         const insights = await computeWeeklyInsightsFor(
           user.id,
           userResults.results.map((r) => ({
@@ -124,7 +126,9 @@ export async function runSendWeeklyDigest({ step }: { step: WeeklyDigestStep }) 
             painPointCategory: r.painPointCategory,
             aiSummary: r.aiSummary,
           })),
-          step
+          step,
+          5,
+          user.subscriptionStatus as "free" | "pro" | "team"
         );
 
         // Build top-monitor summary.

@@ -507,6 +507,7 @@ async function sendDigestForTimezone(
     if (config.includeAiInsights) {
       const limits = getPlanLimits(user.subscriptionStatus);
       if (limits.aiFeatures.unlimitedAiAnalysis) {
+        // COA 4 W2.7: pass plan for Team-tier Sonnet + persona-voice digest.
         aiInsights = await computeWeeklyInsightsFor(
           user.id,
           userResults.map((r) => ({
@@ -517,7 +518,9 @@ async function sendDigestForTimezone(
             painPointCategory: r.painPointCategory,
             aiSummary: r.aiSummary,
           })),
-          step
+          step,
+          5,
+          user.subscriptionStatus as "free" | "pro" | "team"
         );
       }
     }
