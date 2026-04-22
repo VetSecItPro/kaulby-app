@@ -90,7 +90,7 @@ const featureComparison = [
 const benefits = [
   {
     icon: Globe,
-    title: "17 Platforms, Not Just 1",
+    title: "16 Platforms, Not Just 1",
     description: "Monitor Reddit, Hacker News, Product Hunt, Google Reviews, Trustpilot, App Store, Play Store, Quora, YouTube, G2, Yelp, and Amazon Reviews - all in one place.",
   },
   {

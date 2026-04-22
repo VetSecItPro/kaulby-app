@@ -62,7 +62,7 @@ const useCases: UseCase[] = [
   },
   {
     icon: Globe,
-    title: "Monitor Your Brand Across 17 Platforms",
+    title: "Monitor Your Brand Across 16 Platforms",
     description:
       "Reddit, Hacker News, Google Reviews, Trustpilot, G2, YouTube, X, and 10 more — all in one dashboard. Get alerted when your brand is mentioned, whether it's praise, a complaint, or a question that needs a response.",
     highlight: "One dashboard. Every conversation that matters.",

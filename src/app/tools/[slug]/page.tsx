@@ -170,7 +170,7 @@ const toolPages: Record<string, {
     features: [
       {
         icon: Globe,
-        title: "17 Platforms, One Dashboard",
+        title: "16 Platforms, One Dashboard",
         description: "Monitor Reddit, Hacker News, Product Hunt, Google Reviews, Trustpilot, App Store, Play Store, Quora, YouTube, G2, Yelp, and Amazon Reviews.",
       },
       {

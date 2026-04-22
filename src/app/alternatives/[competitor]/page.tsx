@@ -728,7 +728,7 @@ export async function generateMetadata({
 
 const kaulbyAdvantages = [
   {
-    title: "17 Platforms in One",
+    title: "16 Platforms in One",
     description: "Monitor Reddit, Hacker News, Product Hunt, Google Reviews, Trustpilot, App Store, Play Store, Quora, YouTube, G2, Yelp, and Amazon Reviews - all from one dashboard.",
   },
   {

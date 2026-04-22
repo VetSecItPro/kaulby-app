@@ -26,7 +26,7 @@ const valueProps: ValueProp[] = [
   },
   {
     icon: Globe,
-    title: "17 Platforms, One Dashboard",
+    title: "16 Platforms, One Dashboard",
     description:
       "Reddit, Hacker News, Google Reviews, Trustpilot, G2, YouTube, X, and 10 more — never miss a conversation that matters.",
     stat: "17",
