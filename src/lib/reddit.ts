@@ -1,19 +1,27 @@
 /**
  * Reddit Integration Module
  *
- * Implements a resilient tiered approach to avoid GummySearch's fate:
- * 1. Serper (Google Search) - Primary, cheap ($50/mo for 50k searches)
- * 2. Apify - Backup when Serper fails
- * 3. Public JSON - Last resort (risky, can be blocked)
+ * Resilient priority chain — re-ordered 2026-04-21 via PR #195 in response to
+ * the Oct 2025 Reddit v. SerpApi DMCA §1201 precedent:
+ *   1. Apify `automation-lab/reddit-scraper` (PRIMARY) — $1.15/1K posts at FREE plan
+ *   2. Reddit Public JSON API (FALLBACK) — free, anonymous, rate-limited, posts-only
+ *   3. Serper `site:reddit.com` (LEGACY OPT-IN) — disabled by default, gated by
+ *      `KAULBY_ALLOW_SERPER_REDDIT=true`. Carries direct DMCA §1201 risk.
+ *
+ * Before editing this file, read `.github/runbooks/reddit-safety.md` (R12). It
+ * documents the hard rules, cease-and-desist playbook, and the GummySearch lesson.
  *
  * Cost optimizations:
  * - Query caching with 2-4hr TTL (saves 60-80% of API calls)
  * - Cross-user deduplication (same keywords = shared cache)
  * - Smart TTL based on subreddit activity
+ * - Circuit breaker per source (5-min cooldown after 3 consecutive failures)
  *
- * We skip Reddit's official API because:
- * - Reddit is hostile to developers (rate limits even app creation)
- * - Third-party search is more reliable and won't be subject to Reddit's whims
+ * We skip Reddit's official paid Data API because:
+ * - Terms require commercial sign-off most small operators don't get ($35K MRR
+ *   GummySearch couldn't reach agreement and responsibly shut down Nov 2025)
+ * - Apify absorbs ToS risk contractually on our behalf
+ * - OAuth rate limits (100 req/min free self-service) don't fit workspace scale
  */
 
 import { cachedQuery, getRedditCacheTTL, CACHE_TTL } from "@/lib/cache";
