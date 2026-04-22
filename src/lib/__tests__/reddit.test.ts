@@ -34,12 +34,23 @@ describe("reddit", () => {
     vi.clearAllMocks();
     vi.stubEnv("SERPER_API_KEY", "");
     vi.stubEnv("APIFY_API_KEY", "");
+    vi.stubEnv("KAULBY_ALLOW_SERPER_REDDIT", "");
   });
 
-  describe("searchRedditResilient with Serper", () => {
-    it("uses Serper as primary when configured", async () => {
-      vi.stubEnv("SERPER_API_KEY", "test_serper_key");
+  // Post-#195: priority chain is
+  //   1. Apify automation-lab/reddit-scraper (PRIMARY)
+  //   2. Reddit public JSON endpoint (FALLBACK)
+  //   3. Serper site:reddit.com (LEGACY opt-in only via KAULBY_ALLOW_SERPER_REDDIT=true)
+  // due to the Oct 2025 Reddit v. SerpApi DMCA §1201 precedent. Tests below mirror
+  // that ordering; the historical "Serper as primary" assertions were retired with PR #195.
 
+  describe("searchRedditResilient with Serper (legacy opt-in)", () => {
+    it("uses Serper only when KAULBY_ALLOW_SERPER_REDDIT=true + SERPER_API_KEY", async () => {
+      vi.stubEnv("SERPER_API_KEY", "test_serper_key");
+      vi.stubEnv("KAULBY_ALLOW_SERPER_REDDIT", "true");
+
+      // Public JSON runs ahead of Serper in the chain; reject it so fallthrough reaches Serper.
+      mockFetch.mockRejectedValueOnce(new Error("public unavailable"));
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () =>
@@ -60,9 +71,11 @@ describe("reddit", () => {
       expect(result.posts.length).toBeGreaterThan(0);
     });
 
-    it("builds correct search query for Serper", async () => {
+    it("builds correct Serper query when opted in", async () => {
       vi.stubEnv("SERPER_API_KEY", "test_key");
+      vi.stubEnv("KAULBY_ALLOW_SERPER_REDDIT", "true");
 
+      mockFetch.mockRejectedValueOnce(new Error("public unavailable"));
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ organic: [] }),
@@ -70,7 +83,9 @@ describe("reddit", () => {
 
       await searchRedditResilient("startups", ["saas", "growth"], 50);
 
-      const callBody = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+      // mock.calls[0] is the public-path fetch (rejected); mock.calls[1] is Serper POST.
+      const serperCall = mockFetch.mock.calls[1];
+      const callBody = JSON.parse(serperCall[1].body as string);
       expect(callBody.q).toContain("site:reddit.com/r/startups");
       expect(callBody.q).toContain("saas");
       expect(callBody.q).toContain("growth");
@@ -78,7 +93,8 @@ describe("reddit", () => {
   });
 
   describe("searchRedditResilient with public API fallback", () => {
-    it("uses public API as last resort when no providers configured", async () => {
+    it("falls through to public JSON when Apify is not configured", async () => {
+      // No APIFY_API_KEY, no Serper opt-in → public JSON is the fallback tier.
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () =>
@@ -107,7 +123,8 @@ describe("reddit", () => {
       const result = await searchRedditResilient("programming", [], 50);
 
       expect(result.source).toBe("public");
-      expect(result.error).toContain("public API");
+      expect(result.posts.length).toBeGreaterThan(0);
+      expect(result.posts[0].id).toBe("abc123");
     });
   });
 
@@ -173,9 +190,12 @@ describe("reddit", () => {
   });
 
   describe("result transformation", () => {
-    it("transforms Serper results correctly", async () => {
+    it("transforms Serper results correctly (legacy path when opted in)", async () => {
       vi.stubEnv("SERPER_API_KEY", "test_key");
+      vi.stubEnv("KAULBY_ALLOW_SERPER_REDDIT", "true");
 
+      // Reject public to fall through to Serper, then serve the Serper response.
+      mockFetch.mockRejectedValueOnce(new Error("public unavailable"));
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () =>
