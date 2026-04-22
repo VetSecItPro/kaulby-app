@@ -1,6 +1,7 @@
 import { inngest } from "../client";
 import { logger } from "@/lib/logger";
 import { contentMatchesMonitor } from "@/lib/content-matcher";
+import { captureEvent } from "@/lib/posthog";
 import {
   getActiveMonitors,
   prefetchPlans,
@@ -13,6 +14,19 @@ import {
   hasAnyActiveMonitors,
   type MonitorStep,
 } from "../utils/monitor-helpers";
+
+/**
+ * Telemetry outcome for a single IH fetch attempt.
+ * Feeds PostHog dashboards (event: "ih_fetch") for the 7-day reliability review
+ * mandated by .mdmp/apify-platform-cost-audit-2026-04-21.md. If 7-day error
+ * rate exceeds ~5%, the audit's Crawlee-actor recommendation should come back.
+ */
+type IHFetchOutcome =
+  | "feed_ok"                  // feed.json succeeded with posts
+  | "feed_empty"               // feed.json succeeded but returned 0 items
+  | "feed_fail_scrape_ok"      // feed.json failed, HTML scrape succeeded
+  | "feed_fail_scrape_empty"   // feed.json failed, HTML scrape returned 0 items
+  | "all_failed";              // both feed.json and HTML scrape errored
 
 // Indie Hackers post interface
 interface IndieHackersPost {
@@ -27,25 +41,39 @@ interface IndieHackersPost {
   category?: string;
 }
 
+interface IHFetchResult {
+  posts: IndieHackersPost[];
+  outcome: IHFetchOutcome;
+  httpStatus?: number;
+  errorMessage?: string;
+}
+
 /**
  * Fetch Indie Hackers posts via their public feed
  * IH doesn't have an official API, but we can scrape the JSON feed
  */
-async function fetchIndieHackersPosts(keywords: string[], maxPosts: number = 50): Promise<IndieHackersPost[]> {
+async function fetchIndieHackersPosts(keywords: string[], maxPosts: number = 50): Promise<IHFetchResult> {
+  let feedHttpStatus: number | undefined;
   try {
     // Indie Hackers has a public feed at /feed.json or we can scrape the homepage
-    // For now, we'll use a simple approach - fetch recent posts and filter by keywords
     const response = await fetch("https://www.indiehackers.com/feed.json", {
       headers: {
         "User-Agent": "Kaulby/1.0 (Community Monitoring Tool)",
         "Accept": "application/json",
       },
     });
+    feedHttpStatus = response.status;
 
     if (!response.ok) {
-      // Fallback to scraping approach if feed doesn't exist
-      logger.info("[IndieHackers] Feed not available, using fallback scraping");
-      return await scrapeIndieHackers(keywords, maxPosts);
+      // Fallback to scraping approach if feed doesn't exist / is blocked (429, 403, 5xx)
+      logger.info("[IndieHackers] Feed not available, using fallback scraping", { feedHttpStatus });
+      const scraped = await scrapeIndieHackers(keywords, maxPosts);
+      return {
+        posts: scraped.posts,
+        outcome: scraped.posts.length > 0 ? "feed_fail_scrape_ok" : scraped.errored ? "all_failed" : "feed_fail_scrape_empty",
+        httpStatus: feedHttpStatus,
+        errorMessage: scraped.errorMessage,
+      };
     }
 
     const data = await response.json();
@@ -68,18 +96,35 @@ async function fetchIndieHackersPosts(keywords: string[], maxPosts: number = 50)
       }
     }
 
-    return posts;
+    return {
+      posts,
+      outcome: posts.length > 0 ? "feed_ok" : "feed_empty",
+      httpStatus: feedHttpStatus,
+    };
   } catch (error) {
-    logger.error("[IndieHackers] Error fetching posts", { error: error instanceof Error ? error.message : String(error) });
-    return await scrapeIndieHackers(keywords, maxPosts);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.error("[IndieHackers] Error fetching posts", { error: errorMessage });
+    const scraped = await scrapeIndieHackers(keywords, maxPosts);
+    return {
+      posts: scraped.posts,
+      outcome: scraped.posts.length > 0 ? "feed_fail_scrape_ok" : scraped.errored ? "all_failed" : "feed_fail_scrape_empty",
+      httpStatus: feedHttpStatus,
+      errorMessage,
+    };
   }
+}
+
+interface IHScrapeResult {
+  posts: IndieHackersPost[];
+  errored: boolean;
+  errorMessage?: string;
 }
 
 /**
  * Fallback scraping approach for Indie Hackers
  * Uses Apify actor or direct HTML parsing
  */
-async function scrapeIndieHackers(keywords: string[], maxPosts: number): Promise<IndieHackersPost[]> {
+async function scrapeIndieHackers(keywords: string[], maxPosts: number): Promise<IHScrapeResult> {
   try {
     // Try to fetch the homepage and parse recent posts
     const response = await fetch("https://www.indiehackers.com/", {
@@ -90,8 +135,8 @@ async function scrapeIndieHackers(keywords: string[], maxPosts: number): Promise
     });
 
     if (!response.ok) {
-      logger.error("[IndieHackers] Failed to fetch homepage");
-      return [];
+      logger.error("[IndieHackers] Failed to fetch homepage", { httpStatus: response.status });
+      return { posts: [], errored: true, errorMessage: `homepage HTTP ${response.status}` };
     }
 
     const html = await response.text();
@@ -143,10 +188,11 @@ async function scrapeIndieHackers(keywords: string[], maxPosts: number): Promise
       }
     }
 
-    return posts;
+    return { posts, errored: false };
   } catch (error) {
-    logger.error("[IndieHackers] Scraping failed", { error: error instanceof Error ? error.message : String(error) });
-    return [];
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.error("[IndieHackers] Scraping failed", { error: errorMessage });
+    return { posts: [], errored: true, errorMessage };
   }
 }
 
@@ -186,12 +232,36 @@ export const monitorIndieHackers = inngest.createFunction(
         continue;
       }
 
-      // Fetch Indie Hackers posts
-      const posts = await step.run(`fetch-ih-${monitor.id}`, async () => {
-        return fetchIndieHackersPosts(monitor.keywords, 100);
+      // Fetch Indie Hackers posts with outcome telemetry
+      const { posts, outcome, httpStatus, errorMessage, durationMs } = await step.run(`fetch-ih-${monitor.id}`, async () => {
+        const start = Date.now();
+        const result = await fetchIndieHackersPosts(monitor.keywords, 100);
+        return { ...result, durationMs: Date.now() - start };
       });
 
-      logger.info("[IndieHackers] Fetched posts", { postCount: posts.length, monitorId: monitor.id });
+      logger.info("[IndieHackers] Fetched posts", {
+        postCount: posts.length,
+        monitorId: monitor.id,
+        outcome,
+        httpStatus,
+        durationMs,
+      });
+
+      // Emit a structured event so 7-day reliability can be queried from PostHog.
+      // See .mdmp/apify-platform-cost-audit-2026-04-21.md — if error rate > ~5%,
+      // revisit the Crawlee-actor recommendation.
+      captureEvent({
+        distinctId: monitor.userId,
+        event: "ih_fetch",
+        properties: {
+          monitor_id: monitor.id,
+          outcome,
+          http_status: httpStatus,
+          duration_ms: durationMs,
+          posts_count: posts.length,
+          error_message: errorMessage,
+        },
+      });
 
       // Check each post for matches using content matcher
       const matchingPosts = posts.filter((post) => {
