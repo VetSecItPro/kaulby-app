@@ -17,7 +17,6 @@ import {
 } from "@/lib/youtube";
 import { fetchAppStoreRss } from "@/lib/appstore-rss";
 import {
-  searchTrustpilotSerper,
   searchG2Serper,
   searchYelpSerper,
   searchAmazonSerper,
@@ -25,6 +24,7 @@ import {
   searchAppStoreSerper,
   isSerperConfigured,
 } from "@/lib/serper";
+import { fetchTrustpilotResilient } from "@/lib/trustpilot";
 import { findRelevantSubredditsCached } from "@/lib/ai";
 import { searchRedditResilient, searchRedditSiteWide } from "@/lib/reddit";
 import { searchX } from "./monitor-x";
@@ -843,7 +843,8 @@ async function scanTrustpilotForMonitor(monitor: MonitorData): Promise<number> {
 
   for (const term of searchTerms) {
     try {
-      const reviews = await searchTrustpilotSerper(term, 20);
+      const { items: reviews, source } = await fetchTrustpilotResilient(term, 20);
+      logger.info("[Trustpilot] scan-on-demand fetch", { monitorId: monitor.id, source, count: reviews.length });
 
       // Batch check for existing results
       const urls = reviews.map(review => review.url || `trustpilot-${review.id}`);
