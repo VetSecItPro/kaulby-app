@@ -11,7 +11,7 @@ export async function generateMetadata({
   const titles: Record<string, string> = {
     "reddit-monitoring": "Reddit Monitoring Tool - Track Brand Mentions on Reddit | Kaulby",
     "social-listening-for-startups": "Social Listening for Startups - Affordable Brand Monitoring | Kaulby",
-    "brand-monitoring": "Brand Monitoring Tool - Track Mentions Across 17 Platforms | Kaulby",
+    "brand-monitoring": "Brand Monitoring Tool - Track Mentions Across 16 Platforms | Kaulby",
     "competitor-monitoring": "Competitor Monitoring Tool - Track Competitor Mentions | Kaulby",
   };
 

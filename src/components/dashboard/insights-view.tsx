@@ -1000,7 +1000,7 @@ function TrendingTopicsContent({
               <Lock className="h-8 w-8 text-amber-500" />
             </div>
             <div className="flex-1 text-center md:text-left">
-              <h3 className="text-lg font-semibold mb-2">See Pain Points Across All 17 Platforms</h3>
+              <h3 className="text-lg font-semibold mb-2">See Pain Points Across All 16 Platforms</h3>
               <p className="text-muted-foreground mb-4">
                 You&apos;re only seeing Reddit right now. Upgrade to Pro to discover
                 pain points, competitor gaps, and buying signals across Hacker News,

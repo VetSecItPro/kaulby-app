@@ -261,7 +261,7 @@ function PlatformDiscoveryCard({
             <Link href="/pricing">
               <Button variant="outline" size="sm">
                 <Lock className="h-3 w-3 mr-1" />
-                See All 17 Platforms
+                See All 16 Platforms
               </Button>
             </Link>
           )}

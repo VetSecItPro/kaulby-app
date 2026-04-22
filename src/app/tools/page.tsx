@@ -149,7 +149,7 @@ export default function ToolsPage() {
       {/* Platforms */}
       <section className="py-12 px-4 bg-muted/30 border-y">
         <div className="container mx-auto max-w-4xl">
-          <h2 className="text-xl font-semibold text-center mb-6">Monitor 17 Platforms</h2>
+          <h2 className="text-xl font-semibold text-center mb-6">Monitor 16 Platforms</h2>
           <div className="flex flex-wrap justify-center gap-3">
             {platforms.map((platform) => (
               <Badge key={platform} variant="outline" className="text-sm px-4 py-2">

@@ -29,7 +29,7 @@ export const USE_CASES: UseCaseData[] = [
   {
     slug: "brand-monitoring",
     title: "Brand Monitoring Tool",
-    headline: "Monitor Your Brand Across 17 Platforms",
+    headline: "Monitor Your Brand Across 16 Platforms",
     description:
       "Track every mention of your brand across Reddit, Hacker News, Product Hunt, review sites, and more. Know exactly what people are saying about your business in real time.",
     metaDescription:
@@ -681,7 +681,7 @@ export const USE_CASES: UseCaseData[] = [
   {
     slug: "sentiment-analysis",
     title: "Sentiment Analysis Tool",
-    headline: "AI-Powered Sentiment Analysis Across 17 Platforms",
+    headline: "AI-Powered Sentiment Analysis Across 16 Platforms",
     description:
       "Automatically analyze the sentiment of every mention of your brand. Understand whether people are praising, complaining, or asking questions about your product.",
     metaDescription:
