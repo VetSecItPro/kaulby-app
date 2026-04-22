@@ -4,12 +4,19 @@ const mockJsonCompletion = vi.fn();
 
 vi.mock("@/lib/ai/openrouter", () => ({
   jsonCompletion: (...args: unknown[]) => mockJsonCompletion(...args),
+  MODELS: {
+    primary: "google/gemini-2.5-flash",
+    fallback: "google/gemini-2.5-flash",
+    team: "anthropic/claude-sonnet-4-5",
+    premium: "google/gemini-2.5-flash",
+  },
 }));
 
 vi.mock("@/lib/ai/prompts", () => ({
   SYSTEM_PROMPTS: {
     weeklyInsights: "You are a weekly insights analyzer...",
   },
+  withPersonaVoice: (p: string) => `[PERSONA]\n${p}`,
 }));
 
 describe("ai/analyzers/weekly-insights", () => {
