@@ -16,6 +16,7 @@ import { AI_TOOLS, TOOL_METADATA, executeTool, type ToolResult } from "@/lib/ai/
 import type OpenAI from "openai";
 import { logger } from "@/lib/logger";
 import { ONBOARDING_SYSTEM_PROMPT } from "@/lib/ai/onboarding-prompt";
+import { withPersonaVoice } from "@/lib/ai/prompts";
 
 export const maxDuration = 60;
 
@@ -249,8 +250,17 @@ export async function POST(req: Request) {
       });
     }
 
-    // Build message history — use onboarding prompt for new user setup
-    const activePrompt = body.conversationType === "onboarding" ? ONBOARDING_SYSTEM_PROMPT : SYSTEM_PROMPT;
+    // Build message history — use onboarding prompt for new user setup.
+    // COA 4 W2.8: Team tier gets Kaulby's persona voice prepended to the base
+    // Ask prompt so the Ask experience matches comprehensive analysis + the
+    // weekly digest tone. Pro/Free keep the base SYSTEM_PROMPT unchanged.
+    // Onboarding keeps its dedicated conversational flow (no persona — the
+    // onboarding script has its own voice design).
+    const baseAskPrompt = body.conversationType === "onboarding" ? ONBOARDING_SYSTEM_PROMPT : SYSTEM_PROMPT;
+    const activePrompt =
+      plan === "team" && body.conversationType !== "onboarding"
+        ? withPersonaVoice(baseAskPrompt)
+        : baseAskPrompt;
     const messages: OpenAI.ChatCompletionMessageParam[] = [
       { role: "system", content: activePrompt },
     ];
@@ -282,7 +292,9 @@ export async function POST(req: Request) {
       const response = await completionWithTools({
         messages,
         tools: useTools ? AI_TOOLS : undefined,
-        model: plan === "team" ? MODELS.premium : MODELS.primary,
+        // COA 4 W1.7/W2.8: Team → Sonnet 4.5, Pro/Free → Flash. Was MODELS.premium
+        // (still Flash) before this change; now Team gets the real Sonnet routing.
+        model: plan === "team" ? MODELS.team : MODELS.primary,
         maxTokens: 1024,
         temperature: 0.5,
       });
