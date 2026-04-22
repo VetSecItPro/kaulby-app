@@ -3,18 +3,32 @@ import { logger } from "@/lib/logger";
 import { observeOpenAI } from "langfuse";
 import { langfuse } from "./langfuse";
 
-// Models - ALL Gemini 2.5 Flash for maximum cost efficiency
-// Gemini 2.5 Flash is 40-50x cheaper than Claude Sonnet 4 and handles 95%+ of tasks well
-// Switching from Claude Sonnet 4 saves ~97% on AI costs ($7/day → $0.20/day)
+// Models — tiered routing per COA 4 W1.6.
+// Free/Pro: Gemini 2.5 Flash (cheap, handles 95%+ of tasks well).
+// Team: Claude Sonnet 4.5 (stronger reasoning + persona voice).
+// Fallback: Flash — always. Team errors degrade to Flash with a tier_downgrade event.
 export const MODELS = {
-  // Standard tier - fast and cost-effective
+  // Standard tier (Free + Pro) — cost-optimized.
   primary: "google/gemini-2.5-flash",
-  // Fallback - same model, retry logic handles transient failures
+  // Fallback used by both tiers when primary fails.
   fallback: "google/gemini-2.5-flash",
-  // Premium tier - ALSO Flash for cost optimization
-  // Flash handles comprehensive analysis well for 95%+ of content
+  // Team tier — stronger reasoning for persona voice + comprehensive analysis.
+  // Priced ~$3 in / $15 out per 1M tokens; cost cap enforced via W1.8.
+  team: "anthropic/claude-sonnet-4-5",
+  // @deprecated — retained for backwards compat; prefer MODELS.primary/team.
+  // Still referenced by a few older call sites that always used Flash anyway.
   premium: "google/gemini-2.5-flash",
 } as const;
+
+// Plan tier → model routing. Callers pass the user's plan; get back the model ID
+// to pass to OpenRouter. Unknown/free plans fall back to Flash.
+export type PlanTier = "free" | "pro" | "team";
+
+export function getModelForTier(plan: PlanTier | string): string {
+  if (plan === "team") return MODELS.team;
+  // Free + Pro + anything unknown → Flash.
+  return MODELS.primary;
+}
 
 // Lazy-initialized OpenRouter client to avoid build-time errors
 let _openrouter: OpenAI | ReturnType<typeof observeOpenAI> | null = null;
@@ -66,6 +80,10 @@ const MODEL_PRICING = {
     output: 0.6,
   },
   "anthropic/claude-sonnet-4": {
+    input: 3.0,
+    output: 15.0,
+  },
+  "anthropic/claude-sonnet-4-5": {
     input: 3.0,
     output: 15.0,
   },

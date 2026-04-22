@@ -1,0 +1,460 @@
+{
+  "$schema": "./golden-eval-set.schema.md",
+  "version": 1,
+  "description": "Golden eval set for Kaulby AI analyzers. Hand-labeled ground truth used to measure accuracy regressions in CI. See golden-eval-set.README.md for labeling guidelines and how to extend to the target 100 items.",
+  "createdAt": "2026-04-22",
+  "targetSize": 100,
+  "currentSize": 30,
+  "items": [
+    {
+      "id": "ev-001",
+      "source": "reddit",
+      "title": "Tired of paying $200/mo for Asana. What are my options?",
+      "content": "Our team of 5 is using Asana Premium at $10.99/seat/mo and it's killing our budget. We mostly use it for project tracking and sprint planning. Has anyone migrated to something cheaper? Considering Trello, Linear, or ClickUp but worried about losing workflows.",
+      "labels": {
+        "sentiment": "negative",
+        "painPointCategory": "pricing_concern",
+        "conversationCategory": "money_talk",
+        "intentScore": 85,
+        "businessAction": "respond"
+      },
+      "labeledBy": "seed-2026-04-22",
+      "notes": "High-intent pricing complaint mentioning competitors — textbook buyer-intent signal."
+    },
+    {
+      "id": "ev-002",
+      "source": "reddit",
+      "title": "How do I detect when my competitor mentions our product?",
+      "content": "We're a small SaaS and just found out a competitor has been name-checking us in their blog posts with misleading comparisons. Is there a tool that alerts you when specific brand names come up across Reddit/X/review sites? Willing to pay for something good.",
+      "labels": {
+        "sentiment": "neutral",
+        "painPointCategory": "competitor_mention",
+        "conversationCategory": "solution_request",
+        "intentScore": 90,
+        "businessAction": "respond"
+      },
+      "labeledBy": "seed-2026-04-22",
+      "notes": "Classic Kaulby ICP signal — user describes the exact problem Kaulby solves."
+    },
+    {
+      "id": "ev-003",
+      "source": "hackernews",
+      "title": null,
+      "content": "Just shipped our MVP after 3 months. Used Next.js + Postgres + Clerk. The Clerk onboarding flow is genuinely impressive — no drama, webhooks just work. Would recommend.",
+      "labels": {
+        "sentiment": "positive",
+        "painPointCategory": "positive_feedback",
+        "conversationCategory": "hot_discussion",
+        "intentScore": 10,
+        "businessAction": "log"
+      },
+      "labeledBy": "seed-2026-04-22",
+      "notes": "Positive mention of a vendor (Clerk) — low buyer intent, useful for brand-advocacy monitoring."
+    },
+    {
+      "id": "ev-004",
+      "source": "hackernews",
+      "title": null,
+      "content": "Why does every AI wrapper feel like a thin layer on OpenAI with a $29/mo subscription? I'm looking for tools that actually do something meaningful with the models, not just prompt-template shops.",
+      "labels": {
+        "sentiment": "negative",
+        "painPointCategory": "general_discussion",
+        "conversationCategory": "pain_point",
+        "intentScore": 40,
+        "businessAction": "monitor"
+      },
+      "labeledBy": "seed-2026-04-22",
+      "notes": "Industry-level frustration, not product-specific. Medium intent, monitoring signal."
+    },
+    {
+      "id": "ev-005",
+      "source": "trustpilot",
+      "title": "Excellent service, terrible app",
+      "content": "The customer service team at Hostify saved me when my site went down on a Friday night. But the mobile app is unusable — it crashes every time I try to view stats. 2 stars for the app, 5 for the human beings.",
+      "labels": {
+        "sentiment": "negative",
+        "painPointCategory": "negative_experience",
+        "conversationCategory": "pain_point",
+        "intentScore": 20,
+        "businessAction": "escalate"
+      },
+      "labeledBy": "seed-2026-04-22",
+      "notes": "Mixed sentiment; overall negative because of mobile app complaint dominates. Escalate for product team attention."
+    },
+    {
+      "id": "ev-006",
+      "source": "trustpilot",
+      "title": "5 stars",
+      "content": "Been with Hostify for 3 years. Uptime has been rock solid. Renewing for another year.",
+      "labels": {
+        "sentiment": "positive",
+        "painPointCategory": "positive_feedback",
+        "conversationCategory": "hot_discussion",
+        "intentScore": 5,
+        "businessAction": "log"
+      },
+      "labeledBy": "seed-2026-04-22",
+      "notes": "Short, genuinely positive review. Good test of short-content sentiment."
+    },
+    {
+      "id": "ev-007",
+      "source": "g2",
+      "title": "Great for startups, breaks down at scale",
+      "content": "Loved this tool when we were 3 people. Now we're 25 and the admin UI is basically unusable — can't bulk-assign permissions, can't export users to CSV, the workspace switcher takes 4 clicks. Looking at Rippling as we approach 50 seats.",
+      "labels": {
+        "sentiment": "negative",
+        "painPointCategory": "feature_request",
+        "conversationCategory": "pain_point",
+        "intentScore": 80,
+        "businessAction": "escalate"
+      },
+      "labeledBy": "seed-2026-04-22",
+      "notes": "Classic scale-churn pattern: works at small size, breaks at 25+. Feature gap + churn signal."
+    },
+    {
+      "id": "ev-008",
+      "source": "g2",
+      "title": "Does exactly what it says",
+      "content": "We use Linear for our 8-person eng team. Comes in at $8/user/mo. Shortcut support is fast, the GraphQL API is well-documented, and the Slack integration works out of the box. Exactly what we needed.",
+      "labels": {
+        "sentiment": "positive",
+        "painPointCategory": "positive_feedback",
+        "conversationCategory": "hot_discussion",
+        "intentScore": 5,
+        "businessAction": "log"
+      },
+      "labeledBy": "seed-2026-04-22",
+      "notes": "Positive review with specific product details. Good test of feature-mention detection."
+    },
+    {
+      "id": "ev-009",
+      "source": "appstore",
+      "title": "Crashes constantly",
+      "content": "App crashes every time I try to open a notification. Uninstalling after 3 days. iPhone 15 Pro, iOS 17.4.",
+      "labels": {
+        "sentiment": "negative",
+        "painPointCategory": "support_need",
+        "conversationCategory": "pain_point",
+        "intentScore": 10,
+        "businessAction": "escalate"
+      },
+      "labeledBy": "seed-2026-04-22",
+      "notes": "Short negative review with specific device info. Critical support/product issue."
+    },
+    {
+      "id": "ev-010",
+      "source": "appstore",
+      "title": "Nice but expensive",
+      "content": "The app itself is good but $19.99/mo for the Pro features is too steep. $9.99 would be fair. Uninstalling until they have a sale.",
+      "labels": {
+        "sentiment": "negative",
+        "painPointCategory": "pricing_concern",
+        "conversationCategory": "money_talk",
+        "intentScore": 35,
+        "businessAction": "log"
+      },
+      "labeledBy": "seed-2026-04-22",
+      "notes": "Pricing-driven churn. Moderate intent — user might return at a sale."
+    },
+    {
+      "id": "ev-011",
+      "source": "reddit",
+      "title": "Anyone using GummySearch after the shutdown?",
+      "content": "GummySearch shut down in Nov 2025 because of Reddit's API costs. Looking for alternatives. Main things I need: Reddit keyword monitoring, sentiment tagging, competitor alerts. Budget ~$50/mo.",
+      "labels": {
+        "sentiment": "neutral",
+        "painPointCategory": "solution_request",
+        "conversationCategory": "solution_request",
+        "intentScore": 95,
+        "businessAction": "respond"
+      },
+      "labeledBy": "seed-2026-04-22",
+      "notes": "GummySearch refugee with explicit budget. Highest possible buyer intent for Kaulby."
+    },
+    {
+      "id": "ev-012",
+      "source": "reddit",
+      "title": "Is Kaulby legit? Just saw an ad",
+      "content": "Saw a Reddit ad for Kaulby (kaulbyapp.com). Looks like GummySearch + AI. Anyone used it? Worried about fly-by-night tools. Any red flags?",
+      "labels": {
+        "sentiment": "neutral",
+        "painPointCategory": "competitor_mention",
+        "conversationCategory": "hot_discussion",
+        "intentScore": 60,
+        "businessAction": "respond"
+      },
+      "labeledBy": "seed-2026-04-22",
+      "notes": "Direct brand mention with buyer intent + trust friction. High-priority respond."
+    },
+    {
+      "id": "ev-013",
+      "source": "hackernews",
+      "title": null,
+      "content": "The AI hype cycle has peaked but the infrastructure buildout continues. My take: LLM wrappers are table stakes by end of 2026. The real value is in data pipelines, eval infrastructure, and domain-specific fine-tunes.",
+      "labels": {
+        "sentiment": "neutral",
+        "painPointCategory": "general_discussion",
+        "conversationCategory": "hot_discussion",
+        "intentScore": 10,
+        "businessAction": "log"
+      },
+      "labeledBy": "seed-2026-04-22",
+      "notes": "Industry opinion, no product mention. Low-intent discussion."
+    },
+    {
+      "id": "ev-014",
+      "source": "g2",
+      "title": "Support is non-existent",
+      "content": "Submitted 3 tickets over 2 weeks. All auto-replied with 'we'll get back within 48 hours'. Zero human follow-up. This is a paid product ($79/mo). Canceling and moving to the alternative that actually has humans behind the support queue.",
+      "labels": {
+        "sentiment": "negative",
+        "painPointCategory": "support_need",
+        "conversationCategory": "pain_point",
+        "intentScore": 25,
+        "businessAction": "escalate"
+      },
+      "labeledBy": "seed-2026-04-22",
+      "notes": "Active churn in progress. Urgent escalate signal."
+    },
+    {
+      "id": "ev-015",
+      "source": "reddit",
+      "title": "Built a thing in 2 weekends — r/SideProject roast me",
+      "content": "Made a tool that monitors Reddit + HN for product mentions. Free tier is 1 keyword + 5 results/day. Would love honest feedback. URL in comments.",
+      "labels": {
+        "sentiment": "neutral",
+        "painPointCategory": "general_discussion",
+        "conversationCategory": "hot_discussion",
+        "intentScore": 15,
+        "businessAction": "monitor"
+      },
+      "labeledBy": "seed-2026-04-22",
+      "notes": "Self-promotion of a competitor-like tool. Monitor for market intel, don't engage."
+    },
+    {
+      "id": "ev-016",
+      "source": "playstore",
+      "title": "Good concept, bad execution",
+      "content": "The idea is solid but the sync breaks constantly between my phone and tablet. Had to reinstall twice this week. Will try again in 3 months.",
+      "labels": {
+        "sentiment": "negative",
+        "painPointCategory": "negative_experience",
+        "conversationCategory": "pain_point",
+        "intentScore": 30,
+        "businessAction": "escalate"
+      },
+      "labeledBy": "seed-2026-04-22",
+      "notes": "Partial churn with a return window — product bug causing user attrition."
+    },
+    {
+      "id": "ev-017",
+      "source": "reddit",
+      "title": "What's the best way to track mentions on review sites?",
+      "content": "I run a small ecommerce brand. Want to track reviews on Trustpilot, G2, App Store, Google. Checked Brand24 ($49/mo starts) and Mention ($41/mo). Anything cheaper with good sentiment analysis? Ideally under $30/mo for starting.",
+      "labels": {
+        "sentiment": "neutral",
+        "painPointCategory": "solution_request",
+        "conversationCategory": "money_talk",
+        "intentScore": 90,
+        "businessAction": "respond"
+      },
+      "labeledBy": "seed-2026-04-22",
+      "notes": "High-intent budget-constrained buyer. Kaulby Pro at $29 fits perfectly."
+    },
+    {
+      "id": "ev-018",
+      "source": "hackernews",
+      "title": null,
+      "content": "FYI: Reddit sued SerpAPI in Oct 2025 under DMCA §1201 for scraping search results. If your tool uses `site:reddit.com` via SerpAPI or similar, you're now at legal risk. Plenty of SaaS monitoring tools are quietly rewriting.",
+      "labels": {
+        "sentiment": "negative",
+        "painPointCategory": "general_discussion",
+        "conversationCategory": "hot_discussion",
+        "intentScore": 25,
+        "businessAction": "monitor"
+      },
+      "labeledBy": "seed-2026-04-22",
+      "notes": "Industry warning relevant to Kaulby's operating environment. Monitor for competitor responses."
+    },
+    {
+      "id": "ev-019",
+      "source": "trustpilot",
+      "title": "Canceled after 1 month",
+      "content": "Product is fine but pricing jumped 40% mid-contract without notice. Contacted support — they refused any adjustment. Canceled immediately. Would not recommend to anyone who values predictable billing.",
+      "labels": {
+        "sentiment": "negative",
+        "painPointCategory": "pricing_concern",
+        "conversationCategory": "money_talk",
+        "intentScore": 15,
+        "businessAction": "escalate"
+      },
+      "labeledBy": "seed-2026-04-22",
+      "notes": "Mid-contract price hike triggering churn + reputational damage. Escalate."
+    },
+    {
+      "id": "ev-020",
+      "source": "appstore",
+      "title": "Love the dark mode",
+      "content": "Finally an app with a real dark mode, not just an inverted theme. Small thing but it matters. Otherwise functional app. 4 stars because push notifications are still a bit spammy.",
+      "labels": {
+        "sentiment": "positive",
+        "painPointCategory": "positive_feedback",
+        "conversationCategory": "hot_discussion",
+        "intentScore": 5,
+        "businessAction": "log"
+      },
+      "labeledBy": "seed-2026-04-22",
+      "notes": "Mildly positive with embedded feature request (push notification spam). Tests detection of mixed signals."
+    },
+    {
+      "id": "ev-021",
+      "source": "reddit",
+      "title": "Looking for a Brand24 alternative for B2B SaaS",
+      "content": "Brand24 is good but expensive ($199/mo for Team) and bloated for our needs. We only care about Reddit, HN, X, G2, and Trustpilot. No need for TikTok / Instagram / Facebook. What are the options?",
+      "labels": {
+        "sentiment": "neutral",
+        "painPointCategory": "competitor_mention",
+        "conversationCategory": "solution_request",
+        "intentScore": 85,
+        "businessAction": "respond"
+      },
+      "labeledBy": "seed-2026-04-22",
+      "notes": "Competitor complaint + specific platform wishlist that matches Kaulby's coverage. Textbook respond signal."
+    },
+    {
+      "id": "ev-022",
+      "source": "hackernews",
+      "title": null,
+      "content": "Deep dive on why most social listening tools return garbage signal: they treat all platforms the same. A Reddit post and an App Store review are fundamentally different content types. Good write-up on context-aware sentiment.",
+      "labels": {
+        "sentiment": "neutral",
+        "painPointCategory": "general_discussion",
+        "conversationCategory": "advice_request",
+        "intentScore": 20,
+        "businessAction": "monitor"
+      },
+      "labeledBy": "seed-2026-04-22",
+      "notes": "Industry commentary on social listening quality. Relevant context for Kaulby positioning."
+    },
+    {
+      "id": "ev-023",
+      "source": "g2",
+      "title": "Perfect for our team",
+      "content": "Switched from Sprout Social after 2 years. The new tool covers the same platforms at 1/5 the cost and has better AI summaries. 4 seats for $99/mo vs Sprout's $499/mo for same. No regrets.",
+      "labels": {
+        "sentiment": "positive",
+        "painPointCategory": "competitor_mention",
+        "conversationCategory": "money_talk",
+        "intentScore": 5,
+        "businessAction": "log"
+      },
+      "labeledBy": "seed-2026-04-22",
+      "notes": "Positive review with competitor comparison + price. Good test of multi-signal extraction."
+    },
+    {
+      "id": "ev-024",
+      "source": "playstore",
+      "title": "Slow and buggy",
+      "content": "App takes 8-10 seconds to load on my Pixel 7. Buttons are unresponsive when there's a lot of data. Had promise, but in its current state it's unusable.",
+      "labels": {
+        "sentiment": "negative",
+        "painPointCategory": "negative_experience",
+        "conversationCategory": "pain_point",
+        "intentScore": 15,
+        "businessAction": "escalate"
+      },
+      "labeledBy": "seed-2026-04-22",
+      "notes": "Performance complaint with device specifics. Escalate to product team."
+    },
+    {
+      "id": "ev-025",
+      "source": "reddit",
+      "title": "Does anyone actually use Quora for business research?",
+      "content": "Seeing lots of 'monitor Quora' ads from various SaaS tools. Curious who actually finds Quora useful for B2B discovery. Feels like the Quora audience skews heavily toward India + consumer questions. Convince me I'm wrong.",
+      "labels": {
+        "sentiment": "neutral",
+        "painPointCategory": "general_discussion",
+        "conversationCategory": "advice_request",
+        "intentScore": 30,
+        "businessAction": "log"
+      },
+      "labeledBy": "seed-2026-04-22",
+      "notes": "Validates Kaulby's 2026-04-22 decision to defer Quora (low B2B SaaS signal). Good meta-commentary item."
+    },
+    {
+      "id": "ev-026",
+      "source": "trustpilot",
+      "title": "Avoid this company",
+      "content": "Billed me for 3 months after I canceled. Emails ignored. Had to chargeback through my bank. Scam-adjacent behavior. Do not buy.",
+      "labels": {
+        "sentiment": "negative",
+        "painPointCategory": "negative_experience",
+        "conversationCategory": "pain_point",
+        "intentScore": 5,
+        "businessAction": "escalate"
+      },
+      "labeledBy": "seed-2026-04-22",
+      "notes": "Severe negative with accusation of fraud. Critical escalate — legal/PR risk if this is a Kaulby customer."
+    },
+    {
+      "id": "ev-027",
+      "source": "hackernews",
+      "title": null,
+      "content": "We're building an AI analyst tool. Key insight: most users don't want a chatbot, they want a weekly email that says 'here are the 5 things you should care about from the 500 mentions this week'. Focused summarization > open-ended chat.",
+      "labels": {
+        "sentiment": "positive",
+        "painPointCategory": "general_discussion",
+        "conversationCategory": "hot_discussion",
+        "intentScore": 20,
+        "businessAction": "monitor"
+      },
+      "labeledBy": "seed-2026-04-22",
+      "notes": "Competitor/adjacent signal — same positioning as Kaulby COA 4. Monitor for strategic intel."
+    },
+    {
+      "id": "ev-028",
+      "source": "reddit",
+      "title": "Kaulby vs Brand24 — honest comparison",
+      "content": "Tried both free tiers last week. Kaulby is way more focused on community/SaaS use cases. Brand24 is more broad (TV mentions, news articles, etc). For a startup tracking Reddit + reviews, Kaulby's $29 Pro is a better deal than Brand24's $49.",
+      "labels": {
+        "sentiment": "positive",
+        "painPointCategory": "competitor_mention",
+        "conversationCategory": "money_talk",
+        "intentScore": 10,
+        "businessAction": "log"
+      },
+      "labeledBy": "seed-2026-04-22",
+      "notes": "Positive direct brand comparison. UGC advocacy — log for marketing reuse."
+    },
+    {
+      "id": "ev-029",
+      "source": "g2",
+      "title": "Overkill for small teams",
+      "content": "Signed up for the $99/mo Team tier thinking we'd grow into it. 6 months later we're using maybe 20% of features. A $49/mo Starter tier would be perfect for companies like us. Downgrading to save $600/yr.",
+      "labels": {
+        "sentiment": "negative",
+        "painPointCategory": "pricing_concern",
+        "conversationCategory": "money_talk",
+        "intentScore": 40,
+        "businessAction": "log"
+      },
+      "labeledBy": "seed-2026-04-22",
+      "notes": "Direct validation of COA 4 Starter tier proposal. Strategically important item for pricing decisions."
+    },
+    {
+      "id": "ev-030",
+      "source": "appstore",
+      "title": "Worth every penny",
+      "content": "The widget on my home screen is worth the $5/mo alone. Been a Pro subscriber for 8 months. Customer support actually answered a question in 4 hours last week — unusual for any app these days.",
+      "labels": {
+        "sentiment": "positive",
+        "painPointCategory": "positive_feedback",
+        "conversationCategory": "hot_discussion",
+        "intentScore": 3,
+        "businessAction": "log"
+      },
+      "labeledBy": "seed-2026-04-22",
+      "notes": "Strong positive review with specific praise. Low buyer intent (already a customer)."
+    }
+  ]
+}

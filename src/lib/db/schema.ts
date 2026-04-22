@@ -322,6 +322,12 @@ export const monitors = pgTable("monitors", {
   platforms: platformEnum("platforms").array().notNull(),
   isActive: boolean("is_active").default(true).notNull(),
   lastCheckedAt: timestamp("last_checked_at"),
+  // COA 4 W1.10: silent-failure observability. Set when a scheduled scan fails
+  // for this monitor (scraper error, API failure, etc.). Cleared on next success.
+  // Rendered as a red dot + "Last check failed X minutes ago" tooltip on the
+  // monitor card so operators can see broken scans without digging into logs.
+  lastCheckFailedAt: timestamp("last_check_failed_at"),
+  lastCheckFailedReason: text("last_check_failed_reason"),
   newMatchCount: integer("new_match_count").default(0).notNull(),
   // Manual scan tracking
   lastManualScanAt: timestamp("last_manual_scan_at"), // When the user last triggered a manual scan

@@ -85,3 +85,4 @@ ARCHITECTURE.md
 .test-ship-history.json
 .test-ship-quarantine.json
 .monitor-reports/
+eval-last-report.json

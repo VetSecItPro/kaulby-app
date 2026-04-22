@@ -90,7 +90,8 @@ export interface ComprehensiveAnalysisContext {
  */
 export async function analyzeComprehensive(
   content: string,
-  context: ComprehensiveAnalysisContext
+  context: ComprehensiveAnalysisContext,
+  options?: { model?: string }
 ): Promise<{ result: ComprehensiveAnalysisResult; meta: AnalysisMeta }> {
   // Build context-aware user message
   const userMessage = `
@@ -113,7 +114,9 @@ ${content}
       { role: "system", content: SYSTEM_PROMPTS.comprehensiveAnalysis },
       { role: "user", content: userMessage },
     ],
-    model: MODELS.premium, // Use Claude Sonnet 4 for deep analysis
+    // Caller-driven model: COA 4 W1.6 added tier routing so Team tier can pass
+    // MODELS.team (Claude Sonnet 4.5) while Pro/Free continue on Flash.
+    model: options?.model ?? MODELS.primary,
   });
 
   return {

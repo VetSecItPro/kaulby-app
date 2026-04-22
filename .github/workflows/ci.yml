@@ -278,11 +278,66 @@ jobs:
             exit 1
           fi
 
+  # ─── AI eval (only when AI code changes — guards against prompt/model regressions) ───
+  # Runs the golden eval set against Kaulby's analyzers. Fails the PR if any metric
+  # regresses >5% vs the committed baseline in src/__tests__/ai/eval-baseline.json.
+  # Skipped on main pushes (CI already ran on the PR) and on PRs that don't touch AI code.
+  ai-eval:
+    name: AI Eval (golden set)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check whether AI code changed in this PR
+        id: changed
+        run: |
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E "^src/lib/ai/|^src/__tests__/ai/" || true)
+          if [ -n "$CHANGED" ]; then
+            echo "ai_changed=true" >> $GITHUB_OUTPUT
+            echo "Changed AI files:"
+            echo "$CHANGED"
+          else
+            echo "ai_changed=false" >> $GITHUB_OUTPUT
+            echo "No AI code changed — skipping eval run."
+          fi
+
+      - uses: pnpm/action-setup@v4
+        if: steps.changed.outputs.ai_changed == 'true'
+
+      - uses: actions/setup-node@v4
+        if: steps.changed.outputs.ai_changed == 'true'
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install deps
+        if: steps.changed.outputs.ai_changed == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Run golden eval
+        if: steps.changed.outputs.ai_changed == 'true'
+        run: pnpm eval:ai
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          KAULBY_EVAL_MODEL_TAG: ${{ github.head_ref }}
+
+      - name: Upload eval report on failure
+        if: failure() && steps.changed.outputs.ai_changed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-eval-report
+          path: src/__tests__/ai/eval-last-report.json
+          retention-days: 7
+
   # ─── Summary (always runs) ───
   summary:
     name: CI Summary
     runs-on: ubuntu-latest
-    needs: [quality, security, build, e2e, lighthouse, bundle-size]
+    needs: [quality, security, build, e2e, lighthouse, bundle-size, ai-eval]
     if: always()
     steps:
       - name: Evaluate results
@@ -312,6 +367,7 @@ jobs:
           check_job "E2E" "${{ needs.e2e.result }}"
           check_job "Lighthouse" "${{ needs.lighthouse.result }}"
           check_job "Bundle Size" "${{ needs.bundle-size.result }}"
+          check_job "AI Eval" "${{ needs['ai-eval'].result }}"
 
           if [ "$FAILED" -gt 0 ]; then
             echo "" >> $GITHUB_STEP_SUMMARY
