@@ -1,3 +1,11 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+// @ts-nocheck — DEFERRED 2026-04-22
+// Quora was dropped from the active Platform union pending a Team-tier-only reactivation
+// with a custom Crawlee actor. This function is no longer registered in
+// src/lib/inngest/index.ts (not scheduled, not invoked). Typechecking is suppressed
+// because the narrowed Platform union no longer includes "quora"; reactivation should
+// re-add "quora" to the Platform union and remove this directive. See
+// .mdmp/apify-platform-cost-audit-2026-04-21.md (§Quora).
 import { inngest } from "../client";
 import { logger } from "@/lib/logger";
 import {

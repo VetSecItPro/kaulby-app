@@ -11,7 +11,7 @@ export function OrganizationSchema() {
     url: BASE_URL,
     logo: `${BASE_URL}/logo.jpg`,
     description:
-      "AI-powered community monitoring for founders and SaaS teams. Discover customer pain points, competitor gaps, and buying signals across 17 platforms including Reddit, Hacker News, and Google Reviews.",
+      "AI-powered community monitoring for founders and SaaS teams. Discover customer pain points, competitor gaps, and buying signals across 16 platforms including Reddit, Hacker News, and Google Reviews.",
     foundingDate: "2024",
     sameAs: [],
     contactPoint: {
@@ -48,7 +48,7 @@ export function SoftwareApplicationSchema() {
     // Note: aggregateRating removed — no real user reviews yet.
     // Add back when genuine reviews are collected.
     description:
-      "Monitor brand mentions across 17 platforms with AI-powered sentiment analysis. Track Reddit, Hacker News, Product Hunt, reviews, and more.",
+      "Monitor brand mentions across 16 platforms with AI-powered sentiment analysis. Track Reddit, Hacker News, Product Hunt, reviews, and more.",
     featureList: [
       "Reddit Monitoring",
       "Hacker News Tracking",

@@ -56,7 +56,7 @@ Pick platforms based on business type (limited to the user's plan):
 - Consumer app → Reddit, Trustpilot, YouTube, X
 - B2B → Reddit, Hacker News, Trustpilot, X
 
-**Team plan (all 17 platforms — adds: Dev.to, Hashnode, App Store, Play Store, Quora, G2, Yelp, Amazon Reviews):**
+**Team plan (all 16 platforms — adds: Dev.to, Hashnode, App Store, Play Store, Quora, G2, Yelp, Amazon Reviews):**
 - Add relevant extras based on business type
 
 **Platform URL note:** Google Reviews, Yelp, YouTube, Trustpilot, App Store, Play Store, G2, Amazon Reviews require specific page URLs. For onboarding, skip these URL-dependent platforms unless the user explicitly provides the URLs. Focus on keyword-only platforms first (Reddit, Hacker News, Product Hunt, Indie Hackers, GitHub, X, Dev.to, Hashnode, Quora).

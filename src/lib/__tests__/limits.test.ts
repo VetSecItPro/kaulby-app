@@ -117,12 +117,12 @@ describe("limits", () => {
       expect(canAccessPlatformWithPlan("team", "devto")).toBe(true);
     });
 
-    it("allows all 17 platforms on team plan", () => {
+    it("allows all 16 platforms on team plan", () => {
       const allPlatforms: Platform[] = [
         "reddit", "hackernews", "indiehackers", "producthunt",
         "googlereviews", "youtube", "github", "trustpilot", "x",
         "devto", "hashnode", "appstore", "playstore",
-        "quora", "g2", "yelp", "amazonreviews",
+        "g2", "yelp", "amazonreviews",
       ];
       for (const p of allPlatforms) {
         expect(canAccessPlatformWithPlan("team", p)).toBe(true);

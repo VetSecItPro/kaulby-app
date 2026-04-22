@@ -48,7 +48,7 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://kaulbyapp.com"),
   title: "Kaulby — Find Customer Pain Points, Competitor Gaps & Buying Signals",
-  description: "Monitor Reddit, Hacker News, reviews, and 17 platforms. AI-powered pain point detection, competitor intelligence, and buying signal scoring for founders and SaaS teams.",
+  description: "Monitor Reddit, Hacker News, reviews, and 16 platforms. AI-powered pain point detection, competitor intelligence, and buying signal scoring for founders and SaaS teams.",
   icons: {
     icon: [
       { url: "/favicon-16.png", sizes: "16x16", type: "image/png" },
@@ -60,7 +60,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "Kaulby — Find Customer Pain Points, Competitor Gaps & Buying Signals",
-    description: "Monitor Reddit, reviews, Hacker News, and 17 platforms. AI surfaces pain points, competitor weaknesses, and buying signals for founders and SaaS teams.",
+    description: "Monitor Reddit, reviews, Hacker News, and 16 platforms. AI surfaces pain points, competitor weaknesses, and buying signals for founders and SaaS teams.",
     url: "https://kaulbyapp.com",
     siteName: "Kaulby",
     images: [
@@ -76,7 +76,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Kaulby — Find Customer Pain Points, Competitor Gaps & Buying Signals",
-    description: "Monitor Reddit, reviews, and 17 platforms. AI-powered pain point detection, competitor intelligence, and buying signal scoring.",
+    description: "Monitor Reddit, reviews, and 16 platforms. AI-powered pain point detection, competitor intelligence, and buying signal scoring.",
     images: ["/opengraph-image"],
   },
   manifest: "/manifest.json",

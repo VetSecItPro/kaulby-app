@@ -563,7 +563,7 @@ export function OnboardingChat({ userPlan, userName }: OnboardingChatProps) {
             )}
             {userPlan === "team" && (
               <span className="text-xs text-muted-foreground">
-                All 17 platforms available
+                All 16 platforms available
               </span>
             )}
           </div>

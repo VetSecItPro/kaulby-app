@@ -133,7 +133,7 @@ export default function IntegrationsDocsPage() {
         <SectionHeading id="how-it-works">How it works</SectionHeading>
         <div className="rounded-lg border bg-muted/30 p-4 space-y-3 text-muted-foreground">
           <p>
-            Kaulby monitors 17 platforms for your keywords around the clock.
+            Kaulby monitors 16 platforms for your keywords around the clock.
             When something happens, Kaulby sends an HTTP POST request (a
             &quot;webhook&quot;) to a URL you provide. Your automation platform
             receives the JSON payload and triggers whatever workflow you have

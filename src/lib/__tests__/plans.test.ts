@@ -72,9 +72,9 @@ describe("plans", () => {
       expect(limits.platforms).not.toContain("g2");
     });
 
-    it("team plan allows all 17 platforms", () => {
+    it("team plan allows all 16 platforms", () => {
       const limits = getPlanLimits("team");
-      expect(limits.platforms).toHaveLength(17);
+      expect(limits.platforms).toHaveLength(16);
       expect(limits.platforms).toEqual(ALL_PLATFORMS);
     });
   });
@@ -153,8 +153,8 @@ describe("plans", () => {
   });
 
   describe("ALL_PLATFORMS", () => {
-    it("contains exactly 17 platforms", () => {
-      expect(ALL_PLATFORMS).toHaveLength(17);
+    it("contains exactly 16 platforms", () => {
+      expect(ALL_PLATFORMS).toHaveLength(16);
     });
 
     it("has no duplicates", () => {

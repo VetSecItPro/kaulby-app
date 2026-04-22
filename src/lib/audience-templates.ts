@@ -55,7 +55,7 @@ export const AUDIENCE_TEMPLATES: AudienceTemplate[] = [
     icon: "target",
     category: "business",
     suggestedKeywords: ["looking for a tool", "best software for", "recommend a", "need help with", "budget for"],
-    suggestedPlatforms: ["reddit", "hackernews", "quora", "x"],
+    suggestedPlatforms: ["reddit", "hackernews", "x"],
     useCase: "Find warm leads actively seeking solutions you offer",
   },
   {
@@ -143,7 +143,7 @@ export const AUDIENCE_TEMPLATES: AudienceTemplate[] = [
     icon: "pen-tool",
     category: "business",
     suggestedKeywords: ["how to", "tutorial", "guide for", "explain", "best practices", "tips for"],
-    suggestedPlatforms: ["reddit", "quora", "hackernews", "devto"],
+    suggestedPlatforms: ["reddit", "hackernews", "devto"],
     useCase: "Discover high-demand content topics from real audience questions",
   },
   {

@@ -13,16 +13,16 @@ import {
 
 describe("platform-utils", () => {
   describe("platform constants", () => {
-    it("has 17 total platforms", () => {
-      expect(platforms).toHaveLength(17);
+    it("has 16 total platforms", () => {
+      expect(platforms).toHaveLength(16);
     });
 
     it("has 9 pro platforms", () => {
       expect(proPlatforms).toHaveLength(9);
     });
 
-    it("has 8 team-only platforms", () => {
-      expect(teamOnlyPlatforms).toHaveLength(8);
+    it("has 7 team-only platforms", () => {
+      expect(teamOnlyPlatforms).toHaveLength(7);
     });
 
     it("all platforms combined equals total", () => {

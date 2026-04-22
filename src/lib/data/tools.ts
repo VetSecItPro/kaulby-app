@@ -48,11 +48,11 @@ export const TOOLS: ToolData[] = [
     slug: "brand-mention-tracker",
     title: "Free Brand Mention Tracker",
     description:
-      "Track when your brand is mentioned across 17 platforms.",
+      "Track when your brand is mentioned across 16 platforms.",
     longDescription:
-      "Your brand is being discussed across Reddit, Hacker News, Product Hunt, review sites, and more — but you're only seeing a fraction of it. Kaulby's brand mention tracker monitors 17 platforms simultaneously, uses AI to analyze sentiment, and alerts you the moment someone mentions your brand. Stop guessing what people think and start knowing.",
+      "Your brand is being discussed across Reddit, Hacker News, Product Hunt, review sites, and more — but you're only seeing a fraction of it. Kaulby's brand mention tracker monitors 16 platforms simultaneously, uses AI to analyze sentiment, and alerts you the moment someone mentions your brand. Stop guessing what people think and start knowing.",
     features: [
-      "Track brand mentions across 17 platforms from one dashboard",
+      "Track brand mentions across 16 platforms from one dashboard",
       "AI sentiment analysis categorizes mentions as positive, negative, or neutral",
       "Real-time email and webhook alerts for new mentions",
       "Historical trend analysis to see how brand perception changes over time",
@@ -122,7 +122,7 @@ export const TOOLS: ToolData[] = [
     longDescription:
       "Your competitors' unhappy customers are your best leads. Kaulby's competitor intelligence tool monitors what people say about your competitors across Reddit, review sites, forums, and social platforms. AI analysis surfaces complaints, feature requests, and switching signals so you can position your product as the better alternative and win customers actively looking for options.",
     features: [
-      "Monitor competitor brand names and product mentions across 17 platforms",
+      "Monitor competitor brand names and product mentions across 16 platforms",
       "AI identifies complaints, feature gaps, and switching intent",
       "Lead scoring highlights high-intent prospects mentioning competitors",
       "Side-by-side sentiment comparison between you and competitors",

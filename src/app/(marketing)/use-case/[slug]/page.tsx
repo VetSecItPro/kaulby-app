@@ -242,7 +242,7 @@ export default async function UseCasePage({
             Start {useCase.title} Today
           </h2>
           <p className="text-xl opacity-90 mb-8">
-            Join businesses using Kaulby for {useCase.title.toLowerCase()} across 17 platforms.
+            Join businesses using Kaulby for {useCase.title.toLowerCase()} across 16 platforms.
           </p>
           <Link href={`/sign-up?ref=usecase-${slug}`}>
             <Button size="lg" variant="secondary" className="gap-2 text-lg px-8">

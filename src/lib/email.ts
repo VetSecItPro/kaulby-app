@@ -1564,7 +1564,7 @@ function getTrialWinbackEmailHtml(
                       <tr>
                         <td style="vertical-align: middle;">
                           <p style="margin: 0; font-size: 15px; font-weight: 600; color: ${COLORS.text};">Team</p>
-                          <p style="margin: 2px 0 0; font-size: 13px; color: ${COLORS.textMuted};">30 monitors &middot; All 17 platforms &middot; 2hr refresh</p>
+                          <p style="margin: 2px 0 0; font-size: 13px; color: ${COLORS.textMuted};">30 monitors &middot; All 16 platforms &middot; 2hr refresh</p>
                         </td>
                         <td style="text-align: right; vertical-align: middle;">
                           <p style="margin: 0; font-size: 18px; font-weight: 700; color: ${COLORS.accent};">$99<span style="font-size: 13px; font-weight: 400; color: ${COLORS.textDim};">/mo</span></p>

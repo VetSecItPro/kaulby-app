@@ -53,11 +53,12 @@ export async function getPolarClient(): Promise<PolarClient | null> {
   }
 }
 
-// Platform types (shared with plans.ts) - 17 total platforms
+// Platform types (shared with plans.ts) - 16 active platforms.
+// Quora deferred 2026-04-22 — see plans.ts header + .mdmp/apify-platform-cost-audit-2026-04-21.md.
 export type Platform =
   | "reddit" | "hackernews" | "producthunt" | "devto"
   | "googlereviews" | "trustpilot" | "appstore" | "playstore"
-  | "quora" | "youtube" | "g2" | "yelp" | "amazonreviews"
+  | "youtube" | "g2" | "yelp" | "amazonreviews"
   | "indiehackers" | "github" | "hashnode" | "x";
 
 // Digest frequency types
@@ -210,7 +211,7 @@ export const POLAR_PLANS: Record<"free" | "pro" | "team", PolarPlanDefinition> =
     features: [
       "Everything in Pro",
       "30 monitors",
-      "All 17 platforms",
+      "All 16 platforms",
       "20 keywords per monitor",
       "1-year history",
       "2-hour refresh cycle",
@@ -228,7 +229,7 @@ export const POLAR_PLANS: Record<"free" | "pro" | "team", PolarPlanDefinition> =
       resultsHistoryDays: 365,
       resultsVisible: -1,
       refreshDelayHours: 2,
-      platforms: ["reddit", "hackernews", "indiehackers", "producthunt", "googlereviews", "youtube", "github", "trustpilot", "x", "devto", "hashnode", "appstore", "playstore", "quora", "g2", "yelp", "amazonreviews"],
+      platforms: ["reddit", "hackernews", "indiehackers", "producthunt", "googlereviews", "youtube", "github", "trustpilot", "x", "devto", "hashnode", "appstore", "playstore", "g2", "yelp", "amazonreviews"],
       digestFrequencies: ["daily", "weekly", "twice_daily"],
       aiFeatures: {
         sentiment: true,

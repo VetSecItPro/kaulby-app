@@ -91,7 +91,7 @@ export default function OgImage() {
             lineHeight: 1.4,
           }}
         >
-          Track 17 platforms. Detect pain points. Score leads. Ship faster.
+          Track 16 platforms. Detect pain points. Score leads. Ship faster.
         </div>
 
         {/* Platform pills */}

@@ -618,7 +618,7 @@ export const PLATFORMS: PlatformData[] = [
       {
         question: "Which plan includes Dev.to monitoring?",
         answer:
-          "Dev.to monitoring is available on the Team plan ($99/mo), which includes all 17 platforms.",
+          "Dev.to monitoring is available on the Team plan ($99/mo), which includes all 16 platforms.",
       },
     ],
   },
@@ -676,7 +676,7 @@ export const PLATFORMS: PlatformData[] = [
       {
         question: "Which plan includes Hashnode monitoring?",
         answer:
-          "Hashnode monitoring is available on the Team plan ($99/mo), which includes all 17 platforms.",
+          "Hashnode monitoring is available on the Team plan ($99/mo), which includes all 16 platforms.",
       },
       {
         question: "How is Hashnode different from Dev.to monitoring?",
@@ -860,7 +860,7 @@ export const PLATFORMS: PlatformData[] = [
       {
         question: "Which plan includes Quora monitoring?",
         answer:
-          "Quora monitoring is available on the Team plan ($99/mo), which includes all 17 platforms.",
+          "Quora monitoring is available on the Team plan ($99/mo), which includes all 16 platforms.",
       },
       {
         question: "Does Kaulby track both Quora questions and answers?",
@@ -923,7 +923,7 @@ export const PLATFORMS: PlatformData[] = [
       {
         question: "Which plan includes G2 monitoring?",
         answer:
-          "G2 monitoring is available on the Team plan ($99/mo), which includes all 17 platforms.",
+          "G2 monitoring is available on the Team plan ($99/mo), which includes all 16 platforms.",
       },
       {
         question: "Can I track G2 comparison pages?",

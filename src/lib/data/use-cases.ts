@@ -33,7 +33,7 @@ export const USE_CASES: UseCaseData[] = [
     description:
       "Track every mention of your brand across Reddit, Hacker News, Product Hunt, review sites, and more. Know exactly what people are saying about your business in real time.",
     metaDescription:
-      "Monitor brand mentions across 17 platforms including Reddit, Hacker News, and review sites. AI-powered sentiment analysis and instant alerts. Free plan available.",
+      "Monitor brand mentions across 16 platforms including Reddit, Hacker News, and review sites. AI-powered sentiment analysis and instant alerts. Free plan available.",
     features: [
       {
         title: "Multi-Platform Coverage",
@@ -83,7 +83,7 @@ export const USE_CASES: UseCaseData[] = [
       {
         question: "How many platforms can I monitor for brand mentions?",
         answer:
-          "Kaulby monitors up to 17 platforms depending on your plan. The free plan covers Reddit, Pro covers 9 platforms, and Team covers all 17 including review sites and app stores.",
+          "Kaulby monitors up to 16 platforms depending on your plan. The free plan covers Reddit, Pro covers 9 platforms, and Team covers all 17 including review sites and app stores.",
       },
       {
         question: "How quickly will I be notified of new mentions?",
@@ -104,7 +104,7 @@ export const USE_CASES: UseCaseData[] = [
     description:
       "Monitor competitor mentions across community platforms, review sites, and social media. Understand their strengths, weaknesses, and customer sentiment to find your competitive edge.",
     metaDescription:
-      "Monitor competitor mentions across 17 platforms. AI-powered sentiment analysis reveals competitor strengths, weaknesses, and customer pain points. Start free.",
+      "Monitor competitor mentions across 16 platforms. AI-powered sentiment analysis reveals competitor strengths, weaknesses, and customer pain points. Start free.",
     features: [
       {
         title: "Competitor Mention Tracking",
@@ -362,7 +362,7 @@ export const USE_CASES: UseCaseData[] = [
     description:
       "Monitor mentions across review sites, forums, and social platforms. Catch negative sentiment early, respond to criticism, and protect your brand's reputation.",
     metaDescription:
-      "Monitor and manage your online reputation across 17 platforms. AI-powered sentiment alerts help you catch and address negative mentions early. Start free.",
+      "Monitor and manage your online reputation across 16 platforms. AI-powered sentiment alerts help you catch and address negative mentions early. Start free.",
     features: [
       {
         title: "Negative Mention Alerts",
@@ -412,7 +412,7 @@ export const USE_CASES: UseCaseData[] = [
       {
         question: "How does Kaulby help with reputation management?",
         answer:
-          "Kaulby continuously monitors 17 platforms for mentions of your brand. AI analyzes sentiment and categorizes mentions, alerting you immediately when negative content appears so you can respond quickly.",
+          "Kaulby continuously monitors 16 platforms for mentions of your brand. AI analyzes sentiment and categorizes mentions, alerting you immediately when negative content appears so you can respond quickly.",
       },
       {
         question: "Can Kaulby remove negative reviews?",
@@ -428,7 +428,7 @@ export const USE_CASES: UseCaseData[] = [
     description:
       "Understand your market by monitoring what real people say about your industry, competitors, and product category across online communities.",
     metaDescription:
-      "Conduct market research using real community discussions. Monitor industry trends, competitor sentiment, and customer needs across 17 platforms. Start free.",
+      "Conduct market research using real community discussions. Monitor industry trends, competitor sentiment, and customer needs across 16 platforms. Start free.",
     features: [
       {
         title: "Industry Trend Monitoring",
@@ -620,7 +620,7 @@ export const USE_CASES: UseCaseData[] = [
     description:
       "Monitor for sudden spikes in negative mentions across all platforms. Catch brewing PR crises early and respond before they gain momentum.",
     metaDescription:
-      "Detect PR crises early with AI-powered monitoring across 17 platforms. Get instant alerts on negative mention spikes. Protect your brand. Start free.",
+      "Detect PR crises early with AI-powered monitoring across 16 platforms. Get instant alerts on negative mention spikes. Protect your brand. Start free.",
     features: [
       {
         title: "Anomaly Detection",
@@ -630,7 +630,7 @@ export const USE_CASES: UseCaseData[] = [
       {
         title: "Multi-Platform Coverage",
         description:
-          "Crises can start anywhere. Monitor 17 platforms simultaneously so nothing slips through the cracks.",
+          "Crises can start anywhere. Monitor 16 platforms simultaneously so nothing slips through the cracks.",
       },
       {
         title: "Instant Alerts",
@@ -685,7 +685,7 @@ export const USE_CASES: UseCaseData[] = [
     description:
       "Automatically analyze the sentiment of every mention of your brand. Understand whether people are praising, complaining, or asking questions about your product.",
     metaDescription:
-      "AI-powered sentiment analysis for brand mentions across 17 platforms. Classify mentions as positive, negative, or neutral automatically. Start free.",
+      "AI-powered sentiment analysis for brand mentions across 16 platforms. Classify mentions as positive, negative, or neutral automatically. Start free.",
     features: [
       {
         title: "Automatic Classification",
@@ -943,9 +943,9 @@ export const USE_CASES: UseCaseData[] = [
     title: "Agency Client Monitoring",
     headline: "Monitor Multiple Client Brands From One Account",
     description:
-      "Agencies can monitor multiple client brands across 17 platforms. Set up dedicated monitors for each client with custom keywords and alerts.",
+      "Agencies can monitor multiple client brands across 16 platforms. Set up dedicated monitors for each client with custom keywords and alerts.",
     metaDescription:
-      "Agency client monitoring across 17 platforms. Track multiple brands, deliver client reports, and manage all monitoring from one dashboard. Start free.",
+      "Agency client monitoring across 16 platforms. Track multiple brands, deliver client reports, and manage all monitoring from one dashboard. Start free.",
     features: [
       {
         title: "Multi-Client Dashboard",
@@ -969,7 +969,7 @@ export const USE_CASES: UseCaseData[] = [
       },
     ],
     relevantPlatforms: [
-      "All 17 platforms",
+      "All 16 platforms",
       "Platform selection varies by client needs",
     ],
     exampleKeywords: [

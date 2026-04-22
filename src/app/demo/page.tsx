@@ -713,7 +713,7 @@ function MonitorsView() {
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Monitors</h1>
           <p className="text-muted-foreground text-sm sm:text-base">
-            Track keywords and topics across 17 platforms.
+            Track keywords and topics across 16 platforms.
           </p>
         </div>
         <Button className="gap-2 w-full sm:w-auto">

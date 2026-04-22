@@ -34,7 +34,7 @@ interface PlatformDef {
   keywordTips?: string;
 }
 
-// All 17 platforms with tier-based access and category grouping
+// All 16 platforms with tier-based access and category grouping
 const ALL_PLATFORMS: PlatformDef[] = [
   // Keyword-searchable platforms (search by terms, no URL needed)
   { id: "reddit", name: "Reddit", description: "Track subreddits and discussions", tier: "free", needsUrl: false, category: "keyword", keywordTips: "Use broad topic terms, industry phrases, and competitor names" },
@@ -531,7 +531,7 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
               <CardTitle>Platforms</CardTitle>
               <CardDescription>
                 {isTeamUser
-                  ? "All 17 platforms available. Different platforms need different inputs — we'll guide you."
+                  ? "All 16 platforms available. Different platforms need different inputs — we'll guide you."
                   : isPaidUser
                     ? "9 Pro platforms available. Upgrade to Team for all 17."
                     : "Upgrade to Pro for 9 platforms or Team for all 17."}
