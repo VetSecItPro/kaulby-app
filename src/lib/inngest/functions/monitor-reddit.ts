@@ -9,7 +9,7 @@ import { audiences } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { findRelevantSubredditsCached } from "@/lib/ai";
 import { contentMatchesMonitor } from "@/lib/content-matcher";
-import { searchRedditResilient, searchRedditSiteWide } from "@/lib/reddit";
+import { searchRedditResilient, searchRedditSiteWide, getRedditWatermark, setRedditWatermark } from "@/lib/reddit";
 import {
   getActiveMonitors,
   prefetchPlans,
@@ -118,9 +118,31 @@ export const monitorReddit = inngest.createFunction(
 
         logger.info("[Reddit] Search complete", { source: searchResult.source, subreddit, postCount: searchResult.posts.length });
 
+        // COA 4 W2.1 — Read watermark for this (user, subreddit). Posts are
+        // ordered newest-first; once we hit the URL we saw on the previous run
+        // we can stop processing (everything from there is already ingested).
+        const watermark = await step.run(`watermark-read-${monitor.id}-${subreddit}`, async () => {
+          return getRedditWatermark(monitor.userId, subreddit);
+        });
+
+        const postsToProcess: typeof searchResult.posts = [];
+        for (const post of searchResult.posts) {
+          const postUrl = post.url || `https://reddit.com${post.permalink}`;
+          if (watermark && postUrl === watermark) break;
+          postsToProcess.push(post);
+        }
+
+        if (watermark && postsToProcess.length < searchResult.posts.length) {
+          logger.debug("[Reddit] watermark short-circuit", {
+            subreddit,
+            processed: postsToProcess.length,
+            total: searchResult.posts.length,
+          });
+        }
+
         // Check each post for matches using content matcher
         // Supports: company name, keywords, and advanced boolean search
-        const matchingPosts = searchResult.posts.filter((post) => {
+        const matchingPosts = postsToProcess.filter((post) => {
           const matchResult = contentMatchesMonitor(
             {
               title: post.title,
@@ -165,6 +187,17 @@ export const monitorReddit = inngest.createFunction(
           totalResults += count;
           monitorMatchCount += count;
           newResultIds.push(...ids);
+        }
+
+        // COA 4 W2.1 — Update watermark to the newest post URL from this scan
+        // (regardless of match — we still don't want to re-process it next run).
+        // Uses posts[0] since Reddit returns newest-first.
+        const newestPost = searchResult.posts[0];
+        if (newestPost) {
+          const newestUrl = newestPost.url || `https://reddit.com${newestPost.permalink}`;
+          await step.run(`watermark-write-${monitor.id}-${subreddit}`, async () => {
+            await setRedditWatermark(monitor.userId, subreddit, newestUrl);
+          });
         }
       }
 
