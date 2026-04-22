@@ -27,6 +27,8 @@
 import { cachedQuery, getRedditCacheTTL, CACHE_TTL } from "@/lib/cache";
 import { randomBytes } from "crypto";
 import { logger } from "@/lib/logger";
+import { captureEvent } from "@/lib/posthog";
+import { Redis } from "@upstash/redis";
 
 // Circuit breaker for Reddit data sources
 const circuitBreakers: Record<string, { failures: number; openUntil: number }> = {};
@@ -53,8 +55,95 @@ function recordFailure(source: string): void {
   if (cb.failures >= CIRCUIT_THRESHOLD) {
     cb.openUntil = Date.now() + CIRCUIT_COOLDOWN;
     logger.warn(`[Reddit] Circuit breaker OPEN for ${source} — skipping for 5 minutes`);
+    // COA 4 W2.2: emit degraded event on circuit-open transition so dashboards
+    // can show reliability dips and alerting can page on sustained degradation.
+    // Using a synthetic distinctId because this is a system-level signal, not
+    // per-user. Only Apify degradation is flagged — Public JSON/Serper hitting
+    // their breakers isn't as operationally urgent (they're fallbacks).
+    if (source === "apify") {
+      captureEvent({
+        distinctId: "kaulby-system",
+        event: "reddit.apify_degraded",
+        properties: {
+          consecutive_failures: cb.failures,
+          cooldown_until: new Date(cb.openUntil).toISOString(),
+        },
+      });
+    }
   }
   circuitBreakers[source] = cb;
+}
+
+// ============================================================================
+// COA 4 W2.1 — Reddit watermark (Redis-backed per-(workspace, subreddit) marker
+// of the most recent post URL we've already ingested). Used by monitor-reddit to
+// short-circuit post-processing work once we hit a seen post. Falls back safely
+// when Redis isn't configured (dev) — short-circuit simply doesn't fire.
+// ============================================================================
+
+let _watermarkRedis: Redis | null = null;
+function getWatermarkRedis(): Redis | null {
+  if (_watermarkRedis) return _watermarkRedis;
+  const url = process.env.UPSTASH_REDIS_REST_URL?.trim();
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN?.trim();
+  if (!url || !token) return null;
+  _watermarkRedis = new Redis({ url, token });
+  return _watermarkRedis;
+}
+
+const WATERMARK_TTL_SECONDS = 30 * 86400; // 30 days — long enough to survive cold monitors
+
+function watermarkKey(workspaceId: string, subreddit: string): string {
+  // Lowercase subreddit for stable keys regardless of casing in the monitor row.
+  return `kaulby:reddit:watermark:${workspaceId}:${subreddit.toLowerCase()}`;
+}
+
+/**
+ * Read the last-seen post URL for a (workspace, subreddit) pair. Returns null
+ * if no watermark exists or Redis is unavailable. Callers should treat null as
+ * "process everything" (no short-circuit).
+ */
+export async function getRedditWatermark(
+  workspaceId: string,
+  subreddit: string
+): Promise<string | null> {
+  const r = getWatermarkRedis();
+  if (!r) return null;
+  try {
+    return await r.get<string>(watermarkKey(workspaceId, subreddit));
+  } catch (err) {
+    logger.warn("[Reddit] watermark read failed", {
+      workspaceId,
+      subreddit,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return null;
+  }
+}
+
+/**
+ * Update the watermark to the newest post URL just ingested. Best-effort —
+ * if Redis is unavailable we silently skip so the scheduled scan still
+ * completes.
+ */
+export async function setRedditWatermark(
+  workspaceId: string,
+  subreddit: string,
+  postUrl: string
+): Promise<void> {
+  const r = getWatermarkRedis();
+  if (!r) return;
+  try {
+    await r.set(watermarkKey(workspaceId, subreddit), postUrl, {
+      ex: WATERMARK_TTL_SECONDS,
+    });
+  } catch (err) {
+    logger.warn("[Reddit] watermark write failed", {
+      workspaceId,
+      subreddit,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
 }
 
 interface RedditPost {
