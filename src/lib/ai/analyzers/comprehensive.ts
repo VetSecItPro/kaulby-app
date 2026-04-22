@@ -1,5 +1,5 @@
 import { jsonCompletion, MODELS } from "../openrouter";
-import { SYSTEM_PROMPTS } from "../prompts";
+import { SYSTEM_PROMPTS, withPersonaVoice } from "../prompts";
 import { type AnalysisMeta } from "./sentiment";
 
 // Comprehensive analysis result for Team tier
@@ -109,9 +109,16 @@ MENTION TEXT:
 ${content}
 `.trim();
 
+  // COA 4 W2.6 — Team tier gets Kaulby's persona voice prepended; Pro/Free
+  // run the base prompt unchanged (cheaper, neutral output on Flash).
+  const useTeamPersona = options?.model === MODELS.team;
+  const systemPrompt = useTeamPersona
+    ? withPersonaVoice(SYSTEM_PROMPTS.comprehensiveAnalysis)
+    : SYSTEM_PROMPTS.comprehensiveAnalysis;
+
   const { data, meta } = await jsonCompletion<ComprehensiveAnalysisResult>({
     messages: [
-      { role: "system", content: SYSTEM_PROMPTS.comprehensiveAnalysis },
+      { role: "system", content: systemPrompt },
       { role: "user", content: userMessage },
     ],
     // Caller-driven model: COA 4 W1.6 added tier routing so Team tier can pass
