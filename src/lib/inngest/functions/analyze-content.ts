@@ -14,6 +14,9 @@ import {
   flushAI,
   type ComprehensiveAnalysisContext,
 } from "@/lib/ai";
+import { MODELS } from "@/lib/ai/openrouter";
+import { checkDailyCostBudget } from "@/lib/ai/rate-limit";
+import { captureEvent } from "@/lib/posthog";
 import { incrementAiCallsCount, getUserPlan } from "@/lib/limits";
 import { getPlanLimits } from "@/lib/plans";
 import { cache } from "@/lib/cache";
@@ -186,7 +189,14 @@ async function runProAnalysis(
   };
 }
 
-/** Run Team-tier comprehensive analysis */
+/**
+ * Run Team-tier comprehensive analysis.
+ *
+ * COA 4 W1.7: Team tier uses Claude Sonnet 4.5 for stronger persona voice and
+ * reasoning. If Sonnet fails (rate limit, provider outage, quota), we degrade
+ * to Gemini Flash rather than erroring the whole analysis — user still gets a
+ * result, and a PostHog event records the downgrade for observability.
+ */
 async function runTeamAnalysis(
   contentToAnalyze: string,
   result: {
@@ -194,7 +204,8 @@ async function runTeamAnalysis(
     metadata: unknown;
   },
   monitor: { keywords: string[]; name: string } | null,
-  keywordMatch: { category: string; confidence: number; matchedKeyword: string } | null
+  keywordMatch: { category: string; confidence: number; matchedKeyword: string } | null,
+  userId: string
 ) {
   const metadata = result.metadata as Record<string, unknown> | null;
 
@@ -206,16 +217,43 @@ async function runTeamAnalysis(
     subreddit: (metadata?.subreddit as string) || undefined,
   };
 
-  // Run comprehensive analysis and optionally conversation categorization in parallel
-  const [comprehensiveResult, categoryResult] = await Promise.all([
-    analyzeComprehensive(contentToAnalyze, context),
-    keywordMatch
-      ? Promise.resolve(null)
-      : categorizeConversation(contentToAnalyze, {
-          upvotes: (metadata?.upvotes as number) || (metadata?.score as number) || undefined,
-          commentCount: (metadata?.commentCount as number) || (metadata?.numComments as number) || undefined,
-        }),
-  ]);
+  // Attempt 1: Sonnet 4.5 (Team tier model).
+  let comprehensiveResult: Awaited<ReturnType<typeof analyzeComprehensive>>;
+  let degraded = false;
+  try {
+    comprehensiveResult = await analyzeComprehensive(contentToAnalyze, context, {
+      model: MODELS.team,
+    });
+  } catch (sonnetError) {
+    // Fallback: retry with Flash and flag the downgrade.
+    const errMsg = sonnetError instanceof Error ? sonnetError.message : String(sonnetError);
+    logger.warn("[analyze-content] Team-tier Sonnet failed, falling back to Flash", {
+      userId,
+      error: errMsg,
+    });
+    captureEvent({
+      distinctId: userId,
+      event: "ai_analysis.tier_downgrade",
+      properties: {
+        from_model: MODELS.team,
+        to_model: MODELS.primary,
+        reason: "sonnet_call_failed",
+        error_message: errMsg.slice(0, 200),
+      },
+    });
+    comprehensiveResult = await analyzeComprehensive(contentToAnalyze, context, {
+      model: MODELS.primary,
+    });
+    degraded = true;
+  }
+
+  // Conversation categorization always uses the default (Flash) — cheap operation.
+  const categoryResult = keywordMatch
+    ? null
+    : await categorizeConversation(contentToAnalyze, {
+        upvotes: (metadata?.upvotes as number) || (metadata?.score as number) || undefined,
+        commentCount: (metadata?.commentCount as number) || (metadata?.numComments as number) || undefined,
+      });
 
   const analysis = comprehensiveResult.result;
   const category = keywordMatch
@@ -238,6 +276,7 @@ async function runTeamAnalysis(
     totalLatency,
     model: comprehensiveResult.meta.model,
     keywordMatchUsed: !!keywordMatch,
+    degraded, // true when Team tier fell back from Sonnet to Flash
   };
 }
 
@@ -277,6 +316,43 @@ export const analyzeContent = inngest.createFunction(
         useComprehensiveAnalysis: limits.aiFeatures.comprehensiveAnalysis,
       };
     });
+
+    // COA 4 W1.8: daily AI cost cap per user. Halts analyses when today's
+    // cumulative $/day AI spend from aiLogs.cost_usd exceeds the tier cap.
+    // Defaults Pro $1/day, Team $5/day; overridable via KAULBY_*_DAILY_AI_BUDGET_USD.
+    // Free users skip the check (they're already blocked by unlimitedAi gate below).
+    if (planCheck.plan !== "free") {
+      const costBudget = await step.run("check-daily-cost-budget", async () => {
+        return checkDailyCostBudget(userId, planCheck.plan as "pro" | "team");
+      });
+
+      if (!costBudget.allowed) {
+        logger.warn("[analyze-content] Daily AI cost cap reached — halting analysis", {
+          userId,
+          plan: planCheck.plan,
+          spentUsd: costBudget.spentUsd,
+          capUsd: costBudget.capUsd,
+        });
+        captureEvent({
+          distinctId: userId,
+          event: "ai_analysis.cost_cap_reached",
+          properties: {
+            plan: planCheck.plan,
+            spent_usd: costBudget.spentUsd,
+            cap_usd: costBudget.capUsd,
+          },
+        });
+        // TODO(W1.8 follow-up): queue a user notification email via send-alerts.ts
+        // so the user knows their scans are paused. Tracked in kaulby-backlog.md.
+        return {
+          skipped: true,
+          reason: "Daily AI cost cap reached",
+          plan: planCheck.plan,
+          spentUsd: costBudget.spentUsd,
+          capUsd: costBudget.capUsd,
+        };
+      }
+    }
 
     // For free users, only analyze first result
     if (!planCheck.hasUnlimitedAi) {
@@ -435,7 +511,7 @@ export const analyzeContent = inngest.createFunction(
 
         // Run comprehensive analysis
         const teamAnalysisResult = await step.run("run-team-analysis", async () => {
-          return runTeamAnalysis(contentToAnalyze, result, monitor, teamKeywordMatch);
+          return runTeamAnalysis(contentToAnalyze, result, monitor, teamKeywordMatch, userId);
         });
 
         const analysis = teamAnalysisResult.analysis;

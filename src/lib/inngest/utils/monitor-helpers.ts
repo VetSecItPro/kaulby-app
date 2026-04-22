@@ -28,6 +28,7 @@ import { isMonitorScheduleActive } from "@/lib/monitor-schedule";
 import { AI_BATCH_CONFIG } from "@/lib/ai/sampling";
 import { inngest } from "../client";
 import { track } from "@/lib/analytics";
+import { logger } from "@/lib/logger";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -407,6 +408,10 @@ export async function updateMonitorStats(
       .set({
         lastCheckedAt: new Date(),
         newMatchCount: matchCount,
+        // COA 4 W1.10: successful scan clears any prior failure flag so the
+        // monitor card's red dot disappears once the scan recovers.
+        lastCheckFailedAt: null,
+        lastCheckFailedReason: null,
         updatedAt: new Date(),
       })
       .where(eq(monitors.id, monitorId));
@@ -429,6 +434,12 @@ export async function updateMonitorStats(
  * Task 1.4: emit `scan.failed` from a platform scan's outer catch. Keeps
  * failure analytics in the shared helper so every platform reports failures
  * with the same shape (errorType is the Error.name — e.g. "TimeoutError").
+ *
+ * COA 4 W1.10: also persists `lastCheckFailedAt` + `lastCheckFailedReason` on
+ * the monitor row so the UI card shows a red dot + "Last check failed X
+ * minutes ago" tooltip. The flag clears automatically on the next successful
+ * scan (see updateMonitorStats above). Fire-and-forget: analytics + DB write
+ * are best-effort and must never re-throw inside the scan's catch block.
  */
 export function trackScanFailed(params: {
   userId: string;
@@ -438,10 +449,31 @@ export function trackScanFailed(params: {
 }): void {
   const errorType =
     params.error instanceof Error ? params.error.name || "Error" : "Unknown";
+  const errorMessage =
+    params.error instanceof Error ? params.error.message : String(params.error);
   track("scan.failed", {
     userId: params.userId,
     monitorId: params.monitorId,
     platform: params.platform,
     errorType,
   });
+
+  // Fire-and-forget DB write. Wrap in a .catch so a failed write doesn't
+  // swallow the original error the caller is already handling.
+  void pooledDb
+    .update(monitors)
+    .set({
+      lastCheckFailedAt: new Date(),
+      lastCheckFailedReason: `[${params.platform}] ${errorType}: ${errorMessage.slice(0, 300)}`,
+      updatedAt: new Date(),
+    })
+    .where(eq(monitors.id, params.monitorId))
+    .catch((dbErr) => {
+      // Log but don't rethrow — monitor visibility is nice-to-have.
+      logger.warn("[trackScanFailed] Could not persist lastCheckFailedAt", {
+        monitorId: params.monitorId,
+        platform: params.platform,
+        dbError: dbErr instanceof Error ? dbErr.message : String(dbErr),
+      });
+    });
 }

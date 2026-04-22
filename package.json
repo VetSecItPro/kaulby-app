@@ -20,6 +20,8 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "backfill:ai-analyzed": "npx tsx scripts/backfill-ai-analyzed.ts",
+    "eval:ai": "KAULBY_RUN_AI_EVAL=1 tsx src/__tests__/ai/eval-runner.ts",
+    "eval:ai:baseline": "KAULBY_RUN_AI_EVAL=1 tsx src/__tests__/ai/eval-runner.ts --write-baseline",
     "remotion:preview": "cd remotion && npx remotion studio src/index.ts",
     "remotion:render": "cd remotion && npx remotion render src/index.ts ProductDemo ../public/videos/product-demo.mp4 && npx remotion render src/index.ts AIChatDemo ../public/videos/ai-chat-demo.mp4 && npx remotion render src/index.ts ProductDemo ../public/videos/product-demo.webm --codec=vp8 && npx remotion render src/index.ts AIChatDemo ../public/videos/ai-chat-demo.webm --codec=vp8",
     "remotion:posters": "cd remotion && npx remotion still src/index.ts ProductDemo ../public/videos/product-demo-poster.webp --image-format=webp --frame=0 && npx remotion still src/index.ts AIChatDemo ../public/videos/ai-chat-demo-poster.webp --image-format=webp --frame=0"
@@ -88,6 +90,7 @@
     "postcss": "8.5.8",
     "serwist": "^9.5.7",
     "tailwindcss": "3.4.19",
+    "tsx": "^4.21.0",
     "typescript": "5.9.3",
     "vitest": "4.1.0"
   },

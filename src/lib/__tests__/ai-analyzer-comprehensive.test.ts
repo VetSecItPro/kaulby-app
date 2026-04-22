@@ -4,7 +4,12 @@ const mockJsonCompletion = vi.fn();
 
 vi.mock("@/lib/ai/openrouter", () => ({
   jsonCompletion: (...args: unknown[]) => mockJsonCompletion(...args),
-  MODELS: { premium: "google/gemini-2.5-flash" },
+  MODELS: {
+    primary: "google/gemini-2.5-flash",
+    fallback: "google/gemini-2.5-flash",
+    team: "anthropic/claude-sonnet-4-5",
+    premium: "google/gemini-2.5-flash",
+  },
 }));
 
 vi.mock("@/lib/ai/prompts", () => ({
@@ -184,7 +189,7 @@ describe("ai/analyzers/comprehensive", () => {
     expect(userMessage).toContain("KEYWORDS MATCHED: bug");
   });
 
-  it("uses premium model", async () => {
+  it("defaults to primary (Flash) model when no override passed", async () => {
     mockJsonCompletion.mockResolvedValue({
       data: {
         sentiment: { label: "neutral", score: 0, intensity: "mild", emotions: [] },

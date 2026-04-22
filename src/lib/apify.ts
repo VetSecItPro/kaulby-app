@@ -16,6 +16,7 @@
  */
 
 import { logger } from "@/lib/logger";
+import { incrementQuota } from "@/lib/quota-tracker";
 
 const APIFY_API_BASE = "https://api.apify.com/v2";
 
@@ -196,6 +197,10 @@ async function runActor<T>(
       body: JSON.stringify(input),
     }
   );
+
+  // COA 4 W1.9: one actor start == one billable run. Count here so failed runs
+  // still show up in the quota dashboard (they still consume Apify plan quota).
+  void incrementQuota("apify");
 
   if (!runResponse.ok) {
     const error = await runResponse.text();

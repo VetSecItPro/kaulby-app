@@ -38,6 +38,15 @@ const AI_RATE_LIMITS = {
   },
 } as const;
 
+// COA 4 W1.8: per-user daily AI dollar cap (enforced via aiLogs.cost_usd sum).
+// Protects against runaway costs when Team tier routes to Sonnet 4.5 ($3 in / $15 out).
+// Overridable via env for emergency tuning without a deploy.
+const DAILY_COST_CAPS_USD = {
+  free: 0,
+  pro: Number(process.env.KAULBY_PRO_DAILY_AI_BUDGET_USD ?? 1),
+  team: Number(process.env.KAULBY_TEAM_DAILY_AI_BUDGET_USD ?? 5),
+} as const;
+
 // ---------------------------------------------------------------------------
 // Redis-backed rate limiters (distributed, survives restarts)
 // ---------------------------------------------------------------------------
@@ -246,6 +255,59 @@ export async function checkTokenBudget(
     remaining,
     used,
     limit: limits.dailyTokenBudget,
+  };
+}
+
+/**
+ * Get user's AI cost (USD) for today, summed from aiLogs.
+ */
+async function getDailyCostUsd(userId: string): Promise<number> {
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+
+  const result = await db
+    .select({
+      totalCost: sql<number>`COALESCE(SUM(${aiLogs.costUsd}), 0)`,
+    })
+    .from(aiLogs)
+    .where(
+      and(
+        eq(aiLogs.userId, userId),
+        gte(aiLogs.createdAt, startOfDay)
+      )
+    );
+
+  return Number(result[0]?.totalCost ?? 0);
+}
+
+/**
+ * COA 4 W1.8 — enforce a per-user $/day AI spend cap.
+ *
+ * Returns `allowed: false` when today's cumulative `aiLogs.cost_usd` for the
+ * user has reached or exceeded the tier cap. Callers should halt new analysis
+ * requests when this returns false, and optionally surface a notification so
+ * the user knows why their scans paused (follow-up work — see backlog).
+ *
+ * Defaults: Pro $1/day, Team $5/day. Override at runtime via
+ * `KAULBY_PRO_DAILY_AI_BUDGET_USD` / `KAULBY_TEAM_DAILY_AI_BUDGET_USD`.
+ */
+export async function checkDailyCostBudget(
+  userId: string,
+  tier: "free" | "pro" | "team"
+): Promise<{ allowed: boolean; spentUsd: number; capUsd: number; remainingUsd: number }> {
+  const capUsd = DAILY_COST_CAPS_USD[tier];
+  if (capUsd <= 0) {
+    return { allowed: false, spentUsd: 0, capUsd: 0, remainingUsd: 0 };
+  }
+
+  const spentUsd = await getDailyCostUsd(userId);
+  const remainingUsd = Math.max(0, capUsd - spentUsd);
+
+  return {
+    allowed: spentUsd < capUsd,
+    spentUsd: Math.round(spentUsd * 10000) / 10000,
+    capUsd,
+    remainingUsd: Math.round(remainingUsd * 10000) / 10000,
   };
 }
 

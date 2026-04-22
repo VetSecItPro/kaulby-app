@@ -14,6 +14,7 @@
 import { cachedQuery, CACHE_TTL } from "@/lib/cache";
 import { randomBytes } from "crypto";
 import { logger } from "@/lib/logger";
+import { incrementQuota } from "@/lib/quota-tracker";
 
 // ============================================================================
 // TYPES
@@ -165,6 +166,10 @@ async function searchSerper(
       num: Math.min(limit, 100),
     }),
   });
+
+  // COA 4 W1.9: count every Serper call against the daily quota (including failures
+  // — we're billed for attempts, not successes). Non-blocking; never throws.
+  void incrementQuota("serper");
 
   if (!response.ok) {
     const errorText = await response.text();

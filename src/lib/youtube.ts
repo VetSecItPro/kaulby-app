@@ -17,6 +17,7 @@
 
 import { cachedQuery, CACHE_TTL } from "@/lib/cache";
 import { logger } from "@/lib/logger";
+import { incrementQuota } from "@/lib/quota-tracker";
 
 // ============================================================================
 // TYPES
@@ -123,6 +124,8 @@ async function fetchVideoTitle(
   try {
     const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${encodeURIComponent(videoId)}&key=${apiKey}&fields=items(id,snippet/title)`;
     const response = await fetch(url, { signal: AbortSignal.timeout(30000) });
+    // COA 4 W1.9: videos.list?part=snippet costs 1 unit.
+    void incrementQuota("youtube", 1);
 
     if (!response.ok) return undefined;
 
@@ -176,6 +179,8 @@ export async function fetchYouTubeCommentsApi(
         }
 
         const response = await fetch(url, { signal: AbortSignal.timeout(30000) });
+        // COA 4 W1.9: commentThreads.list?part=snippet costs 1 unit per page.
+        void incrementQuota("youtube", 1);
 
         if (!response.ok) {
           const errorText = await response.text();

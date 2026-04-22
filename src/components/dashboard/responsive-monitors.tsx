@@ -24,7 +24,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { PlusCircle, Radio, MoreVertical, Pause, Play, Copy, Trash2, CheckSquare, X } from "lucide-react";
+import { PlusCircle, Radio, MoreVertical, Pause, Play, Copy, Trash2, CheckSquare, X, AlertCircle } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Checkbox } from "@/components/ui/checkbox";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -46,6 +52,9 @@ interface Monitor {
   isScanning?: boolean;
   lastManualScanAt?: Date | null;
   lastCheckedAt?: Date | string | null;
+  // COA 4 W1.10: silent-failure observability fields.
+  lastCheckFailedAt?: Date | string | null;
+  lastCheckFailedReason?: string | null;
   newMatchCount?: number;
   createdAt: Date;
 }
@@ -482,6 +491,31 @@ function DesktopMonitors({ monitors, refreshInfo }: ResponsiveMonitorsProps) {
                       <Badge variant={monitor.isActive ? "default" : "secondary"}>
                         {monitor.isActive ? "Active" : "Paused"}
                       </Badge>
+                      {/* COA 4 W1.10: Silent-failure visibility. Red dot appears when
+                          the most recent scheduled scan failed; clears automatically
+                          on next successful scan via updateMonitorStats. */}
+                      {monitor.lastCheckFailedAt && (
+                        <TooltipProvider delayDuration={200}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="flex items-center gap-1 text-destructive" aria-label="Last scan failed">
+                                <AlertCircle className="h-4 w-4" />
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-xs">
+                              <p className="font-medium">Last scan failed</p>
+                              <p className="text-xs opacity-80" suppressHydrationWarning>
+                                {formatRelativeTime(monitor.lastCheckFailedAt)}
+                              </p>
+                              {monitor.lastCheckFailedReason && (
+                                <p className="text-xs opacity-70 mt-1 break-words">
+                                  {monitor.lastCheckFailedReason}
+                                </p>
+                              )}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
                     </div>
                       <CardDescription>
                         Keywords: {monitor.keywords.join(", ")}
