@@ -2,7 +2,7 @@ import { inngest } from "../client";
 import { pooledDb, alerts, monitors, results, users } from "@/lib/db";
 import { eq, and, gte, inArray, isNull, ne, or, sql } from "drizzle-orm";
 import { sendAlertEmail, sendDigestEmail, type WeeklyInsights } from "@/lib/email";
-import { getPlanLimits } from "@/lib/plans";
+import { getPlanLimits, type PlanKey } from "@/lib/plans";
 import { computeWeeklyInsightsFor } from "./weekly-insights-helper";
 import { sendWebhookNotification, type NotificationResult } from "@/lib/notifications";
 import { sendDiscordBotMessage } from "@/lib/integrations/discord";
@@ -520,7 +520,7 @@ async function sendDigestForTimezone(
           })),
           step,
           5,
-          user.subscriptionStatus as "free" | "pro" | "team"
+          user.subscriptionStatus as PlanKey
         );
       }
     }

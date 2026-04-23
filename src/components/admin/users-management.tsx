@@ -1,5 +1,6 @@
 "use client";
 
+import type { PlanKey } from "@/lib/plans";
 import { useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
@@ -138,7 +139,7 @@ export function UsersManagement({
       ? (user.subscriptionStatus === "free" ? "pro" : "team")
       : (user.subscriptionStatus === "team" ? "pro" : "free");
 
-    await updateUserPlan(user.id, newPlan as "free" | "pro" | "team");
+    await updateUserPlan(user.id, newPlan as PlanKey);
     setActionDialog({ type: null, user: null });
     router.refresh();
   };

@@ -11,6 +11,7 @@
  * falls back to in-memory for local development.
  */
 
+import type { PlanKey } from "@/lib/plans";
 import { db, aiLogs } from "@/lib/db";
 import { eq, gte, and, sql } from "drizzle-orm";
 import { Ratelimit } from "@upstash/ratelimit";
@@ -155,7 +156,7 @@ function checkRateLimitMemory(
  */
 export async function checkAllRateLimits(
   userId: string,
-  tier: "free" | "starter" | "pro" | "team"
+  tier: PlanKey
 ): Promise<{ allowed: boolean; reason?: string; retryAfter?: number }> {
   const limits = AI_RATE_LIMITS[tier];
 
@@ -258,7 +259,7 @@ async function getDailyTokenUsage(userId: string): Promise<number> {
  */
 export async function checkTokenBudget(
   userId: string,
-  tier: "free" | "starter" | "pro" | "team"
+  tier: PlanKey
 ): Promise<{ allowed: boolean; remaining: number; used: number; limit: number }> {
   const limits = AI_RATE_LIMITS[tier];
   const used = await getDailyTokenUsage(userId);
@@ -307,7 +308,7 @@ async function getDailyCostUsd(userId: string): Promise<number> {
  */
 export async function checkDailyCostBudget(
   userId: string,
-  tier: "free" | "starter" | "pro" | "team"
+  tier: PlanKey
 ): Promise<{ allowed: boolean; spentUsd: number; capUsd: number; remainingUsd: number }> {
   const capUsd = DAILY_COST_CAPS_USD[tier];
   if (capUsd <= 0) {

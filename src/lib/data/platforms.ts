@@ -6,12 +6,14 @@
  * - src/app/sitemap.ts
  */
 
+import type { PlanKey } from "@/lib/plans";
+
 export interface PlatformData {
   slug: string;
   name: string;
   shortName: string;
   description: string;
-  tier: "free" | "pro" | "team";
+  tier: PlanKey;
   heroHeadline: string;
   heroDescription: string;
   features: {

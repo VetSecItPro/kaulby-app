@@ -1,3 +1,4 @@
+import type { PlanKey } from "@/lib/plans";
 import { captureEvent } from "@/lib/posthog";
 
 // Tier 1 Task 1.4: typed event taxonomy.
@@ -12,7 +13,7 @@ export type AnalyticsEvents = {
     userId: string;
     monitorId: string;
     platform: string;
-    plan: "free" | "pro" | "team";
+    plan: PlanKey;
   };
   "scan.completed": {
     userId: string;

@@ -1,4 +1,5 @@
 import { logger } from "@/lib/logger";
+import type { PlanKey } from "@/lib/plans";
 
 // Polar SDK - dynamically imported to prevent build errors when not installed
 // Install with: pnpm add @polar-sh/sdk
@@ -297,7 +298,9 @@ export const POLAR_PLANS: Record<"free" | "starter" | "pro" | "team", PolarPlanD
   },
 } as const;
 
-export type PolarPlanKey = keyof typeof POLAR_PLANS;
+// PolarPlanKey is the same concept as PlanKey — kept as an alias for
+// historical callsites. New code should import PlanKey from @/lib/plans.
+export type PolarPlanKey = PlanKey;
 
 // Day Pass product ID for one-time purchase
 export const DAY_PASS_PRODUCT_ID = process.env.POLAR_DAY_PASS_PRODUCT_ID || "";

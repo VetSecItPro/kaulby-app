@@ -1,3 +1,4 @@
+import type { PlanKey } from "@/lib/plans";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { ResponsiveDashboardLayout } from "@/components/dashboard/responsive-dashboard-layout";
@@ -16,7 +17,7 @@ export default async function ManageLayout({
                      !process.env.VERCEL &&
                      !process.env.VERCEL_ENV;
 
-  let subscriptionStatus: "free" | "starter" | "pro" | "team" = "team";
+  let subscriptionStatus: PlanKey = "team";
 
   // In production (and non-opted-in dev), require auth and admin status
   if (!isLocalDev) {

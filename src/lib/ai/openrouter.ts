@@ -35,7 +35,10 @@ export const MODELS = {
 
 // Plan tier → model routing. Callers pass the user's plan; get back the model ID
 // to pass to OpenRouter. Unknown/free plans fall back to Flash.
-export type PlanTier = "free" | "starter" | "pro" | "team";
+// PlanTier is an alias of PlanKey — kept for historical callsites.
+// New code should import PlanKey from @/lib/plans directly.
+import type { PlanKey } from "@/lib/plans";
+export type PlanTier = PlanKey;
 
 export function getModelForTier(plan: PlanTier | string): string {
   if (plan === "team") return MODELS.team;

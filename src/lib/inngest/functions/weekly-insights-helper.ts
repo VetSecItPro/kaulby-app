@@ -10,6 +10,7 @@
  * affects both callers intentionally.
  */
 
+import type { PlanKey } from "@/lib/plans";
 import type { WeeklyInsights } from "@/lib/email";
 import { generateWeeklyInsights } from "@/lib/ai";
 import { MODELS } from "@/lib/ai/openrouter";
@@ -50,7 +51,7 @@ export async function computeWeeklyInsightsFor(
   results: InsightResult[],
   step: InsightsStep,
   minResults = 5,
-  plan?: "free" | "pro" | "team"
+  plan?: PlanKey
 ): Promise<WeeklyInsights | undefined> {
   if (results.length < minResults) return undefined;
 

@@ -1,3 +1,4 @@
+import type { PlanKey } from "@/lib/plans";
 import { NextRequest, NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "crypto";
 import { db, users } from "@/lib/db";
@@ -27,7 +28,7 @@ interface PolarWebhookEvent {
 
 // Map PolarPlanKey to subscription status for database
 // Now an identity function since internal naming matches Polar's "team" key
-function mapPlanToSubscriptionStatus(plan: PolarPlanKey): "free" | "starter" | "pro" | "team" {
+function mapPlanToSubscriptionStatus(plan: PolarPlanKey): PlanKey {
   return plan;
 }
 

@@ -1,3 +1,4 @@
+import type { PlanKey } from "@/lib/plans";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { eq, count } from "drizzle-orm";
@@ -34,7 +35,7 @@ export default async function OnboardingChatPage() {
       })
     : null;
 
-  const userPlan = (user?.subscriptionStatus || (isLocalDev() ? "team" : "free")) as "free" | "pro" | "team";
+  const userPlan = (user?.subscriptionStatus || (isLocalDev() ? "team" : "free")) as PlanKey;
   const userName = user?.name || undefined;
 
   return (
