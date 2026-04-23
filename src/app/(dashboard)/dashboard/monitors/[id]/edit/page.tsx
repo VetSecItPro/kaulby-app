@@ -20,12 +20,12 @@ export default async function EditMonitorPage({ params }: EditMonitorPageProps) 
     }
     // In dev mode with no user, use team defaults
     const resolvedParams = await params;
-    const limits = getPlanLimits("team");
+    const limits = getPlanLimits("growth");
     return (
       <EditMonitorForm
         monitorId={resolvedParams.id}
         limits={limits}
-        userPlan="team"
+        userPlan="growth"
       />
     );
   }

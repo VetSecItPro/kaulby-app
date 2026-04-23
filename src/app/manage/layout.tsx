@@ -1,4 +1,4 @@
-import type { PlanKey } from "@/lib/plans";
+import { normalizePlanKey, type PlanKey } from "@/lib/plans";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { ResponsiveDashboardLayout } from "@/components/dashboard/responsive-dashboard-layout";
@@ -17,7 +17,7 @@ export default async function ManageLayout({
                      !process.env.VERCEL &&
                      !process.env.VERCEL_ENV;
 
-  let subscriptionStatus: PlanKey = "team";
+  let subscriptionStatus: PlanKey = "growth";
 
   // In production (and non-opted-in dev), require auth and admin status
   if (!isLocalDev) {
@@ -59,7 +59,7 @@ export default async function ManageLayout({
       redirect("/dashboard");
     }
 
-    subscriptionStatus = dbUser?.subscriptionStatus || "free";
+    subscriptionStatus = normalizePlanKey(dbUser?.subscriptionStatus);
   }
 
   return (

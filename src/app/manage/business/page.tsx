@@ -77,8 +77,8 @@ async function getDetailedBusinessMetrics() {
 
   // Compute billing-aware MRR: detect annual billing when period span > 60 days
   const ANNUAL_THRESHOLD_MS = 60 * 24 * 60 * 60 * 1000; // 60 days in ms
-  const proAnnualMonthly = PLANS.pro.annualPrice / 12;     // $290/12 = ~$24.17
-  const teamAnnualMonthly = PLANS.team.annualPrice / 12; // $990/12 = $82.50
+  const proAnnualMonthly = PLANS.solo.annualPrice / 12;     // $290/12 = ~$24.17
+  const teamAnnualMonthly = PLANS.growth.annualPrice / 12; // $990/12 = $82.50
 
   let paidProUsers = 0;
   let paidTeamUsers = 0;
@@ -90,12 +90,12 @@ async function getDetailedBusinessMetrics() {
       user.currentPeriodEnd &&
       (new Date(user.currentPeriodEnd).getTime() - new Date(user.currentPeriodStart).getTime()) > ANNUAL_THRESHOLD_MS;
 
-    if (user.status === "pro") {
+    if (user.status === "solo") {
       paidProUsers++;
-      billingAwareMrr += isAnnual ? proAnnualMonthly : PLANS.pro.price;
-    } else if (user.status === "team") {
+      billingAwareMrr += isAnnual ? proAnnualMonthly : PLANS.solo.price;
+    } else if (user.status === "growth") {
       paidTeamUsers++;
-      billingAwareMrr += isAnnual ? teamAnnualMonthly : PLANS.team.price;
+      billingAwareMrr += isAnnual ? teamAnnualMonthly : PLANS.growth.price;
     }
   }
 
@@ -171,8 +171,8 @@ async function getDetailedBusinessMetrics() {
 
   // Calculate metrics
   const currentFreeUsers = currentSubs.find(s => s.status === "free")?.count || 0;
-  const currentProUsers = currentSubs.find(s => s.status === "pro")?.count || 0;
-  const currentTeamUsers = currentSubs.find(s => s.status === "team")?.count || 0;
+  const currentProUsers = currentSubs.find(s => s.status === "solo")?.count || 0;
+  const currentTeamUsers = currentSubs.find(s => s.status === "growth")?.count || 0;
   const totalUsers = currentProUsers + currentTeamUsers + currentFreeUsers;
 
   // Use billing-aware MRR that accounts for annual vs monthly billing intervals
@@ -180,9 +180,9 @@ async function getDetailedBusinessMetrics() {
 
   // Last month comparison uses flat monthly prices since we lack historical billing data.
   // This makes the MRR change percentage approximate.
-  const lastMonthPaidProUsers = lastMonthSubs.find(s => s.status === "pro")?.count || 0;
-  const lastMonthPaidTeamUsers = lastMonthSubs.find(s => s.status === "team")?.count || 0;
-  const lastMonthMrr = (lastMonthPaidProUsers * PLANS.pro.price) + (lastMonthPaidTeamUsers * PLANS.team.price);
+  const lastMonthPaidProUsers = lastMonthSubs.find(s => s.status === "solo")?.count || 0;
+  const lastMonthPaidTeamUsers = lastMonthSubs.find(s => s.status === "growth")?.count || 0;
+  const lastMonthMrr = (lastMonthPaidProUsers * PLANS.solo.price) + (lastMonthPaidTeamUsers * PLANS.growth.price);
 
   const mrrChange = lastMonthMrr > 0 ? ((mrr - lastMonthMrr) / lastMonthMrr) * 100 : 0;
   const arr = mrr * 12;
@@ -270,9 +270,9 @@ function getTrendColor(change: number) {
 
 function getPlanBadge(plan: string | null) {
   switch (plan) {
-    case "team":
+    case "growth":
       return <Badge className="bg-amber-500 text-white">Team</Badge>;
-    case "pro":
+    case "solo":
       return <Badge className="bg-primary text-primary-foreground">Pro</Badge>;
     default:
       return <Badge variant="secondary">Free</Badge>;
@@ -389,7 +389,7 @@ export default async function BusinessMetricsPage() {
                 />
               </div>
               <p className="text-xs text-muted-foreground">
-                {formatCurrency(PLANS.pro.price)}/mo × {data.subscriptionBreakdown.paidPro} = {formatCurrency(data.subscriptionBreakdown.paidPro * PLANS.pro.price)}
+                {formatCurrency(PLANS.solo.price)}/mo × {data.subscriptionBreakdown.paidPro} = {formatCurrency(data.subscriptionBreakdown.paidPro * PLANS.solo.price)}
               </p>
             </div>
 
@@ -408,7 +408,7 @@ export default async function BusinessMetricsPage() {
                 />
               </div>
               <p className="text-xs text-muted-foreground">
-                {formatCurrency(PLANS.team.price)}/mo × {data.subscriptionBreakdown.paidTeam} = {formatCurrency(data.subscriptionBreakdown.paidTeam * PLANS.team.price)}
+                {formatCurrency(PLANS.growth.price)}/mo × {data.subscriptionBreakdown.paidTeam} = {formatCurrency(data.subscriptionBreakdown.paidTeam * PLANS.growth.price)}
               </p>
             </div>
           </div>

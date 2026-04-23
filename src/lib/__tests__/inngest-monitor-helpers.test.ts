@@ -119,7 +119,7 @@ describe("inngest monitor-helpers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockStep.run.mockImplementation((_name: string, fn: () => Promise<unknown>) => fn());
-    mockPrefetchUserPlans.mockResolvedValue(new Map([["user1", "pro"]]));
+    mockPrefetchUserPlans.mockResolvedValue(new Map([["user1", "solo"]]));
     mockCanAccessPlatformWithPlan.mockReturnValue(true);
     mockShouldProcessMonitorWithPlan.mockReturnValue(true);
     mockIsMonitorScheduleActive.mockReturnValue(true);
@@ -164,7 +164,7 @@ describe("inngest monitor-helpers", () => {
 
       mockPrefetchUserPlans.mockResolvedValueOnce(
         new Map([
-          ["user1", "pro"],
+          ["user1", "solo"],
           ["user2", "free"],
         ])
       );
@@ -173,7 +173,7 @@ describe("inngest monitor-helpers", () => {
 
       expect(mockStep.run).toHaveBeenCalledWith("prefetch-plans", expect.any(Function));
       expect(mockPrefetchUserPlans).toHaveBeenCalledWith(["user1", "user2", "user1"]);
-      expect(planMap).toEqual({ user1: "pro", user2: "free" });
+      expect(planMap).toEqual({ user1: "solo", user2: "free" });
     });
 
     it("handles empty monitor list", async () => {
@@ -185,13 +185,13 @@ describe("inngest monitor-helpers", () => {
 
   describe("getPlan", () => {
     it("returns plan from planMap", () => {
-      const planMap = { user1: "pro", user2: "team" };
-      expect(getPlan("user1", planMap)).toBe("pro");
-      expect(getPlan("user2", planMap)).toBe("team");
+      const planMap = { user1: "solo", user2: "growth" };
+      expect(getPlan("user1", planMap)).toBe("solo");
+      expect(getPlan("user2", planMap)).toBe("growth");
     });
 
     it("returns 'free' for unknown user", () => {
-      const planMap = { user1: "pro" };
+      const planMap = { user1: "solo" };
       expect(getPlan("unknownUser", planMap)).toBe("free");
     });
 
@@ -208,7 +208,7 @@ describe("inngest monitor-helpers", () => {
     } as never;
 
     it("returns false when monitor should be processed", () => {
-      const planMap = { user1: "pro" };
+      const planMap = { user1: "solo" };
       mockCanAccessPlatformWithPlan.mockReturnValue(true);
       mockShouldProcessMonitorWithPlan.mockReturnValue(true);
       mockIsMonitorScheduleActive.mockReturnValue(true);
@@ -226,7 +226,7 @@ describe("inngest monitor-helpers", () => {
     });
 
     it("returns true when refresh delay not met", () => {
-      const planMap = { user1: "pro" };
+      const planMap = { user1: "solo" };
       mockCanAccessPlatformWithPlan.mockReturnValue(true);
       mockShouldProcessMonitorWithPlan.mockReturnValue(false);
 
@@ -235,7 +235,7 @@ describe("inngest monitor-helpers", () => {
     });
 
     it("returns true when schedule is inactive", () => {
-      const planMap = { user1: "pro" };
+      const planMap = { user1: "solo" };
       mockCanAccessPlatformWithPlan.mockReturnValue(true);
       mockShouldProcessMonitorWithPlan.mockReturnValue(true);
       mockIsMonitorScheduleActive.mockReturnValue(false);
@@ -529,7 +529,7 @@ describe("inngest monitor-helpers", () => {
 
       mockPrefetchUserPlans.mockResolvedValueOnce(
         new Map([
-          ["user1", "pro"],
+          ["user1", "solo"],
           ["user2", "free"],
         ])
       );
@@ -540,7 +540,7 @@ describe("inngest monitor-helpers", () => {
 
       // Prefetch plans
       const planMap = await prefetchPlans(fetchedMonitors as never, mockStep as never);
-      expect(planMap).toEqual({ user1: "pro", user2: "free" });
+      expect(planMap).toEqual({ user1: "solo", user2: "free" });
 
       // Check first monitor (should not skip)
       mockCanAccessPlatformWithPlan.mockReturnValue(true);

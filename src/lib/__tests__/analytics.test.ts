@@ -21,7 +21,7 @@ describe("analytics.track", () => {
       userId: "user_1",
       monitorId: "mon_1",
       platform: "reddit",
-      plan: "pro",
+      plan: "solo",
     });
     expect(mockCaptureEvent).toHaveBeenCalledTimes(1);
   });
@@ -82,7 +82,7 @@ describe("analytics.track", () => {
       userId: "u",
       resultId: "r",
       sentiment: null,
-      tier: "pro",
+      tier: "solo",
       costUsd: 0.0012,
     });
     const call = mockCaptureEvent.mock.calls[0][0];
@@ -90,7 +90,7 @@ describe("analytics.track", () => {
     expect(call.properties).toEqual({
       resultId: "r",
       sentiment: null,
-      tier: "pro",
+      tier: "solo",
       costUsd: 0.0012,
     });
   });
@@ -110,13 +110,13 @@ describe("analytics.track", () => {
   it("payment.succeeded shape", () => {
     track("payment.succeeded", {
       userId: "u",
-      tier: "team",
+      tier: "growth",
       interval: "annual",
     });
     const call = mockCaptureEvent.mock.calls[0][0];
     expect(call.event).toBe("payment.succeeded");
     expect(call.distinctId).toBe("u");
-    expect(call.properties).toEqual({ tier: "team", interval: "annual" });
+    expect(call.properties).toEqual({ tier: "growth", interval: "annual" });
   });
 
   it("result.action_taken shape for each action variant", () => {

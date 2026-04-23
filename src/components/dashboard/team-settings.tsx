@@ -118,7 +118,7 @@ export function TeamSettings({ subscriptionStatus }: TeamSettingsProps) {
   const [loadingActivity, setLoadingActivity] = useState(false);
   const [buyingSeat, setBuyingSeat] = useState(false);
 
-  const isEnterprise = subscriptionStatus === "team";
+  const isEnterprise = subscriptionStatus === "growth";
 
   // Fetch activity logs
   const fetchActivityLogs = useCallback(async (cursor?: string | null) => {

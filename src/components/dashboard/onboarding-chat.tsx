@@ -545,8 +545,8 @@ export function OnboardingChat({ userPlan, userName }: OnboardingChatProps) {
               variant="outline"
               className={cn(
                 "text-[10px] font-medium capitalize",
-                userPlan === "team" && "border-purple-500/50 text-purple-400",
-                userPlan === "pro" && "border-primary/50 text-primary",
+                userPlan === "growth" && "border-purple-500/50 text-purple-400",
+                userPlan === "solo" && "border-primary/50 text-primary",
                 userPlan === "free" && "border-muted-foreground/30"
               )}
             >
@@ -557,12 +557,12 @@ export function OnboardingChat({ userPlan, userName }: OnboardingChatProps) {
                 Reddit monitoring included
               </span>
             )}
-            {userPlan === "pro" && (
+            {userPlan === "solo" && (
               <span className="text-xs text-muted-foreground">
                 9 platforms available
               </span>
             )}
-            {userPlan === "team" && (
+            {userPlan === "growth" && (
               <span className="text-xs text-muted-foreground">
                 All 16 platforms available
               </span>

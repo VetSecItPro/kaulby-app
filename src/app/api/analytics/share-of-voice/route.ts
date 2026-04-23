@@ -31,7 +31,7 @@ export async function GET(req: Request) {
 
     // Check if user has Team tier feature
     const plan = await getUserPlan(userId);
-    if (plan !== "team") {
+    if (plan !== "growth") {
       return NextResponse.json(
         { error: "Share of Voice requires Team subscription" },
         { status: 403 }

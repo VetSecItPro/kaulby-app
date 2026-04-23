@@ -2,7 +2,7 @@ import { inngest } from "../client";
 import { pooledDb, alerts, monitors, results, users } from "@/lib/db";
 import { eq, and, gte, inArray, isNull, ne, or, sql } from "drizzle-orm";
 import { sendAlertEmail, sendDigestEmail, type WeeklyInsights } from "@/lib/email";
-import { getPlanLimits, type PlanKey } from "@/lib/plans";
+import { getPlanLimits, normalizePlanKey, type PlanKey } from "@/lib/plans";
 import { computeWeeklyInsightsFor } from "./weekly-insights-helper";
 import { sendWebhookNotification, type NotificationResult } from "@/lib/notifications";
 import { sendDiscordBotMessage } from "@/lib/integrations/discord";
@@ -453,7 +453,7 @@ async function sendDigestForTimezone(
 
     // Check if user's plan supports this digest frequency
     if (config.checkPlanAccess) {
-      const limits = getPlanLimits(user.subscriptionStatus);
+      const limits = getPlanLimits(normalizePlanKey(user.subscriptionStatus));
       if (!limits.digestFrequencies.includes(config.frequency)) {
         skippedNoPlan++;
         continue;
@@ -505,7 +505,7 @@ async function sendDigestForTimezone(
     // (so a failed insights call never blocks the digest email).
     let aiInsights: WeeklyInsights | undefined;
     if (config.includeAiInsights) {
-      const limits = getPlanLimits(user.subscriptionStatus);
+      const limits = getPlanLimits(normalizePlanKey(user.subscriptionStatus));
       if (limits.aiFeatures.unlimitedAiAnalysis) {
         // COA 4 W2.7: pass plan for Team-tier Sonnet + persona-voice digest.
         aiInsights = await computeWeeklyInsightsFor(

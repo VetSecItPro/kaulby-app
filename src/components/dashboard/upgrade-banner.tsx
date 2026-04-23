@@ -31,7 +31,7 @@ export function UpgradeBanner({ plan, variant = "full", context = "dashboard" }:
   }
 
   const handleUpgradeClick = () => {
-    tracking.upgradeClicked(context, "pro", `banner-${variant}`);
+    tracking.upgradeClicked(context, "solo", `banner-${variant}`);
   };
 
   const painPoints = [

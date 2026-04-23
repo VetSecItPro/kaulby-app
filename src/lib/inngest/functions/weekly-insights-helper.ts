@@ -60,7 +60,7 @@ export async function computeWeeklyInsightsFor(
     // The weekly digest is user-visible, so consistent voice across
     // comprehensive analysis (W1.7), /ai/ask (W2.8), and now the digest
     // is what makes "one analyst, one story" feel real.
-    const modelForTier = plan === "team" ? MODELS.team : MODELS.primary;
+    const modelForTier = plan === "growth" ? MODELS.team : MODELS.primary;
 
     const insightsResult = await step.run(`generate-insights-${userId}`, async () => {
       return generateWeeklyInsights(results, { model: modelForTier });

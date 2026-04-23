@@ -70,7 +70,7 @@ async function CompetitorsContent() {
     : null;
 
   // In dev mode without a user, default to team for full feature testing
-  const subscriptionStatus = user?.subscriptionStatus || (isLocalDev() ? "team" : "free");
+  const subscriptionStatus = user?.subscriptionStatus || (isLocalDev() ? "growth" : "free");
 
   // Gate to Pro+ users
   if (subscriptionStatus === "free") {

@@ -38,24 +38,24 @@ interface PlatformDef {
 const ALL_PLATFORMS: PlatformDef[] = [
   // Keyword-searchable platforms (search by terms, no URL needed)
   { id: "reddit", name: "Reddit", description: "Track subreddits and discussions", tier: "free", needsUrl: false, category: "keyword", keywordTips: "Use broad topic terms, industry phrases, and competitor names" },
-  { id: "hackernews", name: "Hacker News", description: "Tech and startup discussions", tier: "pro", needsUrl: false, category: "keyword", keywordTips: "Best for tech companies, dev tools, and startup topics" },
-  { id: "indiehackers", name: "Indie Hackers", description: "Indie makers and solo founders", tier: "pro", needsUrl: false, category: "keyword", keywordTips: "Works well with product names and business topics" },
-  { id: "producthunt", name: "Product Hunt", description: "Product launches and reviews", tier: "pro", needsUrl: false, category: "keyword", keywordTips: "Product names, categories, and launch-related terms" },
-  { id: "github", name: "GitHub", description: "Issues and discussions", tier: "pro", needsUrl: false, category: "keyword", keywordTips: "Repository names, library names, and technical terms" },
-  { id: "x", name: "X (Twitter)", description: "Posts and conversations on X", tier: "pro", needsUrl: false, category: "keyword", keywordTips: "Include hashtags (#industry) and @handles for better results" },
-  { id: "devto", name: "Dev.to", description: "Developer blog posts and discussions", tier: "team", needsUrl: false, category: "keyword", keywordTips: "Tech topics, frameworks, and programming concepts" },
-  { id: "hashnode", name: "Hashnode", description: "Tech blog network", tier: "team", needsUrl: false, category: "keyword", keywordTips: "Developer topics, frameworks, and technical tutorials" },
+  { id: "hackernews", name: "Hacker News", description: "Tech and startup discussions", tier: "solo", needsUrl: false, category: "keyword", keywordTips: "Best for tech companies, dev tools, and startup topics" },
+  { id: "indiehackers", name: "Indie Hackers", description: "Indie makers and solo founders", tier: "solo", needsUrl: false, category: "keyword", keywordTips: "Works well with product names and business topics" },
+  { id: "producthunt", name: "Product Hunt", description: "Product launches and reviews", tier: "solo", needsUrl: false, category: "keyword", keywordTips: "Product names, categories, and launch-related terms" },
+  { id: "github", name: "GitHub", description: "Issues and discussions", tier: "solo", needsUrl: false, category: "keyword", keywordTips: "Repository names, library names, and technical terms" },
+  { id: "x", name: "X (Twitter)", description: "Posts and conversations on X", tier: "solo", needsUrl: false, category: "keyword", keywordTips: "Include hashtags (#industry) and @handles for better results" },
+  { id: "devto", name: "Dev.to", description: "Developer blog posts and discussions", tier: "growth", needsUrl: false, category: "keyword", keywordTips: "Tech topics, frameworks, and programming concepts" },
+  { id: "hashnode", name: "Hashnode", description: "Tech blog network", tier: "growth", needsUrl: false, category: "keyword", keywordTips: "Developer topics, frameworks, and technical tutorials" },
   // quora: deferred — see .mdmp/apify-platform-cost-audit-2026-04-21.md
   // URL-required platforms (need a specific product/app/video URL)
-  { id: "youtube", name: "YouTube", description: "Video comments and discussions", tier: "pro", needsUrl: true, category: "url_required", urlPlaceholder: "https://www.youtube.com/@channel or video URL", urlHelp: "Paste your YouTube channel URL or a specific video URL to monitor comments." },
-  { id: "appstore", name: "App Store", description: "iOS app reviews", tier: "team", needsUrl: true, category: "url_required", urlPlaceholder: "https://apps.apple.com/us/app/name/id123456", urlHelp: "Open your app in the App Store, tap Share, and copy the link." },
-  { id: "playstore", name: "Play Store", description: "Android app reviews", tier: "team", needsUrl: true, category: "url_required", urlPlaceholder: "https://play.google.com/store/apps/details?id=com.app", urlHelp: "Open your app in Google Play, tap Share, and copy the link." },
-  { id: "amazonreviews", name: "Amazon Reviews", description: "Product reviews on Amazon", tier: "team", needsUrl: true, category: "url_required", urlPlaceholder: "https://amazon.com/dp/B08N5WRWNW or ASIN", urlHelp: "Copy your product's Amazon URL, or find the ASIN in the product details section." },
+  { id: "youtube", name: "YouTube", description: "Video comments and discussions", tier: "solo", needsUrl: true, category: "url_required", urlPlaceholder: "https://www.youtube.com/@channel or video URL", urlHelp: "Paste your YouTube channel URL or a specific video URL to monitor comments." },
+  { id: "appstore", name: "App Store", description: "iOS app reviews", tier: "growth", needsUrl: true, category: "url_required", urlPlaceholder: "https://apps.apple.com/us/app/name/id123456", urlHelp: "Open your app in the App Store, tap Share, and copy the link." },
+  { id: "playstore", name: "Play Store", description: "Android app reviews", tier: "growth", needsUrl: true, category: "url_required", urlPlaceholder: "https://play.google.com/store/apps/details?id=com.app", urlHelp: "Open your app in Google Play, tap Share, and copy the link." },
+  { id: "amazonreviews", name: "Amazon Reviews", description: "Product reviews on Amazon", tier: "growth", needsUrl: true, category: "url_required", urlPlaceholder: "https://amazon.com/dp/B08N5WRWNW or ASIN", urlHelp: "Copy your product's Amazon URL, or find the ASIN in the product details section." },
   // Business listing platforms (optional URL for better accuracy, searches by name otherwise)
-  { id: "googlereviews", name: "Google Reviews", description: "Business reviews on Google", tier: "pro", needsUrl: false, optionalUrl: true, category: "business_listing", urlPlaceholder: "https://www.google.com/maps/place/... or Place ID", urlHelp: "Optional — paste your Google Maps URL for more accurate results, or we'll search by company name." },
-  { id: "trustpilot", name: "Trustpilot", description: "Customer reviews and ratings", tier: "pro", needsUrl: false, optionalUrl: true, category: "business_listing", urlPlaceholder: "https://www.trustpilot.com/review/example.com", urlHelp: "Optional — paste your Trustpilot page URL for exact results, or we'll search by company name." },
-  { id: "g2", name: "G2", description: "Software reviews and ratings", tier: "team", needsUrl: false, optionalUrl: true, category: "business_listing", urlPlaceholder: "https://www.g2.com/products/your-product/reviews", urlHelp: "Optional — paste your G2 product URL for exact results, or we'll search by company name." },
-  { id: "yelp", name: "Yelp", description: "Local business reviews", tier: "team", needsUrl: false, optionalUrl: true, category: "business_listing", urlPlaceholder: "https://www.yelp.com/biz/business-name-city", urlHelp: "Optional — paste your Yelp page URL for exact results, or we'll search by company name." },
+  { id: "googlereviews", name: "Google Reviews", description: "Business reviews on Google", tier: "solo", needsUrl: false, optionalUrl: true, category: "business_listing", urlPlaceholder: "https://www.google.com/maps/place/... or Place ID", urlHelp: "Optional — paste your Google Maps URL for more accurate results, or we'll search by company name." },
+  { id: "trustpilot", name: "Trustpilot", description: "Customer reviews and ratings", tier: "solo", needsUrl: false, optionalUrl: true, category: "business_listing", urlPlaceholder: "https://www.trustpilot.com/review/example.com", urlHelp: "Optional — paste your Trustpilot page URL for exact results, or we'll search by company name." },
+  { id: "g2", name: "G2", description: "Software reviews and ratings", tier: "growth", needsUrl: false, optionalUrl: true, category: "business_listing", urlPlaceholder: "https://www.g2.com/products/your-product/reviews", urlHelp: "Optional — paste your G2 product URL for exact results, or we'll search by company name." },
+  { id: "yelp", name: "Yelp", description: "Local business reviews", tier: "growth", needsUrl: false, optionalUrl: true, category: "business_listing", urlPlaceholder: "https://www.yelp.com/biz/business-name-city", urlHelp: "Optional — paste your Yelp page URL for exact results, or we'll search by company name." },
 ];
 
 // Platform-aware keyword suggestions based on company name AND selected platforms
@@ -141,7 +141,7 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
   const [scheduleTimezone, setScheduleTimezone] = useState("America/New_York");
 
   const isPaidUser = userPlan !== "free";
-  const isTeamUser = userPlan === "team";
+  const isTeamUser = userPlan === "growth";
   const keywordLimit = limits.keywordsPerMonitor;
   const keywordsRemaining = keywordLimit - keywords.length;
   const isAtKeywordLimit = keywords.length >= keywordLimit;
@@ -149,8 +149,8 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
   // Check if a platform is locked based on user's tier
   const isPlatformLocked = (platformTier: string): boolean => {
     if (platformTier === "free") return false;
-    if (platformTier === "pro") return !isPaidUser;
-    if (platformTier === "team") return !isTeamUser;
+    if (platformTier === "solo") return !isPaidUser;
+    if (platformTier === "growth") return !isTeamUser;
     return true;
   };
 
@@ -322,7 +322,7 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
 
   const getUpgradePlanName = () => {
     if (userPlan === "free") return "Pro";
-    if (userPlan === "pro") return "Team";
+    if (userPlan === "solo") return "Team";
     return null;
   };
 
@@ -363,7 +363,7 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
               <div className="flex items-center gap-1">
                 <Lock className="h-3 w-3 text-muted-foreground" />
                 <Badge variant="outline" className="text-[10px] px-1 py-0">
-                  {platform.tier === "team" ? "Team" : "Pro"}
+                  {platform.tier === "growth" ? "Team" : "Pro"}
                 </Badge>
               </div>
             )}

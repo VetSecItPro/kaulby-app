@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
       columns: { subscriptionStatus: true },
     });
 
-    if (user?.subscriptionStatus !== "team") {
+    if (user?.subscriptionStatus !== "growth") {
       return NextResponse.json(
         { error: "Webhooks are only available for Team users" },
         { status: 403 }

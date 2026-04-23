@@ -545,8 +545,8 @@ async function getBusinessMetrics() {
 
   // Compute billing-aware MRR: detect annual billing when period span > 60 days
   const ANNUAL_THRESHOLD_MS = 60 * 24 * 60 * 60 * 1000;
-  const proAnnualMonthly = PLANS.pro.annualPrice / 12;
-  const teamAnnualMonthly = PLANS.team.annualPrice / 12;
+  const proAnnualMonthly = PLANS.solo.annualPrice / 12;
+  const teamAnnualMonthly = PLANS.growth.annualPrice / 12;
 
   let paidProUsers = 0;
   let paidTeamUsers = 0;
@@ -558,28 +558,28 @@ async function getBusinessMetrics() {
       user.currentPeriodEnd &&
       (new Date(user.currentPeriodEnd).getTime() - new Date(user.currentPeriodStart).getTime()) > ANNUAL_THRESHOLD_MS;
 
-    if (user.status === "pro") {
+    if (user.status === "solo") {
       paidProUsers++;
-      billingAwareMrr += isAnnual ? proAnnualMonthly : PLANS.pro.price;
-    } else if (user.status === "team") {
+      billingAwareMrr += isAnnual ? proAnnualMonthly : PLANS.solo.price;
+    } else if (user.status === "growth") {
       paidTeamUsers++;
-      billingAwareMrr += isAnnual ? teamAnnualMonthly : PLANS.team.price;
+      billingAwareMrr += isAnnual ? teamAnnualMonthly : PLANS.growth.price;
     }
   }
 
   // Total users for conversion rate calculation
   const currentFreeUsers = currentSubs.find(s => s.status === "free")?.count || 0;
-  const currentProUsers = currentSubs.find(s => s.status === "pro")?.count || 0;
-  const currentTeamUsers = currentSubs.find(s => s.status === "team")?.count || 0;
+  const currentProUsers = currentSubs.find(s => s.status === "solo")?.count || 0;
+  const currentTeamUsers = currentSubs.find(s => s.status === "growth")?.count || 0;
   const totalUsers = currentProUsers + currentTeamUsers + currentFreeUsers;
 
   // MRR from REAL Polar payments only (billing-aware)
   const mrr = billingAwareMrr;
 
   // Calculate last month MRR for comparison (flat rates since we lack historical billing data)
-  const lastMonthPaidProUsers = lastMonthSubs.find(s => s.status === "pro")?.count || 0;
-  const lastMonthPaidTeamUsers = lastMonthSubs.find(s => s.status === "team")?.count || 0;
-  const lastMonthMrr = (lastMonthPaidProUsers * PLANS.pro.price) + (lastMonthPaidTeamUsers * PLANS.team.price);
+  const lastMonthPaidProUsers = lastMonthSubs.find(s => s.status === "solo")?.count || 0;
+  const lastMonthPaidTeamUsers = lastMonthSubs.find(s => s.status === "growth")?.count || 0;
+  const lastMonthMrr = (lastMonthPaidProUsers * PLANS.solo.price) + (lastMonthPaidTeamUsers * PLANS.growth.price);
 
   // MRR change percentage
   const mrrChange = lastMonthMrr > 0 ? ((mrr - lastMonthMrr) / lastMonthMrr) * 100 : (mrr > 0 ? 100 : 0);
@@ -755,8 +755,8 @@ export default async function ManagePage() {
     ? integrationsSummaryResult.value : { webhookSuccessRate: 0, activeApiKeys: 0, totalDeliveries: 0 };
 
   const freeUsers = subscriptionBreakdown.find(s => s.status === "free")?.count || 0;
-  const proUsers = subscriptionBreakdown.find(s => s.status === "pro")?.count || 0;
-  const teamUsers = subscriptionBreakdown.find(s => s.status === "team")?.count || 0;
+  const proUsers = subscriptionBreakdown.find(s => s.status === "solo")?.count || 0;
+  const teamUsers = subscriptionBreakdown.find(s => s.status === "growth")?.count || 0;
 
   return (
     <ResponsiveManage

@@ -29,7 +29,7 @@ vi.mock("drizzle-orm", () => ({
 }));
 
 vi.mock("@/lib/polar", () => ({
-  getPlanFromProductId: vi.fn(() => "pro"),
+  getPlanFromProductId: vi.fn(() => "solo"),
 }));
 
 vi.mock("@/lib/email", () => ({

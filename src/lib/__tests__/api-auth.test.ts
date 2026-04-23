@@ -74,7 +74,7 @@ describe("api-auth", () => {
       // Mock finding the user
       vi.mocked(db.query.users.findFirst).mockResolvedValueOnce({
         id: "user-1",
-        subscriptionStatus: "team",
+        subscriptionStatus: "growth",
         isBanned: false,
       } as never);
 
@@ -106,7 +106,7 @@ describe("api-auth", () => {
 
       vi.mocked(db.query.users.findFirst).mockResolvedValueOnce({
         id: "user-1",
-        subscriptionStatus: "team",
+        subscriptionStatus: "growth",
         isBanned: false,
       } as never);
 
@@ -176,7 +176,7 @@ describe("api-auth", () => {
 
       vi.mocked(db.query.users.findFirst).mockResolvedValueOnce({
         id: "user-1",
-        subscriptionStatus: "team",
+        subscriptionStatus: "growth",
         isBanned: true,
       } as never);
 
@@ -207,7 +207,7 @@ describe("api-auth", () => {
 
       vi.mocked(db.query.users.findFirst).mockResolvedValueOnce({
         id: "user-1",
-        subscriptionStatus: "pro",
+        subscriptionStatus: "solo",
         isBanned: false,
       } as never);
 

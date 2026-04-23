@@ -235,7 +235,7 @@ describe("POST /api/monitors", () => {
   it("returns 201 when monitor is created successfully", async () => {
     mockGetEffectiveUserId.mockResolvedValue("user_1");
     mockDbQuery.users.findFirst.mockResolvedValue({ id: "user_1" });
-    mockGetUserPlan.mockResolvedValue("pro");
+    mockGetUserPlan.mockResolvedValue("solo");
     mockCheckKeywordsLimit.mockReturnValue({ allowed: true });
     mockFilterAllowedPlatforms.mockResolvedValue(["reddit"]);
     // Transaction succeeds: select returns 0 rows (under limit), insert returns the new monitor.
@@ -368,7 +368,7 @@ describe("PATCH /api/monitors/[id]", () => {
   it("updates monitor successfully", async () => {
     mockGetEffectiveUserId.mockResolvedValue("user_1");
     mockDbQuery.monitors.findFirst.mockResolvedValue({ id: "mon_1", userId: "user_1", platforms: ["reddit"] });
-    mockGetUserPlan.mockResolvedValue("pro");
+    mockGetUserPlan.mockResolvedValue("solo");
     mockDbUpdate.mockReturnValue({
       set: vi.fn().mockReturnValue({
         where: vi.fn().mockReturnValue({

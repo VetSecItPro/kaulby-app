@@ -63,7 +63,7 @@ async function saveAnalysisFailure(
  * This enables cross-user caching - if two users have the same content,
  * we can reuse the AI analysis instead of running it again
  */
-function generateContentHash(content: string, tier: "pro" | "team"): string {
+function generateContentHash(content: string, tier: "solo" | "growth"): string {
   // Normalize content: trim, lowercase for matching
   const normalized = content.trim().toLowerCase();
   const hash = crypto.createHash("sha256").update(normalized).digest("hex").slice(0, 16);
@@ -84,7 +84,7 @@ const AI_ANALYSIS_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 async function writeResultAnalysis(
   resultId: string,
   analysisJson: string,
-  tier: "pro" | "team" | "batch"
+  tier: "solo" | "growth" | "batch"
 ): Promise<void> {
   let parsed: unknown;
   try {
@@ -323,7 +323,7 @@ export const analyzeContent = inngest.createFunction(
     // Free users skip the check (they're already blocked by unlimitedAi gate below).
     if (planCheck.plan !== "free") {
       const costBudget = await step.run("check-daily-cost-budget", async () => {
-        return checkDailyCostBudget(userId, planCheck.plan as "pro" | "team");
+        return checkDailyCostBudget(userId, planCheck.plan as "solo" | "growth");
       });
 
       if (!costBudget.allowed) {
@@ -381,7 +381,7 @@ export const analyzeContent = inngest.createFunction(
     const contentToAnalyze = rawContent.length > MAX_CONTENT_LENGTH
       ? rawContent.slice(0, MAX_CONTENT_LENGTH) + "\n\n[Content truncated for analysis]"
       : rawContent;
-    const analysisTier = planCheck.useComprehensiveAnalysis ? "team" : "pro";
+    const analysisTier = planCheck.useComprehensiveAnalysis ? "growth" : "solo";
     const cacheKey = generateContentHash(contentToAnalyze, analysisTier);
 
     // =========================================================================
@@ -430,7 +430,7 @@ export const analyzeContent = inngest.createFunction(
         await writeResultAnalysis(
           resultId,
           cachedAnalysis.aiAnalysis,
-          (cachedAnalysis.tier === "team" ? "team" : "pro")
+          (cachedAnalysis.tier === "growth" ? "growth" : "solo")
         );
       });
 
@@ -445,7 +445,7 @@ export const analyzeContent = inngest.createFunction(
           latencyMs: 0,
           monitorId: result.monitorId,
           resultId,
-          analysisType: analysisTier === "team" ? "comprehensive" : "mixed",
+          analysisType: analysisTier === "growth" ? "comprehensive" : "mixed",
           cacheHit: true,
           platform: result.platform,
         });
@@ -484,7 +484,7 @@ export const analyzeContent = inngest.createFunction(
       metadata: {
         resultId,
         platform: result.platform,
-        tier: planCheck.useComprehensiveAnalysis ? "team" : "pro",
+        tier: planCheck.useComprehensiveAnalysis ? "growth" : "solo",
       },
       tags: ["inngest", "analysis", planCheck.useComprehensiveAnalysis ? "team-tier" : "pro-tier"],
     });
@@ -520,7 +520,7 @@ export const analyzeContent = inngest.createFunction(
         // Build analysis JSON once — reused by legacy write, cache, and the
         // new Phase 1 extracted table.
         const teamAnalysisJson = JSON.stringify({
-          tier: "team",
+          tier: "growth",
           sentiment: analysis.sentiment,
           classification: analysis.classification,
           conversationCategory: category,
@@ -553,13 +553,13 @@ export const analyzeContent = inngest.createFunction(
             .where(eq(results.id, resultId));
 
           // Task DL.2 Phase 1 — dual-write to extracted table.
-          await writeResultAnalysis(resultId, teamAnalysisJson, "team");
+          await writeResultAnalysis(resultId, teamAnalysisJson, "growth");
         });
 
         // Cache the analysis for reuse by other users with same content
         await step.run("cache-team-analysis", async () => {
           const cacheData = {
-            tier: "team",
+            tier: "growth",
             sentiment: analysis.sentiment.label,
             sentimentScore: analysis.sentiment.score,
             painPointCategory: analysis.classification.category,
@@ -631,12 +631,12 @@ export const analyzeContent = inngest.createFunction(
           userId,
           resultId,
           sentiment: analysis.sentiment.label,
-          tier: "team",
+          tier: "growth",
           costUsd: teamAnalysisResult.totalCost,
         });
 
         return {
-          tier: "team",
+          tier: "growth",
           analysis: teamAnalysisResult.analysis,
           conversationCategory: category,
           keywordMatchUsed: teamAnalysisResult.keywordMatchUsed,
@@ -686,7 +686,7 @@ export const analyzeContent = inngest.createFunction(
       // Build analysis JSON once — reused by legacy column, cache, and the
       // new Phase 1 extracted table.
       const proAnalysisJson = JSON.stringify({
-        tier: "pro",
+        tier: "solo",
         sentiment: proAnalysisResult.sentiment,
         painPoint: proAnalysisResult.painPoint,
         summary: proAnalysisResult.summary,
@@ -713,13 +713,13 @@ export const analyzeContent = inngest.createFunction(
           .where(eq(results.id, resultId));
 
         // Task DL.2 Phase 1 — dual-write to extracted table.
-        await writeResultAnalysis(resultId, proAnalysisJson, "pro");
+        await writeResultAnalysis(resultId, proAnalysisJson, "solo");
       });
 
       // Cache the analysis for reuse by other users with same content
       await step.run("cache-pro-analysis", async () => {
         const cacheData = {
-          tier: "pro",
+          tier: "solo",
           sentiment: proAnalysisResult.sentiment.sentiment,
           sentimentScore: proAnalysisResult.sentiment.score,
           painPointCategory: proAnalysisResult.painPoint.category,
@@ -798,12 +798,12 @@ export const analyzeContent = inngest.createFunction(
         userId,
         resultId,
         sentiment: proAnalysisResult.sentiment.sentiment,
-        tier: "pro",
+        tier: "solo",
         costUsd: proAnalysisResult.totalCost,
       });
 
       return {
-        tier: "pro",
+        tier: "solo",
         sentiment: proAnalysisResult.sentiment,
         painPoint: proAnalysisResult.painPoint,
         summary: proAnalysisResult.summary,

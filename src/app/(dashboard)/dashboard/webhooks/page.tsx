@@ -32,7 +32,7 @@ async function WebhooksContent() {
     columns: { subscriptionStatus: true },
   });
 
-  const isEnterprise = user?.subscriptionStatus === "team";
+  const isEnterprise = user?.subscriptionStatus === "growth";
 
   // Get webhooks if team tier
   let userWebhooks: typeof webhooks.$inferSelect[] = [];

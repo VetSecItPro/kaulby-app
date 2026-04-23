@@ -79,9 +79,9 @@ export default async function DashboardLayout({
 
   // Map subscriptionStatus to userPlan type
   const userPlan =
-    subscriptionStatus === "team" ? "team"
-    : subscriptionStatus === "pro" ? "pro"
-    : subscriptionStatus === "starter" ? "starter"
+    subscriptionStatus === "growth" ? "growth"
+    : subscriptionStatus === "solo" ? "solo"
+    : subscriptionStatus === "scale" ? "scale"
     : "free";
 
   // Get workspace role for team badge

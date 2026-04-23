@@ -48,7 +48,7 @@ vi.mock("@/lib/limits", () => ({
 
 vi.mock("@/lib/plans", () => ({
   getPlanLimits: (plan: string) => ({
-    aiFeatures: { unlimitedAiAnalysis: plan === "pro" || plan === "team" },
+    aiFeatures: { unlimitedAiAnalysis: plan === "solo" || plan === "growth" },
   }),
 }));
 
@@ -122,7 +122,7 @@ describe("GET /api/user/detection-keywords", () => {
 
   it("returns default keywords when user has none", async () => {
     mockAuth.mockResolvedValue({ userId: "user_1" });
-    mockGetUserPlan.mockResolvedValue("pro");
+    mockGetUserPlan.mockResolvedValue("solo");
     mockDbQuery.userDetectionKeywords.findMany.mockResolvedValue([]);
 
     const res = await GET();
@@ -140,7 +140,7 @@ describe("GET /api/user/detection-keywords", () => {
 
   it("returns user's custom keywords merged with missing categories", async () => {
     mockAuth.mockResolvedValue({ userId: "user_1" });
-    mockGetUserPlan.mockResolvedValue("pro");
+    mockGetUserPlan.mockResolvedValue("solo");
     // User only has pain_point customized
     mockDbQuery.userDetectionKeywords.findMany.mockResolvedValue([
       { id: "dk_1", category: "pain_point", keywords: ["broken", "buggy"], isActive: true },
@@ -168,7 +168,7 @@ describe("GET /api/user/detection-keywords", () => {
 
   it("throws on unexpected error (no try-catch in route)", async () => {
     mockAuth.mockResolvedValue({ userId: "user_1" });
-    mockGetUserPlan.mockResolvedValue("pro");
+    mockGetUserPlan.mockResolvedValue("solo");
     mockDbQuery.userDetectionKeywords.findMany.mockRejectedValue(new Error("DB connection failed"));
 
     await expect(GET()).rejects.toThrow("DB connection failed");
@@ -207,7 +207,7 @@ describe("PUT /api/user/detection-keywords", () => {
 
   it("returns 400 for invalid category", async () => {
     mockAuth.mockResolvedValue({ userId: "user_1" });
-    mockGetUserPlan.mockResolvedValue("pro");
+    mockGetUserPlan.mockResolvedValue("solo");
     const res = await PUT(makeRequest("PUT", { category: "invalid_cat", keywords: ["test"] }));
     expect(res.status).toBe(400);
     const json = await res.json();
@@ -217,7 +217,7 @@ describe("PUT /api/user/detection-keywords", () => {
 
   it("returns 400 when keywords is not an array", async () => {
     mockAuth.mockResolvedValue({ userId: "user_1" });
-    mockGetUserPlan.mockResolvedValue("pro");
+    mockGetUserPlan.mockResolvedValue("solo");
     const res = await PUT(makeRequest("PUT", { category: "pain_point", keywords: "not-array" }));
     expect(res.status).toBe(400);
     const json = await res.json();
@@ -227,7 +227,7 @@ describe("PUT /api/user/detection-keywords", () => {
 
   it("updates existing keywords for a category", async () => {
     mockAuth.mockResolvedValue({ userId: "user_1" });
-    mockGetUserPlan.mockResolvedValue("pro");
+    mockGetUserPlan.mockResolvedValue("solo");
     mockDbQuery.userDetectionKeywords.findFirst.mockResolvedValue({
       id: "dk_1",
       userId: "user_1",
@@ -249,7 +249,7 @@ describe("PUT /api/user/detection-keywords", () => {
 
   it("creates new keywords for a category", async () => {
     mockAuth.mockResolvedValue({ userId: "user_1" });
-    mockGetUserPlan.mockResolvedValue("pro");
+    mockGetUserPlan.mockResolvedValue("solo");
     mockDbQuery.userDetectionKeywords.findFirst.mockResolvedValue(null);
 
     const res = await PUT(makeRequest("PUT", { category: "money_talk", keywords: ["expensive", "pricing"] }));
@@ -265,7 +265,7 @@ describe("PUT /api/user/detection-keywords", () => {
 
   it("sanitizes keywords (trim, lowercase, deduplicate, max 50)", async () => {
     mockAuth.mockResolvedValue({ userId: "user_1" });
-    mockGetUserPlan.mockResolvedValue("pro");
+    mockGetUserPlan.mockResolvedValue("solo");
     mockDbQuery.userDetectionKeywords.findFirst.mockResolvedValue(null);
 
     // Build array: duplicates, whitespace, uppercase, empty strings, and more than 50
@@ -330,7 +330,7 @@ describe("POST /api/user/detection-keywords", () => {
 
   it("returns existing count when already seeded", async () => {
     mockAuth.mockResolvedValue({ userId: "user_1" });
-    mockGetUserPlan.mockResolvedValue("pro");
+    mockGetUserPlan.mockResolvedValue("solo");
     mockDbQuery.userDetectionKeywords.findMany.mockResolvedValue([
       { id: "dk_1" },
       { id: "dk_2" },
@@ -348,7 +348,7 @@ describe("POST /api/user/detection-keywords", () => {
 
   it("seeds all categories with defaults", async () => {
     mockAuth.mockResolvedValue({ userId: "user_1" });
-    mockGetUserPlan.mockResolvedValue("pro");
+    mockGetUserPlan.mockResolvedValue("solo");
     mockDbQuery.userDetectionKeywords.findMany.mockResolvedValue([]);
 
     const res = await POST();

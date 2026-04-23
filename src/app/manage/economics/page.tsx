@@ -31,10 +31,10 @@ function getUserMonthlyRevenue(
     (new Date(periodEnd).getTime() - new Date(periodStart).getTime()) > ANNUAL_THRESHOLD_MS;
 
   switch (plan) {
-    case "team":
-      return isAnnual ? PLANS.team.annualPrice / 12 : PLANS.team.price;
-    case "pro":
-      return isAnnual ? PLANS.pro.annualPrice / 12 : PLANS.pro.price;
+    case "growth":
+      return isAnnual ? PLANS.growth.annualPrice / 12 : PLANS.growth.price;
+    case "solo":
+      return isAnnual ? PLANS.solo.annualPrice / 12 : PLANS.solo.price;
     default:
       return 0;
   }
@@ -86,14 +86,15 @@ async function getUnitEconomicsData() {
     .groupBy(users.subscriptionStatus);
 
   // Compute billing-aware revenue per plan
-  const planRevenue = { free: 0, pro: 0, team: 0 };
+  const planRevenue = { free: 0, solo: 0, scale: 0, growth: 0 };
   for (const u of paidUsersRaw) {
     const rev = getUserMonthlyRevenue(u.status, u.currentPeriodStart, u.currentPeriodEnd);
-    if (u.status === "pro") planRevenue.pro += rev;
-    else if (u.status === "team") planRevenue.team += rev;
+    if (u.status === "solo") planRevenue.solo += rev;
+    else if (u.status === "scale") planRevenue.scale += rev;
+    else if (u.status === "growth") planRevenue.growth += rev;
   }
 
-  const plans = ["free", "pro", "team"] as const;
+  const plans = ["free", "solo", "scale", "growth"] as const;
 
   const marginByPlan = plans.map((planKey) => {
     const userCount = Number(usersByPlan.find((r) => r.plan === planKey)?.userCount) || 0;
@@ -235,9 +236,9 @@ function formatNumber(value: number) {
 
 function getPlanBadge(plan: string | null) {
   switch (plan) {
-    case "team":
+    case "growth":
       return <Badge className="bg-amber-500 text-white">Enterprise</Badge>;
-    case "pro":
+    case "solo":
       return <Badge className="bg-primary text-primary-foreground">Pro</Badge>;
     default:
       return <Badge variant="secondary">Free</Badge>;

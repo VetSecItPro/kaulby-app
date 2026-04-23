@@ -20,9 +20,9 @@ interface RecentActivityProps {
 export function RecentActivity({ users }: RecentActivityProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "pro":
+      case "solo":
         return "bg-primary text-primary-foreground";
-      case "team":
+      case "growth":
         return "bg-amber-500 text-white";
       default:
         return "bg-muted text-muted-foreground";

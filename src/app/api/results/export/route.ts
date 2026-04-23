@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { users, monitors, results } from "@/lib/db/schema";
 import { eq, and, inArray, desc, lt } from "drizzle-orm";
-import { getPlanLimits } from "@/lib/plans";
+import { getPlanLimits, normalizePlanKey } from "@/lib/plans";
 import { checkApiRateLimit } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
 
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
       columns: { subscriptionStatus: true },
     });
 
-    const plan = user?.subscriptionStatus || "free";
+    const plan = normalizePlanKey(user?.subscriptionStatus);
     const limits = getPlanLimits(plan);
 
     if (!limits.exports.csv) {

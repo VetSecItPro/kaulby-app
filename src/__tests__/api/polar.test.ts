@@ -33,7 +33,7 @@ describe("POST /api/polar/checkout", () => {
   it("returns 401 when not authenticated", async () => {
     mockAuth.mockResolvedValue({ userId: null });
     mockCurrentUser.mockResolvedValue(null);
-    const res = await POST_CHECKOUT(makeRequest("POST", "/api/polar/checkout", { tier: "pro" }));
+    const res = await POST_CHECKOUT(makeRequest("POST", "/api/polar/checkout", { tier: "solo" }));
     expect(res.status).toBe(401);
   });
 });

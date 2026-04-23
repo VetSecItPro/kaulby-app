@@ -25,25 +25,24 @@ const AI_RATE_LIMITS = {
     requestsPerDay: 0,
     dailyTokenBudget: 0,
   },
-  starter: {
-    // COA 4 W3.2: between free and pro. Same model as Pro (Flash) so same per-call
-    // cost shape, but tighter daily ceilings so $49/mo math still works.
-    requestsPerMinute: 4,
-    requestsPerHour: 20,
-    requestsPerDay: 60,
-    dailyTokenBudget: 30_000,
-  },
-  pro: {
+  solo: {
     requestsPerMinute: 5,
     requestsPerHour: 30,
     requestsPerDay: 100,
-    dailyTokenBudget: 50_000, // ~$0.15-0.50 depending on model
+    dailyTokenBudget: 50_000,
   },
-  team: {
+  scale: {
+    // Mid-tier: between Solo and Growth. Flash model, tighter budget than Growth.
+    requestsPerMinute: 7,
+    requestsPerHour: 60,
+    requestsPerDay: 250,
+    dailyTokenBudget: 100_000,
+  },
+  growth: {
     requestsPerMinute: 10,
     requestsPerHour: 100,
     requestsPerDay: 500,
-    dailyTokenBudget: 200_000, // ~$0.60-2.00 depending on model
+    dailyTokenBudget: 200_000,
   },
 } as const;
 
@@ -52,9 +51,9 @@ const AI_RATE_LIMITS = {
 // Overridable via env for emergency tuning without a deploy.
 const DAILY_COST_CAPS_USD = {
   free: 0,
-  starter: Number(process.env.KAULBY_STARTER_DAILY_AI_BUDGET_USD ?? 0.6),
-  pro: Number(process.env.KAULBY_PRO_DAILY_AI_BUDGET_USD ?? 1),
-  team: Number(process.env.KAULBY_TEAM_DAILY_AI_BUDGET_USD ?? 5),
+  solo: Number(process.env.KAULBY_SOLO_DAILY_AI_BUDGET_USD ?? 1),
+  scale: Number(process.env.KAULBY_SCALE_DAILY_AI_BUDGET_USD ?? 2),
+  growth: Number(process.env.KAULBY_GROWTH_DAILY_AI_BUDGET_USD ?? 5),
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -83,27 +82,27 @@ function createRedisRatelimiter(
 
 // Lazy-initialized per-tier Redis rate limiters
 let redisLimiters: Record<
-  "starter" | "pro" | "team",
+  "scale" | "solo" | "growth",
   { minute: Ratelimit | null; hour: Ratelimit | null; day: Ratelimit | null }
 > | null = null;
 
 function getRedisLimiters() {
   if (!redisLimiters) {
     redisLimiters = {
-      starter: {
-        minute: createRedisRatelimiter("1 m", AI_RATE_LIMITS.starter.requestsPerMinute),
-        hour: createRedisRatelimiter("1 h", AI_RATE_LIMITS.starter.requestsPerHour),
-        day: createRedisRatelimiter("1 d", AI_RATE_LIMITS.starter.requestsPerDay),
+      solo: {
+        minute: createRedisRatelimiter("1 m", AI_RATE_LIMITS.solo.requestsPerMinute),
+        hour: createRedisRatelimiter("1 h", AI_RATE_LIMITS.solo.requestsPerHour),
+        day: createRedisRatelimiter("1 d", AI_RATE_LIMITS.solo.requestsPerDay),
       },
-      pro: {
-        minute: createRedisRatelimiter("1 m", AI_RATE_LIMITS.pro.requestsPerMinute),
-        hour: createRedisRatelimiter("1 h", AI_RATE_LIMITS.pro.requestsPerHour),
-        day: createRedisRatelimiter("1 d", AI_RATE_LIMITS.pro.requestsPerDay),
+      scale: {
+        minute: createRedisRatelimiter("1 m", AI_RATE_LIMITS.scale.requestsPerMinute),
+        hour: createRedisRatelimiter("1 h", AI_RATE_LIMITS.scale.requestsPerHour),
+        day: createRedisRatelimiter("1 d", AI_RATE_LIMITS.scale.requestsPerDay),
       },
-      team: {
-        minute: createRedisRatelimiter("1 m", AI_RATE_LIMITS.team.requestsPerMinute),
-        hour: createRedisRatelimiter("1 h", AI_RATE_LIMITS.team.requestsPerHour),
-        day: createRedisRatelimiter("1 d", AI_RATE_LIMITS.team.requestsPerDay),
+      growth: {
+        minute: createRedisRatelimiter("1 m", AI_RATE_LIMITS.growth.requestsPerMinute),
+        hour: createRedisRatelimiter("1 h", AI_RATE_LIMITS.growth.requestsPerHour),
+        day: createRedisRatelimiter("1 d", AI_RATE_LIMITS.growth.requestsPerDay),
       },
     };
   }
@@ -161,11 +160,11 @@ export async function checkAllRateLimits(
   const limits = AI_RATE_LIMITS[tier];
 
   if (limits.requestsPerMinute === 0) {
-    return { allowed: false, reason: "AI features require a Starter subscription or higher" };
+    return { allowed: false, reason: "AI features require a Solo subscription or higher" };
   }
 
   // --- Redis path (distributed) ---
-  if (hasRedis && (tier === "starter" || tier === "pro" || tier === "team")) {
+  if (hasRedis && (tier === "scale" || tier === "solo" || tier === "growth")) {
     const limiters = getRedisLimiters()[tier];
 
     const minuteResult = limiters.minute ? await limiters.minute.limit(`minute:${userId}`) : null;

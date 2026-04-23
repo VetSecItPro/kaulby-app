@@ -16,7 +16,7 @@ type EligibleUser = {
   id: string;
   email: string;
   name: string | null;
-  subscriptionStatus: "pro" | "team";
+  subscriptionStatus: "solo" | "growth";
 };
 
 const shared = vi.hoisted(() => {
@@ -144,8 +144,8 @@ beforeEach(() => {
 describe("runSendWeeklyDigest — Task 2.4", () => {
   it("emails each eligible pro/team user exactly once with one AI call each", async () => {
     shared.state.eligibleUsers = [
-      { id: "u1", email: "a@x.com", name: "A", subscriptionStatus: "pro" },
-      { id: "u2", email: "b@x.com", name: null, subscriptionStatus: "team" },
+      { id: "u1", email: "a@x.com", name: "A", subscriptionStatus: "solo" },
+      { id: "u2", email: "b@x.com", name: null, subscriptionStatus: "growth" },
     ];
     shared.state.monitorsByUser.set("u1", [
       { id: "m1", name: "Brand" },
@@ -198,7 +198,7 @@ describe("runSendWeeklyDigest — Task 2.4", () => {
 
   it("skips users with zero results in the 7-day window (no email, no AI call)", async () => {
     shared.state.eligibleUsers = [
-      { id: "u1", email: "a@x.com", name: "A", subscriptionStatus: "pro" },
+      { id: "u1", email: "a@x.com", name: "A", subscriptionStatus: "solo" },
     ];
     shared.state.monitorsByUser.set("u1", [{ id: "m1", name: "Brand" }]);
     shared.state.resultsByUser.set("u1", []);
@@ -227,8 +227,8 @@ describe("runSendWeeklyDigest — Task 2.4", () => {
 
   it("continues when one user's send throws (does not poison the batch)", async () => {
     shared.state.eligibleUsers = [
-      { id: "u1", email: "a@x.com", name: "A", subscriptionStatus: "pro" },
-      { id: "u2", email: "b@x.com", name: "B", subscriptionStatus: "team" },
+      { id: "u1", email: "a@x.com", name: "A", subscriptionStatus: "solo" },
+      { id: "u2", email: "b@x.com", name: "B", subscriptionStatus: "growth" },
     ];
     shared.state.monitorsByUser.set("u1", [{ id: "m1", name: "Brand" }]);
     shared.state.monitorsByUser.set("u2", [{ id: "m2", name: "Comp" }]);

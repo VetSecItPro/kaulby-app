@@ -71,9 +71,9 @@ export function CostBreakdown({
 
   const getPlanBadge = (plan: string) => {
     switch (plan) {
-      case "team":
+      case "growth":
         return <Badge className="bg-amber-500 text-white">Team</Badge>;
-      case "pro":
+      case "solo":
         return <Badge className="bg-primary text-primary-foreground">Pro</Badge>;
       default:
         return <Badge variant="secondary">Free</Badge>;
@@ -198,9 +198,9 @@ export function CostBreakdown({
                     <div className="h-2 w-full rounded-full bg-muted">
                       <div
                         className={`h-2 rounded-full ${
-                          item.plan === "team"
+                          item.plan === "growth"
                             ? "bg-amber-500"
-                            : item.plan === "pro"
+                            : item.plan === "solo"
                             ? "bg-primary"
                             : "bg-muted-foreground/50"
                         }`}

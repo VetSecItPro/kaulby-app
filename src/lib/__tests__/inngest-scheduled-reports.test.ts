@@ -42,7 +42,7 @@ describe("inngest/scheduled-reports", () => {
       {
         id: "user1",
         email: "user@example.com",
-        subscriptionStatus: "team",
+        subscriptionStatus: "growth",
         reportSchedule: "weekly",
       },
     ]);
@@ -50,7 +50,7 @@ describe("inngest/scheduled-reports", () => {
     const users = await mockQuery();
 
     expect(users).toHaveLength(1);
-    expect(users[0].subscriptionStatus).toBe("team");
+    expect(users[0].subscriptionStatus).toBe("growth");
   });
 
   it("filters users by day of week for weekly reports", async () => {

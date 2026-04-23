@@ -145,7 +145,7 @@ describe("runDetectInactiveUsers — Task DL.1 N+1 fix", () => {
         lastActiveAt: lastActive,
         reengagementEmailSentAt: null,
         reengagementOptOut: false,
-        subscriptionStatus: "pro",
+        subscriptionStatus: "solo",
       },
       {
         id: "u2",
@@ -154,7 +154,7 @@ describe("runDetectInactiveUsers — Task DL.1 N+1 fix", () => {
         lastActiveAt: lastActive,
         reengagementEmailSentAt: null,
         reengagementOptOut: false,
-        subscriptionStatus: "team",
+        subscriptionStatus: "growth",
       },
       {
         id: "u3",
@@ -163,7 +163,7 @@ describe("runDetectInactiveUsers — Task DL.1 N+1 fix", () => {
         lastActiveAt: null,
         reengagementEmailSentAt: null,
         reengagementOptOut: false,
-        subscriptionStatus: "pro",
+        subscriptionStatus: "solo",
       },
     ];
     shared.state.monitorCountRows = [
@@ -203,7 +203,7 @@ describe("runDetectInactiveUsers — Task DL.1 N+1 fix", () => {
         lastActiveAt: lastActive,
         reengagementEmailSentAt: null,
         reengagementOptOut: false,
-        subscriptionStatus: "pro",
+        subscriptionStatus: "solo",
       },
     ];
     shared.state.monitorCountRows = [{ userId: "u1", count: 5 }];
@@ -255,7 +255,7 @@ describe("runDetectInactiveUsers — Task DL.1 N+1 fix", () => {
         lastActiveAt: lastActive,
         reengagementEmailSentAt: null,
         reengagementOptOut: false,
-        subscriptionStatus: "pro",
+        subscriptionStatus: "solo",
       },
       {
         id: "u2",
@@ -264,7 +264,7 @@ describe("runDetectInactiveUsers — Task DL.1 N+1 fix", () => {
         lastActiveAt: lastActive,
         reengagementEmailSentAt: null,
         reengagementOptOut: false,
-        subscriptionStatus: "pro",
+        subscriptionStatus: "solo",
       },
     ];
     // u1 has 2 monitors + 0 mentions → eligible (activeMonitors>0).
@@ -294,7 +294,7 @@ describe("runDetectInactiveUsers — Task DL.1 N+1 fix", () => {
         lastActiveAt: lastActive,
         reengagementEmailSentAt: null,
         reengagementOptOut: true,
-        subscriptionStatus: "pro",
+        subscriptionStatus: "solo",
       },
       {
         id: "cooldown",
@@ -303,7 +303,7 @@ describe("runDetectInactiveUsers — Task DL.1 N+1 fix", () => {
         lastActiveAt: lastActive,
         reengagementEmailSentAt: recentSend,
         reengagementOptOut: false,
-        subscriptionStatus: "pro",
+        subscriptionStatus: "solo",
       },
     ];
 

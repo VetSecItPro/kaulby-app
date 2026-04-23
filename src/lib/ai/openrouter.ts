@@ -41,7 +41,7 @@ import type { PlanKey } from "@/lib/plans";
 export type PlanTier = PlanKey;
 
 export function getModelForTier(plan: PlanTier | string): string {
-  if (plan === "team") return MODELS.team;
+  if (plan === "growth") return MODELS.team;
   // Free + Starter + Pro + anything unknown → Flash.
   return MODELS.primary;
 }

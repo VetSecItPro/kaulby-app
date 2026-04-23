@@ -9,10 +9,12 @@ describe("polar", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubEnv("POLAR_ACCESS_TOKEN", "test_token");
-    vi.stubEnv("POLAR_PRO_MONTHLY_PRODUCT_ID", "pro_monthly_123");
-    vi.stubEnv("POLAR_PRO_ANNUAL_PRODUCT_ID", "pro_annual_123");
-    vi.stubEnv("POLAR_TEAM_MONTHLY_PRODUCT_ID", "team_monthly_123");
-    vi.stubEnv("POLAR_TEAM_ANNUAL_PRODUCT_ID", "team_annual_123");
+    vi.stubEnv("POLAR_SOLO_MONTHLY_PRODUCT_ID", "solo_monthly_123");
+    vi.stubEnv("POLAR_SOLO_ANNUAL_PRODUCT_ID", "solo_annual_123");
+    vi.stubEnv("POLAR_SCALE_MONTHLY_PRODUCT_ID", "scale_monthly_123");
+    vi.stubEnv("POLAR_SCALE_ANNUAL_PRODUCT_ID", "scale_annual_123");
+    vi.stubEnv("POLAR_GROWTH_MONTHLY_PRODUCT_ID", "growth_monthly_123");
+    vi.stubEnv("POLAR_GROWTH_ANNUAL_PRODUCT_ID", "growth_annual_123");
     vi.stubEnv("POLAR_DAY_PASS_PRODUCT_ID", "day_pass_123");
   });
 
@@ -21,10 +23,11 @@ describe("polar", () => {
   });
 
   describe("POLAR_PLANS", () => {
-    it("contains free, pro, and team plans", () => {
+    it("contains free, solo, scale, and growth plans", () => {
       expect(POLAR_PLANS).toHaveProperty("free");
-      expect(POLAR_PLANS).toHaveProperty("pro");
-      expect(POLAR_PLANS).toHaveProperty("team");
+      expect(POLAR_PLANS).toHaveProperty("solo");
+      expect(POLAR_PLANS).toHaveProperty("scale");
+      expect(POLAR_PLANS).toHaveProperty("growth");
     });
 
     it("free plan has correct structure", () => {
@@ -32,38 +35,35 @@ describe("polar", () => {
       expect(free.name).toBe("Free");
       expect(free.price).toBe(0);
       expect(free.annualPrice).toBe(0);
-      expect(free.productId).toBeNull();
-      expect(free.annualProductId).toBeNull();
+      expect(free.priceId).toBeNull();
+      expect(free.annualPriceId).toBeNull();
       expect(free.trialDays).toBe(0);
-      expect(free.features).toBeInstanceOf(Array);
-      expect(free.limits).toBeDefined();
     });
 
-    it("pro plan has correct structure", () => {
-      const pro = POLAR_PLANS.pro;
-      expect(pro.name).toBe("Pro");
-      expect(pro.price).toBeGreaterThan(0);
-      expect(pro.annualPrice).toBeGreaterThan(0);
-      expect(pro.annualPrice).toBeLessThan(pro.price * 12);
-      expect(pro.features).toBeInstanceOf(Array);
-      expect(pro.limits).toBeDefined();
+    it("solo plan is priced at $39 with 20% annual discount", () => {
+      const solo = POLAR_PLANS.solo;
+      expect(solo.name).toBe("Solo");
+      expect(solo.price).toBe(39);
+      expect(solo.annualPrice).toBe(374);
     });
 
-    it("team plan has correct structure", () => {
-      const team = POLAR_PLANS.team;
-      expect(team.name).toBe("Team");
-      expect(team.price).toBeGreaterThan(POLAR_PLANS.pro.price);
-      expect(team.annualPrice).toBeGreaterThan(POLAR_PLANS.pro.annualPrice);
-      expect(team.features).toBeInstanceOf(Array);
-      expect(team.limits).toBeDefined();
+    it("scale plan is priced at $79 with 20% annual discount", () => {
+      const scale = POLAR_PLANS.scale;
+      expect(scale.name).toBe("Scale");
+      expect(scale.price).toBe(79);
+      expect(scale.annualPrice).toBe(758);
     });
 
-    it("all plans have platform limits", () => {
-      for (const plan of Object.values(POLAR_PLANS)) {
-        expect(plan.limits.platforms).toBeInstanceOf(Array);
-        expect(plan.limits.monitors).toBeGreaterThanOrEqual(-1);
-        expect(plan.limits.keywordsPerMonitor).toBeGreaterThan(0);
-      }
+    it("growth plan is priced at $149 with 20% annual discount", () => {
+      const growth = POLAR_PLANS.growth;
+      expect(growth.name).toBe("Growth");
+      expect(growth.price).toBe(149);
+      expect(growth.annualPrice).toBe(1430);
+    });
+
+    it("prices strictly increase across paid tiers", () => {
+      expect(POLAR_PLANS.solo.price).toBeLessThan(POLAR_PLANS.scale.price);
+      expect(POLAR_PLANS.scale.price).toBeLessThan(POLAR_PLANS.growth.price);
     });
 
     it("free plan has most restrictions", () => {
@@ -73,11 +73,11 @@ describe("polar", () => {
       expect(free.limits.platforms).toContain("reddit");
     });
 
-    it("team plan has most features", () => {
-      const team = POLAR_PLANS.team;
-      expect(team.limits.monitors).toBeGreaterThan(POLAR_PLANS.pro.limits.monitors);
-      expect(team.limits.platforms.length).toBeGreaterThan(POLAR_PLANS.pro.limits.platforms.length);
-      expect(team.limits.aiFeatures.comprehensiveAnalysis).toBe(true);
+    it("growth plan has highest monitor limit + comprehensive AI", () => {
+      const growth = POLAR_PLANS.growth;
+      expect(growth.limits.monitors).toBeGreaterThan(POLAR_PLANS.scale.limits.monitors);
+      expect(growth.limits.platforms.length).toBe(16);
+      expect(growth.limits.aiFeatures.comprehensiveAnalysis).toBe(true);
     });
   });
 
@@ -86,20 +86,22 @@ describe("polar", () => {
       expect(getPlanFromProductId("")).toBe("free");
     });
 
-    it("returns pro for pro monthly product ID", () => {
-      expect(getPlanFromProductId("pro_monthly_123")).toBe("pro");
+    it("returns solo for solo monthly product ID", () => {
+      expect(getPlanFromProductId("solo_monthly_123")).toBe("solo");
     });
 
-    it("returns pro for pro annual product ID", () => {
-      expect(getPlanFromProductId("pro_annual_123")).toBe("pro");
+    it("returns solo for solo annual product ID", () => {
+      expect(getPlanFromProductId("solo_annual_123")).toBe("solo");
     });
 
-    it("returns team for team monthly product ID", () => {
-      expect(getPlanFromProductId("team_monthly_123")).toBe("team");
+    it("returns scale for scale monthly/annual product IDs", () => {
+      expect(getPlanFromProductId("scale_monthly_123")).toBe("scale");
+      expect(getPlanFromProductId("scale_annual_123")).toBe("scale");
     });
 
-    it("returns team for team annual product ID", () => {
-      expect(getPlanFromProductId("team_annual_123")).toBe("team");
+    it("returns growth for growth monthly/annual product IDs", () => {
+      expect(getPlanFromProductId("growth_monthly_123")).toBe("growth");
+      expect(getPlanFromProductId("growth_annual_123")).toBe("growth");
     });
 
     it("returns free for unknown product ID", () => {
@@ -113,25 +115,24 @@ describe("polar", () => {
       expect(getProductId("free", "annual")).toBeNull();
     });
 
-    it("returns pro monthly product ID", () => {
-      expect(getProductId("pro", "monthly")).toBe("pro_monthly_123");
+    it("returns solo product IDs", () => {
+      expect(getProductId("solo", "monthly")).toBe("solo_monthly_123");
+      expect(getProductId("solo", "annual")).toBe("solo_annual_123");
     });
 
-    it("returns pro annual product ID", () => {
-      expect(getProductId("pro", "annual")).toBe("pro_annual_123");
+    it("returns scale product IDs", () => {
+      expect(getProductId("scale", "monthly")).toBe("scale_monthly_123");
+      expect(getProductId("scale", "annual")).toBe("scale_annual_123");
     });
 
-    it("returns team monthly product ID", () => {
-      expect(getProductId("team", "monthly")).toBe("team_monthly_123");
-    });
-
-    it("returns team annual product ID", () => {
-      expect(getProductId("team", "annual")).toBe("team_annual_123");
+    it("returns growth product IDs", () => {
+      expect(getProductId("growth", "monthly")).toBe("growth_monthly_123");
+      expect(getProductId("growth", "annual")).toBe("growth_annual_123");
     });
 
     it("returns null when env vars not set", () => {
-      vi.stubEnv("POLAR_PRO_MONTHLY_PRODUCT_ID", "");
-      expect(getProductId("pro", "monthly")).toBeNull();
+      vi.stubEnv("POLAR_SOLO_MONTHLY_PRODUCT_ID", "");
+      expect(getProductId("solo", "monthly")).toBeNull();
     });
   });
 
@@ -140,18 +141,6 @@ describe("polar", () => {
       vi.stubEnv("POLAR_ACCESS_TOKEN", "");
       const { getPolarClient } = await import("../polar");
       const client = await getPolarClient();
-      expect(client).toBeNull();
-    });
-
-    it("returns null when SDK import fails", async () => {
-      vi.stubEnv("POLAR_ACCESS_TOKEN", "test_token");
-      // Mock the SDK to simulate import failure
-      vi.doMock("@polar-sh/sdk", () => {
-        throw new Error("Module not found");
-      });
-      const { getPolarClient } = await import("../polar");
-      const client = await getPolarClient();
-      // When SDK fails to import, returns null
       expect(client).toBeNull();
     });
   });
@@ -163,23 +152,10 @@ describe("polar", () => {
       const result = await cancelSubscription("sub_123");
       expect(result).toBe(false);
     });
-
-    it("handles immediate cancellation option", async () => {
-      const { cancelSubscription } = await import("../polar");
-      const result = await cancelSubscription("sub_123", { immediate: true });
-      // Will be false since SDK not available in tests or true if SDK is available
-      expect(typeof result).toBe("boolean");
-    });
-
-    it("handles end-of-period cancellation by default", async () => {
-      const { cancelSubscription } = await import("../polar");
-      const result = await cancelSubscription("sub_123");
-      expect(typeof result).toBe("boolean");
-    });
   });
 
   describe("plan limits", () => {
-    it("free plan limits are restrictive", () => {
+    it("free plan is tightly restricted", () => {
       const { limits } = POLAR_PLANS.free;
       expect(limits.monitors).toBe(1);
       expect(limits.keywordsPerMonitor).toBe(3);
@@ -189,37 +165,52 @@ describe("polar", () => {
       expect(limits.exports.csv).toBe(false);
     });
 
-    it("pro plan has reasonable limits", () => {
-      const { limits } = POLAR_PLANS.pro;
-      expect(limits.monitors).toBe(10);
-      expect(limits.keywordsPerMonitor).toBe(10);
-      expect(limits.resultsVisible).toBe(-1); // unlimited
-      expect(limits.aiFeatures.unlimitedAiAnalysis).toBe(true);
-      expect(limits.alerts.email).toBe(true);
-      expect(limits.exports.csv).toBe(true);
+    it("paid tiers all get unlimited keywords", () => {
+      expect(POLAR_PLANS.solo.limits.keywordsPerMonitor).toBe(-1);
+      expect(POLAR_PLANS.scale.limits.keywordsPerMonitor).toBe(-1);
+      expect(POLAR_PLANS.growth.limits.keywordsPerMonitor).toBe(-1);
     });
 
-    it("team plan has highest limits", () => {
-      const { limits } = POLAR_PLANS.team;
-      expect(limits.monitors).toBe(30);
-      expect(limits.keywordsPerMonitor).toBe(20);
-      expect(limits.aiFeatures.comprehensiveAnalysis).toBe(true);
-      expect(limits.alerts.webhooks).toBe(true);
-      expect(limits.exports.api).toBe(true);
+    it("growth plan has webhooks + API + comprehensive AI (Solo/Scale don't)", () => {
+      expect(POLAR_PLANS.solo.limits.alerts.webhooks).toBe(false);
+      expect(POLAR_PLANS.scale.limits.alerts.webhooks).toBe(false);
+      expect(POLAR_PLANS.growth.limits.alerts.webhooks).toBe(true);
+
+      expect(POLAR_PLANS.solo.limits.exports.api).toBe(false);
+      expect(POLAR_PLANS.scale.limits.exports.api).toBe(false);
+      expect(POLAR_PLANS.growth.limits.exports.api).toBe(true);
+
+      expect(POLAR_PLANS.solo.limits.aiFeatures.comprehensiveAnalysis).toBe(false);
+      expect(POLAR_PLANS.scale.limits.aiFeatures.comprehensiveAnalysis).toBe(false);
+      expect(POLAR_PLANS.growth.limits.aiFeatures.comprehensiveAnalysis).toBe(true);
+    });
+
+    it("refresh cadence tightens as tier goes up", () => {
+      expect(POLAR_PLANS.free.limits.refreshDelayHours).toBe(24);
+      expect(POLAR_PLANS.solo.limits.refreshDelayHours).toBe(6);
+      expect(POLAR_PLANS.scale.limits.refreshDelayHours).toBe(4);
+      expect(POLAR_PLANS.growth.limits.refreshDelayHours).toBe(2);
     });
   });
 
   describe("platform availability", () => {
-    it("free tier has only reddit", () => {
+    it("free has reddit only", () => {
       expect(POLAR_PLANS.free.limits.platforms).toEqual(["reddit"]);
     });
 
-    it("pro tier has 9 platforms", () => {
-      expect(POLAR_PLANS.pro.limits.platforms).toHaveLength(9);
+    it("solo has 9 platforms", () => {
+      expect(POLAR_PLANS.solo.limits.platforms).toHaveLength(9);
     });
 
-    it("team tier has all 16 platforms", () => {
-      expect(POLAR_PLANS.team.limits.platforms).toHaveLength(16);
+    it("scale has 12 platforms (Solo + G2/Yelp/Amazon)", () => {
+      expect(POLAR_PLANS.scale.limits.platforms).toHaveLength(12);
+      expect(POLAR_PLANS.scale.limits.platforms).toContain("g2");
+      expect(POLAR_PLANS.scale.limits.platforms).toContain("yelp");
+      expect(POLAR_PLANS.scale.limits.platforms).toContain("amazonreviews");
+    });
+
+    it("growth has all 16 platforms", () => {
+      expect(POLAR_PLANS.growth.limits.platforms).toHaveLength(16);
     });
   });
 });

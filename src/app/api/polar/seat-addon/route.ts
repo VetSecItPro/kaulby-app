@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
       columns: { subscriptionStatus: true },
     });
 
-    if (!dbUser || dbUser.subscriptionStatus !== "team") {
+    if (!dbUser || dbUser.subscriptionStatus !== "growth") {
       return NextResponse.json(
         { error: "Extra seats are only available on the Team plan" },
         { status: 400 }

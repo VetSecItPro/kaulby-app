@@ -43,13 +43,13 @@ describe("ai/rate-limit", () => {
       const result = await checkAllRateLimits("user-1", "free");
 
       expect(result.allowed).toBe(false);
-      expect(result.reason).toContain("Starter subscription");
+      expect(result.reason).toContain("Solo subscription");
     });
 
     it("allows pro tier users within limits", async () => {
       const { checkAllRateLimits } = await import("@/lib/ai/rate-limit");
 
-      const result = await checkAllRateLimits("user-1", "pro");
+      const result = await checkAllRateLimits("user-1", "solo");
 
       expect(result.allowed).toBe(true);
     });
@@ -57,7 +57,7 @@ describe("ai/rate-limit", () => {
     it("allows team tier users within limits", async () => {
       const { checkAllRateLimits } = await import("@/lib/ai/rate-limit");
 
-      const result = await checkAllRateLimits("user-1", "team");
+      const result = await checkAllRateLimits("user-1", "growth");
 
       expect(result.allowed).toBe(true);
     });
@@ -67,7 +67,7 @@ describe("ai/rate-limit", () => {
     it("returns token usage and remaining budget", async () => {
       const { checkTokenBudget } = await import("@/lib/ai/rate-limit");
 
-      const result = await checkTokenBudget("user-1", "pro");
+      const result = await checkTokenBudget("user-1", "solo");
 
       expect(result).toHaveProperty("allowed");
       expect(result).toHaveProperty("remaining");
@@ -79,7 +79,7 @@ describe("ai/rate-limit", () => {
     it("blocks when budget exceeded", async () => {
       const { checkTokenBudget } = await import("@/lib/ai/rate-limit");
 
-      const result = await checkTokenBudget("user-1", "pro");
+      const result = await checkTokenBudget("user-1", "solo");
 
       expect(result).toHaveProperty("allowed");
       expect(result).toHaveProperty("remaining");

@@ -33,7 +33,7 @@ export default async function DashboardPage() {
         getUserPlan(userId),
         getCachedMonitorIds(userId),
       ])
-    : [isDev ? "team" as const : "free" as const, []];
+    : [isDev ? "growth" as const : "free" as const, []];
 
   const hasMonitors = userMonitors.length > 0;
 

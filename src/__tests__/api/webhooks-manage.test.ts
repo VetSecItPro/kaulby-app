@@ -46,7 +46,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockCheckApiRateLimit.mockResolvedValue({ allowed: true });
   mockAuth.mockResolvedValue({ userId: "user_1" });
-  mockDbQuery.users.findFirst.mockResolvedValue({ id: "user_1", subscriptionStatus: "team" });
+  mockDbQuery.users.findFirst.mockResolvedValue({ id: "user_1", subscriptionStatus: "growth" });
 });
 
 describe("POST /api/webhooks/manage", () => {

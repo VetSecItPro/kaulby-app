@@ -219,7 +219,7 @@ interface AnalyticsChartsProps {
 export function AnalyticsCharts({ subscriptionStatus = "free" }: AnalyticsChartsProps) {
   const [range, setRange] = useState<TimeRange>("30d");
 
-  const isTeam = subscriptionStatus === "team";
+  const isTeam = subscriptionStatus === "growth";
 
   const { data, isLoading: loading } = useSWR<AnalyticsData>(
     `/api/analytics?range=${range}`,

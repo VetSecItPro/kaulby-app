@@ -101,7 +101,7 @@ export const PLATFORMS: PlatformData[] = [
     slug: "hackernews",
     name: "Hacker News",
     shortName: "HN",
-    tier: "pro",
+    tier: "solo",
     description:
       "Track Hacker News discussions, monitor Show HN posts, and catch mentions of your product in the tech community.",
     heroHeadline: "Monitor Hacker News Mentions",
@@ -164,7 +164,7 @@ export const PLATFORMS: PlatformData[] = [
     slug: "producthunt",
     name: "Product Hunt",
     shortName: "PH",
-    tier: "pro",
+    tier: "solo",
     description:
       "Monitor Product Hunt launches, track competitor products, and find early adopters discussing tools in your space.",
     heroHeadline: "Monitor Product Hunt Mentions",
@@ -222,7 +222,7 @@ export const PLATFORMS: PlatformData[] = [
     slug: "google-reviews",
     name: "Google Reviews",
     shortName: "Google Reviews",
-    tier: "pro",
+    tier: "solo",
     description:
       "Monitor Google Reviews for your business or competitors. Track ratings, analyze review sentiment, and respond to feedback faster.",
     heroHeadline: "Monitor Google Reviews",
@@ -280,7 +280,7 @@ export const PLATFORMS: PlatformData[] = [
     slug: "youtube",
     name: "YouTube",
     shortName: "YouTube",
-    tier: "pro",
+    tier: "solo",
     description:
       "Monitor YouTube video mentions, track brand discussions in comments, and analyze sentiment across video content.",
     heroHeadline: "Monitor YouTube Mentions",
@@ -338,7 +338,7 @@ export const PLATFORMS: PlatformData[] = [
     slug: "github",
     name: "GitHub",
     shortName: "GitHub",
-    tier: "pro",
+    tier: "solo",
     description:
       "Monitor GitHub issues, discussions, and repositories. Track open-source projects, competitor repos, and developer sentiment.",
     heroHeadline: "Monitor GitHub Mentions",
@@ -396,7 +396,7 @@ export const PLATFORMS: PlatformData[] = [
     slug: "trustpilot",
     name: "Trustpilot",
     shortName: "Trustpilot",
-    tier: "pro",
+    tier: "solo",
     description:
       "Monitor Trustpilot reviews for your brand and competitors. Track review sentiment, star ratings, and customer feedback trends.",
     heroHeadline: "Monitor Trustpilot Reviews",
@@ -454,7 +454,7 @@ export const PLATFORMS: PlatformData[] = [
     slug: "x-twitter",
     name: "X (Twitter)",
     shortName: "X",
-    tier: "pro",
+    tier: "solo",
     description:
       "Monitor X/Twitter mentions, track brand conversations, and analyze real-time sentiment on the world's public conversation platform.",
     heroHeadline: "Monitor X (Twitter) Mentions",
@@ -512,7 +512,7 @@ export const PLATFORMS: PlatformData[] = [
     slug: "indie-hackers",
     name: "Indie Hackers",
     shortName: "IH",
-    tier: "pro",
+    tier: "solo",
     description:
       "Monitor Indie Hackers discussions, product launches, and founder conversations. Find early adopters and track competitor activity.",
     heroHeadline: "Monitor Indie Hackers Mentions",
@@ -570,7 +570,7 @@ export const PLATFORMS: PlatformData[] = [
     slug: "devto",
     name: "Dev.to",
     shortName: "Dev.to",
-    tier: "team",
+    tier: "growth",
     description:
       "Monitor Dev.to articles and discussions. Track technical content about your product, developer opinions, and industry trends.",
     heroHeadline: "Monitor Dev.to Mentions",
@@ -628,7 +628,7 @@ export const PLATFORMS: PlatformData[] = [
     slug: "hashnode",
     name: "Hashnode",
     shortName: "Hashnode",
-    tier: "team",
+    tier: "growth",
     description:
       "Monitor Hashnode blog posts and discussions. Track technical content, developer reviews, and mentions of your product.",
     heroHeadline: "Monitor Hashnode Mentions",
@@ -691,7 +691,7 @@ export const PLATFORMS: PlatformData[] = [
     slug: "app-store",
     name: "App Store",
     shortName: "App Store",
-    tier: "team",
+    tier: "growth",
     description:
       "Monitor Apple App Store reviews for your app and competitors. Track ratings, review sentiment, and user feedback trends.",
     heroHeadline: "Monitor App Store Reviews",
@@ -749,7 +749,7 @@ export const PLATFORMS: PlatformData[] = [
     slug: "play-store",
     name: "Google Play Store",
     shortName: "Play Store",
-    tier: "team",
+    tier: "growth",
     description:
       "Monitor Google Play Store reviews for your Android app. Track ratings, sentiment, and competitive intelligence from user feedback.",
     heroHeadline: "Monitor Play Store Reviews",
@@ -814,7 +814,7 @@ export const PLATFORMS: PlatformData[] = [
     slug: "g2",
     name: "G2",
     shortName: "G2",
-    tier: "team",
+    tier: "growth",
     description:
       "Monitor G2 software reviews for your product and competitors. Track ratings, comparison traffic, and buyer intent signals.",
     heroHeadline: "Monitor G2 Reviews",
@@ -877,7 +877,7 @@ export const PLATFORMS: PlatformData[] = [
     slug: "yelp",
     name: "Yelp",
     shortName: "Yelp",
-    tier: "team",
+    tier: "growth",
     description:
       "Monitor Yelp reviews for your business locations. Track customer feedback, ratings, and competitor review trends.",
     heroHeadline: "Monitor Yelp Reviews",
@@ -940,7 +940,7 @@ export const PLATFORMS: PlatformData[] = [
     slug: "amazon-reviews",
     name: "Amazon Reviews",
     shortName: "Amazon",
-    tier: "team",
+    tier: "growth",
     description:
       "Monitor Amazon product reviews. Track customer feedback, competitor product reviews, and buyer sentiment trends.",
     heroHeadline: "Monitor Amazon Reviews",

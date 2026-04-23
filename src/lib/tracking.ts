@@ -24,8 +24,8 @@ async function getPostHog() {
 // Type-safe event definitions
 type TrackingEvent =
   // Conversion events
-  | { event: "upgrade_clicked"; properties: { from: string; plan: "pro" | "team"; trigger?: string } }
-  | { event: "upgrade_completed"; properties: { plan: "pro" | "team"; isFoundingMember?: boolean } }
+  | { event: "upgrade_clicked"; properties: { from: string; plan: "solo" | "growth"; trigger?: string } }
+  | { event: "upgrade_completed"; properties: { plan: "solo" | "growth"; isFoundingMember?: boolean } }
   | { event: "day_pass_purchased"; properties: { trigger?: string } }
   // Feature usage
   | { event: "monitor_created"; properties: { platforms: string[]; keywordCount: number; monitorType: "keyword" | "ai_discovery" } }
@@ -66,10 +66,10 @@ async function track<T extends TrackingEvent>(event: T["event"], properties?: T[
  */
 export const tracking = {
   // Conversion
-  upgradeClicked: (from: string, plan: "pro" | "team", trigger?: string) =>
+  upgradeClicked: (from: string, plan: "solo" | "growth", trigger?: string) =>
     track("upgrade_clicked", { from, plan, trigger }),
 
-  upgradeCompleted: (plan: "pro" | "team", isFoundingMember?: boolean) =>
+  upgradeCompleted: (plan: "solo" | "growth", isFoundingMember?: boolean) =>
     track("upgrade_completed", { plan, isFoundingMember }),
 
   dayPassPurchased: (trigger?: string) =>

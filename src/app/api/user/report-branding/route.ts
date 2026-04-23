@@ -38,7 +38,7 @@ export async function GET() {
 
     return NextResponse.json({
       branding: user.reportBranding ?? null,
-      isTeam: user.subscriptionStatus === "team",
+      isTeam: user.subscriptionStatus === "growth",
     });
   } catch (error) {
     logger.error("Failed to fetch report branding:", { error: error instanceof Error ? error.message : String(error) });
@@ -75,7 +75,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    if (user.subscriptionStatus !== "team") {
+    if (user.subscriptionStatus !== "growth") {
       return NextResponse.json(
         { error: "Report branding customization requires a Team subscription" },
         { status: 403 }

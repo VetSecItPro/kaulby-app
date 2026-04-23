@@ -388,7 +388,7 @@ X-API-Key: kaulby_live_xxxxxxxxxxxx`}</pre>
     }
   },
   "plan": {
-    "name": "team",
+    "name": "growth",
     "limits": {
       "monitors": 30,
       "keywords": 35,

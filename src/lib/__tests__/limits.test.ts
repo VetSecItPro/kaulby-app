@@ -61,29 +61,26 @@ describe("limits", () => {
       expect(result.message).toContain("Maximum 3");
     });
 
-    it("allows 10 keywords on pro plan", () => {
-      const keywords = Array.from({ length: 10 }, (_, i) => `kw${i}`);
-      const result = checkKeywordsLimit(keywords, "pro");
+    it("allows unlimited keywords on solo plan", () => {
+      const keywords = Array.from({ length: 100 }, (_, i) => `kw${i}`);
+      const result = checkKeywordsLimit(keywords, "solo");
       expect(result.allowed).toBe(true);
-      expect(result.limit).toBe(10);
+      expect(result.limit).toBe(-1);
+      expect(result.message).toBe("Unlimited keywords");
     });
 
-    it("rejects 11 keywords on pro plan", () => {
-      const keywords = Array.from({ length: 11 }, (_, i) => `kw${i}`);
-      const result = checkKeywordsLimit(keywords, "pro");
-      expect(result.allowed).toBe(false);
-    });
-
-    it("allows 20 keywords on team plan", () => {
-      const keywords = Array.from({ length: 20 }, (_, i) => `kw${i}`);
-      const result = checkKeywordsLimit(keywords, "team");
+    it("allows unlimited keywords on scale plan", () => {
+      const keywords = Array.from({ length: 500 }, (_, i) => `kw${i}`);
+      const result = checkKeywordsLimit(keywords, "scale");
       expect(result.allowed).toBe(true);
-      expect(result.limit).toBe(20);
+      expect(result.limit).toBe(-1);
     });
 
-    it("returns remaining count in message when under limit", () => {
-      const result = checkKeywordsLimit(["a"], "pro");
-      expect(result.message).toContain("9 keywords remaining");
+    it("allows unlimited keywords on growth plan", () => {
+      const keywords = Array.from({ length: 1000 }, (_, i) => `kw${i}`);
+      const result = checkKeywordsLimit(keywords, "growth");
+      expect(result.allowed).toBe(true);
+      expect(result.limit).toBe(-1);
     });
 
     it("handles empty keywords array", () => {
@@ -106,15 +103,15 @@ describe("limits", () => {
     });
 
     it("allows hackernews on pro plan", () => {
-      expect(canAccessPlatformWithPlan("pro", "hackernews")).toBe(true);
+      expect(canAccessPlatformWithPlan("solo", "hackernews")).toBe(true);
     });
 
     it("denies devto on pro plan (team-only)", () => {
-      expect(canAccessPlatformWithPlan("pro", "devto")).toBe(false);
+      expect(canAccessPlatformWithPlan("solo", "devto")).toBe(false);
     });
 
     it("allows devto on team plan", () => {
-      expect(canAccessPlatformWithPlan("team", "devto")).toBe(true);
+      expect(canAccessPlatformWithPlan("growth", "devto")).toBe(true);
     });
 
     it("allows all 16 platforms on team plan", () => {
@@ -125,7 +122,7 @@ describe("limits", () => {
         "g2", "yelp", "amazonreviews",
       ];
       for (const p of allPlatforms) {
-        expect(canAccessPlatformWithPlan("team", p)).toBe(true);
+        expect(canAccessPlatformWithPlan("growth", p)).toBe(true);
       }
     });
 
@@ -153,14 +150,14 @@ describe("limits", () => {
       expect(shouldProcessMonitorWithPlan("free", thirtyHoursAgo)).toBe(true);
     });
 
-    it("returns true for pro plan after 4+ hours", () => {
-      const fiveHoursAgo = new Date(Date.now() - 5 * 60 * 60 * 1000);
-      expect(shouldProcessMonitorWithPlan("pro", fiveHoursAgo)).toBe(true);
+    it("returns true for solo plan after 6+ hours", () => {
+      const sevenHoursAgo = new Date(Date.now() - 7 * 60 * 60 * 1000);
+      expect(shouldProcessMonitorWithPlan("solo", sevenHoursAgo)).toBe(true);
     });
 
-    it("returns false for pro plan within 4 hours", () => {
+    it("returns false for solo plan within 6 hours", () => {
       const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
-      expect(shouldProcessMonitorWithPlan("pro", twoHoursAgo)).toBe(false);
+      expect(shouldProcessMonitorWithPlan("solo", twoHoursAgo)).toBe(false);
     });
 
     it("handles string dates", () => {
@@ -168,9 +165,9 @@ describe("limits", () => {
       expect(shouldProcessMonitorWithPlan("free", recent)).toBe(false);
     });
 
-    it("returns true for team after 2+ hours", () => {
+    it("returns true for growth after 2+ hours", () => {
       const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000);
-      expect(shouldProcessMonitorWithPlan("team", threeHoursAgo)).toBe(true);
+      expect(shouldProcessMonitorWithPlan("growth", threeHoursAgo)).toBe(true);
     });
   });
 
@@ -182,12 +179,12 @@ describe("limits", () => {
       expect(getPlanLimits("free").monitors).toBe(1);
     });
 
-    it("pro plan allows 10 monitors", () => {
-      expect(getPlanLimits("pro").monitors).toBe(10);
+    it("solo plan allows 10 monitors", () => {
+      expect(getPlanLimits("solo").monitors).toBe(10);
     });
 
-    it("team plan allows 30 monitors", () => {
-      expect(getPlanLimits("team").monitors).toBe(30);
+    it("growth plan allows 30 monitors", () => {
+      expect(getPlanLimits("growth").monitors).toBe(30);
     });
   });
 
@@ -199,12 +196,16 @@ describe("limits", () => {
       expect(getPlanLimits("free").refreshDelayHours).toBe(24);
     });
 
-    it("pro plan has 4-hour refresh delay", () => {
-      expect(getPlanLimits("pro").refreshDelayHours).toBe(4);
+    it("solo plan has 6-hour refresh delay", () => {
+      expect(getPlanLimits("solo").refreshDelayHours).toBe(6);
+    });
+
+    it("scale plan has 4-hour refresh delay", () => {
+      expect(getPlanLimits("scale").refreshDelayHours).toBe(4);
     });
 
     it("team plan has 2-hour refresh delay", () => {
-      expect(getPlanLimits("team").refreshDelayHours).toBe(2);
+      expect(getPlanLimits("growth").refreshDelayHours).toBe(2);
     });
   });
 
@@ -215,13 +216,13 @@ describe("limits", () => {
     it("suggests pro when current plan is free", () => {
       const prompt = getUpgradePrompt("free", "monitors");
       expect(prompt.show).toBe(true);
-      expect(prompt.suggestedPlan).toBe("pro");
+      expect(prompt.suggestedPlan).toBe("solo");
       expect(prompt.currentPlan).toBe("free");
     });
 
     it("suggests team when current plan is pro", () => {
-      const prompt = getUpgradePrompt("pro", "monitors");
-      expect(prompt.suggestedPlan).toBe("team");
+      const prompt = getUpgradePrompt("solo", "monitors");
+      expect(prompt.suggestedPlan).toBe("growth");
     });
 
     it("includes platform name in context", () => {

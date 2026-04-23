@@ -101,7 +101,7 @@ describe("posthog", () => {
           distinctId: "user_123",
           properties: {
             email: "test@example.com",
-            plan: "pro",
+            plan: "solo",
           },
         });
       }).not.toThrow();

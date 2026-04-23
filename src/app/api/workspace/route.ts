@@ -99,7 +99,7 @@ export async function POST(request: Request) {
     }
 
     // Check if user is team tier
-    if (user.subscriptionStatus !== "team") {
+    if (user.subscriptionStatus !== "growth") {
       return NextResponse.json(
         { error: "Team workspaces are only available on the Enterprise plan" },
         { status: 403 }

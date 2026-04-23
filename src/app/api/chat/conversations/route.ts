@@ -62,7 +62,7 @@ export async function POST(req: Request) {
     }
 
     const plan = await getUserPlan(userId);
-    if (plan !== "pro" && plan !== "team") {
+    if (plan !== "solo" && plan !== "growth") {
       return NextResponse.json({ error: "Pro plan required" }, { status: 403 });
     }
 

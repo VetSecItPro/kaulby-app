@@ -89,8 +89,8 @@ interface UsersManagementProps {
 const planFilters = [
   { value: "all", label: "All Plans", icon: Users },
   { value: "free", label: "Free", icon: User },
-  { value: "pro", label: "Pro", icon: Crown },
-  { value: "team", label: "Team", icon: Building2 },
+  { value: "solo", label: "Pro", icon: Crown },
+  { value: "growth", label: "Team", icon: Building2 },
 ];
 
 export function UsersManagement({
@@ -136,8 +136,8 @@ export function UsersManagement({
 
   const handlePlanAction = async (action: "upgrade" | "downgrade", user: UserData) => {
     const newPlan = action === "upgrade"
-      ? (user.subscriptionStatus === "free" ? "pro" : "team")
-      : (user.subscriptionStatus === "team" ? "pro" : "free");
+      ? (user.subscriptionStatus === "free" ? "solo" : "growth")
+      : (user.subscriptionStatus === "growth" ? "solo" : "free");
 
     await updateUserPlan(user.id, newPlan as PlanKey);
     setActionDialog({ type: null, user: null });
@@ -305,7 +305,7 @@ export function UsersManagement({
                             </DropdownMenuItem>
                           )}
                           <DropdownMenuSeparator />
-                          {user.subscriptionStatus !== "team" && (
+                          {user.subscriptionStatus !== "growth" && (
                             <DropdownMenuItem
                               onClick={() => setActionDialog({ type: "upgrade", user })}
                             >
@@ -449,7 +449,7 @@ export function UsersManagement({
                   Upgrade {actionDialog.user?.email} from{" "}
                   <strong>{actionDialog.user?.subscriptionStatus}</strong> to{" "}
                   <strong>
-                    {actionDialog.user?.subscriptionStatus === "free" ? "pro" : "team"}
+                    {actionDialog.user?.subscriptionStatus === "free" ? "solo" : "growth"}
                   </strong>
                   ?
                 </>
@@ -459,7 +459,7 @@ export function UsersManagement({
                   Downgrade {actionDialog.user?.email} from{" "}
                   <strong>{actionDialog.user?.subscriptionStatus}</strong> to{" "}
                   <strong>
-                    {actionDialog.user?.subscriptionStatus === "team" ? "pro" : "free"}
+                    {actionDialog.user?.subscriptionStatus === "growth" ? "solo" : "free"}
                   </strong>
                   ?
                 </>
@@ -512,14 +512,14 @@ function PlanBadge({ plan }: { plan: string }) {
     <Badge
       variant="outline"
       className={cn(
-        plan === "pro" && "bg-primary/10 text-primary border-primary",
-        plan === "team" && "bg-amber-500/10 text-amber-600 border-amber-500",
+        plan === "solo" && "bg-primary/10 text-primary border-primary",
+        plan === "growth" && "bg-amber-500/10 text-amber-600 border-amber-500",
         plan === "free" && "bg-muted text-muted-foreground"
       )}
     >
-      {plan === "pro" && <Crown className="h-3 w-3 mr-1" />}
-      {plan === "team" && <Building2 className="h-3 w-3 mr-1" />}
-      <span className="capitalize">{plan === "team" ? "Team" : plan}</span>
+      {plan === "solo" && <Crown className="h-3 w-3 mr-1" />}
+      {plan === "growth" && <Building2 className="h-3 w-3 mr-1" />}
+      <span className="capitalize">{plan === "growth" ? "Team" : plan}</span>
     </Badge>
   );
 }

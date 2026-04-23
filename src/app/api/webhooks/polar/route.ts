@@ -27,7 +27,7 @@ interface PolarWebhookEvent {
 }
 
 // Map PolarPlanKey to subscription status for database
-// Now an identity function since internal naming matches Polar's "team" key
+// Now an identity function since internal naming matches Polar's "growth" key
 function mapPlanToSubscriptionStatus(plan: PolarPlanKey): PlanKey {
   return plan;
 }
@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
           // LTV/conversion dashboards can distinguish one-time vs recurring.
           track("payment.succeeded", {
             userId,
-            tier: "pro",
+            tier: "solo",
             interval: "day_pass",
           });
 
@@ -255,7 +255,7 @@ export async function POST(request: NextRequest) {
         let isFoundingMember = false;
         let foundingMemberNumber: number | null = null;
 
-        if (plan === "pro" || plan === "team") {
+        if (plan === "solo" || plan === "growth") {
           // Security (SEC-11): Use advisory lock to prevent race condition on founding member assignment.
           // Without the lock, two concurrent webhooks could both read the same COUNT and assign
           // the same foundingMemberNumber.
@@ -315,7 +315,7 @@ export async function POST(request: NextRequest) {
         // SECURITY (SEC-INTEG-013): Non-blocking side effects — don't let email failure cause 500
         Promise.all([
           upsertContact({ email: user.email, userId: user.id, subscriptionStatus: subscriptionStatus }),
-          sendSubscriptionEmail({ email: user.email, name: user.name || undefined, plan: plan === "team" ? "Team" : plan.charAt(0).toUpperCase() + plan.slice(1) })
+          sendSubscriptionEmail({ email: user.email, name: user.name || undefined, plan: plan === "growth" ? "Team" : plan.charAt(0).toUpperCase() + plan.slice(1) })
             .catch(async (err) => {
               logger.error("Subscription email failed", { error: err, userId: user.id });
               const { pooledDb } = await import("@/lib/db");
@@ -350,7 +350,7 @@ export async function POST(request: NextRequest) {
         // to monthly; Polar product IDs don't reliably tell us annual vs
         // monthly here, so annual detection is left to Task 1.4b once we wire
         // product metadata. Skipping on "free" keeps the funnel clean.
-        if (subscriptionStatus === "pro" || subscriptionStatus === "team") {
+        if (subscriptionStatus === "solo" || subscriptionStatus === "growth") {
           track("payment.succeeded", {
             userId: user.id,
             tier: subscriptionStatus,
