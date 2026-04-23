@@ -251,6 +251,17 @@ export async function POST(request: NextRequest) {
           break;
         }
 
+        // Reverse trial: every new paid signup gets 14 days of Growth-tier
+        // features regardless of which tier they bought. Only granted on the
+        // FIRST paid subscription (skip if user already had a trial OR is
+        // already on Growth — they wouldn't benefit).
+        const isFirstPaidSubscription = !user.trialEndsAt && user.subscriptionStatus === "free";
+        const grantsTrial = isFirstPaidSubscription && plan !== "growth" && plan !== "free";
+        const trialEndsAt = grantsTrial
+          ? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+          : undefined;
+        const trialTier = grantsTrial ? ("growth" as const) : undefined;
+
         // Atomically assign founding member number using UPDATE with subquery
         let isFoundingMember = false;
         let foundingMemberNumber: number | null = null;
@@ -270,6 +281,9 @@ export async function POST(request: NextRequest) {
                 subscriptionStatus: subscriptionStatus,
                 currentPeriodStart: currentPeriodStart ? new Date(currentPeriodStart) : undefined,
                 currentPeriodEnd: currentPeriodEnd ? new Date(currentPeriodEnd) : undefined,
+                ...(grantsTrial && trialEndsAt && trialTier
+                  ? { trialEndsAt, trialTier }
+                  : {}),
                 isFoundingMember: sql`CASE
                   WHEN (SELECT COUNT(*) FROM ${users} WHERE ${users.isFoundingMember} = true) < ${FOUNDING_MEMBER_LIMIT}
                   THEN true
@@ -299,7 +313,7 @@ export async function POST(request: NextRequest) {
             foundingMemberNumber = result[0].foundingMemberNumber;
           }
         } else {
-          // Non-founding-member eligible plans
+          // Non-founding-member eligible plans (e.g., scale)
           await db
             .update(users)
             .set({
@@ -307,6 +321,9 @@ export async function POST(request: NextRequest) {
               subscriptionStatus: subscriptionStatus,
               currentPeriodStart: currentPeriodStart ? new Date(currentPeriodStart) : undefined,
               currentPeriodEnd: currentPeriodEnd ? new Date(currentPeriodEnd) : undefined,
+              ...(grantsTrial && trialEndsAt && trialTier
+                ? { trialEndsAt, trialTier }
+                : {}),
               updatedAt: new Date(),
             })
             .where(eq(users.id, user.id));

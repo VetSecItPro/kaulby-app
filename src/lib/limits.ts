@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { users, monitors, communities, usage } from "@/lib/db/schema";
 import { eq, and, count, gte, sql } from "drizzle-orm";
-import { PLANS, PlanKey, Platform, getPlanLimits } from "@/lib/plans";
+import { PLANS, PlanKey, Platform, getPlanLimits, getEffectiveTier } from "@/lib/plans";
 import { currentUser } from "@clerk/nextjs/server";
 import { getCachedUserPlan } from "@/lib/server-cache";
 
@@ -76,12 +76,17 @@ export async function getUserPlan(userId: string): Promise<PlanKey> {
     return "growth";
   }
 
-  // Check for active day pass - grants Pro-level access
+  // Check for active day pass - grants Solo-level access
   if (user.dayPassExpiresAt && new Date(user.dayPassExpiresAt) > new Date()) {
     return "solo";
   }
 
-  return (user.subscriptionStatus as PlanKey) || "free";
+  // Reverse trial: 14-day Growth-tier window for new paid signups
+  return getEffectiveTier({
+    subscriptionStatus: user.subscriptionStatus,
+    trialTier: user.trialTier,
+    trialEndsAt: user.trialEndsAt,
+  });
 }
 
 /**

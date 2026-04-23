@@ -57,17 +57,30 @@ export const getCachedUserPlan = unstable_cache(
         isAdmin: true,
         subscriptionStatus: true,
         dayPassExpiresAt: true,
+        trialTier: true,
+        trialEndsAt: true,
       },
     });
 
     if (!user) return null;
     if (user.isAdmin) return "growth";
     if (user.dayPassExpiresAt && new Date(user.dayPassExpiresAt) > new Date()) return "solo";
-    return user.subscriptionStatus || "free";
+
+    // Reverse trial: 14-day Growth-tier window for new paid signups.
+    // getEffectiveTier returns max(paid, trial) when trialEndsAt is in the future.
+    const { getEffectiveTier } = await import("@/lib/plans");
+    return getEffectiveTier({
+      subscriptionStatus: user.subscriptionStatus,
+      trialTier: user.trialTier,
+      trialEndsAt: user.trialEndsAt,
+    });
   },
   ["user-plan"],
   {
-    revalidate: 60, // 1 minute
+    // 1 minute cache. During an active trial, this means the moment the trial
+    // expires the user might keep Growth access for up to 60 seconds extra —
+    // acceptable tradeoff for not hammering the DB on every request.
+    revalidate: 60,
     tags: ["user-plan"],
   }
 );

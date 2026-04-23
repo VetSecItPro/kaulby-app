@@ -210,7 +210,13 @@ export const users = pgTable("users", {
   isFoundingMember: boolean("is_founding_member").default(false).notNull(),
   foundingMemberNumber: integer("founding_member_number"), // DB: Business logic constrains to 1-1000 — FIX-108
   foundingMemberPriceId: text("founding_member_price_id"), // Polar product ID they locked in
-  // Day Pass - 24hr Pro access for $10
+  // Reverse trial — every new paid signup gets 14 days at Growth-tier features
+  // regardless of which tier they bought, then drops to their paid tier on day 15.
+  // Implementation: getEffectiveTier(user) returns max(subscriptionStatus, trialTier)
+  // when trialEndsAt is in the future. Cron expires + pauses over-limit monitors.
+  trialTier: subscriptionStatusEnum("trial_tier"), // null = no active trial
+  trialEndsAt: timestamp("trial_ends_at"), // null = no active trial
+  // Day Pass - 24hr Scale-level access for $15
   dayPassExpiresAt: timestamp("day_pass_expires_at"), // When the day pass expires (null = no active pass)
   dayPassPurchaseCount: integer("day_pass_purchase_count").default(0).notNull(), // Track repeat buyers
   lastDayPassPurchasedAt: timestamp("last_day_pass_purchased_at"), // Last purchase timestamp

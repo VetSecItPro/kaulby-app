@@ -140,4 +140,52 @@ describe("plans", () => {
     const keys: PlanKey[] = ["free", "solo", "scale", "growth"];
     expect(keys.length).toBe(4);
   });
+
+  describe("getEffectiveTier (reverse trial)", () => {
+    it("returns paid tier when no trial fields", async () => {
+      const { getEffectiveTier } = await import("../plans");
+      expect(getEffectiveTier({ subscriptionStatus: "solo" })).toBe("solo");
+      expect(getEffectiveTier({ subscriptionStatus: "free" })).toBe("free");
+    });
+
+    it("returns trial tier when trial is active and higher than paid", async () => {
+      const { getEffectiveTier } = await import("../plans");
+      const future = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      expect(
+        getEffectiveTier({ subscriptionStatus: "solo", trialTier: "growth", trialEndsAt: future })
+      ).toBe("growth");
+    });
+
+    it("returns paid tier when trial has expired", async () => {
+      const { getEffectiveTier } = await import("../plans");
+      const past = new Date(Date.now() - 1000);
+      expect(
+        getEffectiveTier({ subscriptionStatus: "solo", trialTier: "growth", trialEndsAt: past })
+      ).toBe("solo");
+    });
+
+    it("never downgrades a user who upgraded mid-trial", async () => {
+      const { getEffectiveTier } = await import("../plans");
+      const future = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      // User on Growth with a trial of Scale → should stay Growth
+      expect(
+        getEffectiveTier({ subscriptionStatus: "growth", trialTier: "scale", trialEndsAt: future })
+      ).toBe("growth");
+    });
+
+    it("normalizes legacy enum values in trial fields", async () => {
+      const { getEffectiveTier } = await import("../plans");
+      const future = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      expect(
+        getEffectiveTier({ subscriptionStatus: "pro", trialTier: "team", trialEndsAt: future })
+      ).toBe("growth"); // pro→solo, team→growth, max=growth
+    });
+
+    it("treats invalid date strings as expired", async () => {
+      const { getEffectiveTier } = await import("../plans");
+      expect(
+        getEffectiveTier({ subscriptionStatus: "solo", trialTier: "growth", trialEndsAt: "not-a-date" })
+      ).toBe("solo");
+    });
+  });
 });
