@@ -1,0 +1,138 @@
+{
+  "timestamp": "2026-04-23T22:24:00.639Z",
+  "n_runs": 5,
+  "corpus_size": 20,
+  "overall": {
+    "persona": {
+      "mean": 0.9299999999999999,
+      "std": 0.02738612787525827,
+      "min": 0.9,
+      "max": 0.95,
+      "runs": [
+        0.9,
+        0.95,
+        0.95,
+        0.9,
+        0.95
+      ]
+    },
+    "banned_opener": {
+      "mean": 0.07999999999999999,
+      "std": 0.027386127875258306,
+      "runs": [
+        0.1,
+        0.05,
+        0.1,
+        0.1,
+        0.05
+      ]
+    },
+    "composite": {
+      "mean": 0.89,
+      "std": 0.03791437722025773,
+      "runs": [
+        0.85,
+        0.9249999999999999,
+        0.8999999999999999,
+        0.85,
+        0.9249999999999999
+      ]
+    },
+    "min_trustworthy_delta": 0.07582875444051546
+  },
+  "per_item": {
+    "always_fail": [],
+    "always_pass": [
+      {
+        "id": "gh-notion-comparison",
+        "persona_count": 5
+      },
+      {
+        "id": "gh-auth-bug",
+        "persona_count": 5
+      },
+      {
+        "id": "hn-show-launch",
+        "persona_count": 5
+      },
+      {
+        "id": "hn-acquisition-rumor",
+        "persona_count": 5
+      },
+      {
+        "id": "gh-positive-mention",
+        "persona_count": 5
+      },
+      {
+        "id": "reddit-comparison",
+        "persona_count": 5
+      },
+      {
+        "id": "hn-critical-bug",
+        "persona_count": 5
+      },
+      {
+        "id": "gh-internal-dep",
+        "persona_count": 5
+      },
+      {
+        "id": "reddit-sales-opp",
+        "persona_count": 5
+      },
+      {
+        "id": "hn-dependency-mention",
+        "persona_count": 5
+      },
+      {
+        "id": "gh-zod-schema-bug",
+        "persona_count": 5
+      },
+      {
+        "id": "hn-show-competitor",
+        "persona_count": 5
+      },
+      {
+        "id": "reddit-high-intent-buyer",
+        "persona_count": 5
+      },
+      {
+        "id": "hn-praise-unsolicited",
+        "persona_count": 5
+      },
+      {
+        "id": "reddit-comparison-routine",
+        "persona_count": 5
+      }
+    ],
+    "flaky": [
+      {
+        "id": "gh-minor-doc",
+        "persona_count": 2,
+        "banned_count": 0
+      },
+      {
+        "id": "reddit-complaint",
+        "persona_count": 4,
+        "banned_count": 0
+      },
+      {
+        "id": "gh-feature-request",
+        "persona_count": 4,
+        "banned_count": 0
+      },
+      {
+        "id": "reddit-neutral-mention",
+        "persona_count": 4,
+        "banned_count": 0
+      },
+      {
+        "id": "reddit-frustrated-churn",
+        "persona_count": 4,
+        "banned_count": 3
+      }
+    ]
+  },
+  "always_fail_samples": {},
+  "cost_usd": 0,
+  "wall_clock_ms": 32266
+}
