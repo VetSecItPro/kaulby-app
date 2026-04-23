@@ -29,7 +29,25 @@ if (!EVENT_KEY) {
   process.exit(1);
 }
 
+const APP_URL = process.env.KAULBY_APP_URL || "https://kaulbyapp.com";
+
 async function main() {
+  // Step 1: trigger Inngest to re-read our function manifest. PUT to
+  // /api/inngest signals the SDK to rebuild + re-register with Inngest
+  // Cloud. Needed after any deploy that adds/removes triggers (e.g., the
+  // canary's new canary/fire-now event binding). Skipping this means
+  // Inngest routes old events to old handlers.
+  console.log(`🔄 Force re-register via PUT ${APP_URL}/api/inngest ...`);
+  const registerRes = await fetch(`${APP_URL}/api/inngest`, { method: "PUT" });
+  if (!registerRes.ok) {
+    console.warn(`   ⚠️  Register returned ${registerRes.status} — continuing anyway`);
+  } else {
+    const { modified } = await registerRes.json();
+    console.log(`   ✅ ${modified ? "Registration updated" : "Already current"}`);
+  }
+
+  // Step 2: fire the canary/fire-now event
+  console.log(`🚀 Firing canary/fire-now event ...`);
   const response = await fetch(`https://inn.gs/e/${EVENT_KEY}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -45,9 +63,11 @@ async function main() {
   }
 
   const { ids } = await response.json();
-  console.log(`✅ canary/fire-now event sent: ${ids[0]}`);
-  console.log(`   Watch: https://app.inngest.com/env/production/functions/ai-quality-canary`);
-  console.log(`   Results land in PostHog ai_quality_check event within ~4 min`);
+  console.log(`   ✅ Event sent: ${ids[0]}`);
+  console.log(``);
+  console.log(`Watch:`);
+  console.log(`   Inngest: https://app.inngest.com/env/production/functions/ai-quality-canary`);
+  console.log(`   PostHog: look for ai_quality_check event within ~4 min`);
 }
 
 main().catch((err) => {
