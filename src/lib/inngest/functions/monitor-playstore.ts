@@ -11,6 +11,7 @@ import {
   triggerAiAnalysis,
   updateMonitorStats,
   hasAnyActiveMonitors,
+  trackScanFailed,
   type MonitorStep,
 } from "../utils/monitor-helpers";
 
@@ -74,7 +75,15 @@ export const monitorPlayStore = inngest.createFunction(
           (k) => k.includes("play.google.com") || k.includes(".")
         ) || null;
       }
-      if (!appUrl) continue;
+      if (!appUrl) {
+        trackScanFailed({
+          userId: monitor.userId,
+          monitorId: monitor.id,
+          platform: "playstore",
+          error: new Error("MissingInput: Play Store requires a play.google.com URL or a package name (e.g. com.example.app) in keywords or platformUrls.playstore. None provided — scan skipped."),
+        });
+        continue;
+      }
 
       // Fetch reviews (platform-specific)
       const reviews = await step.run(`fetch-reviews-${monitor.id}-${appUrl.slice(0, 20)}`, async () => {
