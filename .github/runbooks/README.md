@@ -15,6 +15,7 @@ One-page playbooks for common operational tasks. Each runbook is self-contained:
 | [scripts-inventory.md](./scripts-inventory.md) | What's in `scripts/` — each script, purpose, when to run, safety notes |
 | [github-webhooks.md](./github-webhooks.md) | GitHub webhook event list, HMAC-SHA256 signature verification, GitHub App installation model, Kaulby receiver wiring |
 | [reddit-safety.md](./reddit-safety.md) | Reddit data-path policy (R12): Apify primary + Public JSON fallback + Serper legacy opt-in. Hard rules, cease-and-desist playbook, GummySearch lesson |
+| [posthog-dashboards.md](./posthog-dashboards.md) | The 3 operational dashboards (Activation funnel, AI health, Scan reliability): what each insight means, healthy ranges, when to escalate, how to re-create with `scripts/setup-posthog-dashboards.ts` |
 
 ## Conventions
 

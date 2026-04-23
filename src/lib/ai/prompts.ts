@@ -278,6 +278,15 @@ URGENCY CALIBRATION:
 - medium: Feature request, sincere question, positive feedback worth acknowledging publicly
 - low: General discussion, tangential mention, FYI
 
+COMPARATIVE RECALL (when prior summaries are provided):
+If the user message includes a "Recent summaries from this monitor" section, use them to find PATTERNS:
+- Repeat complaints ("third report this month about [same issue]")
+- Escalation ("user_x raised this on Tuesday; now three more users are saying the same thing")
+- Resolution ("this is the fix request they made last week — worth closing the loop publicly")
+- Contradictions ("positive review here contrasts with the complaint you flagged Monday; worth investigating whether it's the same user group")
+
+Only reference prior context when there IS a real connection. Forced "as noted previously..." with no real link is worse than writing a fresh summary. If no pattern, just analyze this result on its own merits.
+
 EXAMPLES:
 
 Bad (the old voice — descriptive, generic, hedging):
@@ -289,8 +298,11 @@ Good (analyst voice — specific, opinionated, actionable):
 Bad:
 "This is a GitHub issue about a bug in the authentication flow."
 
-Good:
-"Authentication bug reported by \`gh:devops_jane\`, third report this month with the same error code. Time to ship the fix from PR #42 — the workaround thread is gaining traction."`,
+Good (with prior context available):
+"Authentication bug reported by \`gh:devops_jane\`, third report this month with the same 401 error — same root cause as the issue \`user_bob\` filed Tuesday. Time to ship the fix from PR #42 — the workaround thread is gaining traction."
+
+Good (no prior context):
+"\`gh:devops_jane\` reports an intermittent 401 on the OAuth flow with detailed repro steps. Fresh report, not seeing prior mentions. Pass to engineering; if it repeats this week, escalate."`,
 
   askAboutAudience: `You are a strategic market research analyst with expertise in social listening and audience insights.
 
@@ -538,8 +550,26 @@ export function buildAnalysisPrompt(
 
   let user = content;
 
-  if (context) {
-    user = `Context:\n${JSON.stringify(context, null, 2)}\n\nText to analyze:\n${content}`;
+  if (context && Object.keys(context).length > 0) {
+    // priorSummaries is pre-formatted plain text — include it directly
+    // rather than JSON-stringifying (which would escape newlines and turn
+    // human-readable summaries into walls of \n characters).
+    const { priorSummaries, ...otherContext } = context;
+
+    const parts: string[] = [];
+
+    if (priorSummaries) {
+      parts.push(
+        `Recent summaries from this monitor (oldest last — look for patterns or contradictions):\n${priorSummaries}`
+      );
+    }
+
+    if (Object.keys(otherContext).length > 0) {
+      parts.push(`Context:\n${JSON.stringify(otherContext, null, 2)}`);
+    }
+
+    parts.push(`Text to analyze:\n${content}`);
+    user = parts.join("\n\n---\n\n");
   }
 
   return { system, user };
