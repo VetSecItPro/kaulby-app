@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, X, Loader2, Trash2, Lock, AlertCircle, Clock, Globe, Link2, Search } from "lucide-react";
+import { ArrowLeft, X, Loader2, Trash2, Lock, AlertCircle, Clock, Globe, Link2, Search, KeyRound, Copy, Check, Github } from "lucide-react";
 import Link from "next/link";
 import type { PlanLimits } from "@/lib/plans";
 import { COMMON_TIMEZONES, WEEKDAYS } from "@/lib/monitor-schedule";
@@ -73,6 +73,15 @@ export function EditMonitorForm({ monitorId, limits, userPlan }: EditMonitorForm
   const [isActive, setIsActive] = useState(true);
   const [error, setError] = useState("");
 
+  // GitHub real-time webhook state (COA 4 W2.5 Phase B)
+  const [githubRepoFullName, setGithubRepoFullName] = useState("");
+  const [githubSecretConfigured, setGithubSecretConfigured] = useState(false);
+  const [generatedSecret, setGeneratedSecret] = useState<string | null>(null);
+  const [generatedWebhookUrl, setGeneratedWebhookUrl] = useState<string | null>(null);
+  const [isGeneratingSecret, setIsGeneratingSecret] = useState(false);
+  const [secretError, setSecretError] = useState("");
+  const [copiedField, setCopiedField] = useState<"secret" | "url" | null>(null);
+
   const [scheduleEnabled, setScheduleEnabled] = useState(false);
   const [scheduleStartHour, setScheduleStartHour] = useState(9);
   const [scheduleEndHour, setScheduleEndHour] = useState(17);
@@ -128,6 +137,8 @@ export function EditMonitorForm({ monitorId, limits, userPlan }: EditMonitorForm
         setScheduleEndHour(data.monitor.scheduleEndHour ?? 17);
         setScheduleDays(data.monitor.scheduleDays ?? WEEKDAYS);
         setScheduleTimezone(data.monitor.scheduleTimezone ?? "America/New_York");
+        setGithubRepoFullName(data.monitor.githubRepoFullName ?? "");
+        setGithubSecretConfigured(Boolean(data.monitor.githubWebhookSecretConfigured));
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") return;
         setError("Failed to load monitor");
@@ -162,6 +173,77 @@ export function EditMonitorForm({ monitorId, limits, userPlan }: EditMonitorForm
     }
   };
 
+  const handleGenerateGithubSecret = async () => {
+    setSecretError("");
+    const trimmedRepo = githubRepoFullName.trim();
+    if (!trimmedRepo) {
+      setSecretError("Enter a GitHub repo (owner/repo) above first.");
+      return;
+    }
+    if (!/^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/.test(trimmedRepo)) {
+      setSecretError("Repo must be in owner/repo format.");
+      return;
+    }
+
+    // Persist repo first so the rotate endpoint sees it. This also means the user
+    // doesn't lose their repo value if generation fails partway through.
+    if (!githubSecretConfigured || trimmedRepo !== githubRepoFullName) {
+      try {
+        const saveRepo = await fetch(`/api/monitors/${monitorId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ githubRepoFullName: trimmedRepo }),
+        });
+        if (!saveRepo.ok) {
+          const data = await saveRepo.json().catch(() => ({}));
+          setSecretError(data.error || "Failed to save repo before generating secret.");
+          return;
+        }
+      } catch {
+        setSecretError("Network error saving repo. Try again.");
+        return;
+      }
+    }
+
+    if (githubSecretConfigured) {
+      const confirmed = confirm(
+        "A webhook secret already exists for this monitor. Rotating will invalidate the current secret immediately — GitHub deliveries signed with the old secret will fail until you update the config. Continue?"
+      );
+      if (!confirmed) return;
+    }
+
+    setIsGeneratingSecret(true);
+    try {
+      const response = await fetch(`/api/monitors/${monitorId}/github-webhook/rotate`, {
+        method: "POST",
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        setSecretError(data.error || "Failed to generate webhook secret.");
+        return;
+      }
+      const data = await response.json();
+      setGeneratedSecret(data.secret);
+      setGeneratedWebhookUrl(data.webhookUrl);
+      setGithubSecretConfigured(true);
+    } catch {
+      setSecretError("Network error generating secret. Try again.");
+    } finally {
+      setIsGeneratingSecret(false);
+    }
+  };
+
+  const handleCopy = async (value: string, field: "secret" | "url") => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedField(field);
+      setTimeout(() => setCopiedField((prev) => (prev === field ? null : prev)), 1500);
+    } catch {
+      // Clipboard API may be blocked in insecure contexts — silently ignore;
+      // the value is still visible in the textarea for manual copy.
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -179,6 +261,13 @@ export function EditMonitorForm({ monitorId, limits, userPlan }: EditMonitorForm
       return;
     }
 
+    const trimmedRepo = githubRepoFullName.trim();
+    const githubSelected = selectedPlatforms.includes("github");
+    if (githubSelected && trimmedRepo && !/^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/.test(trimmedRepo)) {
+      setError("GitHub repo must be in owner/repo format (e.g., acme/backend).");
+      return;
+    }
+
     setIsSaving(true);
     try {
       const response = await fetch(`/api/monitors/${monitorId}`, {
@@ -188,6 +277,7 @@ export function EditMonitorForm({ monitorId, limits, userPlan }: EditMonitorForm
           name: name.trim(), companyName: companyName.trim(), keywords,
           platforms: selectedPlatforms, platformUrls, isActive,
           scheduleEnabled, scheduleStartHour, scheduleEndHour, scheduleDays, scheduleTimezone,
+          githubRepoFullName: githubSelected && trimmedRepo ? trimmedRepo : null,
         }),
       });
       if (!response.ok) {
@@ -362,6 +452,129 @@ export function EditMonitorForm({ monitorId, limits, userPlan }: EditMonitorForm
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {ALL_PLATFORMS.filter(p => p.category === "keyword").map(renderPlatformCard)}
                 </div>
+
+                {/* GitHub real-time webhook config (COA 4 W2.5) */}
+                {selectedPlatforms.includes("github") && (
+                  <div className="mt-2 pl-2 border-l-2 border-teal-500/30 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Github className="h-4 w-4 text-teal-500" />
+                      <Label className="text-sm font-semibold">GitHub real-time alerts (optional)</Label>
+                      {githubSecretConfigured ? (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-green-500 border-green-500/30">
+                          Webhook configured
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-muted-foreground">
+                          Not configured
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      By default we poll GitHub on a schedule. Configure a webhook to catch issues, PRs, and discussions instantly as they happen. You&apos;ll paste the generated URL and secret into your repo&apos;s GitHub webhook settings.
+                    </p>
+
+                    <div className="space-y-1.5">
+                      <Label htmlFor={`${formId}-github-repo`} className="text-sm">
+                        Repository <span className="text-muted-foreground font-normal">(owner/repo)</span>
+                      </Label>
+                      <Input
+                        id={`${formId}-github-repo`}
+                        placeholder="acme/backend"
+                        value={githubRepoFullName}
+                        onChange={(e) => setGithubRepoFullName(e.target.value)}
+                        autoComplete="off"
+                        className="dark-input placeholder:text-gray-400 hover:border-teal-500 focus:border-teal-500"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        The exact repo you&apos;ll configure the webhook on. We use this to route incoming events to this monitor.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleGenerateGithubSecret}
+                        disabled={isGeneratingSecret || !githubRepoFullName.trim()}
+                        className="min-h-[44px]"
+                      >
+                        {isGeneratingSecret && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        <KeyRound className="mr-2 h-4 w-4" />
+                        {githubSecretConfigured ? "Rotate webhook secret" : "Generate webhook secret"}
+                      </Button>
+                      {secretError && (
+                        <div className="flex items-center gap-2 text-xs text-destructive">
+                          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                          <span>{secretError}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {generatedSecret && generatedWebhookUrl && (
+                      <div className="space-y-3 rounded-lg border border-amber-500/40 bg-amber-500/5 p-4">
+                        <div className="flex items-start gap-2">
+                          <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium text-amber-500">Save this secret now</p>
+                            <p className="text-xs text-muted-foreground">
+                              This is the only time you&apos;ll see it. Paste both values into GitHub (Repo → Settings → Webhooks → Add webhook), then send a test delivery.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Payload URL</Label>
+                          <div className="flex gap-2">
+                            <Input
+                              readOnly
+                              value={generatedWebhookUrl}
+                              className="dark-input font-mono text-xs"
+                              onFocus={(e) => e.currentTarget.select()}
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              onClick={() => handleCopy(generatedWebhookUrl, "url")}
+                              className="shrink-0"
+                              aria-label="Copy payload URL"
+                            >
+                              {copiedField === "url" ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Secret</Label>
+                          <div className="flex gap-2">
+                            <Input
+                              readOnly
+                              value={generatedSecret}
+                              className="dark-input font-mono text-xs"
+                              onFocus={(e) => e.currentTarget.select()}
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              onClick={() => handleCopy(generatedSecret, "secret")}
+                              className="shrink-0"
+                              aria-label="Copy secret"
+                            >
+                              {copiedField === "secret" ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                            </Button>
+                          </div>
+                        </div>
+
+                        <ul className="text-xs text-muted-foreground space-y-1 pl-4 list-disc">
+                          <li>Content type: <code className="font-mono">application/json</code></li>
+                          <li>Events: issues, issue comments, pull requests, PR review comments, discussions</li>
+                          <li>SSL verification: enabled</li>
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Product & App */}
