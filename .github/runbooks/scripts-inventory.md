@@ -69,6 +69,49 @@ All scripts live at the repo root in `scripts/` and are run via `npx tsx scripts
 - **Safety**: Creates and deletes test rows. Cleans up after itself if it completes; leaves debris if it crashes mid-run. Run against a dev branch.
 - **Run**: `npx tsx scripts/test-team-features.ts`
 
+### `smoketest-monitor.ts`
+- **Purpose:** automated W3.7 end-to-end smoke test. Creates a real monitor for an admin user, fires Inngest scan-now, polls for results, audits AI summaries for analyst-voice patterns.
+- **When to run:** after every PR that touches `src/lib/ai/*` prompts, after Vercel prod deploys, when "AI summaries look weird" reports come in.
+- **Run:** `pnpm tsx scripts/smoketest-monitor.ts [--target=<keyword>] [--keep]`
+- **Safety:** writes a real monitor + results to prod DB. Cleans up by deactivating the monitor unless `--keep` is set. Run `cleanup-test-monitor.ts` if you forget.
+
+### `audit-persona-voice.ts`
+- **Purpose:** standalone persona-voice probe over existing AI summaries for a given monitor.
+- **When to run:** after smoketest-monitor.ts, or to compare voice quality before/after a prompt change.
+- **Run:** `pnpm tsx scripts/audit-persona-voice.ts <monitorId>`
+- **Probes:** broad analyst-voice patterns ("I recommend", "team should", "needs escalation", first-person + audience-aware recommendations) and robotic anti-patterns ("Sentiment: x").
+
+### `check-smoketest-ai.ts`
+- **Purpose:** diagnostic for "AI didn't fire on new results" investigations. Pulls aiAnalyzed status counts + aiLogs for a monitor.
+- **When to run:** when smoketest-monitor.ts shows results but no AI summaries.
+- **Run:** `pnpm tsx scripts/check-smoketest-ai.ts <monitorId>`
+
+### `cleanup-test-monitor.ts`
+- **Purpose:** one-shot deactivation for any `[SMOKE TEST]` monitors that smoketest-monitor.ts `--keep` left active.
+- **When to run:** any time you suspect smoke-test debris is still active.
+- **Run:** `pnpm tsx scripts/cleanup-test-monitor.ts`
+
+### `setup-posthog-dashboards.ts`
+- **Purpose:** W3.8 PostHog dashboards bootstrap. Creates 3 operational dashboards (Activation funnel, AI health, Scan reliability) with 15 insights total via PostHog REST API.
+- **When to run:** initial setup; after accidentally deleting a dashboard; when adding a new insight definition (edit script then re-run).
+- **Run:** `pnpm tsx scripts/setup-posthog-dashboards.ts`
+- **Requires:** `POSTHOG_PERSONAL_API_KEY` (phx_...) in `.env.local`. Idempotent.
+- **See also:** [posthog-dashboards.md](./posthog-dashboards.md) for what each dashboard means and when to escalate.
+
+### `migrate-polar-products.ts`
+- **Purpose:** Polar product catalog management — creates Solo/Scale/Growth subscription products + Day Pass via Polar API, renames seat products, archives legacy ones.
+- **When to run:** initial pricing setup; pricing restructures (rename brand from "Kaulby" to other in `PRODUCTS_TO_CREATE` to reuse for Clarus/Rowan/etc).
+- **Run:** `POLAR_WRITE_TOKEN=polar_oat_... pnpm tsx scripts/migrate-polar-products.ts` (or `POLAR_ACCESS_TOKEN` as fallback)
+- **Idempotent:** matches by product name, skips creation if exists. Writes resulting env vars back to `.env.local`.
+- **Required scopes on token:** `products:write`, `prices:write`. The runtime `POLAR_ACCESS_TOKEN` in production is intentionally narrower; this needs admin scope.
+
+### `eval-shootout.ts`
+- **Purpose:** cross-model AI eval comparator. Runs the golden eval set against multiple OpenRouter model candidates, produces ranking with cost-adjusted scoring.
+- **When to run:** when considering a model change for any tier (e.g., re-evaluating Sonnet vs Flash for Growth).
+- **Run:** `KAULBY_RUN_AI_EVAL=1 OPENROUTER_API_KEY=... pnpm tsx scripts/eval-shootout.ts [--rounds N] [--models=flash,sonnet]`
+- **Cost:** real OpenRouter API calls. Single round across 4 models ≈ $0.50-2 depending on prompt sizes.
+- **Output:** writes incrementally to `.monitor-reports/` so multi-hour runs survive crashes.
+
 ## Pattern for new backfill scripts
 
 When you need a new data migration (see `schema-migration.md`, Deploy 3 of the destructive flow), follow the shape of `backfill-workspace-ids.ts`:
