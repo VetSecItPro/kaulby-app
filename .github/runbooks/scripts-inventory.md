@@ -112,6 +112,14 @@ All scripts live at the repo root in `scripts/` and are run via `npx tsx scripts
 - **Cost:** real OpenRouter API calls. Single round across 4 models ≈ $0.50-2 depending on prompt sizes.
 - **Output:** writes incrementally to `.monitor-reports/` so multi-hour runs survive crashes.
 
+### `setup-canary-monitor.ts`
+
+- **What**: Idempotent creation (or re-activation) of the dedicated monitor that the AI quality canary (Inngest cron `ai-quality-canary`) scans every 6h. Keyword: "inngest" on GitHub + Hacker News. Created in the admin workspace.
+- **When to run**: First-time canary bootstrap on any environment; or after manual deletion. Idempotent — safe to re-run.
+- **Safety**: Inserts one monitor row for the admin user. Non-destructive.
+- **Run**: `pnpm tsx scripts/setup-canary-monitor.ts`
+- **Output**: logs the canary monitor ID. Store it for the runbook (`.github/runbooks/ai-quality-canary.md`).
+
 ## Pattern for new backfill scripts
 
 When you need a new data migration (see `schema-migration.md`, Deploy 3 of the destructive flow), follow the shape of `backfill-workspace-ids.ts`:
