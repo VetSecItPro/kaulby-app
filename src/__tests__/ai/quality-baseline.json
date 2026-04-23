@@ -9,16 +9,16 @@
       "reason": "Zero AI logs means analyze-content function isn't running. Today's 2026-04-23 incident: Inngest deploy-orphan state kept analyze-content silent for 4+ hours with zero dashboard signal. This check would have caught it in 30 min. Scoped check: only alarms when results_audited ALSO == 0, because cache hits produce aiSummaries without aiLogs rows (24-hr cache + cross-monitor dedup) — those are healthy pipeline activity."
     },
     "persona_rate": {
-      "min": 0.3,
-      "reason": "Below 30% analyst voice means the summarize prompt has regressed or switched models without updated prompt."
+      "min": 0.75,
+      "reason": "Below 75% analyst voice means the summarize prompt has regressed or switched models without updated prompt. Recalibrated 2026-04-23 22:30 UTC after variance probe with corrected PERSONA_PROBES: production mean is 93% (σ=2.7pp over 5 runs × 20 items = 100 samples). 75% gives margin for variance + content mix shifts while still catching real regressions. Old floor of 30% was based on broken probes."
     },
     "robotic_rate": {
       "max": 0.1,
       "reason": "More than 10% robotic templates ('Sentiment: X', 'Topic: Y') means the prompt structure broke — likely a Zod schema mismatch coercing output."
     },
     "banned_opener_rate": {
-      "max": 0.6,
-      "reason": "More than 60% banned openers ('This is a...', 'The post...') means persona voice regressed specifically at the output start. Recalibrated 2026-04-23 21:22 UTC from canary first-run which measured 50% banned openers coexisting with 100% persona rate (persona + banned opener aren't mutually exclusive — a summary can open with 'This is an internal discussion' AND contain 'I recommend...' later). Original 0.4 was an uncalibrated guess. Will tighten via trailing-window logic once 7 days of canary data accumulate."
+      "max": 0.2,
+      "reason": "More than 20% banned openers ('This is a...', 'The post...') means persona voice regressed specifically at the output start. Recalibrated 2026-04-23 22:30 UTC after variance probe: production steady-state is ~8% (σ=2.7pp over 5 runs × 20 items). 0.20 gives 4σ headroom for content-mix shifts. Earlier 0.60 threshold was set before we had variance data. The 50% canary first-run was misleading — it sampled only GitHub technical content where banned openers skew high."
     }
   },
   "soft_thresholds": {

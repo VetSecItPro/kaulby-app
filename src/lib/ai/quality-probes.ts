@@ -14,20 +14,30 @@
  */
 
 export const PERSONA_PROBES = [
-  // First-person recommendation patterns — the core "analyst voice" marker
+  // BROAD first-person conditional: "I'd VERB" where VERB is any word.
+  // The variance probe (2026-04-23) showed the LLM naturally uses dozens
+  // of "I'd" variants ("I'd engage", "I'd consider reaching out", "I'd
+  // assign", "I'd reply", "I'd escalate") that previous narrow probes
+  // missed. A single word-boundary-bounded pattern catches all of them
+  // without false positives because summaries are short and "I'd" is a
+  // distinctively analyst marker.
+  /\bI'd \w+/i,
+  // Explicit recommendation verbs
   /\bI recommend\b/i,
   /\bI noticed\b/i,
-  /\bI'd watch\b/i,
-  /\bI'd reach out\b/i,
   /\bI saw\b/i,
   /\bI think\b/i,
   /\bI suggest\b/i,
-  /\bI'd flag\b/i,
   // Specificity markers — concrete details > vague descriptions
   /\bThree users\b/i,
   /\bTwo users\b/i,
   /\bHere's what stood out\b/i,
   /\bThis week\b/i,
+  // Analyst observations (lead-quality, mention-type framings)
+  /\bhigh[- ]intent\b/i,
+  /\bunsolicited\b/i,
+  /\bactively seeking\b/i,
+  /\bshopping (?:for |around)/i,
   // Audience-aware recommendation phrasing
   /\bworth keeping an eye\b/i,
   /\bworth a look\b/i,
