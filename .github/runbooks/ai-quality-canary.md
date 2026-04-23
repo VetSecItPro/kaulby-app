@@ -61,6 +61,27 @@ outage into a 30-min-max detection window.
    - Check recent changes to any `src/lib/ai/analyzers/*.ts` Zod schemas
    - Check OpenRouter status page for active provider incidents
 
+### Firing the canary manually
+
+Sometimes you need to kick a run without waiting for the next 6-hour cron
+tick — e.g., after a deploy that might have shifted persona rates, or
+after a Sentry alert to confirm whether the last tick's failure was
+transient.
+
+```
+pnpm tsx scripts/fire-canary.ts
+```
+
+The script does two things:
+1. `PUT /api/inngest` to force the Inngest SDK to re-register (picks up
+   any new function triggers from the last deploy)
+2. Fires a `canary/fire-now` event — the canary function accepts both
+   this event and its regular 6-hour cron trigger
+
+Results land in PostHog's `ai_quality_check` event within ~4 minutes.
+Watch the run in the Inngest dashboard:
+https://app.inngest.com/env/production/functions/ai-quality-canary
+
 ### Recalibrating the baseline
 
 Do this after shipping intentional prompt/model improvements:
