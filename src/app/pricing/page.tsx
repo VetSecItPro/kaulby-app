@@ -37,6 +37,7 @@ import { toast } from "sonner";
 import type { BillingInterval } from "@/lib/plans";
 import { FAQSchema } from "@/lib/seo/structured-data";
 import { track as trackClient } from "@/lib/analytics-client";
+import { FoundingMembersBanner } from "@/components/founding-members-banner";
 
 interface Feature {
   text: string;
@@ -308,9 +309,9 @@ export default function PricingPage() {
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
               Start free and upgrade when you need advanced monitoring and full AI insights.
             </p>
-            <p className="text-sm text-primary font-medium mt-4">
-              First 1,000 Founding Members lock in Pro or Team price forever
-            </p>
+            <div className="mt-4 flex justify-center">
+              <FoundingMembersBanner variant="hero" />
+            </div>
 
             {/* Trust Signals */}
             <div className="flex flex-wrap items-center justify-center gap-6 mt-8 text-sm text-muted-foreground">
