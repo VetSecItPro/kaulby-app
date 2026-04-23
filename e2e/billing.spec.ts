@@ -50,7 +50,7 @@ test.describe("Pricing Page - Plan Cards", () => {
     // Scale plan (new mid tier)
     await expect(page.getByText("For the operator who outgrew Solo")).toBeVisible(VISIBLE_OPTS);
     // Growth plan (was Team)
-    await expect(page.getByText("For teams and agencies operationalizing brand intelligence")).toBeVisible(VISIBLE_OPTS);
+    await expect(page.getByText("For teams operationalizing brand intelligence")).toBeVisible(VISIBLE_OPTS);
   });
 
   test("displays correct monthly prices", async ({ page }) => {
@@ -191,7 +191,7 @@ test.describe("Pricing Page - Feature Comparison", () => {
     await expect(page.getByRole("cell", { name: "Monitors" })).toBeVisible(VISIBLE_OPTS);
     await expect(page.getByRole("cell", { name: /keywords per monitor/i })).toBeVisible(VISIBLE_OPTS);
     await expect(page.getByRole("cell", { name: /platforms/i }).first()).toBeVisible(VISIBLE_OPTS);
-    await expect(page.getByRole("cell", { name: /refresh cycle/i })).toBeVisible(VISIBLE_OPTS);
+    await expect(page.getByRole("cell", { name: /refresh cadence/i })).toBeVisible(VISIBLE_OPTS);
   });
 });
 
