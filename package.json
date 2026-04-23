@@ -58,7 +58,7 @@
     "dompurify": "3.3.3",
     "drizzle-orm": "0.45.1",
     "framer-motion": "12.38.0",
-    "inngest": "3.50.0",
+    "inngest": "3.54.0",
     "jspdf": "4.2.1",
     "langfuse": "3.38.6",
     "lucide-react": "0.577.0",

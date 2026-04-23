@@ -39,16 +39,18 @@ test.describe("Pricing Page - Plan Cards", () => {
     await expect(page).toHaveTitle(/Kaulby/i);
   });
 
-  test("displays all three subscription plan cards", async ({ page }) => {
+  test("displays all four subscription plan cards", async ({ page }) => {
     test.setTimeout(60_000);
     await page.goto("/pricing", GOTO_OPTS);
 
     // Free plan
-    await expect(page.getByText("Get started with basic monitoring")).toBeVisible(VISIBLE_OPTS);
-    // Pro plan
-    await expect(page.getByText("For power users and professionals")).toBeVisible(VISIBLE_OPTS);
-    // Team plan
-    await expect(page.getByText("For growing teams and agencies")).toBeVisible(VISIBLE_OPTS);
+    await expect(page.getByText("Try Kaulby with a single monitor")).toBeVisible(VISIBLE_OPTS);
+    // Solo plan (was Pro)
+    await expect(page.getByText("For one operator watching their brand")).toBeVisible(VISIBLE_OPTS);
+    // Scale plan (new mid tier)
+    await expect(page.getByText("For the operator who outgrew Solo")).toBeVisible(VISIBLE_OPTS);
+    // Growth plan (was Team)
+    await expect(page.getByText("For teams operationalizing brand intelligence")).toBeVisible(VISIBLE_OPTS);
   });
 
   test("displays correct monthly prices", async ({ page }) => {
@@ -56,11 +58,12 @@ test.describe("Pricing Page - Plan Cards", () => {
     await page.goto("/pricing", GOTO_OPTS);
 
     await expect(page.getByText("$0")).toBeVisible(VISIBLE_OPTS);
-    await expect(page.getByText("$29")).toBeVisible(VISIBLE_OPTS);
-    await expect(page.getByText("$99")).toBeVisible(VISIBLE_OPTS);
+    await expect(page.getByText("$39")).toBeVisible(VISIBLE_OPTS);   // Solo
+    await expect(page.getByText("$79")).toBeVisible(VISIBLE_OPTS);   // Scale
+    await expect(page.getByText("$149")).toBeVisible(VISIBLE_OPTS);  // Growth
   });
 
-  test("Pro plan is marked as Most Popular", async ({ page }) => {
+  test("Scale plan is marked as Most Popular", async ({ page }) => {
     test.setTimeout(60_000);
     await page.goto("/pricing", GOTO_OPTS);
 
@@ -72,7 +75,7 @@ test.describe("Pricing Page - Plan Cards", () => {
     await page.goto("/pricing", GOTO_OPTS);
 
     await expect(page.getByText("Day Pass", { exact: true }).first()).toBeVisible(VISIBLE_OPTS);
-    await expect(page.getByText("$10")).toBeVisible(VISIBLE_OPTS);
+    await expect(page.getByText("$15")).toBeVisible(VISIBLE_OPTS);   // Was $10, now $15
     await expect(page.getByText("One-Time", { exact: true })).toBeVisible(VISIBLE_OPTS);
   });
 
@@ -83,10 +86,10 @@ test.describe("Pricing Page - Plan Cards", () => {
     // Check a few key free plan features
     await expect(page.getByText("1 monitor").first()).toBeVisible(VISIBLE_OPTS);
     await expect(page.getByText("Reddit only").first()).toBeVisible(VISIBLE_OPTS);
-    await expect(page.getByText("3 keywords per monitor").first()).toBeVisible(VISIBLE_OPTS);
+    await expect(page.getByText(/3 keywords/i).first()).toBeVisible(VISIBLE_OPTS);
   });
 
-  test("pro plan shows 14-day free trial", async ({ page }) => {
+  test("paid plans show 14-day free trial", async ({ page }) => {
     test.setTimeout(60_000);
     await page.goto("/pricing", GOTO_OPTS);
 
@@ -127,10 +130,11 @@ test.describe("Pricing Page - Billing Toggle", () => {
     await expect(annualBtn).toBeVisible(VISIBLE_OPTS);
     await annualBtn.click();
 
-    // Pro annual: $290/year = $24/mo equivalent
-    // Team annual: $990/year = $82/mo equivalent (rounded)
-    // After switching, the Pro price should show ~$24 instead of $29
-    await expect(page.getByText("$24")).toBeVisible(VISIBLE_OPTS);
+    // Solo annual: $374/year = $31/mo equivalent (20% off list)
+    // Scale annual: $758/year = $63/mo equivalent
+    // Growth annual: $1,430/year = $119/mo equivalent
+    // After switching, the Solo price should show $31 instead of $39
+    await expect(page.getByText("$31")).toBeVisible(VISIBLE_OPTS);
   });
 
   test("switching back to monthly restores original prices", async ({ page }) => {
@@ -141,11 +145,11 @@ test.describe("Pricing Page - Billing Toggle", () => {
     const annualBtn = page.getByRole("button", { name: "Annual", exact: true });
     await expect(annualBtn).toBeVisible(VISIBLE_OPTS);
     await annualBtn.click();
-    await expect(page.getByText("$24")).toBeVisible(VISIBLE_OPTS);
+    await expect(page.getByText("$31")).toBeVisible(VISIBLE_OPTS);
 
     // Switch back to monthly
     await page.getByRole("button", { name: "Monthly", exact: true }).click();
-    await expect(page.getByText("$29")).toBeVisible(VISIBLE_OPTS);
+    await expect(page.getByText("$39")).toBeVisible(VISIBLE_OPTS);
   });
 });
 
@@ -167,15 +171,16 @@ test.describe("Pricing Page - Feature Comparison", () => {
     test.setTimeout(60_000);
     await page.goto("/pricing", GOTO_OPTS);
 
-    // Table headers: Feature, Free, Pro, Team
+    // Table headers: Feature, Free, Solo, Scale, Growth
     await expect(page.getByRole("columnheader", { name: /feature/i })).toBeVisible(VISIBLE_OPTS);
     await expect(page.getByRole("columnheader", { name: /free/i })).toBeVisible(VISIBLE_OPTS);
+    await expect(page.getByRole("columnheader", { name: /solo/i })).toBeVisible(VISIBLE_OPTS);
 
-    // Pro header contains "Popular" badge
-    const proHeader = page.getByRole("columnheader").filter({ hasText: /pro/i });
-    await expect(proHeader).toBeVisible(VISIBLE_OPTS);
+    // Scale header contains "Popular" badge
+    const scaleHeader = page.getByRole("columnheader").filter({ hasText: /scale/i });
+    await expect(scaleHeader).toBeVisible(VISIBLE_OPTS);
 
-    await expect(page.getByRole("columnheader", { name: /team/i })).toBeVisible(VISIBLE_OPTS);
+    await expect(page.getByRole("columnheader", { name: /growth/i })).toBeVisible(VISIBLE_OPTS);
   });
 
   test("feature rows include key comparison items", async ({ page }) => {
@@ -186,7 +191,7 @@ test.describe("Pricing Page - Feature Comparison", () => {
     await expect(page.getByRole("cell", { name: "Monitors" })).toBeVisible(VISIBLE_OPTS);
     await expect(page.getByRole("cell", { name: /keywords per monitor/i })).toBeVisible(VISIBLE_OPTS);
     await expect(page.getByRole("cell", { name: /platforms/i }).first()).toBeVisible(VISIBLE_OPTS);
-    await expect(page.getByRole("cell", { name: /refresh cycle/i })).toBeVisible(VISIBLE_OPTS);
+    await expect(page.getByRole("cell", { name: /refresh cadence/i })).toBeVisible(VISIBLE_OPTS);
   });
 });
 
@@ -227,8 +232,9 @@ test.describe("Pricing Page - FAQ", () => {
     await expect(dayPassQuestion).toBeVisible(VISIBLE_OPTS);
     await dayPassQuestion.click();
 
+    // Day Pass copy: "Scale-level access for 24 hours with a one-time $15 payment"
     await expect(
-      page.getByText(/full pro access for 24 hours/i)
+      page.getByText(/scale-level access for 24 hours/i)
     ).toBeVisible(VISIBLE_OPTS);
   });
 });
@@ -247,25 +253,31 @@ test.describe("Pricing Page - CTAs", () => {
     await expect(freeCtaLink).toHaveAttribute("href", "/sign-up");
   });
 
-  test("pro plan CTA links to sign-up with plan parameter", async ({ page }) => {
+  test("solo plan CTA links to sign-up with plan parameter", async ({ page }) => {
     test.setTimeout(60_000);
     await page.goto("/pricing", GOTO_OPTS);
 
-    const proCtaLink = page.getByRole("link", { name: /sign up for pro/i });
-    await expect(proCtaLink).toBeVisible(VISIBLE_OPTS);
-    await expect(proCtaLink).toHaveAttribute("href", "/sign-up?plan=pro");
+    const soloCtaLink = page.getByRole("link", { name: /start solo/i });
+    await expect(soloCtaLink).toBeVisible(VISIBLE_OPTS);
+    await expect(soloCtaLink).toHaveAttribute("href", "/sign-up?plan=solo");
   });
 
-  test("team plan CTA links to sign-up with team parameter", async ({ page }) => {
+  test("scale plan CTA links to sign-up with plan parameter", async ({ page }) => {
     test.setTimeout(60_000);
     await page.goto("/pricing", GOTO_OPTS);
 
-    const teamCtaLink = page.getByRole("link", { name: /sign up for team/i });
-    await expect(teamCtaLink).toBeVisible(VISIBLE_OPTS);
-    // Pricing page uses ?plan=team (see src/app/pricing/page.tsx). Test was
-    // previously checking ?plan=enterprise, which pre-dated the Team tier
-    // rename and would never match current code.
-    await expect(teamCtaLink).toHaveAttribute("href", "/sign-up?plan=team");
+    const scaleCtaLink = page.getByRole("link", { name: /start scale/i });
+    await expect(scaleCtaLink).toBeVisible(VISIBLE_OPTS);
+    await expect(scaleCtaLink).toHaveAttribute("href", "/sign-up?plan=scale");
+  });
+
+  test("growth plan CTA links to sign-up with plan parameter", async ({ page }) => {
+    test.setTimeout(60_000);
+    await page.goto("/pricing", GOTO_OPTS);
+
+    const growthCtaLink = page.getByRole("link", { name: /start growth/i });
+    await expect(growthCtaLink).toBeVisible(VISIBLE_OPTS);
+    await expect(growthCtaLink).toHaveAttribute("href", "/sign-up?plan=growth");
   });
 
   test("trust signals are displayed below heading", async ({ page }) => {

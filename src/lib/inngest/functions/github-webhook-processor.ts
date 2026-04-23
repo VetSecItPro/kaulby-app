@@ -166,7 +166,10 @@ export const githubWebhookProcessor = inngest.createFunction(
     name: "GitHub webhook processor",
     retries: 3,
     timeouts: { finish: "2m" },
-    concurrency: { limit: 10 },
+    // Capped at 5 to match Inngest free plan ceiling. Other Kaulby functions
+    // (scan-on-demand, webhook-delivery, analyze-content, monitor-*) are also
+    // at 5. Bumping requires upgrading the Inngest plan first.
+    concurrency: { limit: 5 },
   },
   { event: "github/webhook.received" },
   async ({ event, step }) => {

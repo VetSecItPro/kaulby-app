@@ -30,14 +30,14 @@ test.describe("Marketing Pages", () => {
     await expect(page.getByRole("heading", { name: /pricing/i })).toBeVisible();
 
     // Check plan cards exist by looking for plan names with their descriptions
-    await expect(page.getByText("Get started with basic monitoring")).toBeVisible();
-    await expect(page.getByText("For power users and professionals")).toBeVisible();
-    await expect(page.getByText("For growing teams and agencies")).toBeVisible();
+    await expect(page.getByText("Try Kaulby with a single monitor")).toBeVisible();
+    await expect(page.getByText("For one operator watching their brand")).toBeVisible();
+    await expect(page.getByText("For teams operationalizing brand intelligence")).toBeVisible();
 
     // Check pricing amounts are visible
     await expect(page.getByText("$0")).toBeVisible();
-    await expect(page.getByText("$29")).toBeVisible();
-    await expect(page.getByText("$99")).toBeVisible();
+    await expect(page.getByText("$39")).toBeVisible();
+    await expect(page.getByText("$149")).toBeVisible();
   });
 
   test("gummysearch migration page loads", async ({ page }) => {
