@@ -175,7 +175,17 @@ async function runItem(
     });
   }
 
-  // Conversation category (optional — skip items without this label)
+  // Conversation category (optional — skip items without this label).
+  //
+  // KNOWN SOFT METRIC (2026-04-23): the enum categories aren't mutually
+  // exclusive for many realistic items — ev-001 ("Tired of paying $200/mo for
+  // Asana. What are my options?") could legitimately be money_talk, pain_point,
+  // OR solution_request. The analyzer prompt prioritizes solution_request for
+  // high-intent items, so it often picks differently than the hand-labeled
+  // golden ground truth. All four shootout models scored 13-50% on this metric
+  // — the gap is a labeling artifact, not a model-quality signal. Focus baseline
+  // gating decisions on sentiment + pain-point accuracy until this is re-labeled
+  // with the analyzer's priority ordering applied.
   if (item.labels.conversationCategory) {
     try {
       const { result, meta } = await categorizeConversation(text);

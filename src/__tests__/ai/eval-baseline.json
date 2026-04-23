@@ -1,10 +1,10 @@
 {
-  "recordedAt": "2026-04-23T00:20:06.423Z",
-  "model": "default",
+  "recordedAt": "2026-04-23T00:40:00.000Z",
+  "model": "google/gemini-2.5-flash",
   "metrics": {
     "sentiment": 0.7333333333333333,
-    "painPointCategory": 0.6,
+    "painPointCategory": 0.6333333333333333,
     "conversationCategory": 0.4666666666666667
   },
-  "source": "eval-runner v1 against golden-eval-set version 1"
+  "source": "eval-runner v1 against golden-eval-set version 1 — updated 2026-04-23 after jsonCompletion max_tokens bump 1024→2048 surfaced latent truncation in pain-point analyzer (60.0% → 63.3%)"
 }

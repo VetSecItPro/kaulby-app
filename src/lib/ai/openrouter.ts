@@ -100,6 +100,17 @@ const MODEL_PRICING = {
     input: 3.0,
     output: 15.0,
   },
+  // Added 2026-04-23 after shootout surfaced missing entries — see
+  // .mdmp/SHOOTOUT_RESULTS_2026-04-23.md. Without these, calculateCost()
+  // silently returned 0 for Haiku + Pro runs, making cost comparisons useless.
+  "anthropic/claude-haiku-4-5": {
+    input: 1.0,
+    output: 5.0,
+  },
+  "google/gemini-2.5-pro": {
+    input: 1.25,
+    output: 5.0,
+  },
 } as const;
 
 // Calculate cost
@@ -186,9 +197,16 @@ export async function jsonCompletion<T>(params: {
   messages: OpenAI.ChatCompletionMessageParam[];
   model?: string;
 }): Promise<{ data: T; meta: Omit<Awaited<ReturnType<typeof completion>>, "content"> }> {
+  // 2026-04-23 shootout found Gemini 2.5 Pro had 45/90 errors (50% failure
+  // rate) on JSON analyzer calls — root cause was Pro's verbose reasoning
+  // truncating at the default 1024-token ceiling mid-JSON. Bumping to 2048
+  // for JSON paths; plain `completion()` keeps 1024 since it's used for
+  // shorter prose responses. Cost impact at Flash rates: +$0.0003/call
+  // worst-case, negligible.
   const result = await completion({
     ...params,
     temperature: 0.3, // Lower temperature for structured output
+    maxTokens: 2048,
   });
 
   try {
