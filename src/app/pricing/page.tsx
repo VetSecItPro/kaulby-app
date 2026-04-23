@@ -45,7 +45,7 @@ interface Feature {
 
 interface Plan {
   name: string;
-  key: "free" | "pro" | "team";
+  key: "free" | "starter" | "starter" | "pro" | "team";
   description: string;
   useCase: string;
   monthlyPrice: number;
@@ -77,6 +77,29 @@ const plans: Plan[] = [
     ],
     cta: "Get Started Free",
     href: "/sign-up",
+    popular: false,
+  },
+  {
+    name: "Starter",
+    key: "starter",
+    description: "For solo operators scaling past the basics",
+    useCase: "Ideal for founders with one product tracking customer conversations seriously",
+    monthlyPrice: 49,
+    annualPrice: 470,
+    trialDays: 14,
+    features: [
+      { text: "20 monitors" },
+      { text: "12 platforms (Pro + G2, Yelp, Amazon)" },
+      { text: "15 keywords per monitor" },
+      { text: "Unlimited results" },
+      { text: "90-day history" },
+      { text: "3-hour refresh cycle" },
+      { text: "Full AI analysis (Flash)" },
+      { text: "Daily email digests" },
+      { text: "CSV export" },
+    ],
+    cta: "Sign Up for Starter",
+    href: "/sign-up?plan=starter",
     popular: false,
   },
   {
@@ -131,27 +154,27 @@ const plans: Plan[] = [
 
 // Feature comparison table data
 const featureComparison = [
-  { feature: "Monitors", free: "1", pro: "10", team: "30" },
-  { feature: "Keywords per monitor", free: "3", pro: "10", team: "20" },
-  { feature: "Platforms", free: "Reddit only", pro: "9 platforms", team: "All 16 platforms" },
-  { feature: "Results visible", free: "Last 3", pro: "Unlimited", team: "Unlimited" },
-  { feature: "History retention", free: "3 days", pro: "90 days", team: "1 year" },
-  { feature: "Refresh cycle", free: "24 hours", pro: "4 hours", team: "2 hours" },
-  { feature: "AI sentiment analysis", free: true, pro: true, team: true },
-  { feature: "AI pain point detection", free: false, pro: true, team: true },
-  { feature: "Comprehensive AI analysis", free: false, pro: false, team: true },
-  { feature: "Email digests", free: false, pro: "Daily", team: "Twice daily" },
-  { feature: "Slack/Discord alerts", free: false, pro: true, team: true },
-  { feature: "Webhooks", free: false, pro: false, team: true },
-  { feature: "CSV export", free: false, pro: true, team: true },
-  { feature: "API access", free: false, pro: false, team: true },
-  { feature: "Team seats", free: "-", pro: "1", team: "3 (+$20/user)" },
+  { feature: "Monitors", free: "1", starter: "20", pro: "10", team: "30" },
+  { feature: "Keywords per monitor", free: "3", starter: "15", pro: "10", team: "20" },
+  { feature: "Platforms", free: "Reddit only", starter: "12 platforms", pro: "9 platforms", team: "All 16 platforms" },
+  { feature: "Results visible", free: "Last 3", starter: "Unlimited", pro: "Unlimited", team: "Unlimited" },
+  { feature: "History retention", free: "3 days", starter: "90 days", pro: "90 days", team: "1 year" },
+  { feature: "Refresh cycle", free: "24 hours", starter: "3 hours", pro: "4 hours", team: "2 hours" },
+  { feature: "AI sentiment analysis", free: true, starter: true, pro: true, team: true },
+  { feature: "AI pain point detection", free: false, starter: true, pro: true, team: true },
+  { feature: "Comprehensive AI analysis", free: false, starter: false, pro: false, team: true },
+  { feature: "Email digests", free: false, starter: "Daily", pro: "Daily", team: "Twice daily" },
+  { feature: "Slack/Discord alerts", free: false, starter: true, pro: true, team: true },
+  { feature: "Webhooks", free: false, starter: false, pro: false, team: true },
+  { feature: "CSV export", free: false, starter: true, pro: true, team: true },
+  { feature: "API access", free: false, starter: false, pro: false, team: true },
+  { feature: "Team seats", free: "-", starter: "1", pro: "1", team: "3 (+$20/user)" },
 ];
 
 export default function PricingPage() {
   const { isSignedIn } = useAuth();
   const [checkoutOpen, setCheckoutOpen] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<"pro" | "team">("pro");
+  const [selectedPlan, setSelectedPlan] = useState<"starter" | "pro" | "team">("pro");
   const [selectedPlanName, setSelectedPlanName] = useState("Pro");
   const [billingInterval, setBillingInterval] = useState<BillingInterval>("monthly");
   const [dayPassStatus, setDayPassStatus] = useState<{
@@ -209,7 +232,7 @@ export default function PricingPage() {
     }
   };
 
-  const handleUpgrade = (planKey: "pro" | "team", planName: string) => {
+  const handleUpgrade = (planKey: "starter" | "pro" | "team", planName: string) => {
     // Funnel analytics: capture plan CTA clicks on the pricing page so we can
     // correlate intent -> checkout open -> payment.succeeded (server event).
     trackClient("ui.cta_clicked", {
@@ -339,7 +362,7 @@ export default function PricingPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 max-w-7xl mx-auto">
             {plans.map((plan) => (
               <Card
                 key={plan.name}
@@ -438,7 +461,7 @@ export default function PricingPage() {
                       <Button
                         className="w-full"
                         variant={plan.popular ? "default" : "outline"}
-                        onClick={() => handleUpgrade(plan.key as "pro" | "team", plan.name)}
+                        onClick={() => handleUpgrade(plan.key as "starter" | "pro" | "team", plan.name)}
                       >
                         {plan.cta}
                       </Button>
@@ -530,6 +553,7 @@ export default function PricingPage() {
                     <TableRow className="bg-muted/50">
                       <TableHead className="w-[200px]">Feature</TableHead>
                       <TableHead className="text-center">Free</TableHead>
+                      <TableHead className="text-center">Starter</TableHead>
                       <TableHead className="text-center bg-primary/5">
                         <div className="flex items-center justify-center gap-1">
                           Pro
@@ -552,6 +576,17 @@ export default function PricingPage() {
                             )
                           ) : (
                             <span className="text-sm">{row.free}</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {typeof row.starter === "boolean" ? (
+                            row.starter ? (
+                              <Check className="h-4 w-4 text-green-500 mx-auto" />
+                            ) : (
+                              <X className="h-4 w-4 text-muted-foreground/50 mx-auto" />
+                            )
+                          ) : (
+                            <span className="text-sm">{row.starter}</span>
                           )}
                         </TableCell>
                         <TableCell className="text-center bg-primary/5">

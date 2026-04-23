@@ -3,14 +3,19 @@ import { PLANS, getPlanLimits, ALL_PLATFORMS, type PlanKey } from "../plans";
 
 describe("plans", () => {
   describe("PLANS definition", () => {
-    it("has exactly 3 plan tiers", () => {
-      expect(Object.keys(PLANS)).toEqual(["free", "pro", "team"]);
+    it("has exactly 4 plan tiers", () => {
+      expect(Object.keys(PLANS)).toEqual(["free", "starter", "pro", "team"]);
     });
 
     it("free plan has zero pricing", () => {
       expect(PLANS.free.price).toBe(0);
       expect(PLANS.free.annualPrice).toBe(0);
       expect(PLANS.free.priceId).toBeNull();
+    });
+
+    it("starter plan has correct pricing", () => {
+      expect(PLANS.starter.price).toBe(49);
+      expect(PLANS.starter.annualPrice).toBe(470); // 20% off $588
     });
 
     it("pro plan has correct pricing", () => {
@@ -23,7 +28,7 @@ describe("plans", () => {
       expect(PLANS.team.annualPrice).toBe(990);
     });
 
-    it("annual pricing gives 2 months free", () => {
+    it("pro/team annual pricing gives 2 months free", () => {
       expect(PLANS.pro.annualPrice).toBe(PLANS.pro.price * 10);
       expect(PLANS.team.annualPrice).toBe(PLANS.team.price * 10);
     });

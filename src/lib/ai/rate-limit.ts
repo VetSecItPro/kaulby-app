@@ -24,6 +24,14 @@ const AI_RATE_LIMITS = {
     requestsPerDay: 0,
     dailyTokenBudget: 0,
   },
+  starter: {
+    // COA 4 W3.2: between free and pro. Same model as Pro (Flash) so same per-call
+    // cost shape, but tighter daily ceilings so $49/mo math still works.
+    requestsPerMinute: 4,
+    requestsPerHour: 20,
+    requestsPerDay: 60,
+    dailyTokenBudget: 30_000,
+  },
   pro: {
     requestsPerMinute: 5,
     requestsPerHour: 30,
@@ -43,6 +51,7 @@ const AI_RATE_LIMITS = {
 // Overridable via env for emergency tuning without a deploy.
 const DAILY_COST_CAPS_USD = {
   free: 0,
+  starter: Number(process.env.KAULBY_STARTER_DAILY_AI_BUDGET_USD ?? 0.6),
   pro: Number(process.env.KAULBY_PRO_DAILY_AI_BUDGET_USD ?? 1),
   team: Number(process.env.KAULBY_TEAM_DAILY_AI_BUDGET_USD ?? 5),
 } as const;
@@ -73,13 +82,18 @@ function createRedisRatelimiter(
 
 // Lazy-initialized per-tier Redis rate limiters
 let redisLimiters: Record<
-  "pro" | "team",
+  "starter" | "pro" | "team",
   { minute: Ratelimit | null; hour: Ratelimit | null; day: Ratelimit | null }
 > | null = null;
 
 function getRedisLimiters() {
   if (!redisLimiters) {
     redisLimiters = {
+      starter: {
+        minute: createRedisRatelimiter("1 m", AI_RATE_LIMITS.starter.requestsPerMinute),
+        hour: createRedisRatelimiter("1 h", AI_RATE_LIMITS.starter.requestsPerHour),
+        day: createRedisRatelimiter("1 d", AI_RATE_LIMITS.starter.requestsPerDay),
+      },
       pro: {
         minute: createRedisRatelimiter("1 m", AI_RATE_LIMITS.pro.requestsPerMinute),
         hour: createRedisRatelimiter("1 h", AI_RATE_LIMITS.pro.requestsPerHour),
@@ -141,16 +155,16 @@ function checkRateLimitMemory(
  */
 export async function checkAllRateLimits(
   userId: string,
-  tier: "free" | "pro" | "team"
+  tier: "free" | "starter" | "pro" | "team"
 ): Promise<{ allowed: boolean; reason?: string; retryAfter?: number }> {
   const limits = AI_RATE_LIMITS[tier];
 
   if (limits.requestsPerMinute === 0) {
-    return { allowed: false, reason: "AI features require a Pro subscription" };
+    return { allowed: false, reason: "AI features require a Starter subscription or higher" };
   }
 
   // --- Redis path (distributed) ---
-  if (hasRedis && (tier === "pro" || tier === "team")) {
+  if (hasRedis && (tier === "starter" || tier === "pro" || tier === "team")) {
     const limiters = getRedisLimiters()[tier];
 
     const minuteResult = limiters.minute ? await limiters.minute.limit(`minute:${userId}`) : null;
@@ -244,7 +258,7 @@ async function getDailyTokenUsage(userId: string): Promise<number> {
  */
 export async function checkTokenBudget(
   userId: string,
-  tier: "free" | "pro" | "team"
+  tier: "free" | "starter" | "pro" | "team"
 ): Promise<{ allowed: boolean; remaining: number; used: number; limit: number }> {
   const limits = AI_RATE_LIMITS[tier];
   const used = await getDailyTokenUsage(userId);
@@ -293,7 +307,7 @@ async function getDailyCostUsd(userId: string): Promise<number> {
  */
 export async function checkDailyCostBudget(
   userId: string,
-  tier: "free" | "pro" | "team"
+  tier: "free" | "starter" | "pro" | "team"
 ): Promise<{ allowed: boolean; spentUsd: number; capUsd: number; remainingUsd: number }> {
   const capUsd = DAILY_COST_CAPS_USD[tier];
   if (capUsd <= 0) {

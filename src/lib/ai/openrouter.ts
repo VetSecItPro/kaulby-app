@@ -35,11 +35,11 @@ export const MODELS = {
 
 // Plan tier → model routing. Callers pass the user's plan; get back the model ID
 // to pass to OpenRouter. Unknown/free plans fall back to Flash.
-export type PlanTier = "free" | "pro" | "team";
+export type PlanTier = "free" | "starter" | "pro" | "team";
 
 export function getModelForTier(plan: PlanTier | string): string {
   if (plan === "team") return MODELS.team;
-  // Free + Pro + anything unknown → Flash.
+  // Free + Starter + Pro + anything unknown → Flash.
   return MODELS.primary;
 }
 

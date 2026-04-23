@@ -70,7 +70,11 @@ interface PlanDefinition {
 }
 
 // Product IDs for subscription plans (Polar.sh)
-export const PLANS: Record<"free" | "pro" | "team", PlanDefinition> = {
+// Starter (COA 4 W3.2): bridges the $29→$99 cliff. More monitors/keywords than Pro,
+// adds review-listing platforms (G2, Yelp, Amazon), but stays on Flash model (not
+// Sonnet). Team stays the differentiator: comprehensive analysis + DevTo/Hashnode/
+// AppStore/PlayStore + team seats.
+export const PLANS: Record<"free" | "starter" | "pro" | "team", PlanDefinition> = {
   free: {
     name: "Free",
     description: "Try Kaulby with limited features",
@@ -111,6 +115,58 @@ export const PLANS: Record<"free" | "pro" | "team", PlanDefinition> = {
       },
       exports: {
         csv: false,
+        api: false,
+      },
+    },
+  },
+  starter: {
+    name: "Starter",
+    description: "For solo operators scaling past the basics",
+    price: 49,
+    annualPrice: 470, // 20% off monthly ($49 × 12 = $588, 20% discount = $470.40 → $470)
+    priceId: process.env.POLAR_STARTER_MONTHLY_PRODUCT_ID || "",
+    annualPriceId: process.env.POLAR_STARTER_ANNUAL_PRODUCT_ID || "",
+    trialDays: 14,
+    features: [
+      "20 monitors",
+      "12 platforms (Pro + G2, Yelp, Amazon)",
+      "15 keywords per monitor",
+      "Unlimited results",
+      "90-day history",
+      "3-hour refresh cycle",
+      "Full AI analysis (Flash)",
+      "Daily email digests",
+      "CSV export",
+    ],
+    limits: {
+      monitors: 20,
+      keywordsPerMonitor: 15,
+      sourcesPerMonitor: 10,
+      resultsHistoryDays: 90,
+      resultsVisible: -1,
+      refreshDelayHours: 3,
+      // 12 platforms: Pro's 9 + G2/Yelp/Amazon review listings.
+      // Dev.to, Hashnode, AppStore, PlayStore stay Team-only differentiators.
+      platforms: [
+        "reddit", "hackernews", "indiehackers", "producthunt",
+        "googlereviews", "youtube", "github", "trustpilot", "x",
+        "g2", "yelp", "amazonreviews",
+      ],
+      digestFrequencies: ["daily"],
+      aiFeatures: {
+        sentiment: true,
+        painPointCategories: true,
+        askFeature: true,
+        unlimitedAiAnalysis: true,
+        comprehensiveAnalysis: false, // Flash model, same as Pro today
+      },
+      alerts: {
+        email: true,
+        slack: true,
+        webhooks: false,
+      },
+      exports: {
+        csv: true,
         api: false,
       },
     },

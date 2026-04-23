@@ -9,7 +9,7 @@ interface DashboardClientWrapperProps {
   children: ReactNode;
   isNewUser: boolean;
   userName?: string;
-  userPlan?: "free" | "pro" | "team";
+  userPlan?: "free" | "starter" | "pro" | "team";
 }
 
 // Common dashboard routes to prefetch for faster navigation

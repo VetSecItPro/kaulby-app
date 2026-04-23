@@ -109,7 +109,7 @@ interface PolarPlanDefinition {
 }
 
 // Polar Product IDs - set these in your .env.local after creating products in Polar Dashboard
-export const POLAR_PLANS: Record<"free" | "pro" | "team", PolarPlanDefinition> = {
+export const POLAR_PLANS: Record<"free" | "starter" | "pro" | "team", PolarPlanDefinition> = {
   free: {
     name: "Free",
     description: "Try Kaulby with limited features",
@@ -150,6 +150,52 @@ export const POLAR_PLANS: Record<"free" | "pro" | "team", PolarPlanDefinition> =
       },
       exports: {
         csv: false,
+        api: false,
+      },
+    },
+  },
+  starter: {
+    name: "Starter",
+    description: "For solo operators scaling past the basics",
+    price: 49,
+    annualPrice: 470,
+    productId: process.env.POLAR_STARTER_MONTHLY_PRODUCT_ID || "",
+    annualProductId: process.env.POLAR_STARTER_ANNUAL_PRODUCT_ID || "",
+    trialDays: 14,
+    features: [
+      "20 monitors",
+      "12 platforms (Pro + G2, Yelp, Amazon)",
+      "15 keywords per monitor",
+      "Unlimited results",
+      "90-day history",
+      "3-hour refresh cycle",
+      "Full AI analysis (Flash)",
+      "Daily email digests",
+      "CSV export",
+    ],
+    limits: {
+      monitors: 20,
+      keywordsPerMonitor: 15,
+      sourcesPerMonitor: 10,
+      resultsHistoryDays: 90,
+      resultsVisible: -1,
+      refreshDelayHours: 3,
+      platforms: ["reddit", "hackernews", "indiehackers", "producthunt", "googlereviews", "youtube", "github", "trustpilot", "x", "g2", "yelp", "amazonreviews"],
+      digestFrequencies: ["daily"],
+      aiFeatures: {
+        sentiment: true,
+        painPointCategories: true,
+        askFeature: true,
+        unlimitedAiAnalysis: true,
+        comprehensiveAnalysis: false,
+      },
+      alerts: {
+        email: true,
+        slack: true,
+        webhooks: false,
+      },
+      exports: {
+        csv: true,
         api: false,
       },
     },
@@ -275,18 +321,21 @@ export function getPlanFromProductId(productId: string): PolarPlanKey {
   if (!productId) return "free";
 
   // Read directly from env vars at runtime for reliability
+  const starterMonthly = process.env.POLAR_STARTER_MONTHLY_PRODUCT_ID;
+  const starterAnnual = process.env.POLAR_STARTER_ANNUAL_PRODUCT_ID;
   const proMonthly = process.env.POLAR_PRO_MONTHLY_PRODUCT_ID;
   const proAnnual = process.env.POLAR_PRO_ANNUAL_PRODUCT_ID;
   const teamMonthly = process.env.POLAR_TEAM_MONTHLY_PRODUCT_ID;
   const teamAnnual = process.env.POLAR_TEAM_ANNUAL_PRODUCT_ID;
 
+  if (productId === starterMonthly || productId === starterAnnual) return "starter";
   if (productId === proMonthly || productId === proAnnual) return "pro";
   if (productId === teamMonthly || productId === teamAnnual) return "team";
 
   // SECURITY (SEC-LOGIC-001): Log unknown product IDs — silent fallback masks misconfiguration
   logger.warn("Unknown Polar product ID — falling back to free tier", {
     productId,
-    configuredIds: { proMonthly, proAnnual, teamMonthly, teamAnnual },
+    configuredIds: { starterMonthly, starterAnnual, proMonthly, proAnnual, teamMonthly, teamAnnual },
   });
   return "free";
 }
@@ -295,6 +344,12 @@ export function getPlanFromProductId(productId: string): PolarPlanKey {
 // IMPORTANT: Read env vars at runtime to avoid module load order issues
 export function getProductId(plan: PolarPlanKey, interval: BillingInterval): string | null {
   if (plan === "free") return null;
+
+  if (plan === "starter") {
+    return interval === "annual"
+      ? process.env.POLAR_STARTER_ANNUAL_PRODUCT_ID || null
+      : process.env.POLAR_STARTER_MONTHLY_PRODUCT_ID || null;
+  }
 
   // Read directly from env vars at runtime for reliability
   if (plan === "pro") {

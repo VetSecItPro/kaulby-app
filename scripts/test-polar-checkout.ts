@@ -267,7 +267,7 @@ test("Default billing interval is monthly", () => {
 // ============================================================
 section("Webhook Plan to Subscription Status Mapping");
 
-function mapPlanToSubscriptionStatus(plan: PolarPlanKey): "free" | "pro" | "enterprise" {
+function mapPlanToSubscriptionStatus(plan: PolarPlanKey): "free" | "starter" | "pro" | "enterprise" {
   if (plan === "team") return "enterprise";
   return plan;
 }

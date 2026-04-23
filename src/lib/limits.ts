@@ -317,8 +317,10 @@ export async function getRefreshDelay(userId: string): Promise<{
     message = `Results refresh every ${limits.refreshDelayHours} hours.`;
   } else if (plan === "pro") {
     message = `Results refresh every ${limits.refreshDelayHours} hours. Upgrade to Team for 2-hour refresh.`;
+  } else if (plan === "starter") {
+    message = `Results refresh every ${limits.refreshDelayHours} hours. Upgrade to Team for 2-hour refresh.`;
   } else {
-    message = `Results refresh every ${limits.refreshDelayHours} hours. Upgrade to Pro for 4-hour refresh.`;
+    message = `Results refresh every ${limits.refreshDelayHours} hours. Upgrade to Starter for 3-hour refresh.`;
   }
 
   return {
@@ -839,6 +841,7 @@ export async function shouldProcessMonitor(
  */
 const MANUAL_SCAN_LIMITS: Record<PlanKey, { cooldownHours: number; dailyLimit: number }> = {
   free: { cooldownHours: 24, dailyLimit: 1 },
+  starter: { cooldownHours: 3, dailyLimit: 5 },
   pro: { cooldownHours: 4, dailyLimit: 3 },
   team: { cooldownHours: 1, dailyLimit: 12 },
 };

@@ -191,9 +191,9 @@ export async function POST(req: Request) {
     const plan = await getUserPlan(userId);
     const bodyPeek: AskRequest = await req.clone().json().catch(() => ({})) as AskRequest;
     const isOnboarding = bodyPeek.conversationType === "onboarding";
-    if (!isOnboarding && plan !== "pro" && plan !== "team") {
+    if (!isOnboarding && plan !== "starter" && plan !== "pro" && plan !== "team") {
       return NextResponse.json(
-        { error: "This feature requires a Pro subscription" },
+        { error: "This feature requires a Starter subscription or higher" },
         { status: 403 }
       );
     }
@@ -425,7 +425,7 @@ export async function POST(req: Request) {
 async function handleConfirmation(
   userId: string,
   confirmation: NonNullable<AskRequest["pendingConfirmation"]>,
-  plan: "free" | "pro" | "team",
+  plan: "free" | "starter" | "pro" | "team",
   budgetRemaining: number
 ) {
   if (!confirmation.confirmed) {

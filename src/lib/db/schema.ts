@@ -17,6 +17,7 @@ import { relations, sql } from "drizzle-orm";
 // Enums
 export const subscriptionStatusEnum = pgEnum("subscription_status", [
   "free",
+  "starter",
   "pro",
   "team",
 ]);
