@@ -1,8 +1,14 @@
 // Platform types - 16 total active platforms
-// Solo-tier platforms: 9 (reddit, hackernews, indiehackers, producthunt, googlereviews, youtube, github, trustpilot, x)
-// Scale adds 3 review-listing platforms: g2, yelp, amazonreviews (12 total)
-// Growth gets all 16: adds devto, hashnode, appstore, playstore
+// Solo-tier platforms: 8 (reddit, hackernews, indiehackers, producthunt, googlereviews, youtube, github, trustpilot)
+// Scale adds 3 review-listing platforms: g2, yelp, amazonreviews (11 total)
+// Growth gets all 16: adds devto, hashnode, appstore, playstore, AND x (see cost note below)
 // Deferred (not user-selectable): quora — see .mdmp/apify-platform-cost-audit-2026-04-21.md
+//
+// X (Twitter) via xAI: MOVED TO GROWTH-ONLY 2026-04-23. xAI x_search tool
+// runs ~$0.01-$0.05 per scan — at Solo-tier $39/mo with 6-hour refresh, X
+// monitoring alone could consume >15% of tier margin. Kept as Growth-only
+// until (a) we measure actual cost in prod or (b) ship an Apify-based
+// cheaper alternative. See session notes 2026-04-23.
 export type Platform =
   | "reddit" | "hackernews" | "producthunt" | "devto"
   | "googlereviews" | "trustpilot" | "appstore" | "playstore"
@@ -11,7 +17,7 @@ export type Platform =
 
 const SOLO_PLATFORMS: Platform[] = [
   "reddit", "hackernews", "indiehackers", "producthunt",
-  "googlereviews", "youtube", "github", "trustpilot", "x",
+  "googlereviews", "youtube", "github", "trustpilot",
 ];
 
 const SCALE_PLATFORMS: Platform[] = [
@@ -21,7 +27,7 @@ const SCALE_PLATFORMS: Platform[] = [
 
 export const ALL_PLATFORMS: Platform[] = [
   ...SCALE_PLATFORMS,
-  "devto", "hashnode", "appstore", "playstore",
+  "devto", "hashnode", "appstore", "playstore", "x",
 ];
 
 // Digest frequency types
