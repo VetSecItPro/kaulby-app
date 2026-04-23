@@ -318,6 +318,17 @@ export const monitors = pgTable("monitors", {
   // Platform-specific URLs (for Google Reviews, Trustpilot, App Store, Play Store)
   // Format: { googlereviews: "url", trustpilot: "url", ... }
   platformUrls: jsonb("platform_urls").$type<Record<string, string>>(),
+  // COA 4 W2.5: GitHub real-time webhook per-monitor registration.
+  // When set, the /api/webhooks/github receiver verifies incoming payloads
+  // against THIS monitor's secret for THIS monitor's repo. User copies the
+  // URL + secret from the monitor settings UI and pastes into their repo's
+  // Settings → Webhooks. See `.github/runbooks/github-webhooks.md`.
+  // Format: "owner/repo" (e.g. "VetSecItPro/kaulby-app")
+  githubRepoFullName: text("github_repo_full_name"),
+  // Shared HMAC secret — random 32-byte hex, generated on monitor creation
+  // and shown to the user ONCE during webhook setup. Never logged; never
+  // included in API responses beyond the initial setup view.
+  githubWebhookSecret: text("github_webhook_secret"),
   filters: jsonb("filters"), // pain_point, solution_requests, etc.
   platforms: platformEnum("platforms").array().notNull(),
   isActive: boolean("is_active").default(true).notNull(),

@@ -97,6 +97,10 @@ export type Events = {
       installationId: number | null;
       repoFullName: string | null; // "owner/name"
       action: string | null; // payload.action (opened, edited, created, ...)
+      // COA 4 W2.5: set when signature was verified against a per-monitor secret.
+      // null when verified against the env-level GITHUB_WEBHOOK_SECRET fallback.
+      monitorId: string | null;
+      userId: string | null;
       payload: Record<string, unknown>; // raw JSON-parsed payload
     };
   };

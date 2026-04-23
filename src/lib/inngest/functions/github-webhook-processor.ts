@@ -3,38 +3,161 @@
  *
  * Companion to `src/app/api/webhooks/github/route.ts`. The receiver does
  * signature verify + enqueue only; this function does the actual ingestion:
- * match incoming events against active GitHub monitors' keywords, save
- * matching results to the `results` table, and trigger AI analysis.
+ * match incoming events against the owning monitor's keywords, save matching
+ * results to the `results` table, and trigger AI analysis.
  *
- * Scope boundary (2026-04-22, W2.4): this ships a minimal viable processor
- * that handles `issues` + `issue_comment` (the most common signals). W2.5
- * adds per-user GitHub App installation wiring so we know WHICH workspaces
- * own a given repository. Until W2.5 lands, the processor is best-effort —
- * it logs unmatched events for later replay but does not write results.
+ * W2.5 scope: receiver passes `monitorId` when signature was verified against
+ * a per-monitor secret. The processor uses that directly — no extra DB lookup
+ * needed. When `monitorId` is null (env-secret fallback path), we log + drop
+ * the event, since we have no workspace ownership to attribute results to.
+ *
+ * Handles: issues.opened, issue_comment.created, pull_request.opened,
+ * pull_request_review_comment.created, discussion.created, discussion_comment.created.
  */
 
 import { inngest } from "../client";
 import { logger } from "@/lib/logger";
 import { captureEvent } from "@/lib/posthog";
+import { pooledDb } from "@/lib/db";
+import { monitors, results } from "@/lib/db/schema";
+import { and, eq, inArray } from "drizzle-orm";
+import { contentMatchesMonitor } from "@/lib/content-matcher";
+import { incrementResultsCount } from "@/lib/limits";
+
+interface WebhookUserRef {
+  login?: string;
+}
 
 interface IssuePayload {
+  number?: number;
   title?: string;
   body?: string | null;
   html_url?: string;
-  user?: { login?: string };
+  user?: WebhookUserRef;
   created_at?: string;
 }
 
 interface CommentPayload {
   body?: string | null;
   html_url?: string;
-  user?: { login?: string };
+  user?: WebhookUserRef;
   created_at?: string;
 }
 
-// Type guard for arbitrary keys on a payload object (webhook shape is huge).
+interface PullRequestPayload {
+  number?: number;
+  title?: string;
+  body?: string | null;
+  html_url?: string;
+  user?: WebhookUserRef;
+  created_at?: string;
+}
+
+interface DiscussionPayload {
+  number?: number;
+  title?: string;
+  body?: string | null;
+  html_url?: string;
+  user?: WebhookUserRef;
+  created_at?: string;
+}
+
 function asRecord(value: unknown): Record<string, unknown> {
   return (value && typeof value === "object" ? value : {}) as Record<string, unknown>;
+}
+
+interface NormalizedEvent {
+  title: string;
+  content: string;
+  url: string;
+  author: string;
+  postedAt: Date;
+}
+
+function normalizeWebhookEvent(
+  ghEvent: string,
+  action: string | null,
+  payload: Record<string, unknown>
+): NormalizedEvent | null {
+  if (ghEvent === "issues" && action === "opened") {
+    const issue = asRecord(payload.issue) as IssuePayload;
+    if (!issue.title || !issue.html_url) return null;
+    return {
+      title: issue.title,
+      content: issue.body ?? "",
+      url: issue.html_url,
+      author: issue.user?.login ?? "unknown",
+      postedAt: issue.created_at ? new Date(issue.created_at) : new Date(),
+    };
+  }
+
+  if (ghEvent === "issue_comment" && action === "created") {
+    const comment = asRecord(payload.comment) as CommentPayload;
+    const issue = asRecord(payload.issue) as IssuePayload;
+    if (!comment.body || !comment.html_url) return null;
+    const title = issue.title ? `Comment on: ${issue.title}` : "Comment";
+    return {
+      title,
+      content: comment.body,
+      url: comment.html_url,
+      author: comment.user?.login ?? "unknown",
+      postedAt: comment.created_at ? new Date(comment.created_at) : new Date(),
+    };
+  }
+
+  if (ghEvent === "pull_request" && action === "opened") {
+    const pr = asRecord(payload.pull_request) as PullRequestPayload;
+    if (!pr.title || !pr.html_url) return null;
+    return {
+      title: pr.title,
+      content: pr.body ?? "",
+      url: pr.html_url,
+      author: pr.user?.login ?? "unknown",
+      postedAt: pr.created_at ? new Date(pr.created_at) : new Date(),
+    };
+  }
+
+  if (ghEvent === "pull_request_review_comment" && action === "created") {
+    const comment = asRecord(payload.comment) as CommentPayload;
+    const pr = asRecord(payload.pull_request) as PullRequestPayload;
+    if (!comment.body || !comment.html_url) return null;
+    const title = pr.title ? `PR review comment on: ${pr.title}` : "PR review comment";
+    return {
+      title,
+      content: comment.body,
+      url: comment.html_url,
+      author: comment.user?.login ?? "unknown",
+      postedAt: comment.created_at ? new Date(comment.created_at) : new Date(),
+    };
+  }
+
+  if (ghEvent === "discussion" && action === "created") {
+    const discussion = asRecord(payload.discussion) as DiscussionPayload;
+    if (!discussion.title || !discussion.html_url) return null;
+    return {
+      title: discussion.title,
+      content: discussion.body ?? "",
+      url: discussion.html_url,
+      author: discussion.user?.login ?? "unknown",
+      postedAt: discussion.created_at ? new Date(discussion.created_at) : new Date(),
+    };
+  }
+
+  if (ghEvent === "discussion_comment" && action === "created") {
+    const comment = asRecord(payload.comment) as CommentPayload;
+    const discussion = asRecord(payload.discussion) as DiscussionPayload;
+    if (!comment.body || !comment.html_url) return null;
+    const title = discussion.title ? `Discussion comment on: ${discussion.title}` : "Discussion comment";
+    return {
+      title,
+      content: comment.body,
+      url: comment.html_url,
+      author: comment.user?.login ?? "unknown",
+      postedAt: comment.created_at ? new Date(comment.created_at) : new Date(),
+    };
+  }
+
+  return null;
 }
 
 export const githubWebhookProcessor = inngest.createFunction(
@@ -47,7 +170,16 @@ export const githubWebhookProcessor = inngest.createFunction(
   },
   { event: "github/webhook.received" },
   async ({ event, step }) => {
-    const { event: ghEvent, deliveryId, installationId, repoFullName, action, payload } = event.data;
+    const {
+      event: ghEvent,
+      deliveryId,
+      installationId,
+      repoFullName,
+      action,
+      monitorId,
+      userId,
+      payload,
+    } = event.data;
 
     logger.info("[github-webhook-processor] received", {
       event: ghEvent,
@@ -55,56 +187,149 @@ export const githubWebhookProcessor = inngest.createFunction(
       action,
       repoFullName,
       installationId,
+      monitorId,
     });
 
-    // Emit a PostHog event for every delivery so the dashboard can show
-    // webhook throughput + action distribution without a dedicated query.
     captureEvent({
-      distinctId: `github-installation-${installationId ?? "unknown"}`,
+      distinctId: userId ?? `github-installation-${installationId ?? "unknown"}`,
       event: "github_webhook.received",
       properties: {
         github_event: ghEvent,
         action,
         repo: repoFullName,
         delivery_id: deliveryId,
+        monitor_bound: Boolean(monitorId),
       },
     });
 
-    // Branch on event type. We only handle a narrow set today; everything else
-    // is logged + acknowledged. Unsupported events already got filtered by the
-    // receiver, but future route changes might open the gate wider so we still
-    // guard here.
-    if (ghEvent === "issues" && action === "opened") {
-      const issue = asRecord(payload.issue) as IssuePayload;
-      const text = [issue.title, issue.body ?? ""].filter(Boolean).join("\n\n");
-      const url = issue.html_url ?? "";
-      logger.debug("[github-webhook-processor] issue opened", {
+    if (!monitorId || !userId) {
+      logger.warn("[github-webhook-processor] no monitor context — dropping", {
         deliveryId,
-        repo: repoFullName,
-        url,
-        hasBody: Boolean(issue.body),
+        repoFullName,
       });
-      // W2.5 adds workspace lookup + keyword match + result insert.
-      // Placeholder step keeps the Inngest dashboard showing this path exists.
-      await step.run("match-issue-stub", async () => ({ matched: false, reason: "W2.5 pending" }));
-      // Silence unused-var warning for text until W2.5 wires the match.
-      void text;
-      return { handled: "issues.opened", deliveryId, matchSaved: false };
+      return { handled: "no-monitor-context", deliveryId };
     }
 
-    if (ghEvent === "issue_comment" && action === "created") {
-      const comment = asRecord(payload.comment) as CommentPayload;
-      logger.debug("[github-webhook-processor] issue comment created", {
-        deliveryId,
-        repo: repoFullName,
-        url: comment.html_url,
-      });
-      await step.run("match-comment-stub", async () => ({ matched: false, reason: "W2.5 pending" }));
-      return { handled: "issue_comment.created", deliveryId, matchSaved: false };
+    const normalized = normalizeWebhookEvent(ghEvent, action, payload);
+    if (!normalized) {
+      return { handled: "unsupported-event-shape", event: ghEvent, action, deliveryId };
     }
 
-    // pull_request + discussion + discussion_comment will follow the same
-    // pattern once W2.5 ships the installation→workspace lookup.
-    return { handled: "logged-only", event: ghEvent, action, deliveryId };
+    const monitor = await step.run(`load-monitor-${monitorId}`, async () => {
+      const rows = await pooledDb
+        .select({
+          id: monitors.id,
+          userId: monitors.userId,
+          name: monitors.name,
+          keywords: monitors.keywords,
+          companyName: monitors.companyName,
+          searchQuery: monitors.searchQuery,
+          isActive: monitors.isActive,
+        })
+        .from(monitors)
+        .where(and(eq(monitors.id, monitorId), eq(monitors.isActive, true)))
+        .limit(1);
+      return rows[0] ?? null;
+    });
+
+    if (!monitor) {
+      logger.info("[github-webhook-processor] monitor gone or paused", {
+        monitorId,
+        deliveryId,
+      });
+      return { handled: "monitor-unavailable", deliveryId, monitorId };
+    }
+
+    const match = contentMatchesMonitor(
+      {
+        title: normalized.title,
+        body: normalized.content,
+        author: normalized.author,
+      },
+      {
+        companyName: monitor.companyName,
+        keywords: monitor.keywords,
+        searchQuery: monitor.searchQuery,
+      }
+    );
+
+    if (!match.matches) {
+      return {
+        handled: "no-match",
+        deliveryId,
+        monitorId: monitor.id,
+        event: ghEvent,
+        action,
+      };
+    }
+
+    const existing = await step.run(`dedup-${deliveryId}`, async () => {
+      const rows = await pooledDb
+        .select({ sourceUrl: results.sourceUrl })
+        .from(results)
+        .where(
+          and(
+            eq(results.monitorId, monitor.id),
+            inArray(results.sourceUrl, [normalized.url])
+          )
+        )
+        .limit(1);
+      return rows.length > 0;
+    });
+
+    if (existing) {
+      return { handled: "duplicate", deliveryId, monitorId: monitor.id };
+    }
+
+    const inserted = await step.run(`insert-${deliveryId}`, async () => {
+      return pooledDb
+        .insert(results)
+        .values({
+          monitorId: monitor.id,
+          platform: "github" as const,
+          sourceUrl: normalized.url,
+          title: normalized.title,
+          content: normalized.content,
+          author: normalized.author,
+          postedAt: normalized.postedAt,
+          metadata: {
+            githubEvent: ghEvent,
+            githubAction: action,
+            repoFullName,
+            deliveryId,
+          },
+        })
+        .returning({ id: results.id });
+    });
+
+    if (inserted.length === 0) {
+      return { handled: "insert-failed", deliveryId, monitorId: monitor.id };
+    }
+
+    await step.run(`increment-usage-${deliveryId}`, async () => {
+      await incrementResultsCount(monitor.userId, 1);
+    });
+
+    await step.run(`trigger-analysis-${deliveryId}`, async () => {
+      await inngest.send({
+        name: "content/analyze" as const,
+        data: { resultId: inserted[0].id, userId: monitor.userId },
+      });
+    });
+
+    logger.info("[github-webhook-processor] ingested", {
+      deliveryId,
+      monitorId: monitor.id,
+      resultId: inserted[0].id,
+      event: ghEvent,
+      action,
+    });
+
+    return {
+      handled: "ingested",
+      deliveryId,
+      monitorId: monitor.id,
+      resultId: inserted[0].id,
+    };
   }
 );
