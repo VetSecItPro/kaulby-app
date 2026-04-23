@@ -1,0 +1,147 @@
+{
+  "version": 1,
+  "notes": "Fixed corpus for prompt evaluation. Items modeled after real canary/smoke-test data from 2026-04-23. NEVER touch these once the scorer runs — scoring comparisons require identical inputs. If you need new cases, ADD, don't modify. 20 items = good balance of signal vs speed/cost.",
+  "last_updated": "2026-04-23",
+  "items": [
+    {
+      "id": "gh-notion-comparison",
+      "platform": "github",
+      "title": "[Issue] Add Notion-like block-based editor",
+      "content": "We've had multiple users request a block-based editor similar to Notion. Current rich text is limiting for long-form content. Would help with documentation flows. Willing to sponsor if this is on roadmap.",
+      "metadata": { "upvotes": 34, "commentCount": 12 }
+    },
+    {
+      "id": "gh-auth-bug",
+      "platform": "github",
+      "title": "[Issue] OAuth callback 401 intermittently",
+      "content": "Hitting a 401 on ~10% of OAuth callbacks. Repro: login via Google, succeed, refresh token 30min later, random 401s. Logs show valid signature but rejected. Tried clearing session, same issue.",
+      "metadata": { "upvotes": 8, "commentCount": 5 }
+    },
+    {
+      "id": "hn-show-launch",
+      "platform": "hackernews",
+      "title": "Show HN: I built a SaaS monitoring tool — Kaulby alternative",
+      "content": "After frustration with existing tools, I built a competitor-monitoring tool at half the price. Does real-time Reddit + HN + GitHub. Would love feedback from the HN community.",
+      "metadata": { "upvotes": 89, "commentCount": 23 }
+    },
+    {
+      "id": "reddit-complaint",
+      "platform": "reddit",
+      "title": "Anyone else find Kaulby's pricing weird?",
+      "content": "Signed up for the Solo plan but the keyword limits seem arbitrary. Why 3 keywords on free but unlimited on paid? Feels like artificial constraint.",
+      "metadata": { "upvotes": 47, "commentCount": 31, "subreddit": "SaaS" }
+    },
+    {
+      "id": "hn-acquisition-rumor",
+      "platform": "hackernews",
+      "title": "Is Inngest getting acquired by Vercel?",
+      "content": "Heard rumors at a recent meetup. Can anyone from either team confirm or deny? Worried about continued OSS support if true.",
+      "metadata": { "upvotes": 156, "commentCount": 42 }
+    },
+    {
+      "id": "gh-positive-mention",
+      "platform": "github",
+      "title": "[Issue] Migration guide for moving from Cron to Inngest",
+      "content": "Working on docs for our team's migration. Inngest has been fantastic — the developer experience for background jobs is night and day. Writing a blog post too. Would it be OK to link your docs?",
+      "metadata": { "upvotes": 12, "commentCount": 3 }
+    },
+    {
+      "id": "reddit-comparison",
+      "platform": "reddit",
+      "title": "Brand24 vs Awario vs Kaulby — comparing after 2 weeks",
+      "content": "Spent 2 weeks trialing all three. TL;DR: Brand24 has better analytics, Awario wider coverage, Kaulby the cleanest UX but missing some platforms. Pricing: Kaulby wins at low volume, Brand24 at scale. Posting detailed comparison tomorrow.",
+      "metadata": { "upvotes": 78, "commentCount": 24, "subreddit": "SaaS" }
+    },
+    {
+      "id": "gh-feature-request",
+      "platform": "github",
+      "title": "[Issue] Slack integration would be killer",
+      "content": "Would pay extra for native Slack alerts on top of the email ones. Current webhook is fine but needs too much setup. Anyone else?",
+      "metadata": { "upvotes": 22, "commentCount": 8 }
+    },
+    {
+      "id": "hn-critical-bug",
+      "platform": "hackernews",
+      "title": "Kaulby down? Monitors not running since 3pm EST",
+      "content": "My dashboards show no new results in 2 hours despite enabled monitors. Status page shows green but clearly broken. Is this a known issue?",
+      "metadata": { "upvotes": 34, "commentCount": 19 }
+    },
+    {
+      "id": "reddit-neutral-mention",
+      "platform": "reddit",
+      "title": "Stack for my indie SaaS",
+      "content": "Building my second SaaS. Stack: Next.js, Postgres, Clerk for auth, Resend for email, Inngest for background jobs, Kaulby for competitor monitoring. All solid choices so far.",
+      "metadata": { "upvotes": 15, "commentCount": 4, "subreddit": "indiehackers" }
+    },
+    {
+      "id": "gh-internal-dep",
+      "platform": "github",
+      "title": "[Issue] [P2-3] Failure Summary, Retry, and Cancellation Semantics",
+      "content": "Per the platform RFC: need to define exact semantics for partial failures in our async build pipeline. Inngest provides retries but cancellation semantics unclear. Blocking tasks: nothing yet, but will block launch if not resolved.",
+      "metadata": { "upvotes": 4, "commentCount": 2 }
+    },
+    {
+      "id": "reddit-sales-opp",
+      "platform": "reddit",
+      "title": "Evaluating competitor-monitoring tools with $500/mo budget",
+      "content": "Small agency, 3-4 brands to track. Need monitoring for Reddit + review sites. Budget is ~$500/mo. Looking at Brand24 and Awario mostly, Kaulby on the shortlist. Any real user input?",
+      "metadata": { "upvotes": 31, "commentCount": 14, "subreddit": "marketing" }
+    },
+    {
+      "id": "hn-dependency-mention",
+      "platform": "hackernews",
+      "title": "Ask HN: What background job system for serverless?",
+      "content": "Starting new Next.js project on Vercel. Need reliable cron + retries + observability. Considering Inngest, Trigger.dev, and QStash. What's the HN consensus in 2026?",
+      "metadata": { "upvotes": 120, "commentCount": 67 }
+    },
+    {
+      "id": "gh-zod-schema-bug",
+      "platform": "github",
+      "title": "[Issue] MCP tools fail with Cannot read properties of undefined (reading 'def')",
+      "content": "Zod v3/v4 mismatch in @inngest/agent-kit. Reproduction: npm init fresh, install inngest-agent-kit, use with Zod 4. Stack trace attached. Fix: upgrade their internal Zod schema factory.",
+      "metadata": { "upvotes": 7, "commentCount": 3 }
+    },
+    {
+      "id": "reddit-frustrated-churn",
+      "platform": "reddit",
+      "title": "Cancelling Kaulby after 2 months",
+      "content": "Great tool but didn't justify the cost for my solo side-project. The Day Pass would have been perfect but by the time I realized, I'd already committed to a monthly. Moving to a free alternative until my volume justifies paid again.",
+      "metadata": { "upvotes": 23, "commentCount": 9, "subreddit": "SaaS" }
+    },
+    {
+      "id": "hn-show-competitor",
+      "platform": "hackernews",
+      "title": "Show HN: pgflow — workflows in Postgres, no external services",
+      "content": "Tired of vendor lock-in from Inngest/Trigger. Built pgflow: a workflow engine that lives in your existing Postgres. Zero ops overhead, open source, production-ready. Looking for feedback.",
+      "metadata": { "upvotes": 203, "commentCount": 78 }
+    },
+    {
+      "id": "gh-minor-doc",
+      "platform": "github",
+      "title": "[Issue] Documentation: typo in pricing page",
+      "content": "Small typo on pricing page — 'Solo tier include 10 monitors' should be 'includes'. Trivial fix.",
+      "metadata": { "upvotes": 1, "commentCount": 1 }
+    },
+    {
+      "id": "reddit-high-intent-buyer",
+      "platform": "reddit",
+      "title": "Best tool for brand monitoring in 2026?",
+      "content": "Marketing director here, budget approved for Q2. Need a tool that covers Reddit (priority), Twitter, review sites. Team of 4 will use it. Mention-is-too-simple, Brand24-is-overkill. What are you using?",
+      "metadata": { "upvotes": 48, "commentCount": 22, "subreddit": "marketing" }
+    },
+    {
+      "id": "hn-praise-unsolicited",
+      "platform": "hackernews",
+      "title": "My weekend project hit $1K MRR thanks to Kaulby",
+      "content": "Small indie dev here. Used Kaulby's Reddit monitoring to catch my target users discussing pain points in real time. Built the product directly from those threads. Hit $1K MRR in 6 weeks. Just wanted to say thanks.",
+      "metadata": { "upvotes": 189, "commentCount": 34 }
+    },
+    {
+      "id": "reddit-comparison-routine",
+      "platform": "reddit",
+      "title": "Brandwatch too expensive, alternatives?",
+      "content": "Our team uses Brandwatch but renewal is $25K/year. Looking for similar capabilities at maybe 20% the cost. Mentioned Brand24 in a meeting, someone said they tried Kaulby and liked it. Thoughts?",
+      "metadata": { "upvotes": 19, "commentCount": 11, "subreddit": "socialmedia" }
+    }
+  ]
+}

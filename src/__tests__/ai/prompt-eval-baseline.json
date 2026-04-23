@@ -1,0 +1,26 @@
+{
+  "timestamp": "2026-04-23T22:10:02.343Z",
+  "corpus_size": 20,
+  "successes": 18,
+  "failures": 2,
+  "wall_clock_ms": 13473,
+  "total_cost_usd": 0.0026310749999999996,
+  "avg_latency_ms": 4075,
+  "metrics": {
+    "total": 18,
+    "persona": 10,
+    "generic": 8,
+    "robotic": 0,
+    "bannedOpener": 0,
+    "personaRate": 0.5555555555555556,
+    "genericRate": 0.4444444444444444,
+    "roboticRate": 0,
+    "bannedOpenerRate": 0,
+    "avgLength": 254.5
+  },
+  "composite_score": 0.5555555555555556,
+  "failure_ids": [
+    "hn-acquisition-rumor",
+    "hn-critical-bug"
+  ]
+}
