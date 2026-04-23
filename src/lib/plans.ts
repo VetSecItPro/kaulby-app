@@ -258,6 +258,49 @@ export function normalizePlanKey(
   return "free";
 }
 
+// Tier ordering for "max of two tiers" logic — used by reverse trial to grant
+// the higher of paid-vs-trial tier during the trial window.
+const TIER_RANK: Record<PlanKey, number> = {
+  free: 0,
+  solo: 1,
+  scale: 2,
+  growth: 3,
+};
+
+export function maxTier(a: PlanKey, b: PlanKey): PlanKey {
+  return TIER_RANK[a] >= TIER_RANK[b] ? a : b;
+}
+
+/**
+ * Reverse trial: every new paid signup gets 14 days of Growth-tier features
+ * regardless of what they paid for. After the trial window closes, they drop
+ * to their actual paid tier.
+ *
+ * Returns the tier that should be USED for feature gating right now.
+ * Caller passes the user's persisted subscriptionStatus and trial fields.
+ */
+export function getEffectiveTier(input: {
+  subscriptionStatus: PlanKey | "starter" | "pro" | "team" | null | undefined;
+  trialTier?: PlanKey | "starter" | "pro" | "team" | null;
+  trialEndsAt?: Date | string | null;
+}): PlanKey {
+  const paid = normalizePlanKey(input.subscriptionStatus);
+
+  if (!input.trialTier || !input.trialEndsAt) {
+    return paid;
+  }
+
+  const ends = typeof input.trialEndsAt === "string" ? new Date(input.trialEndsAt) : input.trialEndsAt;
+  if (!(ends instanceof Date) || Number.isNaN(ends.getTime()) || ends <= new Date()) {
+    // Trial is over (or invalid date) — fall through to paid tier.
+    return paid;
+  }
+
+  const trial = normalizePlanKey(input.trialTier);
+  // Take whichever is higher — never downgrade a customer who upgraded mid-trial.
+  return maxTier(paid, trial);
+}
+
 // Get plan limits for a subscription status
 export function getPlanLimits(plan: PlanKey): PlanLimits {
   return PLANS[plan].limits;
