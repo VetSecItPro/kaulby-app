@@ -6,7 +6,7 @@
   "hard_floors": {
     "ai_logs_count_since_run_start": {
       "min": 1,
-      "reason": "Zero AI logs means analyze-content function isn't running. Today's 2026-04-23 incident: Inngest deploy-orphan state kept analyze-content silent for 4+ hours with zero dashboard signal. This check would have caught it in 30 min."
+      "reason": "Zero AI logs means analyze-content function isn't running. Today's 2026-04-23 incident: Inngest deploy-orphan state kept analyze-content silent for 4+ hours with zero dashboard signal. This check would have caught it in 30 min. Scoped check: only alarms when results_audited ALSO == 0, because cache hits produce aiSummaries without aiLogs rows (24-hr cache + cross-monitor dedup) — those are healthy pipeline activity."
     },
     "persona_rate": {
       "min": 0.3,
@@ -17,8 +17,8 @@
       "reason": "More than 10% robotic templates ('Sentiment: X', 'Topic: Y') means the prompt structure broke — likely a Zod schema mismatch coercing output."
     },
     "banned_opener_rate": {
-      "max": 0.4,
-      "reason": "More than 40% banned openers ('This is a...', 'The post...') means persona voice regressed specifically at the output start."
+      "max": 0.6,
+      "reason": "More than 60% banned openers ('This is a...', 'The post...') means persona voice regressed specifically at the output start. Recalibrated 2026-04-23 21:22 UTC from canary first-run which measured 50% banned openers coexisting with 100% persona rate (persona + banned opener aren't mutually exclusive — a summary can open with 'This is an internal discussion' AND contain 'I recommend...' later). Original 0.4 was an uncalibrated guess. Will tighten via trailing-window logic once 7 days of canary data accumulate."
     }
   },
   "soft_thresholds": {

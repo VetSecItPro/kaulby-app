@@ -147,7 +147,19 @@ export const aiQualityCanary = inngest.createFunction(
 
     // Step 6: Check hard floors. Any violation is a critical alarm.
     const hardFloorViolations: string[] = [];
-    if (aiLogsCount < baseline.hard_floors.ai_logs_count_since_run_start.min) {
+
+    // ai_logs_count_since_run_start: "analyze-content isn't running" detector.
+    // BUT: the 24-hour AI analysis cache + cross-monitor result dedup mean that
+    // a fresh scan can return results whose aiSummary was served from cache,
+    // with ZERO aiLogs rows (cache hits skip logAiCall). That's a healthy
+    // pipeline, not an outage. Only alarm if we got NO fresh results AND no
+    // aiLogs — that combination means analyze-content genuinely didn't fire.
+    // If we got fresh results with summaries, the pipeline is working
+    // regardless of aiLogs count.
+    if (
+      metrics.total === 0 &&
+      aiLogsCount < baseline.hard_floors.ai_logs_count_since_run_start.min
+    ) {
       hardFloorViolations.push("ai_logs_count_since_run_start");
     }
     if (metrics.total > 0) {
