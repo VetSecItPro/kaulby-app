@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "notes": "Thresholds for the AI quality canary (cron: 0 */6 * * *). Hard floors always alarm and go to Sentry. Soft thresholds go to PostHog only. Calibrated 2026-04-23 from smoke test against real prod ('inngest' keyword, 67 summaries, 76% persona / 0% robotic).",
+  "last_calibrated": "2026-04-23",
+  "last_calibrated_commit": "HEAD after fix/ai-quality-canary",
+  "hard_floors": {
+    "ai_logs_count_since_run_start": {
+      "min": 1,
+      "reason": "Zero AI logs means analyze-content function isn't running. Today's 2026-04-23 incident: Inngest deploy-orphan state kept analyze-content silent for 4+ hours with zero dashboard signal. This check would have caught it in 30 min."
+    },
+    "persona_rate": {
+      "min": 0.3,
+      "reason": "Below 30% analyst voice means the summarize prompt has regressed or switched models without updated prompt."
+    },
+    "robotic_rate": {
+      "max": 0.1,
+      "reason": "More than 10% robotic templates ('Sentiment: X', 'Topic: Y') means the prompt structure broke — likely a Zod schema mismatch coercing output."
+    },
+    "banned_opener_rate": {
+      "max": 0.4,
+      "reason": "More than 40% banned openers ('This is a...', 'The post...') means persona voice regressed specifically at the output start."
+    }
+  },
+  "soft_thresholds": {
+    "persona_rate_drop_pct_vs_7d_avg": 0.1,
+    "persona_rate_drop_consecutive_runs": 3,
+    "avg_summary_length_min": 100,
+    "avg_summary_length_max": 800,
+    "notes": "Soft thresholds warn but don't page. 3-consecutive-runs smoothing prevents single-cycle flukes from noise (e.g., one slow Reddit scan returning only 2 results)."
+  }
+}
