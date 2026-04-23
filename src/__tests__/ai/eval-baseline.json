@@ -1,0 +1,10 @@
+{
+  "recordedAt": "2026-04-23T00:20:06.423Z",
+  "model": "default",
+  "metrics": {
+    "sentiment": 0.7333333333333333,
+    "painPointCategory": 0.6,
+    "conversationCategory": 0.4666666666666667
+  },
+  "source": "eval-runner v1 against golden-eval-set version 1"
+}

@@ -15,6 +15,12 @@
  * Requires: OPENROUTER_API_KEY in env.
  */
 
+// Load .env.local first — tsx doesn't auto-load dotenv, and the rest of this
+// script fails loud if OPENROUTER_API_KEY is missing. Silent on success.
+import "dotenv/config";
+import { config as loadEnv } from "dotenv";
+loadEnv({ path: ".env.local" });
+
 import { readFileSync, writeFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
