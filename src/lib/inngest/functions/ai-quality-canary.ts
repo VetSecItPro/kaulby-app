@@ -56,7 +56,14 @@ export const aiQualityCanary = inngest.createFunction(
     retries: 1,
     timeouts: { finish: "10m" },
   },
-  { cron: "0 */6 * * *" },
+  // Two triggers: cron for regular cadence + event for manual fire.
+  // The manual trigger lets ops kick a run from a script or API without
+  // clicking "Invoke" in the Inngest dashboard. Useful for validating
+  // threshold changes before they roll out to real cron ticks.
+  [
+    { cron: "0 */6 * * *" },
+    { event: "canary/fire-now" },
+  ],
   async ({ step }) => {
     const runStartedAt = new Date();
 
