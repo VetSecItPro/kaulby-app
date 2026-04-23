@@ -25,6 +25,7 @@
  */
 
 import { cachedQuery, getRedditCacheTTL, CACHE_TTL } from "@/lib/cache";
+import { dedupedScan } from "@/lib/shared-scan";
 import { randomBytes } from "crypto";
 import { logger } from "@/lib/logger";
 import { captureEvent } from "@/lib/posthog";
@@ -449,18 +450,30 @@ export async function searchRedditResilient(
   const cacheTTL = getRedditCacheTTL(subreddit);
 
   // PRIMARY: Apify automation-lab/reddit-scraper. Measured $0.003/25 items 2026-04-21.
+  //
+  // PR-E.1: the Apify actor fetches r/<subreddit> WITHOUT any keyword filter
+  // (see searchRedditApify — it just passes the subreddit URL), so all users
+  // monitoring the same subreddit can share one scrape. We go through
+  // dedupedScan (keyword-agnostic key) instead of cachedQuery (which included
+  // keywords). At 100 Team users with 5-8x subreddit overlap this is the
+  // single biggest infra-cost savings lever — see docs/planning/kaulby-backlog.md.
+  //
+  // Window size: we use the subreddit's natural cache TTL in minutes so a
+  // high-activity sub like r/SaaS can dedup over a 5-min window while a
+  // quiet one dedups over 30+ min.
   const hasApify = process.env.APIFY_API_KEY;
   if (hasApify && !isCircuitOpen("apify")) {
     try {
-      const { data: posts, cached } = await cachedQuery<RedditPost[]>(
-        "apify:reddit",
-        cacheParams,
+      const windowMinutes = Math.max(1, Math.floor(cacheTTL / 60_000));
+      const { data: posts, cached } = await dedupedScan<RedditPost[]>(
+        "reddit",
+        subreddit,
+        windowMinutes,
         () => searchRedditApify(subreddit, limit),
-        cacheTTL
       );
 
       if (cached) {
-        logger.debug("[Reddit] Cache hit", { subreddit, provider: "apify" });
+        logger.debug("[Reddit] Shared-scan HIT", { subreddit, provider: "apify", windowMinutes });
       }
 
       recordSuccess("apify");
