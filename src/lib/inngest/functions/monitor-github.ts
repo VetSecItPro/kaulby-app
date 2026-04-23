@@ -5,6 +5,13 @@ import { results } from "@/lib/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
 import { incrementResultsCount } from "@/lib/limits";
 import { contentMatchesMonitor } from "@/lib/content-matcher";
+import { dedupedScan } from "@/lib/shared-scan";
+
+// Dedup window for GitHub per-keyword API calls. 30 min balances freshness
+// against overlap: the GitHub search API costs nothing in dollars but burns
+// our 5000 req/hr rate limit, so collapsing User A + User B watching the
+// same keyword into one call-per-30min is real headroom.
+const GITHUB_DEDUP_WINDOW_MINUTES = 30;
 import {
   getActiveMonitors,
   prefetchPlans,
@@ -70,80 +77,95 @@ async function searchGitHub(keywords: string[], maxResults: number = 50): Promis
   const discussions: GitHubDiscussion[] = [];
 
   try {
-    // Search issues for each keyword
+    // Search issues for each keyword. PR-E.1.2: each keyword query is
+    // keyword-scoped (different URL per keyword), so dedup at keyword-level:
+    // User A + User B both watching "notion" share one API call per window.
     for (const keyword of keywords.slice(0, 5)) { // Limit to 5 keywords to stay within rate limits
-      const query = encodeURIComponent(`${keyword} in:title,body type:issue`);
-      const issueResponse = await fetch(
-        `https://api.github.com/search/issues?q=${query}&sort=created&order=desc&per_page=${Math.min(maxResults, 30)}`,
-        { headers }
+      const { data: items, cached } = await dedupedScan<GitHubIssue[]>(
+        "github",
+        `issues:${keyword}`,
+        GITHUB_DEDUP_WINDOW_MINUTES,
+        async () => {
+          const query = encodeURIComponent(`${keyword} in:title,body type:issue`);
+          const issueResponse = await fetch(
+            `https://api.github.com/search/issues?q=${query}&sort=created&order=desc&per_page=${Math.min(maxResults, 30)}`,
+            { headers }
+          );
+          if (!issueResponse.ok) {
+            logger.warn("[GitHub] Issue search failed", { keyword, status: issueResponse.status });
+            return [];
+          }
+          const data = await issueResponse.json();
+          return (data.items as GitHubIssue[]) || [];
+        },
       );
 
-      if (issueResponse.ok) {
-        const data = await issueResponse.json();
-        if (data.items) {
-          for (const item of data.items) {
-            // Avoid duplicates
-            if (!issues.find(i => i.id === item.id)) {
-              issues.push(item);
-            }
-          }
+      for (const item of items) {
+        // Dedup across keywords within this run too (e.g., same issue surfaces
+        // for both "notion" and "notion alternative" lookups).
+        if (!issues.find(i => i.id === item.id)) {
+          issues.push(item);
         }
-      } else {
-        logger.warn("[GitHub] Issue search failed", { keyword, status: issueResponse.status });
       }
 
-      // Rate limit: wait 100ms between requests
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Only rate-limit on actual API calls, not cache hits
+      if (!cached) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
     }
 
-    // Search discussions via GraphQL (if token available)
+    // Search discussions via GraphQL (if token available). Same dedup logic
+    // as issues — each keyword query is keyword-scoped.
     if (token) {
       for (const keyword of keywords.slice(0, 3)) { // Limit discussions search
         try {
-          const graphqlQuery = `
-            query {
-              search(query: "${keyword}", type: DISCUSSION, first: 20) {
-                nodes {
-                  ... on Discussion {
-                    id
-                    title
-                    body
-                    author { login }
-                    url
-                    createdAt
-                    upvoteCount
-                    comments { totalCount }
-                    category { name }
+          const { data: nodes, cached } = await dedupedScan<GitHubDiscussion[]>(
+            "github",
+            `discussions:${keyword}`,
+            GITHUB_DEDUP_WINDOW_MINUTES,
+            async () => {
+              const graphqlQuery = `
+                query {
+                  search(query: "${keyword}", type: DISCUSSION, first: 20) {
+                    nodes {
+                      ... on Discussion {
+                        id
+                        title
+                        body
+                        author { login }
+                        url
+                        createdAt
+                        upvoteCount
+                        comments { totalCount }
+                        category { name }
+                      }
+                    }
                   }
                 }
-              }
-            }
-          `;
-
-          const graphqlResponse = await fetch("https://api.github.com/graphql", {
-            method: "POST",
-            headers: {
-              ...headers,
-              "Content-Type": "application/json",
+              `;
+              const graphqlResponse = await fetch("https://api.github.com/graphql", {
+                method: "POST",
+                headers: { ...headers, "Content-Type": "application/json" },
+                body: JSON.stringify({ query: graphqlQuery }),
+              });
+              if (!graphqlResponse.ok) return [];
+              const data = await graphqlResponse.json();
+              return (data.data?.search?.nodes as GitHubDiscussion[]) || [];
             },
-            body: JSON.stringify({ query: graphqlQuery }),
-          });
+          );
 
-          if (graphqlResponse.ok) {
-            const data = await graphqlResponse.json();
-            if (data.data?.search?.nodes) {
-              for (const node of data.data.search.nodes) {
-                if (node && !discussions.find(d => d.id === node.id)) {
-                  discussions.push(node);
-                }
-              }
+          for (const node of nodes) {
+            if (node && !discussions.find(d => d.id === node.id)) {
+              discussions.push(node);
             }
+          }
+
+          if (!cached) {
+            await new Promise(resolve => setTimeout(resolve, 100));
           }
         } catch (error) {
           logger.warn("[GitHub] Discussion search failed", { keyword, error: error instanceof Error ? error.message : String(error) });
         }
-
-        await new Promise(resolve => setTimeout(resolve, 100));
       }
     }
 
