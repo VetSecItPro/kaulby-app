@@ -202,7 +202,9 @@ describe("ai/analyzers/summarize", () => {
 
     await summarizeContent("Content to summarize");
 
-    expect(mockBuildAnalysisPrompt).toHaveBeenCalledWith("summarize", "Content to summarize");
+    // After task #40 (comparative recall), summarizeContent passes a context
+    // object as the 3rd arg. Without priorSummaries, context is empty {}.
+    expect(mockBuildAnalysisPrompt).toHaveBeenCalledWith("summarize", "Content to summarize", {});
   });
 
   it("generates concise summaries", async () => {
@@ -230,5 +232,59 @@ describe("ai/analyzers/summarize", () => {
 
     expect(result.result.summary.length).toBeLessThan(200);
     expect(result.result.summary).toBeTruthy();
+  });
+
+  describe("comparative recall (task #40)", () => {
+    it("passes priorSummaries to buildAnalysisPrompt when provided", async () => {
+      mockBuildAnalysisPrompt.mockReturnValue({ system: "sys", user: "usr" });
+      mockJsonCompletion.mockResolvedValue({
+        data: {
+          summary: "Third report this week about the same OAuth bug",
+          topics: ["auth", "oauth"],
+          actionable: true,
+          urgency: "high",
+        },
+        meta: {
+          model: "google/gemini-2.5-flash",
+          cost: 0.004,
+          latencyMs: 1100,
+          promptTokens: 320,  // ~50% more than baseline due to context
+          completionTokens: 85,
+        },
+      });
+
+      const { summarizeContent } = await import("@/lib/ai/analyzers/summarize");
+
+      const priors = [
+        { title: "OAuth flow broken", summary: "User reported 401s during login", createdAt: new Date("2026-04-22") },
+        { title: "Can't authenticate", summary: "Login fails with token rejected", createdAt: new Date("2026-04-21") },
+      ];
+
+      await summarizeContent("Another 401 error during OAuth", priors);
+
+      const call = mockBuildAnalysisPrompt.mock.calls[0];
+      expect(call[0]).toBe("summarize");
+      expect(call[1]).toBe("Another 401 error during OAuth");
+      expect(call[2]).toHaveProperty("priorSummaries");
+      // Pre-formatted text includes both titles + both dates
+      expect(call[2].priorSummaries).toContain("OAuth flow broken");
+      expect(call[2].priorSummaries).toContain("Can't authenticate");
+      expect(call[2].priorSummaries).toContain("2026-04-22");
+    });
+
+    it("omits priorSummaries from context when array is empty", async () => {
+      mockBuildAnalysisPrompt.mockReturnValue({ system: "sys", user: "usr" });
+      mockJsonCompletion.mockResolvedValue({
+        data: { summary: "x", topics: [], actionable: false, urgency: "low" },
+        meta: { model: "m", cost: 0, latencyMs: 1, promptTokens: 1, completionTokens: 1 },
+      });
+
+      const { summarizeContent } = await import("@/lib/ai/analyzers/summarize");
+      await summarizeContent("fresh content", []);
+
+      const call = mockBuildAnalysisPrompt.mock.calls[0];
+      expect(call[2]).not.toHaveProperty("priorSummaries");
+      expect(call[2]).toEqual({});
+    });
   });
 });
