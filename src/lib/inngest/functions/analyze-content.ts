@@ -341,10 +341,9 @@ async function runTeamAnalysis(
 }
 
 // Analyze content with AI
-// Registration bump 2026-04-23: force Inngest to re-register this function.
-// Previous deploy left it in "not yet deployed to this environment" state
-// despite showing in the app manifest count — changing the function name
-// triggers fresh registration.
+// Display name is "Analyze Content (v2)" intentionally — 2026-04-23 Inngest
+// orphan-state fix. Revert after the canary has run a few cycles to confirm
+// analyze-content stays healthy across deploy cycles. See PR #221.
 export const analyzeContent = inngest.createFunction(
   {
     id: "analyze-content",

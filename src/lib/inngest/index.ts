@@ -26,6 +26,7 @@ export { scanOnDemand } from "./functions/scan-on-demand";
 export { instantScan } from "./functions/instant-scan";
 export { analyzeContent } from "./functions/analyze-content";
 export { analyzeContentBatch } from "./functions/analyze-content-batch";
+export { aiQualityCanary } from "./functions/ai-quality-canary";
 export { sendAlert, sendDailyDigest, sendWeeklyDigest, sendMonthlyDigest } from "./functions/send-alerts";
 export { sendWeeklyDigestCron } from "./functions/send-weekly-digest";
 export { dataRetention, resetUsageCounters, cleanupAiLogs } from "./functions/data-retention";
@@ -77,6 +78,7 @@ import { scanOnDemand } from "./functions/scan-on-demand";
 import { instantScan } from "./functions/instant-scan";
 import { analyzeContent } from "./functions/analyze-content";
 import { analyzeContentBatch } from "./functions/analyze-content-batch";
+import { aiQualityCanary } from "./functions/ai-quality-canary";
 import { sendAlert, sendDailyDigest, sendWeeklyDigest, sendMonthlyDigest } from "./functions/send-alerts";
 import { sendWeeklyDigestCron } from "./functions/send-weekly-digest";
 import { dataRetention, resetUsageCounters, cleanupAiLogs } from "./functions/data-retention";
@@ -162,4 +164,6 @@ export const functions = [
   chatCleanup,
   // COA 4 W2.4
   githubWebhookProcessor,
+  // AI quality canary (6h periodic health check — catches silent analyze-content outages)
+  aiQualityCanary,
 ];
