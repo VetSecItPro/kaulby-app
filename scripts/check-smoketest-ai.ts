@@ -52,10 +52,11 @@ async function main() {
   const logs = await db
     .select({
       resultId: aiLogs.resultId,
-      operation: aiLogs.operation,
-      success: aiLogs.success,
-      errorMessage: aiLogs.errorMessage,
+      analysisType: aiLogs.analysisType,
       model: aiLogs.model,
+      costUsd: aiLogs.costUsd,
+      latencyMs: aiLogs.latencyMs,
+      cacheHit: aiLogs.cacheHit,
       createdAt: aiLogs.createdAt,
     })
     .from(aiLogs)
@@ -68,20 +69,20 @@ async function main() {
     console.log("   🚨 ZERO AI logs — analyze-content function never ran for these results");
     console.log("   Check: Inngest dashboard for content/analyze events");
   } else {
-    const byOp: Record<string, number> = {};
-    let failed = 0;
+    const byType: Record<string, number> = {};
+    const byModel: Record<string, number> = {};
+    let cacheHits = 0;
+    let totalCost = 0;
     for (const l of logs) {
-      byOp[l.operation || "unknown"] = (byOp[l.operation || "unknown"] || 0) + 1;
-      if (!l.success) failed++;
+      byType[l.analysisType || "unknown"] = (byType[l.analysisType || "unknown"] || 0) + 1;
+      byModel[l.model] = (byModel[l.model] || 0) + 1;
+      if (l.cacheHit) cacheHits++;
+      totalCost += l.costUsd || 0;
     }
-    console.log(`   Operations: ${Object.entries(byOp).map(([k,v]) => `${k}=${v}`).join(", ")}`);
-    console.log(`   Failures: ${failed}/${logs.length}`);
-    if (failed > 0) {
-      console.log("\n   Sample errors:");
-      for (const l of logs.filter(l => !l.success).slice(0, 3)) {
-        console.log(`   • [${l.operation}] ${(l.errorMessage || "(no message)").slice(0, 200)}`);
-      }
-    }
+    console.log(`   Analysis types: ${Object.entries(byType).map(([k,v]) => `${k}=${v}`).join(", ")}`);
+    console.log(`   Models: ${Object.entries(byModel).map(([k,v]) => `${k.split("/").pop()}=${v}`).join(", ")}`);
+    console.log(`   Cache hits: ${cacheHits}/${logs.length}`);
+    console.log(`   Total cost: $${totalCost.toFixed(6)}`);
   }
 
   // 3. Show 1 sample result for context

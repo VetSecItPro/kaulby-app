@@ -53,14 +53,15 @@ async function ph(path: string, init: RequestInit = {}): Promise<any> {
 }
 
 async function getProjectId(): Promise<number> {
-  const orgs = await ph("/api/organizations/@current/");
-  const projectId = orgs?.teams?.[0]?.id;
-  if (!projectId) throw new Error("Could not resolve project id from /api/organizations/@current/");
-  return projectId;
+  // Use @current literal in URLs — PostHog resolves it server-side from the
+  // token. Avoids needing project:read scope to resolve the numeric id.
+  // The actual id is captured from the first dashboard list response for logging.
+  const r = await ph("/api/projects/@current/dashboards/?limit=1");
+  return r?.results?.[0]?.team_id ?? 0;
 }
 
 async function findDashboardByName(projectId: number, name: string): Promise<{ id: number } | null> {
-  const data = await ph(`/api/projects/${projectId}/dashboards/?search=${encodeURIComponent(name)}&limit=20`);
+  const data = await ph(`/api/projects/@current/dashboards/?search=${encodeURIComponent(name)}&limit=20`);
   return data?.results?.find((d: any) => d.name === name) || null;
 }
 
@@ -70,7 +71,7 @@ async function createDashboard(projectId: number, name: string, description: str
     console.log(`   ⏭  Dashboard "${name}" already exists (id=${existing.id})`);
     return existing;
   }
-  const created = await ph(`/api/projects/${projectId}/dashboards/`, {
+  const created = await ph(`/api/projects/@current/dashboards/`, {
     method: "POST",
     body: JSON.stringify({ name, description }),
   });
@@ -78,14 +79,35 @@ async function createDashboard(projectId: number, name: string, description: str
   return created;
 }
 
+// Cache the project-wide insight list once per run so we can dedupe without
+// hitting the buggy ?dashboards=N filter (which 500s on PostHog server side).
+let _insightCache: Array<{ id: number; name: string; dashboards: number[] }> | null = null;
+async function loadInsightCache(): Promise<typeof _insightCache> {
+  if (_insightCache) return _insightCache;
+  const collected: any[] = [];
+  let next: string | null = "/api/projects/@current/insights/?limit=200";
+  while (next) {
+    const page: any = await ph(next.replace(/^https?:\/\/[^/]+/, ""));
+    collected.push(...(page.results ?? []));
+    next = page.next || null;
+    if (collected.length > 5000) break; // safety
+  }
+  _insightCache = collected.map((i: any) => ({
+    id: i.id,
+    name: i.name,
+    dashboards: (i.dashboards || []) as number[],
+  }));
+  return _insightCache;
+}
+
 async function createInsight(projectId: number, dashboardId: number, name: string, query: any): Promise<void> {
-  // Check if an insight with this name exists already on the dashboard
-  const list = await ph(`/api/projects/${projectId}/insights/?dashboards=${dashboardId}&search=${encodeURIComponent(name)}&limit=20`);
-  if (list?.results?.some((i: any) => i.name === name)) {
-    console.log(`     ⏭  Insight "${name}" already on dashboard`);
+  const cache = await loadInsightCache();
+  const existing = cache?.find((i) => i.name === name && i.dashboards.includes(dashboardId));
+  if (existing) {
+    console.log(`     ⏭  Insight "${name}" already on dashboard (id=${existing.id})`);
     return;
   }
-  await ph(`/api/projects/${projectId}/insights/`, {
+  await ph(`/api/projects/@current/insights/`, {
     method: "POST",
     body: JSON.stringify({
       name,
