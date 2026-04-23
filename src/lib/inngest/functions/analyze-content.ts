@@ -341,10 +341,14 @@ async function runTeamAnalysis(
 }
 
 // Analyze content with AI
+// Registration bump 2026-04-23: force Inngest to re-register this function.
+// Previous deploy left it in "not yet deployed to this environment" state
+// despite showing in the app manifest count — changing the function name
+// triggers fresh registration.
 export const analyzeContent = inngest.createFunction(
   {
     id: "analyze-content",
-    name: "Analyze Content",
+    name: "Analyze Content (v2)",
     retries: 2,
     timeouts: { finish: "5m" },
     concurrency: {
