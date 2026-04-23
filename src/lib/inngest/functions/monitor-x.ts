@@ -12,6 +12,7 @@ import {
   triggerAiAnalysis,
   updateMonitorStats,
   hasAnyActiveMonitors,
+  trackScanFailed,
   type MonitorStep,
 } from "../utils/monitor-helpers";
 
@@ -238,7 +239,20 @@ export const monitorX = inngest.createFunction(
 
       if (searchResult.error) {
         logger.warn("[X] Search warning", { monitorId: monitor.id, error: searchResult.error });
-        if (searchResult.posts.length === 0) continue;
+        if (searchResult.posts.length === 0) {
+          // Surface the failure so ops can see it in lastCheckFailedReason.
+          // Known error: "Your newly created team doesn't have any credits
+          // or licenses yet" — means the xAI team needs credits added at
+          // https://console.x.ai/. Silently continuing (old behavior) made
+          // this class of account-level failure invisible.
+          trackScanFailed({
+            userId: monitor.userId,
+            monitorId: monitor.id,
+            platform: "x",
+            error: new Error(`xAI: ${searchResult.error}`),
+          });
+          continue;
+        }
       }
 
       // Filter posts using content matcher

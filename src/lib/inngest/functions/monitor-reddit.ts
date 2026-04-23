@@ -9,7 +9,7 @@ import { audiences } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { findRelevantSubredditsCached } from "@/lib/ai";
 import { contentMatchesMonitor } from "@/lib/content-matcher";
-import { searchRedditResilient, searchRedditSiteWide, getRedditWatermark, setRedditWatermark } from "@/lib/reddit";
+import { searchRedditResilient, searchRedditPublicSiteWide, getRedditWatermark, setRedditWatermark } from "@/lib/reddit";
 import {
   getActiveMonitors,
   prefetchPlans,
@@ -202,9 +202,12 @@ export const monitorReddit = inngest.createFunction(
       }
 
       // Fallback: if subreddit-specific searches found nothing, try site-wide Reddit search
+      // via Reddit's own public JSON API (DMCA-safe, unlike the disabled Serper path).
+      // The platform-integration-test (2026-04-23) found this recovers zero-result monitors
+      // whose subreddit picker returned generic subs like r/technology for brand keywords.
       if (monitorMatchCount === 0 && searchTerms.length > 0) {
         const siteWideResult = await step.run(`reddit-sitewide-${monitor.id}`, async () => {
-          return searchRedditSiteWide(searchTerms, 50);
+          return searchRedditPublicSiteWide(searchTerms, 50);
         });
 
         if (siteWideResult.posts.length > 0) {

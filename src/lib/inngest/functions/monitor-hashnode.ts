@@ -46,130 +46,90 @@ async function searchHashnode(keywords: string[], maxResults: number = 50): Prom
   const articles: HashnodeArticle[] = [];
   const seenIds = new Set<string>();
 
+  // NOTE (2026-04-23): Hashnode removed `searchPostsOfFeed` from their public
+  // GraphQL schema. Their current feed filter supports only {type, tags,
+  // minReadTime, maxReadTime} — no free-text search. Platform-wide keyword
+  // search is no longer available in their public API.
+  //
+  // Strategy now: pull the RECENT feed (their most-active posts), filter
+  // client-side by keyword match in title/brief/tags. This gets the last N
+  // published articles on Hashnode's platform; we then grep locally.
+  //
+  // Confirmed via schema introspection 2026-04-23: `feed` and
+  // `searchPostsOfPublication` are the only post-level queries available;
+  // the latter is scoped to a single publication and thus unsuitable for
+  // platform-wide monitoring.
+
   try {
-    for (const keyword of keywords.slice(0, 5)) {
-      // Hashnode uses GraphQL API
-      const query = `
-        query SearchPosts($query: String!) {
-          searchPostsOfFeed(first: 20, filter: { query: $query }) {
-            edges {
-              node {
-                id
+    // One feed pull covers all keywords since we filter client-side
+    const feedQuery = `
+      query FeedPosts {
+        feed(first: 50, filter: { type: RELEVANT }) {
+          edges {
+            node {
+              id
+              title
+              brief
+              content {
+                markdown
+              }
+              author {
+                username
+                name
+              }
+              url
+              publishedAt
+              reactionCount
+              responseCount
+              readTimeInMinutes
+              tags {
+                name
+                slug
+              }
+              publication {
                 title
-                brief
-                content {
-                  markdown
-                  text
-                }
-                author {
-                  username
-                  name
-                }
-                url
-                publishedAt
-                reactionCount
-                responseCount
-                readTimeInMinutes
-                tags {
-                  name
-                  slug
-                }
-                publication {
-                  title
-                }
               }
             }
           }
         }
-      `;
+      }`;
 
-      const response = await fetch("https://gql.hashnode.com/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "User-Agent": "Kaulby/1.0",
-        },
-        body: JSON.stringify({
-          query,
-          variables: { query: keyword },
-        }),
-      });
+    const response = await fetch("https://gql.hashnode.com/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent": "Kaulby/1.0",
+      },
+      body: JSON.stringify({ query: feedQuery }),
+    });
 
-      if (response.ok) {
-        const data = await response.json();
-        const edges = data.data?.searchPostsOfFeed?.edges || [];
+    if (response.ok) {
+      const data = await response.json();
+      if (data.errors) {
+        logger.warn("[Hashnode] Feed GraphQL errors", { errors: data.errors });
+      }
+      const edges = data.data?.feed?.edges || [];
+      const lowerKeywords = keywords.map((k) => k.toLowerCase());
 
-        for (const edge of edges) {
-          const article = edge.node;
-          if (article && !seenIds.has(article.id)) {
-            seenIds.add(article.id);
-            articles.push(article);
-          }
-        }
-      } else {
-        logger.warn("[Hashnode] Search failed", { keyword, status: response.status });
+      for (const edge of edges) {
+        const article = edge.node;
+        if (!article || seenIds.has(article.id)) continue;
 
-        // Fallback: Try the feed API
-        const feedQuery = `
-          query FeedPosts {
-            feed(first: 30, filter: { type: RELEVANT }) {
-              edges {
-                node {
-                  id
-                  title
-                  brief
-                  author {
-                    username
-                    name
-                  }
-                  url
-                  publishedAt
-                  reactionCount
-                  responseCount
-                  readTimeInMinutes
-                  tags {
-                    name
-                    slug
-                  }
-                }
-              }
-            }
-          }
-        `;
+        // Client-side keyword filter — match in title, brief, content, or tag names
+        const haystack = [
+          article.title || "",
+          article.brief || "",
+          article.content?.markdown?.slice(0, 2000) || "",
+          ...(article.tags || []).map((t: { name: string }) => t.name),
+        ]
+          .join(" ")
+          .toLowerCase();
 
-        const feedResponse = await fetch("https://gql.hashnode.com/", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "User-Agent": "Kaulby/1.0",
-          },
-          body: JSON.stringify({ query: feedQuery }),
-        });
-
-        if (feedResponse.ok) {
-          const feedData = await feedResponse.json();
-          const feedEdges = feedData.data?.feed?.edges || [];
-
-          for (const edge of feedEdges) {
-            const article = edge.node;
-            if (!article || seenIds.has(article.id)) continue;
-
-            // Filter by keyword match
-            const matchesKeyword =
-              article.title.toLowerCase().includes(keyword.toLowerCase()) ||
-              article.brief?.toLowerCase().includes(keyword.toLowerCase()) ||
-              article.tags?.some((t: { name: string }) => t.name.toLowerCase().includes(keyword.toLowerCase()));
-
-            if (matchesKeyword) {
-              seenIds.add(article.id);
-              articles.push(article);
-            }
-          }
+        if (lowerKeywords.some((kw) => haystack.includes(kw))) {
+          seenIds.add(article.id);
+          articles.push(article);
         }
       }
-
-      // Rate limit: wait 1 second between requests
-      await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
     return articles.slice(0, maxResults);
