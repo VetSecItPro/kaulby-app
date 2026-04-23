@@ -1,3 +1,4 @@
+import type { PlanKey } from "@/lib/plans";
 import { NextResponse } from "next/server";
 import { getEffectiveUserId } from "@/lib/dev-auth";
 import { MODELS, completionWithTools, flushAI } from "@/lib/ai/openrouter";
@@ -425,7 +426,7 @@ export async function POST(req: Request) {
 async function handleConfirmation(
   userId: string,
   confirmation: NonNullable<AskRequest["pendingConfirmation"]>,
-  plan: "free" | "starter" | "pro" | "team",
+  plan: PlanKey,
   budgetRemaining: number
 ) {
   if (!confirmation.confirmed) {

@@ -19,6 +19,7 @@
  * aiLogs.analysisType="weekly-insights" by computeWeeklyInsightsFor.
  */
 
+import type { PlanKey } from "@/lib/plans";
 import { inngest } from "../client";
 import { pooledDb, users, results, monitors } from "@/lib/db";
 import { eq, and, gte, inArray, or, ne, isNull } from "drizzle-orm";
@@ -128,7 +129,7 @@ export async function runSendWeeklyDigest({ step }: { step: WeeklyDigestStep }) 
           })),
           step,
           5,
-          user.subscriptionStatus as "free" | "pro" | "team"
+          user.subscriptionStatus as PlanKey
         );
 
         // Build top-monitor summary.

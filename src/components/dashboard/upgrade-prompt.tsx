@@ -423,7 +423,7 @@ export function HiddenResultsBanner({ hiddenCount, totalCount }: HiddenResultsBa
 interface RefreshDelayBannerProps {
   delayHours: number;
   nextRefreshAt?: Date | null;
-  subscriptionStatus?: string; // "free" | "pro" | "team"
+  subscriptionStatus?: PlanKey;
 }
 
 export function RefreshDelayBanner({ delayHours, nextRefreshAt, subscriptionStatus = "free" }: RefreshDelayBannerProps) {

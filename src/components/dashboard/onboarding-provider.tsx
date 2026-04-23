@@ -1,5 +1,6 @@
 "use client";
 
+import type { PlanKey } from "@/lib/plans";
 import { createContext, useContext, useState, useEffect, ReactNode, useTransition } from "react";
 import { OnboardingWizard } from "./onboarding";
 import { completeOnboarding, resetOnboarding as resetOnboardingAction } from "@/app/(dashboard)/dashboard/actions";
@@ -18,7 +19,7 @@ interface OnboardingProviderProps {
   children: ReactNode;
   isNewUser: boolean;
   userName?: string;
-  userPlan?: "free" | "starter" | "pro" | "team";
+  userPlan?: PlanKey;
 }
 
 export function OnboardingProvider({ children, isNewUser, userName, userPlan = "free" }: OnboardingProviderProps) {

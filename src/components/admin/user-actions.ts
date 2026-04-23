@@ -1,5 +1,6 @@
 "use server";
 
+import type { PlanKey } from "@/lib/plans";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -35,7 +36,7 @@ async function verifyAdmin() {
 // This function only updates the local database state.
 export async function updateUserPlan(
   userId: string,
-  newPlan: "free" | "pro" | "team"
+  newPlan: PlanKey
 ) {
   await verifyAdmin();
 

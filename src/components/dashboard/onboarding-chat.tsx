@@ -1,5 +1,6 @@
 "use client";
 
+import type { PlanKey } from "@/lib/plans";
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -40,7 +41,7 @@ interface CreatedItem {
 }
 
 interface OnboardingChatProps {
-  userPlan: "free" | "starter" | "pro" | "team";
+  userPlan: PlanKey;
   userName?: string;
 }
 

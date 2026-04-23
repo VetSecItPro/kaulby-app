@@ -1,3 +1,4 @@
+import type { PlanKey } from "@/lib/plans";
 import { db } from "@/lib/db";
 import { users, monitors, usage } from "@/lib/db/schema";
 import { eq, count, desc, like, or, sql, and, gte, inArray } from "drizzle-orm";
@@ -30,7 +31,7 @@ async function getUsers(searchParams: SearchParams) {
   }
 
   if (planFilter !== "all") {
-    whereConditions.push(eq(users.subscriptionStatus, planFilter as "free" | "pro" | "team"));
+    whereConditions.push(eq(users.subscriptionStatus, planFilter as PlanKey));
   }
 
   const whereClause = whereConditions.length > 0

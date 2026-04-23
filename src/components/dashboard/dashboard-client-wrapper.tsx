@@ -1,5 +1,6 @@
 "use client";
 
+import type { PlanKey } from "@/lib/plans";
 import { ReactNode, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { OnboardingProvider } from "./onboarding-provider";
@@ -9,7 +10,7 @@ interface DashboardClientWrapperProps {
   children: ReactNode;
   isNewUser: boolean;
   userName?: string;
-  userPlan?: "free" | "starter" | "pro" | "team";
+  userPlan?: PlanKey;
 }
 
 // Common dashboard routes to prefetch for faster navigation

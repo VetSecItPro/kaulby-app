@@ -1,5 +1,6 @@
 "use client";
 
+import type { PlanKey } from "@/lib/plans";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -43,7 +44,7 @@ interface OnboardingWizardProps {
   isOpen: boolean;
   onClose: () => void;
   userName?: string;
-  userPlan?: "free" | "starter" | "pro" | "team";
+  userPlan?: PlanKey;
 }
 
 // Pre-built monitor templates for quick setup

@@ -1,5 +1,6 @@
 "use client";
 
+import type { PlanKey } from "@/lib/plans";
 import { useState } from "react";
 import useSWR from "swr";
 import { fetcher } from "@/lib/swr-fetcher";
@@ -72,7 +73,7 @@ interface InsightsData {
   aiTopics: TopicCluster[];
   platformCorrelation: PlatformCorrelation[];
   totalResults: number;
-  plan: "free" | "pro" | "team";
+  plan: PlanKey;
   canHaveMultiplePlatforms: boolean;
   platformsInData: string[];
 }

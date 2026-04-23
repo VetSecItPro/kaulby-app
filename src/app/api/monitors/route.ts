@@ -9,7 +9,7 @@ import {
   filterAllowedPlatforms,
   getUpgradePrompt,
 } from "@/lib/limits";
-import { Platform, ALL_PLATFORMS, getPlanLimits } from "@/lib/plans";
+import { Platform, ALL_PLATFORMS, getPlanLimits, type PlanKey } from "@/lib/plans";
 import { sanitizeMonitorInput, isValidKeyword } from "@/lib/security";
 import { captureEvent } from "@/lib/posthog";
 import { track } from "@/lib/analytics";
@@ -324,7 +324,7 @@ export async function POST(request: Request) {
       userId: dbUserId,
       monitorId: newMonitor.id,
       platform: allowedPlatforms[0] ?? "unknown",
-      plan: plan as "free" | "pro" | "team",
+      plan: plan as PlanKey,
     });
 
     return NextResponse.json({
