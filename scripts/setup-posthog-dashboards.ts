@@ -194,6 +194,14 @@ async function main() {
   await createInsight(projectId, d3.id, "Reddit Apify circuit-breaker trips", TRENDS_LAST_30D("reddit.apify_degraded"));
   await createInsight(projectId, d3.id, "Indie Hackers fetch outcomes", TRENDS_LAST_30D("ih_fetch", "outcome"));
   await createInsight(projectId, d3.id, "GitHub webhook deliveries received", TRENDS_LAST_30D("github_webhook.received"));
+  // PR-E.1 shared-scan dedup observability — hit/miss per platform quantifies
+  // the cost-savings from keyword-agnostic caching (Reddit Apify, GitHub per-keyword).
+  // Hit-ratio = hits / (hits + misses). At 100 Team users, expect 0.6-0.8.
+  await createInsight(projectId, d3.id, "Shared-scan cache hits by platform", TRENDS_LAST_30D("shared_scan_hit", "platform"));
+  await createInsight(projectId, d3.id, "Shared-scan cache misses by platform", TRENDS_LAST_30D("shared_scan_miss", "platform"));
+  // AI quality canary — hard-floor pass/fail trend. This is the outage-detection
+  // dashboard first check after any "AI summaries look broken" report.
+  await createInsight(projectId, d3.id, "AI quality canary passes", TRENDS_LAST_30D("ai_quality_check"));
 
   console.log("\n=========================================================");
   console.log("✅ PostHog dashboards setup complete");
