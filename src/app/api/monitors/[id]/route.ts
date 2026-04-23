@@ -17,6 +17,11 @@ import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-
 import { z } from "zod";
 import { logger } from "@/lib/logger";
 
+// Accept "owner/repo" format, or null to clear. "/" embedded once is the only
+// structural check — the real validation happens when GitHub sends a webhook
+// (invalid repo = no matching payload, silent no-op).
+const githubRepoRegex = /^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/;
+
 const updateMonitorSchema = z.object({
   name: z.string().min(1).max(200).optional(),
   companyName: z.string().min(1).max(200).optional(),
@@ -29,6 +34,16 @@ const updateMonitorSchema = z.object({
   scheduleEndHour: z.number().int().min(0).max(23).optional(),
   scheduleDays: z.array(z.number().int().min(0).max(6)).nullable().optional(),
   scheduleTimezone: z.string().max(100).optional(),
+  // COA 4 W2.5: real-time GitHub webhook registration (repo only — the
+  // secret is managed via POST /api/monitors/[id]/github-webhook/rotate
+  // so callers can't accidentally set a weak/chosen value, and so we can
+  // show the secret ONCE at generation time).
+  githubRepoFullName: z
+    .string()
+    .regex(githubRepoRegex, "Expected format: owner/repo")
+    .max(200)
+    .nullable()
+    .optional(),
 });
 
 /** Sanitize platform URLs — allow https:// URLs and Google Place IDs */
@@ -71,8 +86,18 @@ export async function GET(
       return NextResponse.json({ error: "Monitor not found" }, { status: 404 });
     }
 
+    // COA 4 W2.5: never return the raw GitHub webhook secret in the monitor
+    // payload — it's shown ONCE at generation via the rotate endpoint and
+    // never again. The UI uses the boolean to decide whether to render
+    // "generate" vs "rotate" controls.
+    const { githubWebhookSecret, ...monitorSafe } = monitor;
+    const sanitized = {
+      ...monitorSafe,
+      githubWebhookSecretConfigured: Boolean(githubWebhookSecret),
+    };
+
     // SECURITY: No-cache on sensitive data — FIX-006
-    return NextResponse.json({ monitor }, {
+    return NextResponse.json({ monitor: sanitized }, {
       headers: {
         "Cache-Control": "no-store, no-cache, must-revalidate, private",
       },
@@ -121,7 +146,8 @@ export async function PATCH(
       );
     }
     const { name, companyName, keywords, platforms, platformUrls, isActive,
-      scheduleEnabled, scheduleStartHour, scheduleEndHour, scheduleDays, scheduleTimezone } = parsed.data;
+      scheduleEnabled, scheduleStartHour, scheduleEndHour, scheduleDays, scheduleTimezone,
+      githubRepoFullName } = parsed.data;
 
     // Validate platforms against canonical list
     if (platforms) {
@@ -216,6 +242,10 @@ export async function PATCH(
             ? sanitizePlatformUrls(platformUrls)
             : null,
         }),
+        // COA 4 W2.5: GitHub repo binding. Changing the repo DOES NOT clear
+        // the secret — user rotates explicitly via the rotate endpoint if
+        // they want to invalidate the old secret.
+        ...(githubRepoFullName !== undefined && { githubRepoFullName }),
         updatedAt: new Date(),
       })
       .where(and(eq(monitors.id, id), eq(monitors.userId, userId)))
