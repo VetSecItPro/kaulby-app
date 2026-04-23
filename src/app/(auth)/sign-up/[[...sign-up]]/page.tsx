@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { FoundingMembersBanner } from "@/components/founding-members-banner";
 
 export default function SignUpPage() {
   const { isLoaded, signUp, setActive } = useSignUp();
@@ -158,7 +159,11 @@ export default function SignUpPage() {
       <div className="animate-fade-up w-full max-w-[400px]">
         <div className="bg-zinc-900/80 border border-zinc-800 shadow-2xl backdrop-blur-sm rounded-xl p-8">
           <h1 className="text-xl font-semibold text-white text-center mb-1">Create your account</h1>
-          <p className="text-zinc-400 text-sm text-center mb-6">Welcome! Please fill in the details to get started.</p>
+          <p className="text-zinc-400 text-sm text-center mb-4">Welcome! Please fill in the details to get started.</p>
+
+          <div className="mb-5">
+            <FoundingMembersBanner variant="compact" />
+          </div>
 
           <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4">
             {/* Hidden decoy to absorb any residual autofill */}
