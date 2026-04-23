@@ -43,7 +43,7 @@ describe("ai/rate-limit", () => {
       const result = await checkAllRateLimits("user-1", "free");
 
       expect(result.allowed).toBe(false);
-      expect(result.reason).toContain("Pro subscription");
+      expect(result.reason).toContain("Starter subscription");
     });
 
     it("allows pro tier users within limits", async () => {

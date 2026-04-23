@@ -40,7 +40,7 @@ interface CreatedItem {
 }
 
 interface OnboardingChatProps {
-  userPlan: "free" | "pro" | "team";
+  userPlan: "free" | "starter" | "pro" | "team";
   userName?: string;
 }
 

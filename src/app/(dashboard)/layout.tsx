@@ -78,7 +78,11 @@ export default async function DashboardLayout({
   const hasActiveDayPass = dbUser?.dayPassExpiresAt ? new Date(dbUser.dayPassExpiresAt) > new Date() : false;
 
   // Map subscriptionStatus to userPlan type
-  const userPlan = subscriptionStatus === "team" ? "team" : subscriptionStatus === "pro" ? "pro" : "free";
+  const userPlan =
+    subscriptionStatus === "team" ? "team"
+    : subscriptionStatus === "pro" ? "pro"
+    : subscriptionStatus === "starter" ? "starter"
+    : "free";
 
   // Get workspace role for team badge
   const workspaceRole = dbUser?.workspaceRole || null;

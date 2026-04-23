@@ -43,7 +43,7 @@ interface OnboardingWizardProps {
   isOpen: boolean;
   onClose: () => void;
   userName?: string;
-  userPlan?: "free" | "pro" | "team";
+  userPlan?: "free" | "starter" | "pro" | "team";
 }
 
 // Pre-built monitor templates for quick setup
@@ -138,7 +138,11 @@ export function OnboardingWizard({ isOpen, onClose, userName, userPlan = "free" 
   const progress = (step / STEPS.length) * 100;
 
   // Keyword limits by plan
-  const keywordLimit = userPlan === "free" ? 3 : userPlan === "pro" ? 20 : 35;
+  const keywordLimit =
+    userPlan === "free" ? 3
+    : userPlan === "starter" ? 15
+    : userPlan === "pro" ? 20
+    : 35;
   const isAtKeywordLimit = keywords.length >= keywordLimit;
 
   const addKeyword = (keyword?: string) => {
