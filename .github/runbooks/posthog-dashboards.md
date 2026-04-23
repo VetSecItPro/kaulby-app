@@ -109,11 +109,16 @@ Defined in `src/lib/ai/rate-limit.ts`. Override via env without redeploy.
 | Reddit Apify circuit-breaker trips | `reddit.apify_degraded` count | A few per week is normal (transient Apify issues). Sustained = Apify Reddit actor broken or our key is over quota. | Falls back to public JSON scraping (see `reddit-safety.md`). Users still get results, but margins shrink. Investigate by checking Apify dashboard for actor health. |
 | Indie Hackers fetch outcomes | `ih_fetch` event with 5 outcomes: feed_ok, feed_empty, feed_fail_scrape_ok, feed_fail_scrape_empty, all_failed | feed_ok > 95% | If feed_ok drops below 80% sustained for 7 days → time to ship the deferred Crawlee custom actor (per `kaulby-deferred.md`). |
 | GitHub webhook deliveries received | `github_webhook.received` count | Few per day per active GitHub monitor; spiky around repo activity | Zero with active monitors = either the webhook receiver is down OR users haven't actually configured their GitHub webhooks (Solo/Scale education issue). Check `monitorId` distribution in PostHog event properties to differentiate. |
+| Shared-scan cache hits by platform | `shared_scan_hit` events (PR #223/#224) | Hit ratio = hits / (hits + misses); target >0.3 on Reddit at steady state, 0 early on | Zero hits for 24hr = dedup code not firing (check that shared-scan.ts is imported). Inverted ratio (more misses than hits) = either not enough users overlapping yet OR window is too short. |
+| Shared-scan cache misses by platform | `shared_scan_miss` events | First hit on each (platform, resource) per window. Healthy to see high miss count on new windows | Miss count tracking hit count 1:1 (never hitting) = dedup isn't working. Compare by (platform, resource) in the breakdown to find which resources never share. |
+| AI quality canary passes | `ai_quality_check` event, filtered by `passed=true` | 4 per day (one per cron tick at 00/06/12/18 UTC), no gaps | Missing tick = canary didn't fire (Inngest issue). `passed=false` tick = hard floor violation → check Sentry, cross-reference `hard_floor_violations` property on event. |
 
 ### When to escalate
 - **Any platform at zero scans for >24hr** with active monitors using it → that platform's scraper is broken. Open its module (`src/lib/inngest/functions/monitor-{platform}.ts`) and check for recent breakage.
 - **Reddit Apify circuit-breaker trips >10/day sustained** → page someone; Reddit is our highest-volume platform and degraded mode costs more
 - **IH feed_ok drops below 80%** → Indie Hackers feed format probably changed; ship the Crawlee fallback
+- **Shared-scan hit ratio < 0.2 on Reddit after 7 days of steady traffic** → either (a) not enough users yet, or (b) dedup key is too granular. Check `src/lib/shared-scan.ts` window size + `src/lib/reddit.ts` Apify branch.
+- **AI quality canary misses a tick (fewer than 4 `ai_quality_check` events per day)** → run `pnpm tsx scripts/setup-canary-monitor.ts` to confirm monitor exists; check Inngest function health for `ai-quality-canary`. See `.github/runbooks/ai-quality-canary.md`.
 
 ---
 
