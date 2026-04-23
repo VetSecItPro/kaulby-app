@@ -3,7 +3,7 @@ import { pooledDb } from "@/lib/db";
 import { results, aiLogs, monitors, painPointCategoryEnum, conversationCategoryEnum, resultAnalyses } from "@/lib/db/schema";
 import { sql } from "drizzle-orm";
 import { logAiCall } from "@/lib/ai/log";
-import { eq, count } from "drizzle-orm";
+import { eq, count, and, ne, isNotNull, desc } from "drizzle-orm";
 import {
   analyzeSentiment,
   analyzePainPoints,
@@ -110,6 +110,49 @@ async function writeResultAnalysis(
     });
 }
 
+/**
+ * Fetch the N most-recent AI summaries from the same monitor, excluding the
+ * result being analyzed. Used for comparative recall (task #40): the AI sees
+ * recent activity on the monitor and can spot patterns ("third complaint this
+ * week"), escalations, repeated users, or contradictions.
+ *
+ * Performance: single indexed query, capped at N=5, ~1ms round-trip.
+ * Cost: ~200 input tokens per prior summary ≈ 1000 extra tokens per AI call.
+ * At Flash pricing that's ~$0.00001/call — noise compared to the call itself.
+ */
+async function getPriorSummariesForMonitor(
+  monitorId: string,
+  excludeResultId: string,
+  limit: number
+): Promise<Array<{ title: string; summary: string; createdAt: Date }>> {
+  const rows = await pooledDb
+    .select({
+      title: results.title,
+      summary: results.aiSummary,
+      createdAt: results.createdAt,
+    })
+    .from(results)
+    .where(
+      and(
+        eq(results.monitorId, monitorId),
+        ne(results.id, excludeResultId),
+        isNotNull(results.aiSummary),
+      )
+    )
+    .orderBy(desc(results.createdAt))
+    .limit(limit);
+
+  // Filter client-side for summaries that have meaningful content
+  // (drizzle's isNotNull catches null but not empty strings).
+  return rows
+    .filter((r) => r.summary && r.summary.trim().length > 20)
+    .map((r) => ({
+      title: r.title,
+      summary: r.summary as string,
+      createdAt: r.createdAt,
+    }));
+}
+
 /** Run Pro-tier AI analysis (sentiment + summary) */
 async function runProAnalysis(
   contentToAnalyze: string,
@@ -117,17 +160,34 @@ async function runProAnalysis(
     id: string;
     platform: string;
     metadata: unknown;
+    monitorId: string;
   },
   userId: string,
   keywordMatch: { category: string; confidence: number; matchedKeyword: string } | null
 ) {
   const metadata = result.metadata as Record<string, unknown> | null;
 
+  // Persona Fix 3 (W2.11 / task #40): comparative recall.
+  // Fetch the last 5 summaries from this same monitor so the summarize prompt
+  // can spot patterns — "third complaint this week", "same user as Tuesday",
+  // escalations, contradictions. Excluded: this result itself (we're about
+  // to write its summary) and any rows without an AI summary yet.
+  // Best-effort: if the fetch fails, we analyze without context rather than
+  // block the whole AI call.
+  const priorSummaries = await getPriorSummariesForMonitor(result.monitorId, result.id, 5)
+    .catch((err) => {
+      logger.warn("[analyze-content] prior summaries fetch failed — analyzing without context", {
+        monitorId: result.monitorId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return [];
+    });
+
   // Run AI analyses in parallel — skip categorization if keyword matched
   const [sentimentResult, painPointResult, summaryResult, categoryResult] = await Promise.all([
     analyzeSentiment(contentToAnalyze),
     analyzePainPoints(contentToAnalyze),
-    summarizeContent(contentToAnalyze),
+    summarizeContent(contentToAnalyze, priorSummaries),
     keywordMatch
       ? Promise.resolve(null) // Skip AI categorization — keyword match found
       : categorizeConversation(contentToAnalyze, {
