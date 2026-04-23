@@ -494,6 +494,10 @@ describe("inngest monitor-helpers", () => {
       expect(mockUpdateChain.set).toHaveBeenCalledWith({
         lastCheckedAt: expect.any(Date),
         newMatchCount: 5,
+        // W1.10: successful scan clears prior failure flags so the
+        // monitor card's red dot disappears on recovery.
+        lastCheckFailedAt: null,
+        lastCheckFailedReason: null,
         updatedAt: expect.any(Date),
       });
     });
