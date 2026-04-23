@@ -4,19 +4,32 @@ import { observeOpenAI } from "langfuse";
 import { langfuse } from "./langfuse";
 
 // Models — tiered routing per COA 4 W1.6.
-// Free/Pro: Gemini 2.5 Flash (cheap, handles 95%+ of tasks well).
-// Team: Claude Sonnet 4.5 (stronger reasoning + persona voice).
-// Fallback: Flash — always. Team errors degrade to Flash with a tier_downgrade event.
+//
+// Post-2026-04-22 revert: MODELS.team currently points at Gemini 2.5 Flash
+// (the same model as MODELS.primary). Reason: routing Team tier to Claude
+// Sonnet 4.5 made the unit economics unworkable — at ~$0.013/call × ~500
+// results/day per Team user the AI cost exceeded the $3.30/day revenue
+// share. See scripts/eval-shootout.ts for the cross-model comparison that
+// will pick the actual production Team-tier model.
+//
+// Plumbing is preserved intentionally: analyze-content.ts, /ai/ask, and
+// weekly-insights-helper.ts all still route via MODELS.team. When the
+// shootout picks a winner, flip this one constant and the routing wakes up.
+//
+// MODELS.teamCandidate is the currently-paused Sonnet 4.5 id, kept here as
+// documentation of the intended upgrade target and so the shootout script
+// can reference it without hard-coding strings.
 export const MODELS = {
   // Standard tier (Free + Pro) — cost-optimized.
   primary: "google/gemini-2.5-flash",
   // Fallback used by both tiers when primary fails.
   fallback: "google/gemini-2.5-flash",
-  // Team tier — stronger reasoning for persona voice + comprehensive analysis.
-  // Priced ~$3 in / $15 out per 1M tokens; cost cap enforced via W1.8.
-  team: "anthropic/claude-sonnet-4-5",
-  // @deprecated — retained for backwards compat; prefer MODELS.primary/team.
-  // Still referenced by a few older call sites that always used Flash anyway.
+  // Team tier — TEMPORARILY Flash pending shootout-winner selection.
+  // To re-enable Sonnet 4.5: change this to MODELS.teamCandidate.
+  team: "google/gemini-2.5-flash",
+  // Paused upgrade target. Not used in production routing today.
+  teamCandidate: "anthropic/claude-sonnet-4-5",
+  // @deprecated — retained for backwards compat.
   premium: "google/gemini-2.5-flash",
 } as const;
 
@@ -104,6 +117,16 @@ export function calculateCost(
   return inputCost + outputCost;
 }
 
+/**
+ * When set, OPENROUTER_MODEL_OVERRIDE forces every completion call to use the
+ * named model regardless of what the caller passed in. Used by
+ * scripts/eval-shootout.ts to pin all analyzers to a single candidate model
+ * per round. DO NOT set this in production — it defeats tier routing.
+ */
+function resolveModel(requested: string): string {
+  return process.env.OPENROUTER_MODEL_OVERRIDE?.trim() || requested;
+}
+
 // AI completion with fallback
 export async function completion(params: {
   messages: OpenAI.ChatCompletionMessageParam[];
@@ -113,10 +136,11 @@ export async function completion(params: {
 }) {
   const {
     messages,
-    model = MODELS.primary,
+    model: requestedModel = MODELS.primary,
     temperature = 0.7,
     maxTokens = 1024,
   } = params;
+  const model = resolveModel(requestedModel);
 
   const startTime = Date.now();
 
@@ -202,10 +226,11 @@ export async function completionWithTools(params: {
   const {
     messages,
     tools,
-    model = MODELS.primary,
+    model: requestedModel = MODELS.primary,
     temperature = 0.5,
     maxTokens = 1024,
   } = params;
+  const model = resolveModel(requestedModel);
 
   const startTime = Date.now();
 

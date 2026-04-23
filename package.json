@@ -22,6 +22,8 @@
     "backfill:ai-analyzed": "npx tsx scripts/backfill-ai-analyzed.ts",
     "eval:ai": "KAULBY_RUN_AI_EVAL=1 tsx src/__tests__/ai/eval-runner.ts",
     "eval:ai:baseline": "KAULBY_RUN_AI_EVAL=1 tsx src/__tests__/ai/eval-runner.ts --write-baseline",
+    "eval:shootout": "KAULBY_RUN_AI_EVAL=1 tsx scripts/eval-shootout.ts",
+    "eval:shootout:variance": "KAULBY_RUN_AI_EVAL=1 tsx scripts/eval-shootout.ts --rounds 10 --models flash,pro,haiku",
     "remotion:preview": "cd remotion && npx remotion studio src/index.ts",
     "remotion:render": "cd remotion && npx remotion render src/index.ts ProductDemo ../public/videos/product-demo.mp4 && npx remotion render src/index.ts AIChatDemo ../public/videos/ai-chat-demo.mp4 && npx remotion render src/index.ts ProductDemo ../public/videos/product-demo.webm --codec=vp8 && npx remotion render src/index.ts AIChatDemo ../public/videos/ai-chat-demo.webm --codec=vp8",
     "remotion:posters": "cd remotion && npx remotion still src/index.ts ProductDemo ../public/videos/product-demo-poster.webp --image-format=webp --frame=0 && npx remotion still src/index.ts AIChatDemo ../public/videos/ai-chat-demo-poster.webp --image-format=webp --frame=0"
