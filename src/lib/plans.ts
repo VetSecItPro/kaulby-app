@@ -1,38 +1,45 @@
 // Platform types - 16 total active platforms
-// Core 9 (Pro tier): reddit, hackernews, indiehackers, producthunt, googlereviews, youtube, github, trustpilot, x
-// Additional 7 (Team tier): devto, hashnode, appstore, playstore, g2, yelp, amazonreviews
-// Deferred (not user-selectable, historical display only): quora — see
-// .mdmp/apify-platform-cost-audit-2026-04-21.md. Reactivation planned as Team-tier-only
-// once a custom Crawlee actor replaces the sunsetting jupri/quora-scraper (Oct 2026).
+// Solo-tier platforms: 9 (reddit, hackernews, indiehackers, producthunt, googlereviews, youtube, github, trustpilot, x)
+// Scale adds 3 review-listing platforms: g2, yelp, amazonreviews (12 total)
+// Growth gets all 16: adds devto, hashnode, appstore, playstore
+// Deferred (not user-selectable): quora — see .mdmp/apify-platform-cost-audit-2026-04-21.md
 export type Platform =
   | "reddit" | "hackernews" | "producthunt" | "devto"
   | "googlereviews" | "trustpilot" | "appstore" | "playstore"
   | "youtube" | "g2" | "yelp" | "amazonreviews"
   | "indiehackers" | "github" | "hashnode" | "x";
 
-// Platform groupings for tier access
-const PRO_PLATFORMS: Platform[] = [
+const SOLO_PLATFORMS: Platform[] = [
   "reddit", "hackernews", "indiehackers", "producthunt",
-  "googlereviews", "youtube", "github", "trustpilot", "x"
+  "googlereviews", "youtube", "github", "trustpilot", "x",
+];
+
+const SCALE_PLATFORMS: Platform[] = [
+  ...SOLO_PLATFORMS,
+  "g2", "yelp", "amazonreviews",
 ];
 
 export const ALL_PLATFORMS: Platform[] = [
-  ...PRO_PLATFORMS,
+  ...SCALE_PLATFORMS,
   "devto", "hashnode", "appstore", "playstore",
-  "g2", "yelp", "amazonreviews"
 ];
 
 // Digest frequency types
 export type DigestFrequency = "weekly" | "daily" | "monthly" | "twice_daily";
 
-// Plan limits interface
+// Plan limits interface.
+// KEYWORDS: intentionally uncapped on paid tiers (-1 = unlimited). Keyword
+// count doesn't drive infra cost — content matching happens locally after
+// scan — and Awario offers unlimited keywords on every paid tier, so
+// capping them was a false differentiator that lost us the comparison.
+// Free keeps a 3-keyword cap as the entry gate.
 export interface PlanLimits {
   monitors: number; // -1 for unlimited
-  keywordsPerMonitor: number;
+  keywordsPerMonitor: number; // -1 for unlimited (all paid tiers)
   sourcesPerMonitor: number;
   resultsHistoryDays: number; // -1 for unlimited
   resultsVisible: number; // -1 for unlimited, how many results user can see
-  refreshDelayHours: number; // Free: 24hr, Pro: 4hr, Team: 2hr
+  refreshDelayHours: number; // Free: 24hr, Solo: 6hr, Scale: 4hr, Growth: 2hr
   platforms: Platform[];
   digestFrequencies: DigestFrequency[];
   aiFeatures: {
@@ -40,7 +47,7 @@ export interface PlanLimits {
     painPointCategories: boolean;
     askFeature: boolean;
     unlimitedAiAnalysis: boolean; // false = only first result gets AI analysis
-    comprehensiveAnalysis: boolean; // Team tier: Claude Sonnet 4 comprehensive analysis
+    comprehensiveAnalysis: boolean; // Growth tier: multi-section AI analyst report
   };
   alerts: {
     email: boolean;
@@ -61,7 +68,7 @@ interface PlanDefinition {
   name: string;
   description: string;
   price: number; // Monthly price
-  annualPrice: number; // Annual price (total for year)
+  annualPrice: number; // Annual price (total for year) — 20% off list for paid tiers
   priceId: string | null; // Monthly price ID
   annualPriceId: string | null; // Annual price ID
   trialDays: number; // Free trial days (0 for free tier)
@@ -69,15 +76,17 @@ interface PlanDefinition {
   limits: PlanLimits;
 }
 
-// Product IDs for subscription plans (Polar.sh)
-// Starter (COA 4 W3.2): bridges the $29→$99 cliff. More monitors/keywords than Pro,
-// adds review-listing platforms (G2, Yelp, Amazon), but stays on Flash model (not
-// Sonnet). Team stays the differentiator: comprehensive analysis + DevTo/Hashnode/
-// AppStore/PlayStore + team seats.
-export const PLANS: Record<"free" | "starter" | "pro" | "team", PlanDefinition> = {
+// Plan catalog — Free / Solo / Scale / Growth.
+// Prices set 2026-04-23 (pre-launch restructure). Rationale:
+// - Solo $39 undercuts Awario Starter ($49) for acquisition.
+// - Scale $79 is the "I outgrew Solo" step (+10 monitors, +3 platforms, faster refresh).
+// - Growth $149 matches Awario Pro exactly, adds integrations (webhooks/API) + team seats
+//   that can't be replicated by stacking Solos.
+// Annual: 20% off across all tiers ($374 / $758 / $1,430).
+export const PLANS: Record<"free" | "solo" | "scale" | "growth", PlanDefinition> = {
   free: {
     name: "Free",
-    description: "Try Kaulby with limited features",
+    description: "Try Kaulby with a single monitor",
     price: 0,
     annualPrice: 0,
     priceId: null,
@@ -86,11 +95,10 @@ export const PLANS: Record<"free" | "starter" | "pro" | "team", PlanDefinition> 
     features: [
       "1 monitor",
       "3 keywords",
-      "See last 3 results",
       "Reddit only",
+      "24-hour refresh",
       "3-day history",
-      "24-hour refresh delay",
-      "AI analysis on first result",
+      "See last 3 results",
     ],
     limits: {
       monitors: 1,
@@ -105,170 +113,150 @@ export const PLANS: Record<"free" | "starter" | "pro" | "team", PlanDefinition> 
         sentiment: true,
         painPointCategories: false,
         askFeature: false,
-        unlimitedAiAnalysis: false, // Only first result
-        comprehensiveAnalysis: false, // Free tier: no comprehensive analysis
+        unlimitedAiAnalysis: false,
+        comprehensiveAnalysis: false,
       },
-      alerts: {
-        email: false,
-        slack: false,
-        webhooks: false,
-      },
-      exports: {
-        csv: false,
-        api: false,
-      },
+      alerts: { email: false, slack: false, webhooks: false },
+      exports: { csv: false, api: false },
     },
   },
-  starter: {
-    name: "Starter",
-    description: "For solo operators scaling past the basics",
-    price: 49,
-    annualPrice: 470, // 20% off monthly ($49 × 12 = $588, 20% discount = $470.40 → $470)
-    priceId: process.env.POLAR_STARTER_MONTHLY_PRODUCT_ID || "",
-    annualPriceId: process.env.POLAR_STARTER_ANNUAL_PRODUCT_ID || "",
+  solo: {
+    name: "Solo",
+    description: "For one operator watching their brand",
+    price: 39,
+    annualPrice: 374, // 20% off $468 list
+    priceId: process.env.POLAR_SOLO_MONTHLY_PRODUCT_ID || "",
+    annualPriceId: process.env.POLAR_SOLO_ANNUAL_PRODUCT_ID || "",
     trialDays: 14,
     features: [
-      "20 monitors",
-      "12 platforms (Pro + G2, Yelp, Amazon)",
-      "15 keywords per monitor",
-      "Unlimited results",
+      "10 monitors",
+      "9 platforms (Reddit, HN, IH, PH, Google, YouTube, GitHub, Trustpilot, X)",
+      "Unlimited keywords",
+      "6-hour refresh (+ real-time Reddit)",
       "90-day history",
-      "3-hour refresh cycle",
-      "Full AI analysis (Flash)",
-      "Daily email digests",
+      "Full AI analysis + Ask Kaulby",
+      "Daily email digest",
+      "Email + Slack/Discord alerts",
       "CSV export",
     ],
     limits: {
-      monitors: 20,
-      keywordsPerMonitor: 15,
+      monitors: 10,
+      keywordsPerMonitor: -1, // unlimited
       sourcesPerMonitor: 10,
       resultsHistoryDays: 90,
       resultsVisible: -1,
-      refreshDelayHours: 3,
-      // 12 platforms: Pro's 9 + G2/Yelp/Amazon review listings.
-      // Dev.to, Hashnode, AppStore, PlayStore stay Team-only differentiators.
-      platforms: [
-        "reddit", "hackernews", "indiehackers", "producthunt",
-        "googlereviews", "youtube", "github", "trustpilot", "x",
-        "g2", "yelp", "amazonreviews",
-      ],
+      refreshDelayHours: 6,
+      platforms: SOLO_PLATFORMS,
       digestFrequencies: ["daily"],
       aiFeatures: {
         sentiment: true,
         painPointCategories: true,
         askFeature: true,
         unlimitedAiAnalysis: true,
-        comprehensiveAnalysis: false, // Flash model, same as Pro today
+        comprehensiveAnalysis: false,
       },
-      alerts: {
-        email: true,
-        slack: true,
-        webhooks: false,
-      },
-      exports: {
-        csv: true,
-        api: false,
-      },
+      alerts: { email: true, slack: true, webhooks: false },
+      exports: { csv: true, api: false },
     },
   },
-  pro: {
-    name: "Pro",
-    description: "For power users and professionals",
-    price: 29,
-    annualPrice: 290, // 2 months free ($29 x 10)
-    priceId: process.env.POLAR_PRO_MONTHLY_PRODUCT_ID || "",
-    annualPriceId: process.env.POLAR_PRO_ANNUAL_PRODUCT_ID || "",
+  scale: {
+    name: "Scale",
+    description: "For the solo operator who outgrew Solo",
+    price: 79,
+    annualPrice: 758, // 20% off $948 list
+    priceId: process.env.POLAR_SCALE_MONTHLY_PRODUCT_ID || "",
+    annualPriceId: process.env.POLAR_SCALE_ANNUAL_PRODUCT_ID || "",
     trialDays: 14,
     features: [
-      "10 monitors",
-      "9 platforms (Reddit, HN, IH, PH, Google, YouTube, GitHub, Trustpilot, X)",
-      "10 keywords per monitor",
-      "Unlimited results",
+      "20 monitors",
+      "12 platforms (adds G2, Yelp, Amazon Reviews)",
+      "Unlimited keywords",
+      "4-hour refresh (+ real-time Reddit)",
       "90-day history",
-      "4-hour refresh cycle",
-      "Full AI analysis",
-      "Daily email digests",
+      "Full AI analysis + Ask Kaulby",
+      "Daily email digest",
+      "Email + Slack/Discord alerts",
       "CSV export",
     ],
     limits: {
-      monitors: 10,
-      keywordsPerMonitor: 10, // Reduced from 20 (still 2-3x more than competitors)
-      sourcesPerMonitor: 10,
+      monitors: 20,
+      keywordsPerMonitor: -1,
+      sourcesPerMonitor: 15,
       resultsHistoryDays: 90,
-      resultsVisible: -1, // unlimited
-      refreshDelayHours: 4, // 4-hour refresh cycle (6x faster than free)
-      platforms: ["reddit", "hackernews", "indiehackers", "producthunt", "googlereviews", "youtube", "github", "trustpilot", "x"],
-      digestFrequencies: ["daily"], // Pro only gets daily digest
+      resultsVisible: -1,
+      refreshDelayHours: 4,
+      platforms: SCALE_PLATFORMS,
+      digestFrequencies: ["daily"],
       aiFeatures: {
         sentiment: true,
         painPointCategories: true,
-        askFeature: true, // Pro users get Ask Q&A (rate-limited via token budget)
+        askFeature: true,
         unlimitedAiAnalysis: true,
-        comprehensiveAnalysis: false, // Pro tier: uses Gemini 2.5 Flash (3 separate calls)
+        comprehensiveAnalysis: false,
       },
-      alerts: {
-        email: true,
-        slack: true,
-        webhooks: false,
-      },
-      exports: {
-        csv: true,
-        api: false,
-      },
+      alerts: { email: true, slack: true, webhooks: false },
+      exports: { csv: true, api: false },
     },
   },
-  team: {
-    name: "Team",
-    description: "For growing teams and agencies",
-    price: 99,
-    annualPrice: 990, // 2 months free ($99 x 10)
-    priceId: process.env.POLAR_TEAM_MONTHLY_PRODUCT_ID || "",
-    annualPriceId: process.env.POLAR_TEAM_ANNUAL_PRODUCT_ID || "",
+  growth: {
+    name: "Growth",
+    description: "For teams and agencies operationalizing brand intelligence",
+    price: 149,
+    annualPrice: 1430, // 20% off $1788 list
+    priceId: process.env.POLAR_GROWTH_MONTHLY_PRODUCT_ID || "",
+    annualPriceId: process.env.POLAR_GROWTH_ANNUAL_PRODUCT_ID || "",
     trialDays: 14,
     features: [
-      "Everything in Pro",
       "30 monitors",
-      "All 16 platforms",
-      "20 keywords per monitor",
+      "All 16 platforms (adds Dev.to, Hashnode, App Store, Play Store)",
+      "Unlimited keywords",
+      "2-hour refresh (+ real-time Reddit & GitHub)",
       "1-year history",
-      "2-hour refresh cycle",
-      "Comprehensive AI analysis",
-      "Twice-daily email digests",
-      "Webhooks",
-      "3 team seats (+$20/user)",
-      "Priority support",
-      "API access",
+      "Comprehensive AI analyst reports",
+      "Twice-daily email digest",
+      "Custom webhooks + REST API access",
+      "3 team seats (+$20/mo each extra)",
+      "Shared workspace + role permissions",
     ],
     limits: {
       monitors: 30,
-      keywordsPerMonitor: 20, // Reduced from 35 (still 4x more than competitors)
+      keywordsPerMonitor: -1,
       sourcesPerMonitor: 25,
       resultsHistoryDays: 365,
-      resultsVisible: -1, // unlimited
-      refreshDelayHours: 2, // 2-hour refresh
-      platforms: ["reddit", "hackernews", "indiehackers", "producthunt", "googlereviews", "youtube", "github", "trustpilot", "x", "devto", "hashnode", "appstore", "playstore", "g2", "yelp", "amazonreviews"],
+      resultsVisible: -1,
+      refreshDelayHours: 2,
+      platforms: ALL_PLATFORMS,
       digestFrequencies: ["daily", "weekly", "monthly", "twice_daily"],
       aiFeatures: {
         sentiment: true,
         painPointCategories: true,
         askFeature: true,
         unlimitedAiAnalysis: true,
-        comprehensiveAnalysis: true, // Team tier: Gemini comprehensive analysis
+        comprehensiveAnalysis: true,
       },
-      alerts: {
-        email: true,
-        slack: true,
-        webhooks: true,
-      },
-      exports: {
-        csv: true,
-        api: true,
-      },
+      alerts: { email: true, slack: true, webhooks: true },
+      exports: { csv: true, api: true },
     },
   },
 } as const;
 
 export type PlanKey = keyof typeof PLANS;
+
+// Legacy enum values that existed in the DB's subscription_status enum before
+// the 2026-04-23 rename. No rows use them (no subscribers at rename time),
+// but drizzle's type inference still pulls them into column types. This
+// helper narrows any legacy value back to the current tier ladder.
+export function normalizePlanKey(
+  value: PlanKey | "starter" | "pro" | "team" | null | undefined
+): PlanKey {
+  if (value === "pro") return "solo";
+  if (value === "team") return "growth";
+  if (value === "starter") return "scale";
+  if (value === "free" || value === "solo" || value === "scale" || value === "growth") {
+    return value;
+  }
+  return "free";
+}
 
 // Get plan limits for a subscription status
 export function getPlanLimits(plan: PlanKey): PlanLimits {

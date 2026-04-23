@@ -114,18 +114,18 @@ describe("POST /api/ai/ask", () => {
     expect(res.status).toBe(401);
   });
 
-  it("returns 403 when user is not pro or team", async () => {
+  it("returns 403 when user is not on a paid tier", async () => {
     mockAuth.mockResolvedValue({ userId: "user_1" });
     mockGetUserPlan.mockResolvedValue("free");
     const res = await POST(makeRequest("POST", "/api/ai/ask", validBody));
     expect(res.status).toBe(403);
     const json = await res.json();
-    expect(json.error).toContain("Pro");
+    expect(json.error).toContain("Solo");
   });
 
   it("returns 429 when rate limited", async () => {
     mockAuth.mockResolvedValue({ userId: "user_1" });
-    mockGetUserPlan.mockResolvedValue("pro");
+    mockGetUserPlan.mockResolvedValue("solo");
     mockCheckAllRateLimits.mockResolvedValue({ allowed: false, reason: "Rate limit exceeded", retryAfter: 30 });
     const res = await POST(makeRequest("POST", "/api/ai/ask", validBody));
     expect(res.status).toBe(429);
@@ -133,7 +133,7 @@ describe("POST /api/ai/ask", () => {
 
   it("returns 429 when token budget exceeded", async () => {
     mockAuth.mockResolvedValue({ userId: "user_1" });
-    mockGetUserPlan.mockResolvedValue("pro");
+    mockGetUserPlan.mockResolvedValue("solo");
     mockCheckTokenBudget.mockResolvedValue({ allowed: false, used: 10000, limit: 10000, remaining: 0 });
     const res = await POST(makeRequest("POST", "/api/ai/ask", validBody));
     expect(res.status).toBe(429);
@@ -143,7 +143,7 @@ describe("POST /api/ai/ask", () => {
 
   it("returns 400 when question is invalid", async () => {
     mockAuth.mockResolvedValue({ userId: "user_1" });
-    mockGetUserPlan.mockResolvedValue("pro");
+    mockGetUserPlan.mockResolvedValue("solo");
     mockValidateInput.mockReturnValue({ valid: false, reason: "Question is too short" });
     const res = await POST(makeRequest("POST", "/api/ai/ask", { question: "hi" }));
     expect(res.status).toBe(400);
@@ -151,7 +151,7 @@ describe("POST /api/ai/ask", () => {
 
   it("returns cached answer when available", async () => {
     mockAuth.mockResolvedValue({ userId: "user_1" });
-    mockGetUserPlan.mockResolvedValue("pro");
+    mockGetUserPlan.mockResolvedValue("solo");
     mockGetCachedAnswer.mockReturnValue({
       answer: "Cached answer",
       citations: [],
@@ -165,7 +165,7 @@ describe("POST /api/ai/ask", () => {
 
   it("generates AI response successfully", async () => {
     mockAuth.mockResolvedValue({ userId: "user_1" });
-    mockGetUserPlan.mockResolvedValue("pro");
+    mockGetUserPlan.mockResolvedValue("solo");
     mockDbQuery.monitors.findMany.mockResolvedValue([
       { id: "mon_1", name: "Test Monitor", companyName: "Test Company" },
     ]);

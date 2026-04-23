@@ -192,9 +192,9 @@ export async function POST(req: Request) {
     const plan = await getUserPlan(userId);
     const bodyPeek: AskRequest = await req.clone().json().catch(() => ({})) as AskRequest;
     const isOnboarding = bodyPeek.conversationType === "onboarding";
-    if (!isOnboarding && plan !== "starter" && plan !== "pro" && plan !== "team") {
+    if (!isOnboarding && plan !== "scale" && plan !== "solo" && plan !== "growth") {
       return NextResponse.json(
-        { error: "This feature requires a Starter subscription or higher" },
+        { error: "This feature requires a Solo subscription or higher" },
         { status: 403 }
       );
     }
@@ -259,7 +259,7 @@ export async function POST(req: Request) {
     // onboarding script has its own voice design).
     const baseAskPrompt = body.conversationType === "onboarding" ? ONBOARDING_SYSTEM_PROMPT : SYSTEM_PROMPT;
     const activePrompt =
-      plan === "team" && body.conversationType !== "onboarding"
+      plan === "growth" && body.conversationType !== "onboarding"
         ? withPersonaVoice(baseAskPrompt)
         : baseAskPrompt;
     const messages: OpenAI.ChatCompletionMessageParam[] = [
@@ -295,7 +295,7 @@ export async function POST(req: Request) {
         tools: useTools ? AI_TOOLS : undefined,
         // COA 4 W1.7/W2.8: Team → Sonnet 4.5, Pro/Free → Flash. Was MODELS.premium
         // (still Flash) before this change; now Team gets the real Sonnet routing.
-        model: plan === "team" ? MODELS.team : MODELS.primary,
+        model: plan === "growth" ? MODELS.team : MODELS.primary,
         maxTokens: 1024,
         temperature: 0.5,
       });
@@ -458,7 +458,7 @@ async function handleConfirmation(
       { role: "user", content: `The user confirmed the action. Here is the result:\n${JSON.stringify(result.data)}` },
       { role: "user", content: "Summarize what was done in 1-2 sentences. Be conversational." },
     ],
-    model: plan === "team" ? MODELS.premium : MODELS.primary,
+    model: plan === "growth" ? MODELS.premium : MODELS.primary,
     maxTokens: 256,
     temperature: 0.5,
   });

@@ -37,7 +37,7 @@ const CATEGORY_META: Record<DetectionCategory, { color: string; icon: string }> 
 };
 
 export function DetectionKeywordsSettings({ subscriptionStatus }: DetectionKeywordsSettingsProps) {
-  const isPro = subscriptionStatus === "pro" || subscriptionStatus === "team";
+  const isPro = subscriptionStatus === "solo" || subscriptionStatus === "growth";
   const [entries, setEntries] = useState<KeywordEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);

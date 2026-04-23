@@ -141,8 +141,8 @@ export function OnboardingWizard({ isOpen, onClose, userName, userPlan = "free" 
   // Keyword limits by plan
   const keywordLimit =
     userPlan === "free" ? 3
-    : userPlan === "starter" ? 15
-    : userPlan === "pro" ? 20
+    : userPlan === "scale" ? 15
+    : userPlan === "solo" ? 20
     : 35;
   const isAtKeywordLimit = keywords.length >= keywordLimit;
 

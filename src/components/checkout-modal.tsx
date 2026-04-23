@@ -15,7 +15,7 @@ import type { BillingInterval } from "@/lib/plans";
 interface CheckoutModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  plan: "starter" | "pro" | "team";
+  plan: "scale" | "solo" | "growth";
   planName: string;
   billingInterval?: BillingInterval;
 }
@@ -73,9 +73,9 @@ export function CheckoutModal({
   };
 
   const priceByPlan = {
-    starter: { monthly: "$49/month", annual: "$470/year" },
-    pro: { monthly: "$29/month", annual: "$290/year" },
-    team: { monthly: "$99/month", annual: "$990/year" },
+    solo: { monthly: "$39/month", annual: "$374/year" },
+    scale: { monthly: "$79/month", annual: "$758/year" },
+    growth: { monthly: "$149/month", annual: "$1,430/year" },
   } as const;
   const price = priceByPlan[plan][billingInterval];
 

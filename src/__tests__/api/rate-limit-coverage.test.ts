@@ -37,6 +37,10 @@ const ALLOWLIST: Record<string, string> = {
   "src/app/api/webhooks/clerk/route.ts": "Clerk webhook; svix-signed, legitimate bursts during user sync",
   "src/app/api/webhooks/email/route.ts": "Resend webhook; signature-verified, legitimate bursts during campaign sends",
   "src/app/api/webhooks/polar/route.ts": "Polar webhook; signature-verified, legitimate bursts during subscription events",
+  "src/app/api/webhooks/github/route.ts": "GitHub webhook; HMAC-signed per monitor, sig is the abuse gate",
+
+  // Public marketing endpoints — no auth needed, edge-cached, low-sensitivity data
+  "src/app/api/founding-members/count/route.ts": "Public counter for pricing banner; 60s edge cache; no sensitive data",
 
   // OAuth callbacks — short-lived code-exchange endpoints, state-validated.
   // Abuse is self-limiting (codes expire in seconds and are single-use).

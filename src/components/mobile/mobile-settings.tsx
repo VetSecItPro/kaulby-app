@@ -106,8 +106,8 @@ const TIER_ORDER: Record<string, number> = {
 // Map plan display names to internal tier names
 const PLAN_TO_TIER: Record<string, string> = {
   "Free": "free",
-  "Pro": "pro",
-  "Team": "team",
+  "Pro": "solo",
+  "Team": "growth",
 };
 
 // Helper to determine if switching to a plan is an upgrade or downgrade

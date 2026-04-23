@@ -186,7 +186,7 @@ export const MOCK_INSIGHTS: MockInsight[] = [
     sentimentPositive: 3,
     sentimentNegative: 3,
     sentimentNeutral: 2,
-    keywords: ["pricing", "team", "ROI", "cost"],
+    keywords: ["pricing", "growth", "ROI", "cost"],
   },
   {
     topic: "AI Task Prioritization",

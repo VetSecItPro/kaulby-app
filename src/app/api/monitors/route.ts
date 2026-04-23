@@ -143,7 +143,7 @@ async function ensureDevUserExists(userId: string): Promise<void> {
     id: userId,
     email: `dev-${userId}@localhost`,
     name: "Dev User",
-    subscriptionStatus: "team", // Give full access in dev mode
+    subscriptionStatus: "growth", // Give full access in dev mode
   }).onConflictDoNothing();
 }
 

@@ -111,7 +111,7 @@ async function DiscoverContent() {
         { platformActivity: {}, hotTopics: [], totalTrending: 0 },
       ];
 
-  const isPro = userPlan === "pro" || userPlan === "team";
+  const isPro = userPlan === "solo" || userPlan === "growth";
 
   return (
     <DiscoverView

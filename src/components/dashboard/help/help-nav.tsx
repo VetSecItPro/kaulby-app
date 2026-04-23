@@ -38,7 +38,7 @@ const sections: SectionItem[] = [
   { id: "alerts", title: "Alerts & Notifications", icon: Bell },
   { id: "api", title: "API Access", icon: Key, badge: "Team" },
   { id: "billing", title: "Billing & Plans", icon: CreditCard },
-  { id: "team", title: "Team Management", icon: Users, badge: "Team" },
+  { id: "growth", title: "Team Management", icon: Users, badge: "Team" },
   { id: "account", title: "Account & Settings", icon: Settings },
   { id: "troubleshooting", title: "Troubleshooting", icon: Shield },
   { id: "contact", title: "Contact Support", icon: Mail },

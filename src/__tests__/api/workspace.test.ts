@@ -205,7 +205,7 @@ describe("POST /api/workspace", () => {
     mockAuth.mockResolvedValue({ userId: "user_1" });
     mockFindUserWithFallback.mockResolvedValue({
       id: "user_1",
-      subscriptionStatus: "pro",
+      subscriptionStatus: "solo",
       workspaceId: null,
     });
     const res = await POST(makeRequest("POST", "/api/workspace", { name: "My Team" }));
@@ -218,7 +218,7 @@ describe("POST /api/workspace", () => {
     mockAuth.mockResolvedValue({ userId: "user_1" });
     mockFindUserWithFallback.mockResolvedValue({
       id: "user_1",
-      subscriptionStatus: "team",
+      subscriptionStatus: "growth",
       workspaceId: "ws_existing",
     });
     const res = await POST(makeRequest("POST", "/api/workspace", { name: "My Team" }));
@@ -231,7 +231,7 @@ describe("POST /api/workspace", () => {
     mockAuth.mockResolvedValue({ userId: "user_1" });
     mockFindUserWithFallback.mockResolvedValue({
       id: "user_1",
-      subscriptionStatus: "team",
+      subscriptionStatus: "growth",
       workspaceId: null,
     });
     // tx.query.users.findFirst for race condition check (returns user without workspace)

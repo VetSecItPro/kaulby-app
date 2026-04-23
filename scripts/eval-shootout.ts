@@ -63,7 +63,7 @@ const CANDIDATE_MODELS: Record<string, { id: string; label: string; estCostPerCa
   },
 };
 
-const DEFAULT_MODELS = ["flash", "pro", "haiku", "sonnet"];
+const DEFAULT_MODELS = ["flash", "solo", "haiku", "sonnet"];
 
 // ---------------------------------------------------------------------------
 // Types

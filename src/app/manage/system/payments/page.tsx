@@ -83,7 +83,7 @@ async function getPaymentsData() {
   // Calculate MRR with annual vs monthly detection
   let mrr = 0;
   for (const user of paidUsersWithBilling) {
-    const plan = user.subscriptionStatus as "pro" | "team";
+    const plan = user.subscriptionStatus as "solo" | "growth";
     const monthlyPrice = PLANS[plan]?.price ?? 0;
     const annualPrice = PLANS[plan]?.annualPrice ?? 0;
 
@@ -111,8 +111,8 @@ async function getPaymentsData() {
 
   const totalUsers = totalUsersCount[0]?.count || 0;
   const freeUsers = subMap["free"] || 0;
-  const proUsers = subMap["pro"] || 0;
-  const teamUsers = subMap["team"] || 0;
+  const proUsers = subMap["solo"] || 0;
+  const teamUsers = subMap["growth"] || 0;
   const paidUsers = proUsers + teamUsers;
   const churnRate = totalUsers > 0
     ? ((totalUsers - paidUsers - freeUsers) / totalUsers) * 100
@@ -300,7 +300,7 @@ export default async function PaymentsPage() {
                   <Badge className="bg-primary">Pro</Badge>
                 </TableCell>
                 <TableCell className="text-right">{data.proUsers}</TableCell>
-                <TableCell className="text-right">${PLANS.pro.price}/mo</TableCell>
+                <TableCell className="text-right">${PLANS.solo.price}/mo</TableCell>
                 <TableCell className="text-right">
                   {data.totalUsers > 0 ? ((data.proUsers / data.totalUsers) * 100).toFixed(1) : 0}%
                 </TableCell>
@@ -310,7 +310,7 @@ export default async function PaymentsPage() {
                   <Badge className="bg-amber-500">Team</Badge>
                 </TableCell>
                 <TableCell className="text-right">{data.teamUsers}</TableCell>
-                <TableCell className="text-right">${PLANS.team.price}/mo</TableCell>
+                <TableCell className="text-right">${PLANS.growth.price}/mo</TableCell>
                 <TableCell className="text-right">
                   {data.totalUsers > 0 ? ((data.teamUsers / data.totalUsers) * 100).toFixed(1) : 0}%
                 </TableCell>
@@ -417,7 +417,7 @@ export default async function PaymentsPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge className={user.subscriptionStatus === "team" ? "bg-amber-500" : "bg-primary"}>
+                      <Badge className={user.subscriptionStatus === "growth" ? "bg-amber-500" : "bg-primary"}>
                         {user.subscriptionStatus}
                       </Badge>
                     </TableCell>

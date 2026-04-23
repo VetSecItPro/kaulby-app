@@ -100,8 +100,8 @@ const TIER_ORDER: Record<string, number> = {
 // Map plan display names to internal tier names
 const PLAN_TO_TIER: Record<string, string> = {
   "Free": "free",
-  "Pro": "pro",
-  "Team": "team",
+  "Pro": "solo",
+  "Team": "growth",
 };
 
 // Helper to determine if switching to a plan is an upgrade or downgrade
@@ -498,7 +498,7 @@ export function ResponsiveSettings({
           </div>
 
           {/* Scheduled PDF Reports - Team tier only */}
-          {subscriptionStatus === "team" && (
+          {subscriptionStatus === "growth" && (
             <div className="pt-4 border-t space-y-4">
               <div className="flex items-center gap-2">
                 <FileText className="h-4 w-4 text-muted-foreground" />
@@ -575,7 +575,7 @@ export function ResponsiveSettings({
           )}
 
           {/* Upsell for non-Team users */}
-          {subscriptionStatus !== "team" && (
+          {subscriptionStatus !== "growth" && (
             <div className="pt-4 border-t">
               <div className="flex items-center gap-2 text-muted-foreground">
                 <FileText className="h-4 w-4" />
@@ -606,7 +606,7 @@ export function ResponsiveSettings({
         </div>
         <IntegrationsSettings
           integrations={DEFAULT_INTEGRATIONS}
-          isPro={subscriptionStatus === "pro" || subscriptionStatus === "team"}
+          isPro={subscriptionStatus === "solo" || subscriptionStatus === "growth"}
           onConnect={async (integrationId) => {
             if (integrationId === "hubspot") {
               // Initiate HubSpot OAuth flow
@@ -677,13 +677,13 @@ export function ResponsiveSettings({
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">Monitors</p>
               <p className="text-2xl font-bold">{dataStats.monitors}<span className="text-sm font-normal text-muted-foreground">
-                {" "}/ {subscriptionStatus === "free" ? "1" : subscriptionStatus === "pro" ? "10" : "30"}
+                {" "}/ {subscriptionStatus === "free" ? "1" : subscriptionStatus === "solo" ? "10" : "30"}
               </span></p>
               <div className="h-2 rounded-full bg-muted overflow-hidden">
                 <div
                   className="h-full rounded-full bg-primary transition-all"
                   style={{
-                    width: `${Math.min(100, (dataStats.monitors / (subscriptionStatus === "free" ? 1 : subscriptionStatus === "pro" ? 10 : 30)) * 100)}%`,
+                    width: `${Math.min(100, (dataStats.monitors / (subscriptionStatus === "free" ? 1 : subscriptionStatus === "solo" ? 10 : 30)) * 100)}%`,
                   }}
                 />
               </div>
@@ -694,11 +694,11 @@ export function ResponsiveSettings({
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Platforms Available</p>
-              <p className="text-2xl font-bold">{subscriptionStatus === "free" ? "1" : subscriptionStatus === "pro" ? "9" : "17"}</p>
+              <p className="text-2xl font-bold">{subscriptionStatus === "free" ? "1" : subscriptionStatus === "solo" ? "9" : "17"}</p>
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Refresh Cycle</p>
-              <p className="text-2xl font-bold">{subscriptionStatus === "free" ? "24h" : subscriptionStatus === "pro" ? "4h" : "2h"}</p>
+              <p className="text-2xl font-bold">{subscriptionStatus === "free" ? "24h" : subscriptionStatus === "solo" ? "4h" : "2h"}</p>
             </div>
           </div>
 

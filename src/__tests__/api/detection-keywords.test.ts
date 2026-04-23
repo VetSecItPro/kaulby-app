@@ -33,7 +33,7 @@ vi.mock("@/lib/limits", () => ({
 
 vi.mock("@/lib/plans", () => ({
   getPlanLimits: (plan: string) => ({
-    aiFeatures: { unlimitedAiAnalysis: plan === "pro" || plan === "team" },
+    aiFeatures: { unlimitedAiAnalysis: plan === "solo" || plan === "growth" },
   }),
 }));
 
@@ -92,7 +92,7 @@ describe("GET /api/user/detection-keywords", () => {
 
   it("returns default keywords when user has none", async () => {
     mockAuth.mockResolvedValue({ userId: "user_1" });
-    mockGetUserPlan.mockResolvedValue("pro");
+    mockGetUserPlan.mockResolvedValue("solo");
     mockDbQuery.userDetectionKeywords.findMany.mockResolvedValue([]);
 
     const res = await GET();
@@ -105,7 +105,7 @@ describe("GET /api/user/detection-keywords", () => {
 
   it("returns existing keywords merged with new categories", async () => {
     mockAuth.mockResolvedValue({ userId: "user_1" });
-    mockGetUserPlan.mockResolvedValue("pro");
+    mockGetUserPlan.mockResolvedValue("solo");
     mockDbQuery.userDetectionKeywords.findMany.mockResolvedValue([
       { id: "dk_1", category: "pain_point", keywords: ["broken"], isActive: true },
     ]);
@@ -129,7 +129,7 @@ describe("PUT /api/user/detection-keywords", () => {
 
   it("returns 400 for invalid category", async () => {
     mockAuth.mockResolvedValue({ userId: "user_1" });
-    mockGetUserPlan.mockResolvedValue("pro");
+    mockGetUserPlan.mockResolvedValue("solo");
     const res = await PUT(makeRequest("PUT", { category: "invalid_cat", keywords: ["test"] }));
     expect(res.status).toBe(400);
     const json = await res.json();
@@ -139,7 +139,7 @@ describe("PUT /api/user/detection-keywords", () => {
 
   it("returns 400 when keywords is not an array", async () => {
     mockAuth.mockResolvedValue({ userId: "user_1" });
-    mockGetUserPlan.mockResolvedValue("pro");
+    mockGetUserPlan.mockResolvedValue("solo");
     const res = await PUT(makeRequest("PUT", { category: "pain_point", keywords: "not-array" }));
     expect(res.status).toBe(400);
     const json = await res.json();
@@ -156,7 +156,7 @@ describe("PUT /api/user/detection-keywords", () => {
 
   it("returns success for valid input with dedup/trim/lowercase", async () => {
     mockAuth.mockResolvedValue({ userId: "user_1" });
-    mockGetUserPlan.mockResolvedValue("pro");
+    mockGetUserPlan.mockResolvedValue("solo");
     mockDbQuery.userDetectionKeywords.findFirst.mockResolvedValue(null);
 
     const res = await PUT(makeRequest("PUT", { category: "pain_point", keywords: ["  Broken  ", "BROKEN", "crashing"] }));
@@ -183,7 +183,7 @@ describe("POST /api/user/detection-keywords", () => {
 
   it("returns message when already seeded", async () => {
     mockAuth.mockResolvedValue({ userId: "user_1" });
-    mockGetUserPlan.mockResolvedValue("pro");
+    mockGetUserPlan.mockResolvedValue("solo");
     mockDbQuery.userDetectionKeywords.findMany.mockResolvedValue([{ id: "dk_1" }]);
 
     const res = await POST();
@@ -194,7 +194,7 @@ describe("POST /api/user/detection-keywords", () => {
 
   it("seeds all categories for first-time setup", async () => {
     mockAuth.mockResolvedValue({ userId: "user_1" });
-    mockGetUserPlan.mockResolvedValue("pro");
+    mockGetUserPlan.mockResolvedValue("solo");
     mockDbQuery.userDetectionKeywords.findMany.mockResolvedValue([]);
 
     const res = await POST();

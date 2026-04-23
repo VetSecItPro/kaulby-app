@@ -73,12 +73,12 @@ export async function getUserPlan(userId: string): Promise<PlanKey> {
 
   // Admins always get Enterprise (Team) tier
   if (user.isAdmin) {
-    return "team";
+    return "growth";
   }
 
   // Check for active day pass - grants Pro-level access
   if (user.dayPassExpiresAt && new Date(user.dayPassExpiresAt) > new Date()) {
-    return "pro";
+    return "solo";
   }
 
   return (user.subscriptionStatus as PlanKey) || "free";
@@ -177,6 +177,16 @@ export function checkKeywordsLimit(
 ): LimitCheckResult {
   const limits = getPlanLimits(plan);
   const keywordCount = keywords.length;
+
+  // -1 = unlimited (paid tiers). Always allowed.
+  if (limits.keywordsPerMonitor === -1) {
+    return {
+      allowed: true,
+      current: keywordCount,
+      limit: -1,
+      message: "Unlimited keywords",
+    };
+  }
 
   if (keywordCount > limits.keywordsPerMonitor) {
     return {
@@ -313,11 +323,11 @@ export async function getRefreshDelay(userId: string): Promise<{
 
   // Build contextual message based on tier
   let message: string;
-  if (plan === "team") {
+  if (plan === "growth") {
     message = `Results refresh every ${limits.refreshDelayHours} hours.`;
-  } else if (plan === "pro") {
+  } else if (plan === "solo") {
     message = `Results refresh every ${limits.refreshDelayHours} hours. Upgrade to Team for 2-hour refresh.`;
-  } else if (plan === "starter") {
+  } else if (plan === "scale") {
     message = `Results refresh every ${limits.refreshDelayHours} hours. Upgrade to Team for 2-hour refresh.`;
   } else {
     message = `Results refresh every ${limits.refreshDelayHours} hours. Upgrade to Starter for 3-hour refresh.`;
@@ -399,8 +409,8 @@ export async function canAccessPlatform(
   const hasAccess = limits.platforms.includes(platform);
 
   // Find the minimum plan that includes this platform
-  let requiredPlan: PlanKey = "team";
-  for (const planKey of ["free", "pro", "team"] as PlanKey[]) {
+  let requiredPlan: PlanKey = "growth";
+  for (const planKey of ["free", "solo", "growth"] as PlanKey[]) {
     if (PLANS[planKey].limits.platforms.includes(platform)) {
       requiredPlan = planKey;
       break;
@@ -441,7 +451,7 @@ export async function canAccessFeature(
   const limits = getPlanLimits(plan);
 
   let hasAccess = false;
-  let requiredPlan: PlanKey = "team";
+  let requiredPlan: PlanKey = "growth";
 
   switch (feature) {
     case "sentiment":
@@ -450,31 +460,31 @@ export async function canAccessFeature(
       break;
     case "painPointCategories":
       hasAccess = limits.aiFeatures.painPointCategories;
-      requiredPlan = "pro";
+      requiredPlan = "solo";
       break;
     case "askFeature":
       hasAccess = limits.aiFeatures.askFeature;
-      requiredPlan = "pro";
+      requiredPlan = "solo";
       break;
     case "emailAlerts":
       hasAccess = limits.alerts.email;
-      requiredPlan = "pro";
+      requiredPlan = "solo";
       break;
     case "slack":
       hasAccess = limits.alerts.slack;
-      requiredPlan = "pro";
+      requiredPlan = "solo";
       break;
     case "webhooks":
       hasAccess = limits.alerts.webhooks;
-      requiredPlan = "team";
+      requiredPlan = "growth";
       break;
     case "csv":
       hasAccess = limits.exports.csv;
-      requiredPlan = "pro";
+      requiredPlan = "solo";
       break;
     case "api":
       hasAccess = limits.exports.api;
-      requiredPlan = "team";
+      requiredPlan = "growth";
       break;
   }
 
@@ -617,7 +627,7 @@ export function getUpgradePrompt(
     platformName?: string;
   }
 ): UpgradePrompt {
-  const suggestedPlan: PlanKey = currentPlan === "free" ? "pro" : "team";
+  const suggestedPlan: PlanKey = currentPlan === "free" ? "solo" : "growth";
   const planName = PLANS[suggestedPlan].name;
 
   const prompts: Record<UpgradeTrigger, {
@@ -673,20 +683,20 @@ export function getUpgradePrompt(
     refresh_delay: {
       title: "Get Faster Monitoring",
       description: "Your results are 24 hours delayed.",
-      benefit: `${planName} refreshes every ${suggestedPlan === "team" ? "2" : "4"} hours so you can respond while conversations are hot.`,
+      benefit: `${planName} refreshes every ${suggestedPlan === "growth" ? "2" : "4"} hours so you can respond while conversations are hot.`,
       urgency: "Fresh mentions get 10x more engagement than day-old ones.",
       ctaText: "Upgrade",
     },
     export: {
       title: "Export Your Data",
       description: "Download your results for reporting and analysis.",
-      benefit: `${planName} includes CSV export${suggestedPlan === "team" ? " and API access" : ""}.`,
+      benefit: `${planName} includes CSV export${suggestedPlan === "growth" ? " and API access" : ""}.`,
       ctaText: "Unlock exports",
     },
     alerts: {
       title: "Never Miss a Mention",
       description: "Get notified when new results come in.",
-      benefit: `${planName} includes ${suggestedPlan === "team" ? "email, Slack, and webhook" : "email and Slack"} alerts.`,
+      benefit: `${planName} includes ${suggestedPlan === "growth" ? "email, Slack, and webhook" : "email and Slack"} alerts.`,
       ctaText: "Enable alerts",
     },
   };
@@ -739,9 +749,9 @@ export async function prefetchUserPlans(
 
   for (const row of rows) {
     if (row.isAdmin) {
-      map.set(row.id, "team");
+      map.set(row.id, "growth");
     } else if (row.dayPassExpiresAt && new Date(row.dayPassExpiresAt) > now) {
-      map.set(row.id, "pro");
+      map.set(row.id, "solo");
     } else {
       map.set(row.id, (row.subscriptionStatus as PlanKey) || "free");
     }
@@ -841,9 +851,9 @@ export async function shouldProcessMonitor(
  */
 const MANUAL_SCAN_LIMITS: Record<PlanKey, { cooldownHours: number; dailyLimit: number }> = {
   free: { cooldownHours: 24, dailyLimit: 1 },
-  starter: { cooldownHours: 3, dailyLimit: 5 },
-  pro: { cooldownHours: 4, dailyLimit: 3 },
-  team: { cooldownHours: 1, dailyLimit: 12 },
+  solo: { cooldownHours: 4, dailyLimit: 3 },
+  scale: { cooldownHours: 3, dailyLimit: 6 },
+  growth: { cooldownHours: 1, dailyLimit: 12 },
 };
 
 interface ManualScanCheckResult {

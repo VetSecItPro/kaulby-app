@@ -32,7 +32,7 @@ export type AnalyticsEvents = {
     userId: string;
     resultId: string;
     sentiment: "positive" | "negative" | "neutral" | null;
-    tier: "pro" | "team";
+    tier: "solo" | "growth";
     costUsd: number;
   };
   "ai_analysis.failed": {
@@ -42,7 +42,7 @@ export type AnalyticsEvents = {
   };
   "payment.succeeded": {
     userId: string;
-    tier: "pro" | "team";
+    tier: "solo" | "growth";
     interval: "monthly" | "annual" | "day_pass";
   };
   "result.action_taken": {

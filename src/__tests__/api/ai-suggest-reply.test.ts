@@ -94,7 +94,7 @@ describe("POST /api/ai/suggest-reply", () => {
 
   it("returns 429 when rate limited", async () => {
     mockAuth.mockResolvedValue({ userId: "user_1" });
-    mockGetUserPlan.mockResolvedValue("pro");
+    mockGetUserPlan.mockResolvedValue("solo");
     mockCheckAllRateLimits.mockResolvedValue({ allowed: false, reason: "Rate limit exceeded", retryAfter: 30 });
     const res = await POST(makeRequest("POST", "/api/ai/suggest-reply", validBody));
     expect(res.status).toBe(429);
@@ -102,7 +102,7 @@ describe("POST /api/ai/suggest-reply", () => {
 
   it("returns 429 when token budget exceeded", async () => {
     mockAuth.mockResolvedValue({ userId: "user_1" });
-    mockGetUserPlan.mockResolvedValue("pro");
+    mockGetUserPlan.mockResolvedValue("solo");
     mockCheckTokenBudget.mockResolvedValue({ allowed: false, used: 10000, limit: 10000, remaining: 0 });
     const res = await POST(makeRequest("POST", "/api/ai/suggest-reply", validBody));
     expect(res.status).toBe(429);
@@ -110,7 +110,7 @@ describe("POST /api/ai/suggest-reply", () => {
 
   it("returns 400 when title is invalid", async () => {
     mockAuth.mockResolvedValue({ userId: "user_1" });
-    mockGetUserPlan.mockResolvedValue("pro");
+    mockGetUserPlan.mockResolvedValue("solo");
     mockValidateInput.mockReturnValue({ valid: false, reason: "Invalid title" });
     const res = await POST(makeRequest("POST", "/api/ai/suggest-reply", { ...validBody, title: "" }));
     expect(res.status).toBe(400);
@@ -118,7 +118,7 @@ describe("POST /api/ai/suggest-reply", () => {
 
   it("generates reply suggestions successfully", async () => {
     mockAuth.mockResolvedValue({ userId: "user_1" });
-    mockGetUserPlan.mockResolvedValue("pro");
+    mockGetUserPlan.mockResolvedValue("solo");
     mockJsonCompletion.mockResolvedValue({
       data: {
         suggestions: [

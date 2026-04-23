@@ -77,52 +77,52 @@ for (const envVar of requiredEnvVars) {
 section("Plan Configuration");
 
 test("Free plan has no product IDs", () => {
-  return POLAR_PLANS.free.productId === null && POLAR_PLANS.free.annualProductId === null;
+  return POLAR_PLANS.free.priceId === null && POLAR_PLANS.free.annualPriceId === null;
 });
 
 // Note: POLAR_PLANS reads env vars at module load time, so we test via getProductId instead
 test("getProductId returns Pro monthly product ID", () => {
-  const id = getProductId("pro", "monthly");
+  const id = getProductId("solo", "monthly");
   return !!id && id.length > 0;
 });
 
 test("getProductId returns Pro annual product ID", () => {
-  const id = getProductId("pro", "annual");
+  const id = getProductId("solo", "annual");
   return !!id && id.length > 0;
 });
 
 test("getProductId returns Team monthly product ID", () => {
-  const id = getProductId("team", "monthly");
+  const id = getProductId("growth", "monthly");
   return !!id && id.length > 0;
 });
 
 test("getProductId returns Team annual product ID", () => {
-  const id = getProductId("team", "annual");
+  const id = getProductId("growth", "annual");
   return !!id && id.length > 0;
 });
 
 test("Pro monthly price is $29", () => {
-  return POLAR_PLANS.pro.price === 29;
+  return POLAR_PLANS.solo.price === 29;
 });
 
 test("Pro annual price is $290 (2 months free)", () => {
-  return POLAR_PLANS.pro.annualPrice === 290;
+  return POLAR_PLANS.solo.annualPrice === 290;
 });
 
 test("Team monthly price is $99", () => {
-  return POLAR_PLANS.team.price === 99;
+  return POLAR_PLANS.growth.price === 99;
 });
 
 test("Team annual price is $990 (2 months free)", () => {
-  return POLAR_PLANS.team.annualPrice === 990;
+  return POLAR_PLANS.growth.annualPrice === 990;
 });
 
 test("Pro has 14-day trial", () => {
-  return POLAR_PLANS.pro.trialDays === 14;
+  return POLAR_PLANS.solo.trialDays === 14;
 });
 
 test("Team has 14-day trial", () => {
-  return POLAR_PLANS.team.trialDays === 14;
+  return POLAR_PLANS.growth.trialDays === 14;
 });
 
 // ============================================================
@@ -131,22 +131,22 @@ test("Team has 14-day trial", () => {
 section("Product ID Mapping (getProductId)");
 
 test("getProductId('pro', 'monthly') returns env var value", () => {
-  const id = getProductId("pro", "monthly");
+  const id = getProductId("solo", "monthly");
   return id === process.env.POLAR_PRO_MONTHLY_PRODUCT_ID;
 });
 
 test("getProductId('pro', 'annual') returns env var value", () => {
-  const id = getProductId("pro", "annual");
+  const id = getProductId("solo", "annual");
   return id === process.env.POLAR_PRO_ANNUAL_PRODUCT_ID;
 });
 
 test("getProductId('team', 'monthly') returns env var value", () => {
-  const id = getProductId("team", "monthly");
+  const id = getProductId("growth", "monthly");
   return id === process.env.POLAR_TEAM_MONTHLY_PRODUCT_ID;
 });
 
 test("getProductId('team', 'annual') returns env var value", () => {
-  const id = getProductId("team", "annual");
+  const id = getProductId("growth", "annual");
   return id === process.env.POLAR_TEAM_ANNUAL_PRODUCT_ID;
 });
 
@@ -162,22 +162,22 @@ section("Reverse Product ID Mapping (getPlanFromProductId)");
 
 test("Pro monthly product ID maps to 'pro'", () => {
   const plan = getPlanFromProductId(process.env.POLAR_PRO_MONTHLY_PRODUCT_ID || "");
-  return plan === "pro";
+  return plan === "solo";
 });
 
 test("Pro annual product ID maps to 'pro'", () => {
   const plan = getPlanFromProductId(process.env.POLAR_PRO_ANNUAL_PRODUCT_ID || "");
-  return plan === "pro";
+  return plan === "solo";
 });
 
 test("Team monthly product ID maps to 'team'", () => {
   const plan = getPlanFromProductId(process.env.POLAR_TEAM_MONTHLY_PRODUCT_ID || "");
-  return plan === "team";
+  return plan === "growth";
 });
 
 test("Team annual product ID maps to 'team'", () => {
   const plan = getPlanFromProductId(process.env.POLAR_TEAM_ANNUAL_PRODUCT_ID || "");
-  return plan === "team";
+  return plan === "growth";
 });
 
 test("Unknown product ID maps to 'free'", () => {
@@ -218,22 +218,22 @@ function validateCheckoutRequest(body: { plan?: string; billingInterval?: string
 }
 
 test("Valid pro monthly request passes", () => {
-  const result = validateCheckoutRequest({ plan: "pro", billingInterval: "monthly" });
+  const result = validateCheckoutRequest({ plan: "solo", billingInterval: "monthly" });
   return result.valid === true;
 });
 
 test("Valid pro annual request passes", () => {
-  const result = validateCheckoutRequest({ plan: "pro", billingInterval: "annual" });
+  const result = validateCheckoutRequest({ plan: "solo", billingInterval: "annual" });
   return result.valid === true;
 });
 
 test("Valid team monthly request passes", () => {
-  const result = validateCheckoutRequest({ plan: "team", billingInterval: "monthly" });
+  const result = validateCheckoutRequest({ plan: "growth", billingInterval: "monthly" });
   return result.valid === true;
 });
 
 test("Valid team annual request passes", () => {
-  const result = validateCheckoutRequest({ plan: "team", billingInterval: "annual" });
+  const result = validateCheckoutRequest({ plan: "growth", billingInterval: "annual" });
   return result.valid === true;
 });
 
@@ -253,12 +253,12 @@ test("Invalid plan fails", () => {
 });
 
 test("Invalid billing interval fails", () => {
-  const result = validateCheckoutRequest({ plan: "pro", billingInterval: "weekly" });
+  const result = validateCheckoutRequest({ plan: "solo", billingInterval: "weekly" });
   return result.valid === false && result.error === "Invalid billing interval";
 });
 
 test("Default billing interval is monthly", () => {
-  const result = validateCheckoutRequest({ plan: "pro" });
+  const result = validateCheckoutRequest({ plan: "solo" });
   return result.valid === true;
 });
 
@@ -267,17 +267,17 @@ test("Default billing interval is monthly", () => {
 // ============================================================
 section("Webhook Plan to Subscription Status Mapping");
 
-function mapPlanToSubscriptionStatus(plan: PolarPlanKey): "free" | "starter" | "pro" | "enterprise" {
-  if (plan === "team") return "enterprise";
+function mapPlanToSubscriptionStatus(plan: PolarPlanKey): "free" | "scale" | "solo" | "enterprise" {
+  if (plan === "growth") return "enterprise";
   return plan;
 }
 
 test("'pro' maps to 'pro' subscription status", () => {
-  return mapPlanToSubscriptionStatus("pro") === "pro";
+  return mapPlanToSubscriptionStatus("solo") === "solo";
 });
 
 test("'team' maps to 'enterprise' subscription status", () => {
-  return mapPlanToSubscriptionStatus("team") === "enterprise";
+  return mapPlanToSubscriptionStatus("growth") === "enterprise";
 });
 
 test("'free' maps to 'free' subscription status", () => {
@@ -289,7 +289,7 @@ test("'free' maps to 'free' subscription status", () => {
 // ============================================================
 section("Full Checkout Flow Simulation");
 
-function simulateCheckoutFlow(plan: "pro" | "team", interval: BillingInterval) {
+function simulateCheckoutFlow(plan: "solo" | "growth", interval: BillingInterval) {
   // Step 1: Get product ID (checkout API)
   const productId = getProductId(plan, interval);
   if (!productId) return { success: false, error: "No product ID" };
@@ -302,7 +302,7 @@ function simulateCheckoutFlow(plan: "pro" | "team", interval: BillingInterval) {
   const subscriptionStatus = mapPlanToSubscriptionStatus(detectedPlan);
 
   // Step 4: Verify the status matches expected
-  const expectedStatus = plan === "team" ? "enterprise" : plan;
+  const expectedStatus = plan === "growth" ? "enterprise" : plan;
   if (subscriptionStatus !== expectedStatus) {
     return { success: false, error: `Status mismatch: got ${subscriptionStatus}, expected ${expectedStatus}` };
   }
@@ -311,22 +311,22 @@ function simulateCheckoutFlow(plan: "pro" | "team", interval: BillingInterval) {
 }
 
 test("Pro monthly: checkout → webhook → correct status", () => {
-  const result = simulateCheckoutFlow("pro", "monthly");
-  return result.success && result.subscriptionStatus === "pro";
+  const result = simulateCheckoutFlow("solo", "monthly");
+  return result.success && result.subscriptionStatus === "solo";
 });
 
 test("Pro annual: checkout → webhook → correct status", () => {
-  const result = simulateCheckoutFlow("pro", "annual");
-  return result.success && result.subscriptionStatus === "pro";
+  const result = simulateCheckoutFlow("solo", "annual");
+  return result.success && result.subscriptionStatus === "solo";
 });
 
 test("Team monthly: checkout → webhook → correct status", () => {
-  const result = simulateCheckoutFlow("team", "monthly");
+  const result = simulateCheckoutFlow("growth", "monthly");
   return result.success && result.subscriptionStatus === "enterprise";
 });
 
 test("Team annual: checkout → webhook → correct status", () => {
-  const result = simulateCheckoutFlow("team", "annual");
+  const result = simulateCheckoutFlow("growth", "annual");
   return result.success && result.subscriptionStatus === "enterprise";
 });
 

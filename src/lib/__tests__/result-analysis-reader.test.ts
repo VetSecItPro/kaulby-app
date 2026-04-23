@@ -38,33 +38,33 @@ describe("getResultAnalysis", () => {
   it("returns the new-table analysis when present (object form)", async () => {
     resultAnalysesFindFirst.mockResolvedValueOnce({
       resultId: "r1",
-      analysis: { tier: "team", summary: "new" },
-      tier: "team",
+      analysis: { tier: "growth", summary: "new" },
+      tier: "growth",
     });
 
     const out = await getResultAnalysis("r1");
-    expect(out).toEqual({ tier: "team", summary: "new" });
+    expect(out).toEqual({ tier: "growth", summary: "new" });
     expect(resultsFindFirst).not.toHaveBeenCalled();
   });
 
   it("falls back to legacy stringified JSONB column when new table is empty", async () => {
     resultAnalysesFindFirst.mockResolvedValueOnce(null);
     resultsFindFirst.mockResolvedValueOnce({
-      aiAnalysis: JSON.stringify({ tier: "pro", summary: "legacy" }),
+      aiAnalysis: JSON.stringify({ tier: "solo", summary: "legacy" }),
     });
 
     const out = await getResultAnalysis("r1");
-    expect(out).toEqual({ tier: "pro", summary: "legacy" });
+    expect(out).toEqual({ tier: "solo", summary: "legacy" });
   });
 
   it("falls back to legacy column when value is already an object", async () => {
     resultAnalysesFindFirst.mockResolvedValueOnce(null);
     resultsFindFirst.mockResolvedValueOnce({
-      aiAnalysis: { tier: "pro", summary: "legacy-obj" },
+      aiAnalysis: { tier: "solo", summary: "legacy-obj" },
     });
 
     const out = await getResultAnalysis("r1");
-    expect(out).toEqual({ tier: "pro", summary: "legacy-obj" });
+    expect(out).toEqual({ tier: "solo", summary: "legacy-obj" });
   });
 
   it("returns null when neither table has a row", async () => {

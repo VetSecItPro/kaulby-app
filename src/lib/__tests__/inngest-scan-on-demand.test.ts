@@ -18,7 +18,7 @@ vi.mock("@/lib/db/schema", () => ({
 }));
 
 vi.mock("@/lib/limits", () => ({
-  getUserPlan: vi.fn().mockResolvedValue({ tier: "pro", platformAccess: ["reddit", "hackernews"] }),
+  getUserPlan: vi.fn().mockResolvedValue({ tier: "solo", platformAccess: ["reddit", "hackernews"] }),
   canAccessPlatformWithPlan: vi.fn().mockReturnValue(true),
 }));
 

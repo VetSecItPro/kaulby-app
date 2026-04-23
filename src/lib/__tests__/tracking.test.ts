@@ -84,11 +84,11 @@ describe("tracking", () => {
     // (they fail silently if PostHog is not available)
 
     it("upgradeClicked does not throw", () => {
-      expect(() => tracking.upgradeClicked("/pricing", "pro", "banner")).not.toThrow();
+      expect(() => tracking.upgradeClicked("/pricing", "solo", "banner")).not.toThrow();
     });
 
     it("upgradeCompleted does not throw", () => {
-      expect(() => tracking.upgradeCompleted("pro", true)).not.toThrow();
+      expect(() => tracking.upgradeCompleted("solo", true)).not.toThrow();
     });
 
     it("dayPassPurchased does not throw", () => {

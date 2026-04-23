@@ -69,7 +69,7 @@ describe("inngest reengagement", () => {
           name: "Inactive User",
           lastActiveAt: tenDaysAgo,
           reengagementEmailSentAt: null,
-          subscriptionStatus: "pro",
+          subscriptionStatus: "solo",
         },
       ]);
 

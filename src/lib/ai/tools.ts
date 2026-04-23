@@ -1903,7 +1903,7 @@ async function execDeleteSavedSearch(userId: string, searchId: string): Promise<
 
 async function execListWebhooks(userId: string): Promise<ToolResult> {
   const plan = await getUserPlan(userId);
-  if (plan !== "team") return { success: false, error: "Webhooks require a Team plan." };
+  if (plan !== "growth") return { success: false, error: "Webhooks require a Team plan." };
 
   const rows = await db.query.webhooks.findMany({
     where: eq(webhooks.userId, userId),
@@ -1915,7 +1915,7 @@ async function execListWebhooks(userId: string): Promise<ToolResult> {
 
 async function execCreateWebhook(userId: string, params: Record<string, unknown>): Promise<ToolResult> {
   const plan = await getUserPlan(userId);
-  if (plan !== "team") return { success: false, error: "Webhooks require a Team plan." };
+  if (plan !== "growth") return { success: false, error: "Webhooks require a Team plan." };
 
   const name = String(params.name || "").slice(0, 100);
   const url = String(params.url || "");
@@ -1955,7 +1955,7 @@ async function execCreateWebhook(userId: string, params: Record<string, unknown>
 
 async function execDeleteWebhook(userId: string, webhookId: string): Promise<ToolResult> {
   const plan = await getUserPlan(userId);
-  if (plan !== "team") return { success: false, error: "Webhooks require a Team plan." };
+  if (plan !== "growth") return { success: false, error: "Webhooks require a Team plan." };
 
   const webhook = await db.query.webhooks.findFirst({
     where: and(eq(webhooks.id, webhookId), eq(webhooks.userId, userId)),

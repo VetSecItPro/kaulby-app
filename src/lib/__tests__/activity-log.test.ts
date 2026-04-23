@@ -166,7 +166,7 @@ describe("activity-log", () => {
         metadata: {
           platform: "reddit",
           keywords: ["test", "monitor"],
-          tier: "pro",
+          tier: "solo",
         },
       });
 

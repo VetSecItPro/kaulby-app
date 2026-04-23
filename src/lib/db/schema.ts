@@ -17,6 +17,12 @@ import { relations, sql } from "drizzle-orm";
 // Enums
 export const subscriptionStatusEnum = pgEnum("subscription_status", [
   "free",
+  "solo",
+  "scale",
+  "growth",
+  // Legacy values — kept in enum because Postgres doesn't support DROP VALUE.
+  // No rows reference them (zero subscribers at rename time). TypeScript code
+  // only references the current 4 values via the PlanKey type.
   "starter",
   "pro",
   "team",
@@ -1278,7 +1284,7 @@ export const resultAnalyses = pgTable("result_analyses", {
     .primaryKey()
     .references(() => results.id, { onDelete: "cascade" }),
   analysis: jsonb("analysis").notNull(),
-  // "pro" | "team" | "batch" — mirrors the tier field inside the analysis JSON.
+  // "solo" | "growth" | "batch" — mirrors the tier field inside the analysis JSON.
   // Column-level so we can filter analyses by tier without deserializing JSON
   // (e.g. "find all team-tier analyses in the last hour").
   tier: text("tier").notNull(),

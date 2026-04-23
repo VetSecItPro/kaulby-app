@@ -74,7 +74,7 @@ async function AskContent() {
         "free" as const,
       ];
 
-  const isPro = userPlan === "pro" || userPlan === "team";
+  const isPro = userPlan === "solo" || userPlan === "growth";
 
   return (
     <div className="flex flex-col overflow-hidden -mx-4 -mt-4 -mb-20 lg:-mx-8 lg:-mt-6 lg:-mb-6 h-[calc(100dvh-3.5rem)] lg:h-screen">

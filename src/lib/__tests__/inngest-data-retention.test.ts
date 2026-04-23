@@ -181,8 +181,8 @@ describe("inngest data-retention", () => {
   describe("resetUsageCounters", () => {
     it("resets usage for users whose billing period has ended", async () => {
       mockFindMany.mockResolvedValueOnce([
-        { id: "user-1", currentPeriodStart: new Date("2025-01-01"), currentPeriodEnd: new Date("2025-01-31"), subscriptionStatus: "pro" },
-        { id: "user-2", currentPeriodStart: new Date("2025-01-01"), currentPeriodEnd: new Date("2025-01-31"), subscriptionStatus: "team" },
+        { id: "user-1", currentPeriodStart: new Date("2025-01-01"), currentPeriodEnd: new Date("2025-01-31"), subscriptionStatus: "solo" },
+        { id: "user-2", currentPeriodStart: new Date("2025-01-01"), currentPeriodEnd: new Date("2025-01-31"), subscriptionStatus: "growth" },
       ]);
 
       const usersToReset = await mockFindMany();

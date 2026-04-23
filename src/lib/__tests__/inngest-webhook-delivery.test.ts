@@ -57,18 +57,18 @@ describe("inngest/webhook-delivery", () => {
   });
 
   it("checks if user is team tier before sending", async () => {
-    mockQuery.mockResolvedValue({ subscriptionStatus: "team" });
+    mockQuery.mockResolvedValue({ subscriptionStatus: "growth" });
 
     const user = await mockQuery();
 
-    expect(user.subscriptionStatus).toBe("team");
+    expect(user.subscriptionStatus).toBe("growth");
   });
 
   it("skips delivery for non-team users", async () => {
-    mockQuery.mockResolvedValue({ subscriptionStatus: "pro" });
+    mockQuery.mockResolvedValue({ subscriptionStatus: "solo" });
 
     const user = await mockQuery();
-    const result = user.subscriptionStatus !== "team"
+    const result = user.subscriptionStatus !== "growth"
       ? { success: false, reason: "not_team" }
       : { success: true };
 

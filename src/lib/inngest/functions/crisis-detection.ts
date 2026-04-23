@@ -86,7 +86,7 @@ export const detectCrisis = inngest.createFunction(
     // Get all Team tier users with active monitors
     const teamUsers = await step.run("get-team-users", async () => {
       return pooledDb.query.users.findMany({
-        where: eq(users.subscriptionStatus, "team"),
+        where: eq(users.subscriptionStatus, "growth"),
         columns: {
           id: true,
           email: true,

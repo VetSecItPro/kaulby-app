@@ -97,13 +97,13 @@ describe("inngest monitor-reddit", () => {
         { id: "m2", userId: "user2", keywords: ["test"] },
       ];
       mockGetActiveMonitors.mockResolvedValueOnce(monitors);
-      mockPrefetchPlans.mockResolvedValueOnce({ user1: "pro", user2: "free" });
+      mockPrefetchPlans.mockResolvedValueOnce({ user1: "solo", user2: "free" });
 
       await mockGetActiveMonitors("reddit", mockStep);
       const planMap = await mockPrefetchPlans(monitors, mockStep);
 
       expect(mockPrefetchPlans).toHaveBeenCalledWith(monitors, mockStep);
-      expect(planMap).toEqual({ user1: "pro", user2: "free" });
+      expect(planMap).toEqual({ user1: "solo", user2: "free" });
     });
 
     it("applies stagger delay between monitors", async () => {

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { users, monitors, results, audiences, webhooks, alerts } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
-import { getPlanLimits } from "@/lib/plans";
+import { getPlanLimits, normalizePlanKey } from "@/lib/plans";
 
 import { checkApiRateLimit } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
@@ -114,7 +114,7 @@ export async function GET(request: Request) {
     }
 
     // Check export access based on tier
-    const plan = userData.subscriptionStatus || "free";
+    const plan = normalizePlanKey(userData.subscriptionStatus);
     const limits = getPlanLimits(plan);
 
     // CSV export requires Pro or Enterprise

@@ -407,9 +407,9 @@ function formatNumber(value: number) {
 
 function getPlanBadge(plan: string) {
   switch (plan) {
-    case "team":
+    case "growth":
       return <Badge className="bg-amber-500 text-white">Enterprise</Badge>;
-    case "pro":
+    case "solo":
       return <Badge className="bg-primary text-primary-foreground">Pro</Badge>;
     default:
       return <Badge variant="secondary">Free</Badge>;

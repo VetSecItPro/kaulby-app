@@ -27,7 +27,7 @@ export async function GET() {
     // Check if user has Team plan (with email fallback for Clerk ID mismatch)
     const user = await findUserWithFallback(userId);
 
-    if (!user || user.subscriptionStatus !== "team") {
+    if (!user || user.subscriptionStatus !== "growth") {
       return NextResponse.json(
         { error: "API access requires Team plan" },
         { status: 403 }
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
 
     // Find user with email fallback for Clerk ID mismatch
     const user = await findUserWithFallback(userId);
-    if (!user || user.subscriptionStatus !== "team") {
+    if (!user || user.subscriptionStatus !== "growth") {
       return NextResponse.json(
         { error: "API access requires Team plan" },
         { status: 403 }

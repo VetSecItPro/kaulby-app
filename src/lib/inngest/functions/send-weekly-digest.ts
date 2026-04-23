@@ -56,7 +56,7 @@ export async function runSendWeeklyDigest({ step }: { step: WeeklyDigestStep }) 
     const eligibleUsers = await step.run("get-eligible-users", async () => {
       return pooledDb.query.users.findMany({
         where: and(
-          inArray(users.subscriptionStatus, ["pro", "team"] as const),
+          inArray(users.subscriptionStatus, ["solo", "growth"] as const),
           eq(users.weeklyDigestEnabled, true),
           eq(users.digestPaused, false)
         ),

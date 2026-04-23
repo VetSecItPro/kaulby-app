@@ -165,7 +165,7 @@ describe("community-suggestions", () => {
 
     it("handles complex multi-keyword scenarios", () => {
       const monitors = [
-        { keywords: ["saas", "b2b", "team", "api", "cloud"] },
+        { keywords: ["saas", "b2b", "growth", "api", "cloud"] },
       ];
 
       const suggestions = getSuggestionsFromMonitors(monitors, [], 20);

@@ -93,7 +93,7 @@ async function SettingsContent() {
   };
 
   // In dev mode, default to team for full feature testing
-  const subscriptionStatus = isDev ? "team" : (user?.subscriptionStatus || "free");
+  const subscriptionStatus = isDev ? "growth" : (user?.subscriptionStatus || "free");
   // In dev mode, show actual user email if available, otherwise show a clear dev mode indicator
   const email = clerkEmail || user?.email || (isDev ? "dev-mode@kaulby.local" : "");
   const name = clerkUser?.fullName || user?.name || (isDev ? "Dev Mode User" : "");
@@ -138,7 +138,7 @@ async function SettingsContent() {
         "Daily digests",
         "CSV export",
       ],
-      current: subscriptionStatus === "pro",
+      current: subscriptionStatus === "solo",
       recommended: true,
     },
     {
@@ -157,7 +157,7 @@ async function SettingsContent() {
         "Webhooks + API access",
         "3 team seats (+$20/user)",
       ],
-      current: subscriptionStatus === "team",
+      current: subscriptionStatus === "growth",
     },
   ];
 

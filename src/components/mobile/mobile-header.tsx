@@ -44,9 +44,9 @@ function getPlanBadge(subscriptionStatus: string, hasActiveDayPass: boolean): { 
     return { label: "Day Pass", className: "bg-purple-500 text-white" };
   }
   switch (subscriptionStatus) {
-    case "team":
+    case "growth":
       return { label: "Team", className: "bg-amber-400 text-black" };
-    case "pro":
+    case "solo":
       return { label: "Pro", className: "bg-teal-500 text-black" };
     default:
       return { label: "Free", className: "bg-gray-500 text-white" };
@@ -173,7 +173,7 @@ export const MobileHeader = memo(function MobileHeader({
             <DayPassTimer expiresAt={dayPassExpiresAt} />
           )}
           {/* Workspace Role Badge */}
-          {subscriptionStatus === "team" && workspaceRole && (
+          {subscriptionStatus === "growth" && workspaceRole && (
             <span
               className={cn(
                 "px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide rounded-full",
@@ -270,7 +270,7 @@ export const MobileHeader = memo(function MobileHeader({
             <div className="border-t mx-4" />
 
             {/* Upgrade CTA - only for non-Team users */}
-            {subscriptionStatus !== "team" && (
+            {subscriptionStatus !== "growth" && (
               <div className="p-4">
                 <SheetClose asChild>
                   <Link

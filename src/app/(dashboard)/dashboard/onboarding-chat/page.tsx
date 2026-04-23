@@ -35,7 +35,7 @@ export default async function OnboardingChatPage() {
       })
     : null;
 
-  const userPlan = (user?.subscriptionStatus || (isLocalDev() ? "team" : "free")) as PlanKey;
+  const userPlan = (user?.subscriptionStatus || (isLocalDev() ? "growth" : "free")) as PlanKey;
   const userName = user?.name || undefined;
 
   return (

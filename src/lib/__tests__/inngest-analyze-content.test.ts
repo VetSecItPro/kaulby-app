@@ -75,7 +75,7 @@ vi.mock("@/lib/ai", () => ({
 
 vi.mock("@/lib/limits", () => ({
   incrementAiCallsCount: vi.fn().mockResolvedValue(undefined),
-  getUserPlan: vi.fn().mockResolvedValue("pro"),
+  getUserPlan: vi.fn().mockResolvedValue("solo"),
 }));
 
 vi.mock("@/lib/plans", () => ({
@@ -181,7 +181,7 @@ describe("inngest analyze-content", () => {
 
   it("uses cached analysis when available", async () => {
     const cachedData = {
-      tier: "pro",
+      tier: "solo",
       sentiment: "negative",
       sentimentScore: -0.8,
       conversationCategory: "complaint",
@@ -194,7 +194,7 @@ describe("inngest analyze-content", () => {
     const cached = await cache.get("ai-analysis:pro:abc123") as typeof cachedData | null;
 
     expect(cached).toBeTruthy();
-    expect(cached!.tier).toBe("pro");
+    expect(cached!.tier).toBe("solo");
     expect(cached!.aiSummary).toBe("Cached summary");
   });
 
@@ -262,21 +262,21 @@ describe("inngest analyze-content", () => {
     const values = vi.fn().mockReturnValue(valuesReturn);
     mockInsert.mockReturnValueOnce({ values });
 
-    const analysisPayload = { tier: "pro", sentiment: { sentiment: "negative", score: -0.8 } };
+    const analysisPayload = { tier: "solo", sentiment: { sentiment: "negative", score: -0.8 } };
     const insertChain = mockInsert();
     const valuesChain = insertChain.values({
       resultId: "r1",
       analysis: analysisPayload,
-      tier: "pro",
+      tier: "solo",
     });
     await valuesChain.onConflictDoUpdate({
       target: "resultId",
-      set: { analysis: analysisPayload, tier: "pro", updatedAt: "NOW()" },
+      set: { analysis: analysisPayload, tier: "solo", updatedAt: "NOW()" },
     });
 
     expect(mockInsert).toHaveBeenCalled();
     expect(values).toHaveBeenCalledWith(
-      expect.objectContaining({ resultId: "r1", tier: "pro", analysis: analysisPayload })
+      expect.objectContaining({ resultId: "r1", tier: "solo", analysis: analysisPayload })
     );
     expect(onConflictDoUpdate).toHaveBeenCalled();
   });
@@ -289,18 +289,18 @@ describe("inngest analyze-content", () => {
     const insertChain = mockInsert();
     await insertChain.values({
       resultId: "r1",
-      analysis: { tier: "team" },
-      tier: "team",
+      analysis: { tier: "growth" },
+      tier: "growth",
     }).onConflictDoUpdate({ target: "resultId", set: {} });
 
     expect(values).toHaveBeenCalledWith(
-      expect.objectContaining({ tier: "team" })
+      expect.objectContaining({ tier: "growth" })
     );
   });
 
   it("caches analysis results for reuse", async () => {
     const cacheData = {
-      tier: "pro",
+      tier: "solo",
       sentiment: "negative",
       sentimentScore: -0.8,
       painPointCategory: "performance",
@@ -313,7 +313,7 @@ describe("inngest analyze-content", () => {
     await vi.mocked(cache.set)("ai-analysis:pro:hash123", cacheData, 24 * 60 * 60 * 1000);
     expect(cache.set).toHaveBeenCalledWith(
       "ai-analysis:pro:hash123",
-      expect.objectContaining({ tier: "pro" }),
+      expect.objectContaining({ tier: "solo" }),
       86400000
     );
   });

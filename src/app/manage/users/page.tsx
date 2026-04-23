@@ -130,8 +130,8 @@ async function getPlanCounts() {
   return {
     all: counts.reduce((sum, c) => sum + c.count, 0),
     free: counts.find(c => c.status === "free")?.count || 0,
-    pro: counts.find(c => c.status === "pro")?.count || 0,
-    team: counts.find(c => c.status === "team")?.count || 0,
+    pro: counts.find(c => c.status === "solo")?.count || 0,
+    team: counts.find(c => c.status === "growth")?.count || 0,
   };
 }
 

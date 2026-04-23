@@ -88,7 +88,7 @@ export const sendWebhookEvent = inngest.createFunction(
       });
     });
 
-    if (user?.subscriptionStatus !== "team") {
+    if (user?.subscriptionStatus !== "growth") {
       logger.info("User is not team tier, skipping webhook delivery");
       return { success: false, reason: "not_team" };
     }

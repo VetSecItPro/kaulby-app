@@ -46,7 +46,7 @@ interface Feature {
 
 interface Plan {
   name: string;
-  key: "free" | "starter" | "starter" | "pro" | "team";
+  key: "free" | "solo" | "scale" | "growth";
   description: string;
   useCase: string;
   monthlyPrice: number;
@@ -58,125 +58,128 @@ interface Plan {
   trialDays: number;
 }
 
+// Plans ordered in ascending price — Free / Solo / Scale / Growth.
+// Each tier's features list emphasizes what makes THAT tier different from the one before,
+// not an exhaustive feature dump. The comparison table below handles the exhaustive view.
 const plans: Plan[] = [
   {
     name: "Free",
     key: "free",
-    description: "Get started with basic monitoring",
-    useCase: "Perfect for solo founders validating an idea on Reddit",
+    description: "Try Kaulby with a single monitor",
+    useCase: "Kick the tires before committing",
     monthlyPrice: 0,
     annualPrice: 0,
     trialDays: 0,
     features: [
       { text: "1 monitor" },
       { text: "Reddit only" },
-      { text: "3 keywords per monitor" },
-      { text: "View last 3 results" },
+      { text: "3 keywords" },
+      { text: "24-hour refresh" },
       { text: "3-day history" },
-      { text: "Basic AI analysis" },
-      { text: "Daily refresh cycle" },
+      { text: "Last 3 results visible" },
     ],
     cta: "Get Started Free",
     href: "/sign-up",
     popular: false,
   },
   {
-    name: "Starter",
-    key: "starter",
-    description: "For solo operators scaling past the basics",
-    useCase: "Ideal for founders with one product tracking customer conversations seriously",
-    monthlyPrice: 49,
-    annualPrice: 470,
-    trialDays: 14,
-    features: [
-      { text: "20 monitors" },
-      { text: "12 platforms (Pro + G2, Yelp, Amazon)" },
-      { text: "15 keywords per monitor" },
-      { text: "Unlimited results" },
-      { text: "90-day history" },
-      { text: "3-hour refresh cycle" },
-      { text: "Full AI analysis (Flash)" },
-      { text: "Daily email digests" },
-      { text: "CSV export" },
-    ],
-    cta: "Sign Up for Starter",
-    href: "/sign-up?plan=starter",
-    popular: false,
-  },
-  {
-    name: "Pro",
-    key: "pro",
-    description: "For power users and professionals",
-    useCase: "Built for marketers and product teams tracking brand mentions",
-    monthlyPrice: 29,
-    annualPrice: 290,
+    name: "Solo",
+    key: "solo",
+    description: "For one operator watching their brand",
+    useCase: "Solo founders, makers, independents",
+    monthlyPrice: 39,
+    annualPrice: 374,
     trialDays: 14,
     features: [
       { text: "10 monitors" },
-      { text: "9 platforms (Reddit, HN, IH, PH, Google, YouTube, GitHub, Trustpilot, X)" },
-      { text: "10 keywords per monitor" },
-      { text: "Unlimited results" },
+      { text: "9 platforms" },
+      { text: "Unlimited keywords" },
+      { text: "6-hour refresh + real-time Reddit" },
       { text: "90-day history" },
-      { text: "4-hour refresh cycle" },
-      { text: "Full AI analysis" },
-      { text: "Daily email digests" },
-      { text: "CSV export" },
+      { text: "Full AI + Ask Kaulby" },
+      { text: "Daily digest, Slack alerts, CSV export" },
     ],
-    cta: "Sign Up for Pro",
-    href: "/sign-up?plan=pro",
+    cta: "Start Solo",
+    href: "/sign-up?plan=solo",
+    popular: false,
+  },
+  {
+    name: "Scale",
+    key: "scale",
+    description: "For the operator who outgrew Solo",
+    useCase: "Growing brands, small agencies, review-heavy categories",
+    monthlyPrice: 79,
+    annualPrice: 758,
+    trialDays: 14,
+    features: [
+      { text: "20 monitors" },
+      { text: "12 platforms (adds G2, Yelp, Amazon)" },
+      { text: "Unlimited keywords" },
+      { text: "4-hour refresh + real-time Reddit" },
+      { text: "90-day history" },
+      { text: "Full AI + Ask Kaulby" },
+      { text: "Everything in Solo" },
+    ],
+    cta: "Start Scale",
+    href: "/sign-up?plan=scale",
     popular: true,
   },
   {
-    name: "Team",
-    key: "team",
-    description: "For growing teams and agencies",
-    useCase: "Designed for agencies and teams managing multiple brands",
-    monthlyPrice: 99,
-    annualPrice: 990,
+    name: "Growth",
+    key: "growth",
+    description: "For teams operationalizing brand intelligence",
+    useCase: "Agencies, multi-brand teams, dev-tool companies",
+    monthlyPrice: 149,
+    annualPrice: 1430,
     trialDays: 14,
     features: [
-      { text: "Everything in Pro" },
       { text: "30 monitors" },
-      { text: "All 16 platforms" },
-      { text: "20 keywords per monitor" },
+      { text: "All 16 platforms (adds Dev.to, Hashnode, App Store, Play Store)" },
+      { text: "2-hour refresh + real-time Reddit & GitHub" },
       { text: "1-year history" },
-      { text: "2-hour refresh cycle" },
-      { text: "Comprehensive AI analysis" },
-      { text: "Twice-daily email digests" },
-      { text: "Webhooks" },
-      { text: "3 team seats (+$20/user)" },
-      { text: "API access" },
+      { text: "Comprehensive AI analyst reports" },
+      { text: "Webhooks + REST API" },
+      { text: "3 seats (+$20/mo each extra)" },
+      { text: "Shared workspace + role permissions" },
     ],
-    cta: "Sign Up for Team",
-    href: "/sign-up?plan=team",
+    cta: "Start Growth",
+    href: "/sign-up?plan=growth",
     popular: false,
   },
 ];
 
-// Feature comparison table data
+// Feature comparison — only rows with real tier differences. No "✓ everywhere" noise.
+// Grouped mentally by buyer question: (1) what am I monitoring? (2) how smart is the AI?
+// (3) how does it reach me? (4) can my team use it?
 const featureComparison = [
-  { feature: "Monitors", free: "1", starter: "20", pro: "10", team: "30" },
-  { feature: "Keywords per monitor", free: "3", starter: "15", pro: "10", team: "20" },
-  { feature: "Platforms", free: "Reddit only", starter: "12 platforms", pro: "9 platforms", team: "All 16 platforms" },
-  { feature: "Results visible", free: "Last 3", starter: "Unlimited", pro: "Unlimited", team: "Unlimited" },
-  { feature: "History retention", free: "3 days", starter: "90 days", pro: "90 days", team: "1 year" },
-  { feature: "Refresh cycle", free: "24 hours", starter: "3 hours", pro: "4 hours", team: "2 hours" },
-  { feature: "AI sentiment analysis", free: true, starter: true, pro: true, team: true },
-  { feature: "AI pain point detection", free: false, starter: true, pro: true, team: true },
-  { feature: "Comprehensive AI analysis", free: false, starter: false, pro: false, team: true },
-  { feature: "Email digests", free: false, starter: "Daily", pro: "Daily", team: "Twice daily" },
-  { feature: "Slack/Discord alerts", free: false, starter: true, pro: true, team: true },
-  { feature: "Webhooks", free: false, starter: false, pro: false, team: true },
-  { feature: "CSV export", free: false, starter: true, pro: true, team: true },
-  { feature: "API access", free: false, starter: false, pro: false, team: true },
-  { feature: "Team seats", free: "-", starter: "1", pro: "1", team: "3 (+$20/user)" },
+  // MONITORING SCOPE
+  { feature: "Active monitors", free: "1", solo: "10", scale: "20", growth: "30" },
+  { feature: "Keywords per monitor", free: "3", solo: "Unlimited", scale: "Unlimited", growth: "Unlimited" },
+  { feature: "Platforms", free: "Reddit", solo: "9", scale: "12", growth: "All 16" },
+  { feature: "Refresh cadence", free: "24 hr", solo: "6 hr", scale: "4 hr", growth: "2 hr" },
+  { feature: "Real-time channels", free: "—", solo: "Reddit", scale: "Reddit", growth: "Reddit + GitHub" },
+  { feature: "Result history", free: "3 days", solo: "90 days", scale: "90 days", growth: "1 year" },
+  // AI INTELLIGENCE
+  { feature: "Sentiment + pain-point detection", free: "Sentiment only", solo: true, scale: true, growth: true },
+  { feature: "Ask Kaulby (AI chat)", free: false, solo: true, scale: true, growth: true },
+  { feature: "Comprehensive AI analyst reports", free: false, solo: false, scale: false, growth: true },
+  { feature: "Email digest", free: "—", solo: "Daily", scale: "Daily", growth: "Twice daily" },
+  // DELIVERY & INTEGRATIONS
+  { feature: "Email + Slack/Discord alerts", free: false, solo: true, scale: true, growth: true },
+  { feature: "CSV export", free: false, solo: true, scale: true, growth: true },
+  { feature: "Custom webhooks", free: false, solo: false, scale: false, growth: true },
+  { feature: "REST API access", free: false, solo: false, scale: false, growth: true },
+  // TEAM
+  { feature: "Seats included", free: "1", solo: "1", scale: "1", growth: "3" },
+  { feature: "Additional seats", free: "—", solo: "—", scale: "—", growth: "+$20/mo each" },
+  { feature: "Shared workspace + roles", free: false, solo: false, scale: false, growth: true },
 ];
 
 export default function PricingPage() {
   const { isSignedIn } = useAuth();
   const [checkoutOpen, setCheckoutOpen] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<"starter" | "pro" | "team">("pro");
-  const [selectedPlanName, setSelectedPlanName] = useState("Pro");
+  const [selectedPlan, setSelectedPlan] = useState<"scale" | "solo" | "growth">("solo");
+  const [selectedPlanName, setSelectedPlanName] = useState("Scale");
   const [billingInterval, setBillingInterval] = useState<BillingInterval>("monthly");
   const [dayPassStatus, setDayPassStatus] = useState<{
     active: boolean;
@@ -233,7 +236,7 @@ export default function PricingPage() {
     }
   };
 
-  const handleUpgrade = (planKey: "starter" | "pro" | "team", planName: string) => {
+  const handleUpgrade = (planKey: "scale" | "solo" | "growth", planName: string) => {
     // Funnel analytics: capture plan CTA clicks on the pricing page so we can
     // correlate intent -> checkout open -> payment.succeeded (server event).
     trackClient("ui.cta_clicked", {
@@ -462,7 +465,7 @@ export default function PricingPage() {
                       <Button
                         className="w-full"
                         variant={plan.popular ? "default" : "outline"}
-                        onClick={() => handleUpgrade(plan.key as "starter" | "pro" | "team", plan.name)}
+                        onClick={() => handleUpgrade(plan.key as "scale" | "solo" | "growth", plan.name)}
                       >
                         {plan.cta}
                       </Button>
@@ -479,12 +482,12 @@ export default function PricingPage() {
               </Badge>
               <CardHeader>
                 <CardTitle className="text-amber-900 dark:text-amber-100">Day Pass</CardTitle>
-                <CardDescription>Need Pro just for today?</CardDescription>
+                <CardDescription>Try Scale features for 24 hours</CardDescription>
               </CardHeader>
               <CardContent className="flex-1">
                 <div className="mb-6 min-h-[72px]">
                   <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-bold text-amber-700 dark:text-amber-300">$10</span>
+                    <span className="text-4xl font-bold text-amber-700 dark:text-amber-300">$15</span>
                     <span className="text-amber-600 dark:text-amber-400">/24hr</span>
                   </div>
                   <p className="text-sm text-amber-700/80 dark:text-amber-300/80 mt-1">
@@ -495,11 +498,11 @@ export default function PricingPage() {
                 <ul className="space-y-3">
                   <li className="flex items-center gap-2">
                     <Check className="h-4 w-4 text-amber-600 shrink-0" />
-                    <span className="text-sm">Full Pro features</span>
+                    <span className="text-sm">Full Scale features</span>
                   </li>
                   <li className="flex items-center gap-2">
                     <Check className="h-4 w-4 text-amber-600 shrink-0" />
-                    <span className="text-sm">9 Pro platforms</span>
+                    <span className="text-sm">12 platforms</span>
                   </li>
                   <li className="flex items-center gap-2">
                     <Check className="h-4 w-4 text-amber-600 shrink-0" />
@@ -533,7 +536,7 @@ export default function PricingPage() {
                       onClick={handleDayPassPurchase}
                       disabled={isPurchasingDayPass}
                     >
-                      {isPurchasingDayPass ? "Processing..." : "Get Day Pass - $10"}
+                      {isPurchasingDayPass ? "Processing..." : "Get Day Pass - $15"}
                     </Button>
                   )
                 )}
@@ -552,70 +555,40 @@ export default function PricingPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
-                      <TableHead className="w-[200px]">Feature</TableHead>
+                      <TableHead className="w-[240px]">Feature</TableHead>
                       <TableHead className="text-center">Free</TableHead>
-                      <TableHead className="text-center">Starter</TableHead>
+                      <TableHead className="text-center">Solo</TableHead>
                       <TableHead className="text-center bg-primary/5">
                         <div className="flex items-center justify-center gap-1">
-                          Pro
+                          Scale
                           <Badge variant="secondary" className="text-[10px]">Popular</Badge>
                         </div>
                       </TableHead>
-                      <TableHead className="text-center">Team</TableHead>
+                      <TableHead className="text-center">Growth</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {featureComparison.map((row) => (
-                      <TableRow key={row.feature}>
-                        <TableCell className="font-medium">{row.feature}</TableCell>
-                        <TableCell className="text-center">
-                          {typeof row.free === "boolean" ? (
-                            row.free ? (
-                              <Check className="h-4 w-4 text-green-500 mx-auto" />
-                            ) : (
-                              <X className="h-4 w-4 text-muted-foreground/50 mx-auto" />
-                            )
+                    {featureComparison.map((row) => {
+                      const renderCell = (v: string | boolean) => {
+                        if (typeof v === "boolean") {
+                          return v ? (
+                            <Check className="h-4 w-4 text-green-500 mx-auto" />
                           ) : (
-                            <span className="text-sm">{row.free}</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {typeof row.starter === "boolean" ? (
-                            row.starter ? (
-                              <Check className="h-4 w-4 text-green-500 mx-auto" />
-                            ) : (
-                              <X className="h-4 w-4 text-muted-foreground/50 mx-auto" />
-                            )
-                          ) : (
-                            <span className="text-sm">{row.starter}</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-center bg-primary/5">
-                          {typeof row.pro === "boolean" ? (
-                            row.pro ? (
-                              <Check className="h-4 w-4 text-green-500 mx-auto" />
-                            ) : (
-                              <X className="h-4 w-4 text-muted-foreground/50 mx-auto" />
-                            )
-                          ) : (
-                            <span className="text-sm">{row.pro}</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {typeof row.team === "boolean" ? (
-                            row.team ? (
-                              <Check className="h-4 w-4 text-green-500 mx-auto" />
-                            ) : (
-                              <X className="h-4 w-4 text-muted-foreground/50 mx-auto" />
-                            )
-                          ) : row.team === "Coming soon" ? (
-                            <span className="text-xs text-muted-foreground">{row.team}</span>
-                          ) : (
-                            <span className="text-sm">{row.team}</span>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                            <X className="h-4 w-4 text-muted-foreground/50 mx-auto" />
+                          );
+                        }
+                        return <span className="text-sm">{v}</span>;
+                      };
+                      return (
+                        <TableRow key={row.feature}>
+                          <TableCell className="font-medium">{row.feature}</TableCell>
+                          <TableCell className="text-center">{renderCell(row.free)}</TableCell>
+                          <TableCell className="text-center">{renderCell(row.solo)}</TableCell>
+                          <TableCell className="text-center bg-primary/5">{renderCell(row.scale)}</TableCell>
+                          <TableCell className="text-center">{renderCell(row.growth)}</TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
@@ -628,15 +601,15 @@ export default function PricingPage() {
           {/* FAQ Schema for SEO/AEO */}
           <FAQSchema faqs={[
             { question: "Is there really a free plan?", answer: "Yes! The Free plan is free forever. You can monitor 1 keyword on Reddit with basic AI analysis and daily refresh." },
-            { question: "How does the 14-day free trial work?", answer: "Pro and Team plans include a 14-day free trial with full access to all features. You won't be charged until the trial ends. Cancel anytime during the trial." },
+            { question: "How does the 14-day free trial work?", answer: "All paid plans include a 14-day free trial with full access to all features. You won't be charged until the trial ends. Cancel anytime during the trial." },
             { question: "Can I cancel anytime?", answer: "Yes, you can cancel your subscription at any time from your account settings. You'll continue to have access until the end of your current billing period." },
             { question: "What platforms does Kaulby monitor?", answer: "Kaulby monitors 16 platforms: Reddit, Hacker News, Indie Hackers, Product Hunt, Google Reviews, YouTube, GitHub, Trustpilot, X (Twitter), Dev.to, Hashnode, App Store, Play Store, G2, Yelp, and Amazon Reviews." },
-            { question: "How is Kaulby different from Brand24?", answer: "Kaulby focuses on community monitoring with AI-powered pain point detection and sentiment analysis across 16 platforms, starting at $29/mo. Brand24 starts at $99/mo and focuses on broader social media monitoring." },
+            { question: "How is Kaulby different from Brand24?", answer: "Kaulby focuses on community monitoring with AI-powered pain point detection and sentiment analysis across 16 platforms, starting at $39/mo. Brand24 starts at $99/mo and focuses on broader social media monitoring." },
             { question: "What replaced GummySearch?", answer: "Kaulby is the best GummySearch alternative. It covers Reddit plus 16 additional platforms, includes AI-powered analysis, and offers a free tier. Visit kaulbyapp.com/gummysearch for migration details." },
-            { question: "What is the Day Pass?", answer: "The Day Pass gives you full Pro access for 24 hours with a one-time $10 payment. Perfect for quick research without committing to a subscription." },
-            { question: "How often are results refreshed?", answer: "Free plans refresh once per day. Pro plans refresh every 4 hours. Team plans refresh every 2 hours with twice-daily email digests." },
+            { question: "What is the Day Pass?", answer: "The Day Pass gives you full Scale-level access for 24 hours with a one-time $15 payment. Perfect for quick research without committing to a subscription." },
+            { question: "How often are results refreshed?", answer: "Free plans refresh once per day. Scale refreshes every 4 hours. Growth refreshes every 2 hours with twice-daily email digests." },
             { question: "Is my data secure?", answer: "Yes. We use industry-standard encryption, are GDPR compliant, and you can export or delete your data at any time." },
-            { question: "What is the Founding Members program?", answer: "The first 1,000 Pro and Team subscribers become Founding Members and lock in their current price forever, even when prices increase." },
+            { question: "What is the Founding Members program?", answer: "The first 1,000 paid subscribers become Founding Members and lock in their current price forever, even when prices increase." },
             { question: "What happens when I hit my monitor or keyword limit?", answer: "Your existing monitors keep working normally. You won't be able to create new monitors or add more keywords until you upgrade. We'll prompt you to upgrade when you reach your limit." },
             { question: "Do you offer startup or nonprofit discounts?", answer: "Yes! We offer case-by-case discounts for startups, nonprofits, and open-source projects. Contact us at support@kaulbyapp.com." },
           ]} />
@@ -659,7 +632,7 @@ export default function PricingPage() {
               <AccordionItem value="trial">
                 <AccordionTrigger>How does the 14-day free trial work?</AccordionTrigger>
                 <AccordionContent>
-                  Pro and Team plans include a 14-day free trial with full access to all features.
+                  All paid plans include a 14-day free trial with full access to all features.
                   You&apos;ll enter payment details at checkout, but you won&apos;t be charged until the trial ends.
                   Cancel anytime during the trial and you won&apos;t be billed.
                 </AccordionContent>
@@ -699,14 +672,14 @@ export default function PricingPage() {
               <AccordionItem value="refresh">
                 <AccordionTrigger>How often are results refreshed?</AccordionTrigger>
                 <AccordionContent>
-                  Free plans refresh once per day. Pro plans refresh every 4 hours (6x faster).
-                  Team plans refresh every 2 hours (12x faster than free) with twice-daily email digests.
+                  Free plans refresh once per day. Scale refreshes every 4 hours (6x faster).
+                  Growth refreshes every 2 hours (12x faster than free) with twice-daily email digests.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="day-pass">
                 <AccordionTrigger>What is the Day Pass?</AccordionTrigger>
                 <AccordionContent>
-                  The Day Pass gives you full Pro access for 24 hours with a one-time $10 payment.
+                  The Day Pass gives you full Scale-level access for 24 hours with a one-time $15 payment.
                   Perfect for when you need to quickly check all platforms or do intensive research
                   without committing to a subscription. You can purchase multiple Day Passes whenever needed.
                 </AccordionContent>
@@ -722,7 +695,7 @@ export default function PricingPage() {
               <AccordionItem value="founding-member">
                 <AccordionTrigger>What is the Founding Members program?</AccordionTrigger>
                 <AccordionContent>
-                  The first 1,000 Pro and Team subscribers become Founding Members and lock in their current
+                  The first 1,000 paid subscribers become Founding Members and lock in their current
                   price forever, even when we raise prices in the future. This is our way of thanking early
                   supporters who believe in Kaulby.
                 </AccordionContent>

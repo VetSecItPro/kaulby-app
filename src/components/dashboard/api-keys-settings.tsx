@@ -53,7 +53,7 @@ export function ApiKeysSettings({ subscriptionStatus }: ApiKeysSettingsProps) {
   const [copied, setCopied] = useState(false);
   const [showKey, setShowKey] = useState(false);
 
-  const isEnterprise = subscriptionStatus === "team";
+  const isEnterprise = subscriptionStatus === "growth";
 
   // Fetch API keys
   useEffect(() => {

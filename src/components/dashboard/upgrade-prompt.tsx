@@ -455,7 +455,7 @@ export function RefreshDelayBanner({ delayHours, nextRefreshAt, subscriptionStat
   }, [nextRefreshAt, delayHours]);
 
   // Team is on the highest tier - no upgrade available
-  const isHighestTier = subscriptionStatus === "team";
+  const isHighestTier = subscriptionStatus === "growth";
 
   return (
     <div className="inline-flex items-center gap-3 px-3 py-1.5 rounded-md bg-gradient-to-r from-yellow-500/20 to-amber-500/20 border border-yellow-600/40">

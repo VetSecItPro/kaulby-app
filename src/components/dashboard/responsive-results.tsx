@@ -299,7 +299,7 @@ function DesktopResultsView(props: ViewProps) {
     totalPages,
   });
 
-  const canExport = planInfo?.plan === "pro" || planInfo?.plan === "team";
+  const canExport = planInfo?.plan === "solo" || planInfo?.plan === "growth";
 
   // Extract keywords from all monitors for highlighting
   const allKeywords = useMemo(() => {

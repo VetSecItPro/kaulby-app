@@ -1405,7 +1405,7 @@ export default function HelpPage() {
       </section>
 
       {/* ==================== SECTION 8: TEAM MANAGEMENT ==================== */}
-      <section id="team" className="scroll-mt-20 space-y-6">
+      <section id="growth" className="scroll-mt-20 space-y-6">
         <div className="flex items-center gap-3 border-b pb-4">
           <div className="p-2 rounded-lg bg-primary/10">
             <Users className="h-6 w-6 text-primary" />

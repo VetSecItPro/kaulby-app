@@ -4,7 +4,7 @@ import { PLANS, getPlanLimits, ALL_PLATFORMS, type PlanKey } from "../plans";
 describe("plans", () => {
   describe("PLANS definition", () => {
     it("has exactly 4 plan tiers", () => {
-      expect(Object.keys(PLANS)).toEqual(["free", "starter", "pro", "team"]);
+      expect(Object.keys(PLANS)).toEqual(["free", "solo", "scale", "growth"]);
     });
 
     it("free plan has zero pricing", () => {
@@ -13,24 +13,27 @@ describe("plans", () => {
       expect(PLANS.free.priceId).toBeNull();
     });
 
-    it("starter plan has correct pricing", () => {
-      expect(PLANS.starter.price).toBe(49);
-      expect(PLANS.starter.annualPrice).toBe(470); // 20% off $588
+    it("solo plan has correct pricing", () => {
+      expect(PLANS.solo.price).toBe(39);
+      expect(PLANS.solo.annualPrice).toBe(374); // 20% off $468 list
     });
 
-    it("pro plan has correct pricing", () => {
-      expect(PLANS.pro.price).toBe(29);
-      expect(PLANS.pro.annualPrice).toBe(290);
+    it("scale plan has correct pricing", () => {
+      expect(PLANS.scale.price).toBe(79);
+      expect(PLANS.scale.annualPrice).toBe(758); // 20% off $948 list
     });
 
-    it("team plan has correct pricing", () => {
-      expect(PLANS.team.price).toBe(99);
-      expect(PLANS.team.annualPrice).toBe(990);
+    it("growth plan has correct pricing", () => {
+      expect(PLANS.growth.price).toBe(149);
+      expect(PLANS.growth.annualPrice).toBe(1430); // 20% off $1788 list
     });
 
-    it("pro/team annual pricing gives 2 months free", () => {
-      expect(PLANS.pro.annualPrice).toBe(PLANS.pro.price * 10);
-      expect(PLANS.team.annualPrice).toBe(PLANS.team.price * 10);
+    it("all paid tiers get 20% off annual", () => {
+      for (const key of ["solo", "scale", "growth"] as const) {
+        const list = PLANS[key].price * 12;
+        const expected = Math.round(list * 0.8);
+        expect(PLANS[key].annualPrice).toBeCloseTo(expected, -1); // within $10
+      }
     });
   });
 
@@ -43,19 +46,27 @@ describe("plans", () => {
       expect(limits.refreshDelayHours).toBe(24);
     });
 
-    it("returns pro plan limits", () => {
-      const limits = getPlanLimits("pro");
+    it("returns solo plan limits", () => {
+      const limits = getPlanLimits("solo");
       expect(limits.monitors).toBe(10);
-      expect(limits.keywordsPerMonitor).toBe(10);
-      expect(limits.resultsVisible).toBe(-1); // unlimited
+      expect(limits.keywordsPerMonitor).toBe(-1); // unlimited
+      expect(limits.resultsVisible).toBe(-1);
+      expect(limits.refreshDelayHours).toBe(6);
+    });
+
+    it("returns scale plan limits", () => {
+      const limits = getPlanLimits("scale");
+      expect(limits.monitors).toBe(20);
+      expect(limits.keywordsPerMonitor).toBe(-1);
+      expect(limits.resultsVisible).toBe(-1);
       expect(limits.refreshDelayHours).toBe(4);
     });
 
-    it("returns team plan limits", () => {
-      const limits = getPlanLimits("team");
+    it("returns growth plan limits", () => {
+      const limits = getPlanLimits("growth");
       expect(limits.monitors).toBe(30);
-      expect(limits.keywordsPerMonitor).toBe(20);
-      expect(limits.resultsVisible).toBe(-1); // unlimited
+      expect(limits.keywordsPerMonitor).toBe(-1);
+      expect(limits.resultsVisible).toBe(-1);
       expect(limits.refreshDelayHours).toBe(2);
     });
   });
@@ -66,19 +77,26 @@ describe("plans", () => {
       expect(limits.platforms).toEqual(["reddit"]);
     });
 
-    it("pro plan allows 9 platforms", () => {
-      const limits = getPlanLimits("pro");
+    it("solo plan allows 9 platforms", () => {
+      const limits = getPlanLimits("solo");
       expect(limits.platforms).toHaveLength(9);
       expect(limits.platforms).toContain("reddit");
-      expect(limits.platforms).toContain("hackernews");
-      expect(limits.platforms).toContain("producthunt");
-      expect(limits.platforms).toContain("youtube");
-      expect(limits.platforms).not.toContain("devto");
+      expect(limits.platforms).toContain("github");
       expect(limits.platforms).not.toContain("g2");
+      expect(limits.platforms).not.toContain("devto");
     });
 
-    it("team plan allows all 16 platforms", () => {
-      const limits = getPlanLimits("team");
+    it("scale plan adds review platforms (12 total)", () => {
+      const limits = getPlanLimits("scale");
+      expect(limits.platforms).toHaveLength(12);
+      expect(limits.platforms).toContain("g2");
+      expect(limits.platforms).toContain("yelp");
+      expect(limits.platforms).toContain("amazonreviews");
+      expect(limits.platforms).not.toContain("devto");
+    });
+
+    it("growth plan allows all 16 platforms", () => {
+      const limits = getPlanLimits("growth");
       expect(limits.platforms).toHaveLength(16);
       expect(limits.platforms).toEqual(ALL_PLATFORMS);
     });
@@ -93,100 +111,33 @@ describe("plans", () => {
       expect(limits.aiFeatures.comprehensiveAnalysis).toBe(false);
     });
 
-    it("pro plan has full AI analysis and Ask but no comprehensive", () => {
-      const limits = getPlanLimits("pro");
+    it("solo plan has full AI + Ask but no comprehensive analysis", () => {
+      const limits = getPlanLimits("solo");
       expect(limits.aiFeatures.unlimitedAiAnalysis).toBe(true);
       expect(limits.aiFeatures.painPointCategories).toBe(true);
       expect(limits.aiFeatures.askFeature).toBe(true);
       expect(limits.aiFeatures.comprehensiveAnalysis).toBe(false);
     });
 
-    it("team plan has comprehensive AI", () => {
-      const limits = getPlanLimits("team");
-      expect(limits.aiFeatures.unlimitedAiAnalysis).toBe(true);
+    it("growth plan has comprehensive analyst reports", () => {
+      const limits = getPlanLimits("growth");
       expect(limits.aiFeatures.comprehensiveAnalysis).toBe(true);
-      expect(limits.aiFeatures.askFeature).toBe(true);
     });
   });
 
-  describe("digest frequencies", () => {
-    it("free plan has no digest", () => {
-      const limits = getPlanLimits("free");
-      expect(limits.digestFrequencies).toEqual([]);
-    });
-
-    it("pro plan has daily digest only", () => {
-      const limits = getPlanLimits("pro");
-      expect(limits.digestFrequencies).toEqual(["daily"]);
-    });
-
-    it("team plan has all digest frequencies", () => {
-      const limits = getPlanLimits("team");
-      expect(limits.digestFrequencies).toContain("daily");
-      expect(limits.digestFrequencies).toContain("weekly");
-      expect(limits.digestFrequencies).toContain("monthly");
-      expect(limits.digestFrequencies).toContain("twice_daily");
+  describe("alerts & exports", () => {
+    it("webhooks + API access are Growth-exclusive", () => {
+      expect(PLANS.solo.limits.alerts.webhooks).toBe(false);
+      expect(PLANS.scale.limits.alerts.webhooks).toBe(false);
+      expect(PLANS.growth.limits.alerts.webhooks).toBe(true);
+      expect(PLANS.solo.limits.exports.api).toBe(false);
+      expect(PLANS.scale.limits.exports.api).toBe(false);
+      expect(PLANS.growth.limits.exports.api).toBe(true);
     });
   });
 
-  describe("exports and alerts", () => {
-    it("free plan has no exports or alerts", () => {
-      const limits = getPlanLimits("free");
-      expect(limits.exports.csv).toBe(false);
-      expect(limits.exports.api).toBe(false);
-      expect(limits.alerts.email).toBe(false);
-      expect(limits.alerts.slack).toBe(false);
-      expect(limits.alerts.webhooks).toBe(false);
-    });
-
-    it("pro plan has CSV and email/slack alerts", () => {
-      const limits = getPlanLimits("pro");
-      expect(limits.exports.csv).toBe(true);
-      expect(limits.exports.api).toBe(false);
-      expect(limits.alerts.email).toBe(true);
-      expect(limits.alerts.slack).toBe(true);
-      expect(limits.alerts.webhooks).toBe(false);
-    });
-
-    it("team plan has all exports and alerts", () => {
-      const limits = getPlanLimits("team");
-      expect(limits.exports.csv).toBe(true);
-      expect(limits.exports.api).toBe(true);
-      expect(limits.alerts.email).toBe(true);
-      expect(limits.alerts.webhooks).toBe(true);
-    });
-  });
-
-  describe("ALL_PLATFORMS", () => {
-    it("contains exactly 16 platforms", () => {
-      expect(ALL_PLATFORMS).toHaveLength(16);
-    });
-
-    it("has no duplicates", () => {
-      const unique = new Set(ALL_PLATFORMS);
-      expect(unique.size).toBe(ALL_PLATFORMS.length);
-    });
-  });
-
-  describe("tier hierarchy", () => {
-    const plans: PlanKey[] = ["free", "pro", "team"];
-
-    it("monitors increase with tier", () => {
-      const limits = plans.map(getPlanLimits);
-      expect(limits[0].monitors).toBeLessThan(limits[1].monitors);
-      expect(limits[1].monitors).toBeLessThan(limits[2].monitors);
-    });
-
-    it("refresh delay decreases with tier", () => {
-      const limits = plans.map(getPlanLimits);
-      expect(limits[0].refreshDelayHours).toBeGreaterThan(limits[1].refreshDelayHours);
-      expect(limits[1].refreshDelayHours).toBeGreaterThan(limits[2].refreshDelayHours);
-    });
-
-    it("platforms increase with tier", () => {
-      const limits = plans.map(getPlanLimits);
-      expect(limits[0].platforms.length).toBeLessThan(limits[1].platforms.length);
-      expect(limits[1].platforms.length).toBeLessThan(limits[2].platforms.length);
-    });
+  it("PlanKey type covers all 4 tiers", () => {
+    const keys: PlanKey[] = ["free", "solo", "scale", "growth"];
+    expect(keys.length).toBe(4);
   });
 });

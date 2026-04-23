@@ -70,7 +70,7 @@ export async function runDetectInactiveUsers({
   const inactiveUsers = await step.run("find-inactive-users", async () => {
     return pooledDb.query.users.findMany({
       where: and(
-        gte(users.subscriptionStatus, "pro"),
+        gte(users.subscriptionStatus, "solo"),
         eq(users.isBanned, false),
         isNull(users.deletionRequestedAt),
         lt(users.lastActiveAt, inactiveThreshold)
