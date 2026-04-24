@@ -200,6 +200,11 @@ export async function jsonCompletion<T>(params: {
   messages: OpenAI.ChatCompletionMessageParam[];
   model?: string;
 }): Promise<{ data: T; meta: Omit<Awaited<ReturnType<typeof completion>>, "content"> }> {
+  // SEC-LLM-014: Cap total input size to prevent financial DoS on OpenRouter credits
+  const totalChars = params.messages.reduce((sum, m) => sum + (typeof m.content === "string" ? m.content.length : 0), 0);
+  if (totalChars > 50000) {
+    throw new Error(`Input too large: ${totalChars} chars (max 50000)`);
+  }
   // 2026-04-23 shootout found Gemini 2.5 Pro had 45/90 errors (50% failure
   // rate) on JSON analyzer calls — root cause was Pro's verbose reasoning
   // truncating at the default 1024-token ceiling mid-JSON. Bumping to 2048

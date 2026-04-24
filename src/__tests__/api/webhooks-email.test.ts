@@ -43,6 +43,7 @@ vi.mock("resend", () => ({
 
 import { POST } from "@/app/api/webhooks/email/route";
 import { NextRequest } from "next/server";
+import crypto from "crypto";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -68,12 +69,14 @@ describe("POST /api/webhooks/email", () => {
         text: "Hello",
       },
     };
+    const rawBody = JSON.stringify(body);
+    const signature = crypto.createHmac("sha256", "test-webhook-secret").update(rawBody).digest("hex");
     const req = new NextRequest("http://localhost/api/webhooks/email", {
       method: "POST",
-      body: JSON.stringify(body),
+      body: rawBody,
       headers: {
         "Content-Type": "application/json",
-        "resend-signature": "test-webhook-secret",
+        "resend-signature": signature,
       },
     });
 

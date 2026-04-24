@@ -4,6 +4,7 @@ import { eq, and, count, gte, sql } from "drizzle-orm";
 import { PLANS, PlanKey, Platform, getPlanLimits, getEffectiveTier } from "@/lib/plans";
 import { currentUser } from "@clerk/nextjs/server";
 import { getCachedUserPlan } from "@/lib/server-cache";
+import { logger } from "@/lib/logger";
 
 // ============================================================================
 // TYPES
@@ -45,6 +46,10 @@ async function findUserByIdOrEmail(userId: string) {
         user = await db.query.users.findFirst({
           where: eq(users.email, clerkEmail),
         });
+        // SEC-LOGIC-001: Flag Clerk ID mismatch so we can detect auth drift in prod
+        if (user) {
+          logger.debug("[findUserByIdOrEmail] Resolved user via email fallback (Clerk ID mismatch)", { userId, clerkEmail });
+        }
       }
     } catch {
       // currentUser() may fail in some contexts - that's okay, just return undefined
@@ -69,7 +74,11 @@ export async function getUserPlan(userId: string): Promise<PlanKey> {
   // Slow path: user not found by ID, try email fallback (Clerk ID mismatch)
   const user = await findUserByIdOrEmail(userId);
 
-  if (!user) return "free";
+  if (!user) {
+    // SEC-LOGIC-001: Surface silent downgrades (Clerk/DB drift) instead of masking as "free"
+    logger.warn("[getUserPlan] User not found by ID or email — returning free tier", { userId });
+    return "free";
+  }
 
   // Admins always get Enterprise (Team) tier
   if (user.isAdmin) {

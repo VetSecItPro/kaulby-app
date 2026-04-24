@@ -140,8 +140,10 @@ export async function PATCH(
 
     const parsed = updateMonitorSchema.safeParse(body);
     if (!parsed.success) {
+      // SEC-API-002: Don't leak schema details in response; log server-side instead
+      logger.warn("[PATCH /api/monitors/[id]] Invalid input", { error: parsed.error.flatten() });
       return NextResponse.json(
-        { error: "Invalid input", details: parsed.error.flatten() },
+        { error: "Invalid input" },
         { status: 400 }
       );
     }
