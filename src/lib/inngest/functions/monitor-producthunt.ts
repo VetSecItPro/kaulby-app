@@ -1,5 +1,6 @@
 import { inngest } from "../client";
 import { logger } from "@/lib/logger";
+import { includesTokenized } from "@/lib/content-matcher";
 import {
   getActiveMonitors,
   prefetchPlans,
@@ -183,12 +184,12 @@ export const monitorProductHunt = inngest.createFunction(
         continue;
       }
 
-      // Check each post for keyword matches
+      // Check each post for keyword matches. Use includesTokenized so that
+      // multi-word keywords like "Anthropic Claude" also match posts that
+      // mention both tokens independently.
       const matchingPosts = posts.filter((post) => {
         const text = `${post.name} ${post.tagline} ${post.description || ""}`.toLowerCase();
-        return monitor.keywords.some((keyword) =>
-          text.includes(keyword.toLowerCase())
-        );
+        return monitor.keywords.some((keyword) => includesTokenized(text, keyword));
       });
 
       // Save matching posts as results (batch operation)

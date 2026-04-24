@@ -34,6 +34,24 @@ interface MatchResult {
 }
 
 /**
+ * Does the text include `needle`, either as a full phrase OR (for multi-word
+ * needles) as all tokens present independently in any order?
+ *
+ * Why: a user monitoring "Anthropic Claude" wants matches on posts that say
+ * "Claude just dropped" or "Anthropic announced" — the strict substring check
+ * `text.includes("anthropic claude")` misses those. Single-word needles keep
+ * exact-substring semantics (no behavior change).
+ */
+export function includesTokenized(text: string, needle: string): boolean {
+  const n = needle.toLowerCase().trim();
+  if (!n) return false;
+  if (text.includes(n)) return true;
+  if (!n.includes(" ")) return false;
+  const tokens = n.split(/\s+/).filter((t) => t.length >= 2);
+  return tokens.length > 0 && tokens.every((t) => text.includes(t));
+}
+
+/**
  * Check if content matches monitor criteria.
  * Supports:
  * - Company name direct mentions
@@ -60,11 +78,9 @@ export function contentMatchesMonitor(
     };
   }
 
-  // Priority 1: Company name direct mention
+  // Priority 1: Company name direct mention (phrase OR all tokens)
   if (config.companyName) {
-    const companyLower = config.companyName.toLowerCase();
-
-    if (text.includes(companyLower)) {
+    if (includesTokenized(text, config.companyName)) {
       return {
         matches: true,
         matchedTerms: [config.companyName],
@@ -76,7 +92,7 @@ export function contentMatchesMonitor(
     // Priority 2: Company name + keyword combination
     if (config.keywords && config.keywords.length > 0) {
       for (const keyword of config.keywords) {
-        if (text.includes(keyword.toLowerCase()) && text.includes(companyLower)) {
+        if (includesTokenized(text, keyword) && includesTokenized(text, config.companyName)) {
           return {
             matches: true,
             matchedTerms: [config.companyName, keyword],
@@ -93,7 +109,7 @@ export function contentMatchesMonitor(
     const matchedKeywords: string[] = [];
 
     for (const keyword of config.keywords) {
-      if (text.includes(keyword.toLowerCase())) {
+      if (includesTokenized(text, keyword)) {
         matchedKeywords.push(keyword);
       }
     }

@@ -134,4 +134,47 @@ describe("contentMatchesMonitor", () => {
       expect(result.matches).toBe(false);
     });
   });
+
+  describe("multi-word tokenized matching", () => {
+    it("matches multi-word companyName when all tokens appear (order-independent)", () => {
+      const result = contentMatchesMonitor(
+        { title: "Claude 4.7 just dropped", body: "Anthropic announced it today." },
+        { companyName: "Anthropic Claude", keywords: [] }
+      );
+      expect(result.matches).toBe(true);
+      expect(result.matchType).toBe("company");
+    });
+
+    it("matches multi-word keyword when all tokens appear separately", () => {
+      const result = contentMatchesMonitor(
+        { title: "The new Claude API is impressive", body: "Anthropic's latest model." },
+        { companyName: null, keywords: ["Anthropic Claude"] }
+      );
+      expect(result.matches).toBe(true);
+    });
+
+    it("still matches multi-word keyword as an exact phrase", () => {
+      const result = contentMatchesMonitor(
+        { title: "Anthropic Claude is my favorite AI assistant", body: "" },
+        { companyName: null, keywords: ["Anthropic Claude"] }
+      );
+      expect(result.matches).toBe(true);
+    });
+
+    it("does NOT match when only one of multiple tokens appears", () => {
+      const result = contentMatchesMonitor(
+        { title: "I love Claude for coding", body: "Really enjoying it." },
+        { companyName: "Anthropic Claude", keywords: [] }
+      );
+      expect(result.matches).toBe(false);
+    });
+
+    it("single-word keyword keeps exact substring semantics", () => {
+      const result = contentMatchesMonitor(
+        { title: "teslacoil review", body: "" },
+        { companyName: null, keywords: ["Tesla"] }
+      );
+      expect(result.matches).toBe(true);
+    });
+  });
 });
