@@ -75,57 +75,75 @@ type TestMonitor = {
   keywords: string[];
   platforms: PlatformKey[];
   purpose: string;
+  // URL-required platforms need specific identifiers. Monitor-yelp/g2/amazon/
+  // playstore scanners read these from monitor.platformUrls. Setting them
+  // ensures the scan actually fires instead of the "missing URL" loud-fail
+  // path (which we also verified separately).
+  platformUrls?: Partial<Record<PlatformKey, string>>;
 };
 
+// 3rd-run test matrix: all-new companies. Every monitor includes reddit (user
+// ask: confirm reddit works alongside other platforms). URL-required platforms
+// get real identifiers via platformUrls so the scanner actually fires.
 const TEST_MONITORS: TestMonitor[] = [
   {
-    label: "starbucks-restaurant",
-    companyName: "Starbucks",
-    keywords: ["Starbucks", "Starbucks coffee"],
-    platforms: ["googlereviews", "yelp", "trustpilot"],
-    purpose: "Restaurant chain — review platforms (replaces Chipotle test)",
+    label: "panera-restaurant",
+    companyName: "Panera Bread",
+    keywords: ["Panera Bread", "Panera"],
+    platforms: ["reddit", "googlereviews", "yelp", "trustpilot"],
+    purpose: "Restaurant chain — tests reddit + review platforms",
   },
   {
-    label: "instagram-consumer-app",
-    companyName: "Instagram",
-    keywords: ["Instagram", "Instagram app"],
-    platforms: ["appstore", "playstore"],
-    purpose: "Consumer social app — app stores (replaces Duolingo test)",
+    label: "spotify-mobile",
+    companyName: "Spotify",
+    keywords: ["Spotify"],
+    platforms: ["reddit", "appstore", "playstore"],
+    platformUrls: {
+      appstore: "324684580",
+      playstore: "com.spotify.music",
+    },
+    purpose: "Consumer mobile app — tests reddit + app stores with IDs",
   },
   {
-    label: "kubernetes-devplatform",
-    companyName: "Kubernetes",
-    keywords: ["Kubernetes", "kubernetes", "k8s"],
-    platforms: ["github", "hackernews", "devto", "hashnode"],
-    purpose: "Dev platform — technical communities (replaces Stripe test)",
+    label: "anthropic-claude-dev",
+    companyName: "Anthropic Claude",
+    keywords: ["Anthropic Claude", "Claude API", "claude.ai"],
+    platforms: ["reddit", "github", "hackernews", "devto", "hashnode"],
+    purpose: "AI dev tool — tests reddit + all technical communities",
   },
   {
-    label: "iphone15-consumer",
-    companyName: "iPhone 15",
-    keywords: ["iPhone 15", "iPhone 15 Pro"],
-    platforms: ["youtube", "reddit", "x"],
-    purpose: "Consumer tech — video/social (replaces Tesla test)",
+    label: "airpods-pro-product",
+    companyName: "AirPods Pro",
+    keywords: ["AirPods Pro", "AirPods Pro 2"],
+    platforms: ["reddit", "youtube", "amazonreviews"],
+    platformUrls: {
+      amazonreviews: "B0D1XD1ZV3", // AirPods Pro 2 ASIN
+    },
+    purpose: "Consumer product — tests reddit + youtube + Amazon (with ASIN)",
   },
   {
-    label: "jira-enterprise",
-    companyName: "Atlassian Jira",
-    keywords: ["Atlassian Jira", "Jira software"],
-    platforms: ["g2", "trustpilot"],
-    purpose: "Enterprise tool — review platforms (replaces Salesforce test)",
+    label: "zoom-b2b",
+    companyName: "Zoom",
+    keywords: ["Zoom video", "Zoom meeting"],
+    platforms: ["reddit", "g2", "trustpilot"],
+    purpose: "B2B SaaS — tests reddit + g2 (companyName fallback) + trustpilot",
   },
   {
-    label: "kindle-paperwhite-product",
-    companyName: "Kindle Paperwhite",
-    keywords: ["Kindle Paperwhite", "Kindle reader"],
-    platforms: ["amazonreviews"],
-    purpose: "Product reviews — Amazon (replaces Atomic Habits test)",
+    label: "github-copilot-launch",
+    companyName: "GitHub Copilot",
+    keywords: ["GitHub Copilot", "Copilot"],
+    platforms: ["reddit", "producthunt", "indiehackers"],
+    purpose: "AI launch — tests reddit + indie communities",
   },
   {
-    label: "openai-ai-launch",
-    companyName: "OpenAI",
-    keywords: ["OpenAI", "ChatGPT"],
-    platforms: ["producthunt", "indiehackers", "reddit"],
-    purpose: "AI SaaS — indie/launch communities (replaces Inngest test)",
+    label: "peloton-fitness",
+    companyName: "Peloton",
+    keywords: ["Peloton bike", "Peloton"],
+    platforms: ["reddit", "appstore", "youtube", "x"],
+    platformUrls: {
+      appstore: "792750948", // Peloton iOS app ID
+    },
+    purpose: "Consumer fitness — tests reddit + appstore + x (xAI)",
   },
 ];
 
@@ -184,6 +202,7 @@ async function main() {
         companyName: m.companyName,
         keywords: m.keywords,
         platforms: m.platforms,
+        platformUrls: m.platformUrls ?? null,
         isActive: true,
       })
       .returning({ id: monitors.id });
