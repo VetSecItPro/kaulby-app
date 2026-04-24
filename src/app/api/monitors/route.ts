@@ -36,9 +36,11 @@ export async function GET() {
       );
     }
 
+    // PERF-DB-001: cap list to 100 rows. UI paginates; prevents unbounded load.
     const userMonitors = await db.query.monitors.findMany({
       where: eq(monitors.userId, userId),
       orderBy: (m, { desc }) => [desc(m.createdAt)],
+      limit: 100,
     });
 
     return NextResponse.json(

@@ -119,17 +119,21 @@ async function getServiceMetrics() {
   };
 }
 
+// PERF-BUILDTIME-002: Intl instances hoisted to module level to avoid per-call creation
+const USD_FMT = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+const NUM_FMT = new Intl.NumberFormat("en-US");
+
 function formatCurrency(value: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
+  return USD_FMT.format(value);
 }
 
 function formatNumber(value: number) {
-  return new Intl.NumberFormat("en-US").format(value);
+  return NUM_FMT.format(value);
 }
 
 export default async function ServiceCostsPage() {

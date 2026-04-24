@@ -9,7 +9,7 @@
 import { inngest } from "../client";
 import { pooledDb } from "@/lib/db";
 import { users, monitors } from "@/lib/db/schema";
-import { eq, and, lt, gte, count } from "drizzle-orm";
+import { eq, and, lt, gte, inArray, sql } from "drizzle-orm";
 import { getOnboardingFollowupHtml } from "@/lib/email";
 import { logger } from "@/lib/logger";
 
@@ -49,19 +49,16 @@ export const onboardingFollowup = inngest.createFunction(
         },
       });
 
-      // Filter to users with zero monitors
-      const usersWithNoMonitors: typeof candidates = [];
-      for (const user of candidates) {
-        const [result] = await pooledDb
-          .select({ count: count() })
-          .from(monitors)
-          .where(eq(monitors.userId, user.id));
-        if (result.count === 0) {
-          usersWithNoMonitors.push(user);
-        }
-      }
-
-      return usersWithNoMonitors;
+      // PERF-ASYNC-001a: batch monitor count across all candidate users in one query
+      if (candidates.length === 0) return [];
+      const candidateIds = candidates.map((c) => c.id);
+      const counts = await pooledDb
+        .select({ userId: monitors.userId, count: sql<number>`count(*)::int` })
+        .from(monitors)
+        .where(inArray(monitors.userId, candidateIds))
+        .groupBy(monitors.userId);
+      const countByUser = new Map(counts.map((r) => [r.userId, r.count]));
+      return candidates.filter((c) => (countByUser.get(c.id) ?? 0) === 0);
     });
 
     if (eligibleUsers.length === 0) {

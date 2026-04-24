@@ -45,9 +45,10 @@ export async function GET() {
       return NextResponse.json({ workspace: null });
     }
 
-    // Get workspace members (bounded by 5-seat limit)
+    // PERF-DB-003: cap member fetch at 10. Aligns with seat-limit enforcement elsewhere.
     const members = await db.query.users.findMany({
       where: eq(users.workspaceId, workspace.id),
+      limit: 10,
     });
 
     return NextResponse.json({
