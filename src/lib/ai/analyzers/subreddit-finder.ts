@@ -210,6 +210,14 @@ Only include subreddits where this company/topic would ACTUALLY be discussed.`;
 const subredditCache = new Map<string, { subreddits: string[]; timestamp: number }>();
 const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
+/**
+ * Defensive: strip r/ prefix and trailing slashes from subreddit names,
+ * regardless of origin (fresh LLM, Reddit API, or cache). Safe to re-apply.
+ */
+function normalizeSubredditName(raw: string): string {
+  return raw.trim().replace(/^\/?r\//i, "").replace(/\/$/, "");
+}
+
 export async function findRelevantSubredditsCached(
   companyName: string,
   keywords: string[] = [],
@@ -219,14 +227,16 @@ export async function findRelevantSubredditsCached(
   const cached = subredditCache.get(cacheKey);
 
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return cached.subreddits;
+    // Normalize at read — protects against stale pre-fix entries in warm Lambdas.
+    return cached.subreddits.map(normalizeSubredditName).filter(Boolean);
   }
 
   const subreddits = await findRelevantSubreddits(companyName, keywords, maxSubreddits);
+  const normalized = subreddits.map(normalizeSubredditName).filter(Boolean);
 
-  if (subreddits.length > 0) {
-    subredditCache.set(cacheKey, { subreddits, timestamp: Date.now() });
+  if (normalized.length > 0) {
+    subredditCache.set(cacheKey, { subreddits: normalized, timestamp: Date.now() });
   }
 
-  return subreddits;
+  return normalized;
 }
