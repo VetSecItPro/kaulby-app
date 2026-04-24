@@ -63,7 +63,7 @@ async function main() {
   // Test 5: site-wide search for "Starbucks"
   await probe(
     `Site-wide — searchRedditSiteWide (if available)`,
-    () => searchRedditSiteWide("Starbucks", 20).catch(() => ({ posts: [], source: "unavailable", error: "function threw" })),
+    () => searchRedditSiteWide(["Starbucks"], 20).catch(() => ({ posts: [], source: "unavailable" as const, error: "function threw" })),
   );
 
   console.log("\n");
