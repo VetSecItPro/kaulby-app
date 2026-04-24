@@ -157,6 +157,107 @@ plan limit is 5, blocked entire app resync)
 
 ---
 
+## Scenario 6: URL-required scrapers silently skip (yelp, g2, amazon, playstore)
+
+**Last observed:** 2026-04-23 (discovered via platform integration test)
+**Incident class:** 4 review-platform scrapers require specific URLs/IDs
+(business URLs, product URLs, ASINs, app package names) but silently
+`continue` if the monitor has only a company name. Users creating monitors
+with just a keyword get zero results with zero indication why.
+
+### Symptom
+- Monitor shows active and `lastCheckedAt` recent
+- `newMatchCount = 0` persistently across many scans
+- No error in `lastCheckFailedReason`
+- No results written to DB
+
+### Detection signal (new as of 2026-04-23)
+`lastCheckFailedReason` now populates with `[platform] MissingInput: <platform> requires X` when these scanners skip due to missing URL. See PR #239 for the fail-loud fix across monitor-yelp / monitor-g2 / monitor-amazon / monitor-playstore.
+
+### Recovery procedure
+1. Populate `monitor.platformUrls.{yelp|g2|amazonreviews|playstore}` with the required identifier:
+   - Yelp: full URL like `https://www.yelp.com/biz/starbucks-seattle-3`
+   - G2: full URL like `https://www.g2.com/products/slack/reviews`
+   - Amazon: product URL or ASIN like `B0D1XD1ZV3`
+   - Play Store: URL like `https://play.google.com/store/apps/details?id=com.spotify.music` or just `com.spotify.music`
+2. Next scan cycle will pick up the populated URL and fire the scraper
+
+---
+
+## Scenario 7: Reddit scanner picks wrong subreddits (keyword-heavy brands)
+
+**Last observed:** 2026-04-23 (diagnosed via direct probe + platform integration test)
+**Incident class:** Reddit monitor's AI subreddit picker sometimes returns
+generic subs (r/technology, r/AskReddit) that don't contain brand-specific
+content. Direct probe: r/technology with Tesla keywords = 0/10 match;
+r/teslamotors = 7/10 match.
+
+### Symptom
+- Reddit scans complete (`lastCheckedAt` fresh)
+- 0 results despite brand clearly being discussed on Reddit
+- No error recorded — scanner "worked," just no matches
+
+### Detection signal
+- No automated one — brand visibility dashboards would need cross-reference
+  against independent measures (Google Trends, mention volume elsewhere)
+- Manual: user reports "my monitor isn't catching obvious mentions"
+
+### Recovery (fixed 2026-04-23 in PR #239)
+New `searchRedditPublicSiteWide()` function in `src/lib/reddit.ts` performs
+site-wide keyword search via Reddit's own public JSON endpoint (NOT Serper —
+no DMCA risk). Monitor-reddit.ts falls through to this when subreddit-picker
+results return zero matches. Validated: 20 posts per keyword for Tesla,
+Starbucks, Kubernetes, iPhone 15 Pro.
+
+---
+
+## Scenario 8: Hashnode GraphQL schema change
+
+**Last observed:** 2026-04-23
+**Incident class:** Hashnode removed `searchPostsOfFeed` from their public
+GraphQL schema. Our monitor-hashnode.ts had been calling a dead field for
+an unknown period, returning 0 results without errors.
+
+### Symptom
+- Monitor-hashnode completes with no results
+- GraphQL returns 400 with "Cannot query field 'searchPostsOfFeed' on type 'Query'"
+
+### Detection signal
+Now: scan.failed events from the catch block capture the 400. Also visible
+in `lastCheckFailedReason`.
+
+### Recovery (fixed 2026-04-23 in PR #239)
+Switched from the deprecated text-search query to `feed(type: RELEVANT)` +
+client-side keyword filter. Hashnode's current public API has no platform-
+wide text search — the feed-filter-client-match pattern is the only option
+until they restore search. Monitor periodically for schema restoration.
+
+---
+
+## Scenario 9: xAI account state issues (no credits, deprecated models)
+
+**Last observed:** 2026-04-23 (twice — no credits, then wrong model)
+**Incident class:** xAI's team-level credit/license gating returns 403 even
+with a valid API key. Separately, `grok-3-fast` was deprecated for server-
+side tool use (must use `grok-4` family).
+
+### Symptom
+- `monitor-x` returns 0 results
+- `searchX()` returns with error field set
+- Error text references credits OR "model not supported when using
+  server-side tools"
+
+### Detection signal (new as of 2026-04-23)
+`lastCheckFailedReason` populates with `[x] xAI: <error>` — PR #239 added
+`trackScanFailed()` to the silent-skip path. Previously zero indication.
+
+### Recovery procedure
+1. If credits issue: https://console.x.ai/ → Team → Billing → Add credits ($10-50 minimum)
+2. If model deprecation: update `model:` in `monitor-x.ts` to a `grok-4-*` variant (currently `grok-4-latest`)
+3. Cost warning: at ~$0.04/call per X scan, X is Growth-tier-only as of PR #239. Don't re-enable at lower tiers without Apify-based scraper migration.
+
+---
+
 ## Acceptance for W4.3 launch prep
 
 For each scenario in this playbook, before launch verify:
@@ -172,3 +273,13 @@ For each scenario in this playbook, before launch verify:
 - [x] **Scenario 5 (Inngest concurrency ceiling):** fixed in PR #219,
       documented here. Guardrail: lint rule blocking concurrency > 5 would
       prevent future occurrences (not yet implemented — future task).
+- [x] **Scenario 6 (URL-required scrapers silent skip):** fail-loud fix
+      shipped in PR #239 for yelp/g2/amazon/playstore. Users now see
+      MissingInput errors in `lastCheckFailedReason`.
+- [x] **Scenario 7 (Reddit wrong subreddits):** site-wide public search
+      fallback shipped in PR #239 via new `searchRedditPublicSiteWide()`.
+- [x] **Scenario 8 (Hashnode schema change):** fixed in PR #239 by
+      switching to `feed()` + client-side keyword filter.
+- [x] **Scenario 9 (xAI credits/model):** detection added in PR #239.
+      Recovery requires manual action (add credits or update model name).
+      X moved to Growth-tier-only to protect margins.

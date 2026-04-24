@@ -36,6 +36,7 @@ const args = process.argv.slice(2);
 const COMPANY = args.find((a) => a.startsWith("--company="))?.split("=")[1] ?? "Stripe";
 const N_RUNS = parseInt(args.find((a) => a.startsWith("--runs="))?.split("=")[1] ?? "3", 10);
 const MAX_ITEMS = parseInt(args.find((a) => a.startsWith("--limit="))?.split("=")[1] ?? "20", 10);
+const APP_STORE_ID = args.find((a) => a.startsWith("--appstore-id="))?.split("=")[1];
 
 const OR_KEY = process.env.OPENROUTER_API_KEY;
 if (!OR_KEY) {
@@ -56,7 +57,7 @@ type FetchedItem = {
   platform: string;
   title: string;
   content: string;
-  metadata: { upvotes?: number; commentCount?: number };
+  metadata: { upvotes?: number; commentCount?: number; subreddit?: string; rating?: number; author?: string };
 };
 
 /**
@@ -82,6 +83,81 @@ async function fetchRealHNMentions(company: string, maxItems: number): Promise<F
       metadata: {
         upvotes: h.points ?? 0,
         commentCount: h.num_comments ?? 0,
+      },
+    }));
+}
+
+/**
+ * Pull real Reddit posts mentioning the target company via Reddit's public
+ * JSON search API. Free, no auth. Rate-limited gently so we pace requests.
+ * Searches site-wide across all subreddits.
+ */
+/**
+ * Pull real Apple App Store reviews via the RSS feed. Free, public, no auth.
+ * Requires an iTunes app ID. Returns short user-generated review text —
+ * fundamentally different content shape from HN/Reddit discussion.
+ *
+ * Review content is often very short, emotional, specific complaints or
+ * praise — the hardest content type for an "analyst voice" to apply to
+ * because the source doesn't give much to reason about.
+ */
+async function fetchAppStoreReviews(appStoreId: string, maxItems: number): Promise<FetchedItem[]> {
+  const url = `https://itunes.apple.com/us/rss/customerreviews/id=${appStoreId}/sortBy=mostRecent/page=1/json`;
+  const res = await fetch(url, { headers: { "User-Agent": "kaulby-prompt-eval/1.0" } });
+  if (!res.ok) throw new Error(`App Store RSS ${res.status}`);
+  const data = (await res.json()) as { feed?: { entry?: Array<any> } };
+  const entries = data.feed?.entry || [];
+  // First entry is metadata about the app itself; skip it.
+  return entries
+    .slice(1)
+    .filter((e) => e["content"]?.label && e["content"].label.length > 20)
+    .slice(0, maxItems)
+    .map((e, i) => ({
+      id: `appstore-${e.id?.label || i}`,
+      platform: "appstore",
+      title: (e.title?.label || "Review").slice(0, 120),
+      content: (e.content?.label || "").slice(0, 2000),
+      metadata: {
+        rating: parseInt(e["im:rating"]?.label ?? "0", 10),
+        author: e.author?.name?.label,
+      },
+    }));
+}
+
+async function fetchRealRedditMentions(company: string, maxItems: number): Promise<FetchedItem[]> {
+  // Try two search strategies: relevance-sorted (top-ranked results globally) +
+  // new-sorted. Relevance finds heavily-upvoted older posts; new finds fresh
+  // discussion. Merge and dedupe. Gives better coverage for both evergreen
+  // products (TurboTax) and fast-moving ones (Stripe).
+  const strategies = ["relevance", "new"];
+  const all = new Map<string, any>();
+  for (const sort of strategies) {
+    try {
+      const url = `https://www.reddit.com/search.json?q=${encodeURIComponent(company)}&sort=${sort}&limit=${Math.min(maxItems, 50)}`;
+      const res = await fetch(url, { headers: { "User-Agent": "kaulby-prompt-eval/1.0" } });
+      if (!res.ok) continue;
+      const data = (await res.json()) as { data: { children: Array<{ data: any }> } };
+      for (const c of data.data?.children || []) {
+        if (c.data?.id && !all.has(c.data.id)) all.set(c.data.id, c.data);
+      }
+    } catch {
+      // tolerate per-strategy failures
+    }
+    await new Promise((r) => setTimeout(r, 200));
+  }
+  return Array.from(all.values())
+    .filter((p) => p.title && !p.over_18 && !p.stickied && (p.score ?? 0) >= 1)
+    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+    .slice(0, maxItems)
+    .map((p) => ({
+      id: `reddit-${p.id}`,
+      platform: "reddit",
+      title: p.title,
+      content: (p.selftext || "").slice(0, 2000),
+      metadata: {
+        upvotes: p.score ?? 0,
+        commentCount: p.num_comments ?? 0,
+        subreddit: p.subreddit,
       },
     }));
 }
@@ -119,14 +195,37 @@ async function main() {
   const startingSpend = await getORSpend();
   console.log(`   starting OR spend: $${startingSpend.toFixed(4)}`);
 
-  // Step 1: pull real HN mentions
+  // Step 1: pull real mentions from BOTH HN + Reddit (multi-platform test)
   console.log(`   fetching HN mentions of "${COMPANY}"...`);
-  const items = await fetchRealHNMentions(COMPANY, MAX_ITEMS);
-  console.log(`   ✅ got ${items.length} real HN items`);
+  const hnItems = await fetchRealHNMentions(COMPANY, Math.ceil(MAX_ITEMS / 2));
+  console.log(`   ✅ got ${hnItems.length} HN items`);
+
+  console.log(`   fetching Reddit mentions of "${COMPANY}"...`);
+  let redditItems: FetchedItem[] = [];
+  try {
+    redditItems = await fetchRealRedditMentions(COMPANY, Math.ceil(MAX_ITEMS / 2));
+    console.log(`   ✅ got ${redditItems.length} Reddit items`);
+  } catch (err) {
+    console.log(`   ⚠️  Reddit fetch failed (rate-limited?): ${err instanceof Error ? err.message : err}`);
+  }
+
+  let appStoreItems: FetchedItem[] = [];
+  if (APP_STORE_ID) {
+    console.log(`   fetching App Store reviews for app ${APP_STORE_ID}...`);
+    try {
+      appStoreItems = await fetchAppStoreReviews(APP_STORE_ID, Math.ceil(MAX_ITEMS / 2));
+      console.log(`   ✅ got ${appStoreItems.length} App Store reviews`);
+    } catch (err) {
+      console.log(`   ⚠️  App Store RSS failed: ${err instanceof Error ? err.message : err}`);
+    }
+  }
+
+  const items = [...hnItems, ...redditItems, ...appStoreItems];
   if (items.length < 5) {
     console.error(`   ❌ not enough items to meaningfully eval — got ${items.length}, need >=5`);
     process.exit(1);
   }
+  console.log(`   📦 total: ${items.length} items (${hnItems.length} HN + ${redditItems.length} Reddit + ${appStoreItems.length} AppStore)`);
   console.log("");
 
   // Step 2: run variance probe
@@ -196,6 +295,22 @@ async function main() {
     console.log(`   📈 Persona rate HIGHER than baseline by ${delta.toFixed(1)}pp — even better on this content`);
   } else {
     console.log(`   📉 Persona rate LOWER by ${Math.abs(delta).toFixed(1)}pp — prompt may have domain bias, worth investigating`);
+  }
+
+  console.log("");
+  console.log(`━━━ PER-PLATFORM BREAKDOWN ━━━`);
+  const byPlatform: Record<string, { total: number; personaHits: number }> = {};
+  for (const item of items) {
+    const platform = item.platform;
+    byPlatform[platform] ||= { total: 0, personaHits: 0 };
+    const hits = (perItemPersona[item.id] || []).filter(Boolean).length;
+    byPlatform[platform].total += N_RUNS; // each item × N runs = total attempts
+    byPlatform[platform].personaHits += hits;
+  }
+  for (const [platform, stats] of Object.entries(byPlatform)) {
+    const rate = stats.personaHits / stats.total;
+    const emoji = rate >= 0.9 ? "✅" : rate >= 0.7 ? "⚠️" : "❌";
+    console.log(`   ${platform.padEnd(14)}  persona=${(rate * 100).toFixed(0).padStart(3)}%  (${stats.personaHits}/${stats.total})  ${emoji}`);
   }
 
   console.log("");

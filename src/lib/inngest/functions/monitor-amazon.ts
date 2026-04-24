@@ -15,6 +15,7 @@ import {
   triggerAiAnalysis,
   updateMonitorStats,
   hasAnyActiveMonitors,
+  trackScanFailed,
   type MonitorStep,
 } from "../utils/monitor-helpers";
 
@@ -77,7 +78,15 @@ export const monitorAmazon = inngest.createFunction(
         );
         if (amazonUrl) productUrl = amazonUrl;
       }
-      if (!productUrl) continue;
+      if (!productUrl) {
+        trackScanFailed({
+          userId: monitor.userId,
+          monitorId: monitor.id,
+          platform: "amazonreviews",
+          error: new Error("MissingInput: Amazon reviews requires an amazon.com product URL or ASIN in keywords. None provided — scan skipped."),
+        });
+        continue;
+      }
 
       // Fetch reviews via Serper (Google Search)
       const reviews = await step.run(`fetch-reviews-${monitor.id}`, async () => {

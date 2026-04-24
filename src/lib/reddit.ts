@@ -418,6 +418,59 @@ async function searchRedditPublic(
   throw new Error("Public Reddit API: max retries exceeded");
 }
 
+/**
+ * Site-wide keyword search via Reddit's own public JSON API (no subreddit
+ * restriction). Returns posts matching keywords across ALL of Reddit.
+ *
+ * DMCA-safe: uses reddit.com/search.json directly (Reddit's own API), NOT
+ * the Serper/Google approach that was sued over in Oct 2025. Reddit
+ * publishes this endpoint publicly and explicitly supports programmatic
+ * access here.
+ *
+ * Why this exists: the platform-integration-test (2026-04-23) found that
+ * monitor-reddit's subreddit-picker approach often returns generic subs
+ * (r/technology, r/AskReddit) that don't contain brand-specific content.
+ * Direct probe showed r/teslamotors had 7/10 Tesla matches; r/technology
+ * had 0. Site-wide keyword search finds the right content directly.
+ */
+export async function searchRedditPublicSiteWide(
+  keywords: string[],
+  limit: number = 50,
+): Promise<RedditSearchResult> {
+  if (keywords.length === 0) {
+    return { posts: [], source: "public", error: "no keywords provided" };
+  }
+  const query = keywords
+    .map((k) => (k.includes(" ") ? `"${k}"` : k))
+    .join(" OR ");
+  const url = `https://www.reddit.com/search.json?q=${encodeURIComponent(query)}&sort=new&limit=${Math.min(limit, 100)}`;
+
+  try {
+    const response = await fetch(url, {
+      headers: { "User-Agent": "Kaulby/1.0" },
+      signal: AbortSignal.timeout(30000),
+    });
+    if (!response.ok) {
+      return {
+        posts: [],
+        source: "public",
+        error: `Reddit site-wide search error: ${response.status}`,
+      };
+    }
+    const data = await response.json();
+    const posts = (data.data?.children || []).map(
+      (child: { data: RedditPost }) => child.data,
+    );
+    return { posts, source: "public" };
+  } catch (error) {
+    return {
+      posts: [],
+      source: "public",
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
 // ============================================================================
 // MAIN RESILIENT FUNCTION
 // ============================================================================

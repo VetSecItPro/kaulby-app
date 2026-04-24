@@ -15,6 +15,7 @@ import {
   triggerAiAnalysis,
   updateMonitorStats,
   hasAnyActiveMonitors,
+  trackScanFailed,
   type MonitorStep,
 } from "../utils/monitor-helpers";
 
@@ -78,7 +79,18 @@ export const monitorYelp = inngest.createFunction(
       if (!businessUrl && monitor.companyName) {
         businessUrl = monitor.companyName;
       }
-      if (!businessUrl) continue;
+      if (!businessUrl) {
+        // Fail loudly rather than silently skip. Users need to know the monitor
+        // can't scan Yelp without either a yelp.com URL in keywords or a
+        // companyName. This writes lastCheckFailedReason so the UI surfaces it.
+        trackScanFailed({
+          userId: monitor.userId,
+          monitorId: monitor.id,
+          platform: "yelp",
+          error: new Error("MissingInput: Yelp requires a yelp.com URL in keywords, platformUrls.yelp, or a companyName. None provided — scan skipped."),
+        });
+        continue;
+      }
 
       // Fetch reviews via Serper (Google Search)
       const reviews = await step.run(`fetch-reviews-${monitor.id}`, async () => {

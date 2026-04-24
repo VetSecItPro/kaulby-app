@@ -15,6 +15,7 @@ import {
   triggerAiAnalysis,
   updateMonitorStats,
   hasAnyActiveMonitors,
+  trackScanFailed,
   type MonitorStep,
 } from "../utils/monitor-helpers";
 
@@ -78,7 +79,15 @@ export const monitorG2 = inngest.createFunction(
       if (!productUrl && monitor.companyName) {
         productUrl = monitor.companyName;
       }
-      if (!productUrl) continue;
+      if (!productUrl) {
+        trackScanFailed({
+          userId: monitor.userId,
+          monitorId: monitor.id,
+          platform: "g2",
+          error: new Error("MissingInput: G2 requires a g2.com product URL in keywords, platformUrls.g2, or a companyName. None provided — scan skipped."),
+        });
+        continue;
+      }
 
       // Fetch reviews via Serper (Google Search)
       const reviews = await step.run(`fetch-reviews-${monitor.id}`, async () => {

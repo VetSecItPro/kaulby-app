@@ -12,6 +12,7 @@ import {
   triggerAiAnalysis,
   updateMonitorStats,
   hasAnyActiveMonitors,
+  trackScanFailed,
   type MonitorStep,
 } from "../utils/monitor-helpers";
 
@@ -62,7 +63,11 @@ export async function searchX(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "grok-3-fast",
+        // grok-4 family required when using server-side tools like x_search
+        // (xAI deprecated grok-3-fast for this flow 2026-04-23). grok-4-latest
+        // tracks their newest grok-4 release; pin here to a specific version
+        // if/when we need stability guarantees.
+        model: "grok-4-latest",
         input: [
           {
             role: "system",
@@ -118,15 +123,29 @@ export async function searchX(
 
     const xaiLatencyMs = Date.now() - xaiStartTime;
 
-    // Extract usage data if present (xAI Responses API may include it)
-    const xaiUsage = data.usage as { input_tokens?: number; output_tokens?: number } | undefined;
+    // Extract usage data if present (xAI Responses API includes it)
+    const xaiUsage = data.usage as {
+      input_tokens?: number;
+      output_tokens?: number;
+      cost_in_usd_ticks?: number;
+    } | undefined;
 
-    // Log xAI cost
+    // xAI reports cost via cost_in_usd_ticks. Empirical calibration 2026-04-23:
+    // one grok-4-latest call with x_search tool reported ticks=406,887,500 for
+    // a 6028+1682 token call that should have cost ~$0.04 based on grok-4
+    // public token pricing ($3/1M input, $15/1M output). That matches a
+    // conversion of 1 tick = $1e-7 (10M ticks per dollar). Using this rate
+    // explicitly rather than inferring every call.
+    const XAI_USD_PER_TICK = 1e-7;
+    const costUsd = xaiUsage?.cost_in_usd_ticks
+      ? xaiUsage.cost_in_usd_ticks * XAI_USD_PER_TICK
+      : 0;
+
     await logAiCall({
-      model: "grok-3-fast",
+      model: "grok-4-latest",
       promptTokens: xaiUsage?.input_tokens ?? 0,
       completionTokens: xaiUsage?.output_tokens ?? 0,
-      costUsd: 0, // xAI pricing is via server-side tool invocations, not easily mapped to per-token cost
+      costUsd,
       latencyMs: xaiLatencyMs,
       analysisType: "x-search",
       platform: "x",
@@ -238,7 +257,20 @@ export const monitorX = inngest.createFunction(
 
       if (searchResult.error) {
         logger.warn("[X] Search warning", { monitorId: monitor.id, error: searchResult.error });
-        if (searchResult.posts.length === 0) continue;
+        if (searchResult.posts.length === 0) {
+          // Surface the failure so ops can see it in lastCheckFailedReason.
+          // Known error: "Your newly created team doesn't have any credits
+          // or licenses yet" — means the xAI team needs credits added at
+          // https://console.x.ai/. Silently continuing (old behavior) made
+          // this class of account-level failure invisible.
+          trackScanFailed({
+            userId: monitor.userId,
+            monitorId: monitor.id,
+            platform: "x",
+            error: new Error(`xAI: ${searchResult.error}`),
+          });
+          continue;
+        }
       }
 
       // Filter posts using content matcher
