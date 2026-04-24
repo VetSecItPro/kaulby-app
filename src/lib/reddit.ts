@@ -446,8 +446,17 @@ export async function searchRedditResilient(
       recordSuccess("apify");
       return { posts, source: "apify" };
     } catch (error) {
-      recordFailure("apify");
-      logger.warn("[Reddit] Apify failed, falling back to public JSON", { error: error instanceof Error ? error.message : String(error) });
+      const msg = error instanceof Error ? error.message : String(error);
+      // Apify quota-exhausted is a persistent signal (until monthly reset)
+      // — open circuit for 1 hour to avoid wasting 10+ calls per scan burning
+      // cold-start retries against the same dead endpoint.
+      if (msg.startsWith("ApifyQuotaExhausted")) {
+        circuitBreakers["apify"] = { failures: CIRCUIT_THRESHOLD, openUntil: Date.now() + 60 * 60 * 1000 };
+        logger.warn("[Reddit] Apify quota exhausted — circuit open 1h", { subreddit });
+      } else {
+        recordFailure("apify");
+        logger.warn("[Reddit] Apify failed, falling back to public JSON", { error: msg });
+      }
     }
   } else if (hasApify && isCircuitOpen("apify")) {
     logger.debug("[Reddit] Skipping Apify — circuit breaker open", { subreddit });
