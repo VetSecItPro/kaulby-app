@@ -28,6 +28,9 @@ import { fetchTrustpilotResilient } from "@/lib/trustpilot";
 import { findRelevantSubredditsCached } from "@/lib/ai";
 import { searchRedditResilient, searchRedditPublicSiteWide } from "@/lib/reddit";
 import { searchX } from "./monitor-x";
+import { searchHashnode } from "./monitor-hashnode";
+import { trackScanFailed } from "../utils/monitor-helpers";
+import { searchMultipleKeywords as searchHNMultipleKeywords } from "@/lib/hackernews";
 import { logger } from "@/lib/logger";
 
 /**
@@ -608,38 +611,24 @@ async function scanHackerNewsForMonitor(monitor: MonitorData): Promise<number> {
     const matchedItems: MatchedHNStory[] = [];
     const seenIds = new Set<string>();
 
-    // Search for each keyword (or keyword group) via Algolia
+    // Use the shared searchMultipleKeywords helper from @/lib/hackernews
+    // to keep cron + on-demand paths aligned. This combines keywords into a
+    // single OR query with a 24-hour timestamp filter instead of making N
+    // separate calls.
     const searchQueries = monitor.keywords.length > 0
       ? monitor.keywords
       : monitor.companyName ? [monitor.companyName] : [];
 
-    for (const keyword of searchQueries) {
+    if (searchQueries.length > 0) {
       try {
-        // Algolia HN Search API — free, no auth required, returns recent posts matching query
-        const searchUrl = new URL("https://hn.algolia.com/api/v1/search_by_date");
-        searchUrl.searchParams.set("query", keyword);
-        searchUrl.searchParams.set("tags", "(story,show_hn,ask_hn)");
-        searchUrl.searchParams.set("hitsPerPage", "20");
-
-        const response = await fetch(searchUrl.toString(), {
-          signal: AbortSignal.timeout(15000),
-        });
-        if (!response.ok) {
-          logger.warn("[HN] Algolia search failed", { keyword, status: response.status });
-          continue;
-        }
-
-        const data = await response.json();
-        const hits = data.hits || [];
-
-        logger.info("[HN] Algolia search results", { keyword, hitCount: hits.length });
+        const hits = await searchHNMultipleKeywords(searchQueries, 24);
+        logger.info("[HN] Algolia search results", { keywordCount: searchQueries.length, hitCount: hits.length });
 
         for (const hit of hits) {
           const storyId = hit.objectID;
           if (seenIds.has(storyId)) continue;
           seenIds.add(storyId);
 
-          // Check for matches using unified matching function
           const matchResult = await contentMatchesMonitor(
             { title: hit.title || "", body: hit.story_text || "", author: hit.author, platform: "hackernews" },
             monitor
@@ -661,8 +650,7 @@ async function scanHackerNewsForMonitor(monitor: MonitorData): Promise<number> {
           }
         }
       } catch (error) {
-        logger.warn("[HN] Keyword search failed", { keyword, error: error instanceof Error ? error.message : String(error) });
-        continue;
+        logger.warn("[HN] Algolia search failed", { error: error instanceof Error ? error.message : String(error) });
       }
     }
 
@@ -1012,6 +1000,16 @@ async function scanPlayStoreForMonitor(monitor: MonitorData): Promise<number> {
   // Use platformUrls.playstore if provided, then keywords
   const configuredUrl = monitor.platformUrls?.playstore;
   const appIds = configuredUrl ? [configuredUrl] : monitor.keywords.length > 0 ? monitor.keywords : [];
+
+  if (appIds.length === 0) {
+    trackScanFailed({
+      userId: monitor.userId,
+      monitorId: monitor.id,
+      platform: "playstore",
+      error: new Error("MissingInput: Play Store requires a play.google.com URL or a package name (e.g. com.example.app) in keywords or platformUrls.playstore. None provided — scan skipped."),
+    });
+    return 0;
+  }
 
   for (const appId of appIds) {
     try {
@@ -1455,7 +1453,12 @@ async function scanG2ForMonitor(monitor: MonitorData): Promise<number> {
         : monitor.companyName ? [monitor.companyName] : [];
 
   if (searchTerms.length === 0) {
-    logger.debug("[G2] No search terms available, skipping");
+    trackScanFailed({
+      userId: monitor.userId,
+      monitorId: monitor.id,
+      platform: "g2",
+      error: new Error("MissingInput: G2 requires a g2.com product URL in keywords, platformUrls.g2, or a companyName. None provided — scan skipped."),
+    });
     return 0;
   }
 
@@ -1549,7 +1552,12 @@ async function scanYelpForMonitor(monitor: MonitorData): Promise<number> {
         : monitor.companyName ? [monitor.companyName] : [];
 
   if (searchTerms.length === 0) {
-    logger.debug("[Yelp] No search terms available, skipping");
+    trackScanFailed({
+      userId: monitor.userId,
+      monitorId: monitor.id,
+      platform: "yelp",
+      error: new Error("MissingInput: Yelp requires a yelp.com URL in keywords, platformUrls.yelp, or a companyName. None provided — scan skipped."),
+    });
     return 0;
   }
 
@@ -1650,7 +1658,12 @@ async function scanAmazonReviewsForMonitor(monitor: MonitorData): Promise<number
         : monitor.companyName ? [monitor.companyName] : [];
 
   if (searchTerms.length === 0) {
-    logger.debug("[Amazon] No search terms available, skipping");
+    trackScanFailed({
+      userId: monitor.userId,
+      monitorId: monitor.id,
+      platform: "amazonreviews",
+      error: new Error("MissingInput: Amazon reviews requires an amazon.com product URL or ASIN in keywords or platformUrls.amazonreviews. None provided — scan skipped."),
+    });
     return 0;
   }
 
@@ -1844,127 +1857,85 @@ async function scanHashnodeForMonitor(monitor: MonitorData): Promise<number> {
   let count = 0;
 
   try {
+    // Hashnode removed `searchPostsOfFeed` from their public schema
+    // (2026-04-23). Use the shared `searchHashnode` helper from
+    // monitor-hashnode.ts which pulls feed(type: RELEVANT) and filters
+    // client-side — the only viable platform-wide search path now.
     const hashnodeKeywords = monitor.keywords.length > 0
-      ? monitor.keywords.slice(0, 5)
+      ? monitor.keywords
       : monitor.companyName ? [monitor.companyName] : [];
-    for (const keyword of hashnodeKeywords) {
-      const query = `
-        query SearchPosts($query: String!) {
-          searchPostsOfFeed(first: 20, filter: { query: $query }) {
-            edges {
-              node {
-                id
-                title
-                brief
-                author { username name }
-                url
-                publishedAt
-                reactionCount
-                responseCount
-                readTimeInMinutes
-                tags { name }
-              }
-            }
-          }
-        }
-      `;
+    if (hashnodeKeywords.length === 0) return 0;
 
-      const response = await fetch("https://gql.hashnode.com/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "User-Agent": "Kaulby/1.0",
-        },
-        body: JSON.stringify({ query, variables: { query: keyword } }),
-      });
+    const articles = await searchHashnode(hashnodeKeywords, 50);
 
-      if (!response.ok) continue;
-      const data = await response.json();
-      const edges = data.data?.searchPostsOfFeed?.edges || [];
+    interface MatchedHashnodeArticle {
+      sourceUrl: string;
+      title: string;
+      content: string;
+      author: string;
+      postedAt: Date;
+      metadata: Record<string, unknown>;
+    }
+    const matchedItems: MatchedHashnodeArticle[] = [];
 
-      // 1. Run content matching to determine which items to save
-      interface MatchedHashnodeArticle {
-        sourceUrl: string;
-        title: string;
-        content: string;
-        author: string;
-        postedAt: Date;
-        metadata: Record<string, unknown>;
-      }
-      const matchedItems: MatchedHashnodeArticle[] = [];
+    for (const article of articles) {
+      const matchResult = await contentMatchesMonitor(
+        { title: article.title || "", body: article.brief || "", author: article.author?.username, platform: "hashnode" },
+        monitor
+      );
 
-      for (const edge of edges) {
-        const article = edge.node;
-        if (!article) continue;
-
-        // Check for matches using unified matching function
-        const matchResult = await contentMatchesMonitor(
-          { title: article.title || "", body: article.brief || "", author: article.author?.username, platform: "hashnode" },
-          monitor
-        );
-
-        if (matchResult.isMatch) {
-          matchedItems.push({
-            sourceUrl: article.url,
-            title: article.title,
-            content: article.brief || "",
-            author: article.author?.username || "Unknown",
-            postedAt: new Date(article.publishedAt),
-            metadata: {
-              reactions: article.reactionCount,
-              commentCount: article.responseCount,
-              readingTime: article.readTimeInMinutes,
-              tags: article.tags?.map((t: { name: string }) => t.name) || [],
-            },
-          });
-        }
-      }
-
-      if (matchedItems.length > 0) {
-        // 2. Batch check existence
-        const matchedUrls = matchedItems.map(m => m.sourceUrl);
-        const existing = await pooledDb.query.results.findMany({
-          where: and(eq(results.monitorId, monitor.id), inArray(results.sourceUrl, matchedUrls)),
-          columns: { sourceUrl: true },
+      if (matchResult.isMatch) {
+        matchedItems.push({
+          sourceUrl: article.url,
+          title: article.title,
+          content: article.brief || "",
+          author: article.author?.username || "Unknown",
+          postedAt: new Date(article.publishedAt),
+          metadata: {
+            reactions: article.reactionCount,
+            commentCount: article.responseCount,
+            readingTime: article.readTimeInMinutes,
+            tags: article.tags?.map((t: { name: string }) => t.name) || [],
+          },
         });
-        const existingUrls = new Set(existing.map(r => r.sourceUrl));
+      }
+    }
 
-        // 3. Filter to new items
-        const newItems = matchedItems.filter(m => !existingUrls.has(m.sourceUrl));
+    if (matchedItems.length > 0) {
+      const matchedUrls = matchedItems.map(m => m.sourceUrl);
+      const existing = await pooledDb.query.results.findMany({
+        where: and(eq(results.monitorId, monitor.id), inArray(results.sourceUrl, matchedUrls)),
+        columns: { sourceUrl: true },
+      });
+      const existingUrls = new Set(existing.map(r => r.sourceUrl));
+      const newItems = matchedItems.filter(m => !existingUrls.has(m.sourceUrl));
 
-        if (newItems.length > 0) {
-          // 4. Batch insert
-          const inserted = await pooledDb.insert(results).values(
-            newItems.map(item => ({
-              monitorId: monitor.id,
-              platform: "hashnode" as const,
-              sourceUrl: item.sourceUrl,
-              title: item.title,
-              content: item.content,
-              author: item.author,
-              postedAt: item.postedAt,
-              metadata: item.metadata,
+      if (newItems.length > 0) {
+        const inserted = await pooledDb.insert(results).values(
+          newItems.map(item => ({
+            monitorId: monitor.id,
+            platform: "hashnode" as const,
+            sourceUrl: item.sourceUrl,
+            title: item.title,
+            content: item.content,
+            author: item.author,
+            postedAt: item.postedAt,
+            metadata: item.metadata,
+          }))
+        ).returning();
+
+        count += inserted.length;
+        await incrementResultsCount(monitor.userId, inserted.length);
+
+        if (inserted.length > 0) {
+          await inngest.send(
+            inserted.map(result => ({
+              name: "content/analyze" as const,
+              data: { resultId: result.id, userId: monitor.userId },
             }))
-          ).returning();
-
-          count += inserted.length;
-
-          // 5. Single batch usage increment
-          await incrementResultsCount(monitor.userId, inserted.length);
-
-          // 6. Batch send analysis events
-          if (inserted.length > 0) {
-            await inngest.send(
-              inserted.map(result => ({
-                name: "content/analyze" as const,
-                data: { resultId: result.id, userId: monitor.userId },
-              }))
-            );
-          }
+          );
         }
       }
-
-      await new Promise(resolve => setTimeout(resolve, 1000));
     }
   } catch (error) {
     logger.error("[Hashnode] Error scanning", { error: error instanceof Error ? error.message : String(error) });

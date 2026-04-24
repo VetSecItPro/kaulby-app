@@ -77,22 +77,24 @@ describe("plans", () => {
       expect(limits.platforms).toEqual(["reddit"]);
     });
 
-    it("solo plan allows 9 platforms", () => {
+    it("solo plan allows 8 platforms (X moved to Growth-only 2026-04-23)", () => {
       const limits = getPlanLimits("solo");
-      expect(limits.platforms).toHaveLength(9);
+      expect(limits.platforms).toHaveLength(8);
       expect(limits.platforms).toContain("reddit");
       expect(limits.platforms).toContain("github");
       expect(limits.platforms).not.toContain("g2");
       expect(limits.platforms).not.toContain("devto");
+      expect(limits.platforms).not.toContain("x");
     });
 
-    it("scale plan adds review platforms (12 total)", () => {
+    it("scale plan adds review platforms (11 total: Solo + G2/Yelp/Amazon)", () => {
       const limits = getPlanLimits("scale");
-      expect(limits.platforms).toHaveLength(12);
+      expect(limits.platforms).toHaveLength(11);
       expect(limits.platforms).toContain("g2");
       expect(limits.platforms).toContain("yelp");
       expect(limits.platforms).toContain("amazonreviews");
       expect(limits.platforms).not.toContain("devto");
+      expect(limits.platforms).not.toContain("x");
     });
 
     it("growth plan allows all 16 platforms", () => {

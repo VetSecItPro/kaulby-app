@@ -198,15 +198,17 @@ describe("polar", () => {
       expect(POLAR_PLANS.free.limits.platforms).toEqual(["reddit"]);
     });
 
-    it("solo has 9 platforms", () => {
-      expect(POLAR_PLANS.solo.limits.platforms).toHaveLength(9);
+    it("solo has 8 platforms (X moved to Growth-only 2026-04-23)", () => {
+      expect(POLAR_PLANS.solo.limits.platforms).toHaveLength(8);
+      expect(POLAR_PLANS.solo.limits.platforms).not.toContain("x");
     });
 
-    it("scale has 12 platforms (Solo + G2/Yelp/Amazon)", () => {
-      expect(POLAR_PLANS.scale.limits.platforms).toHaveLength(12);
+    it("scale has 11 platforms (Solo + G2/Yelp/Amazon, X stays Growth-only)", () => {
+      expect(POLAR_PLANS.scale.limits.platforms).toHaveLength(11);
       expect(POLAR_PLANS.scale.limits.platforms).toContain("g2");
       expect(POLAR_PLANS.scale.limits.platforms).toContain("yelp");
       expect(POLAR_PLANS.scale.limits.platforms).toContain("amazonreviews");
+      expect(POLAR_PLANS.scale.limits.platforms).not.toContain("x");
     });
 
     it("growth has all 16 platforms", () => {

@@ -15,7 +15,7 @@ import {
 } from "../utils/monitor-helpers";
 
 // Hashnode article interface
-interface HashnodeArticle {
+export interface HashnodeArticle {
   id: string;
   title: string;
   brief: string;
@@ -42,7 +42,7 @@ interface HashnodeArticle {
  * Search Hashnode articles via their GraphQL API
  * API is free and public
  */
-async function searchHashnode(keywords: string[], maxResults: number = 50): Promise<HashnodeArticle[]> {
+export async function searchHashnode(keywords: string[], maxResults: number = 50): Promise<HashnodeArticle[]> {
   const articles: HashnodeArticle[] = [];
   const seenIds = new Set<string>();
 
