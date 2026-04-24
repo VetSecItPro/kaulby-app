@@ -30,6 +30,7 @@ import { searchRedditResilient, searchRedditPublicSiteWide } from "@/lib/reddit"
 import { searchX } from "./monitor-x";
 import { searchHashnode } from "./monitor-hashnode";
 import { searchDevTo } from "./monitor-devto";
+import { fetchIndieHackersFeed } from "@/lib/indiehackers";
 import { trackScanFailed } from "../utils/monitor-helpers";
 import { searchMultipleKeywords as searchHNMultipleKeywords } from "@/lib/hackernews";
 import { includesTokenized } from "@/lib/content-matcher";
@@ -2008,28 +2009,23 @@ async function scanIndieHackersForMonitor(monitor: MonitorData): Promise<number>
       }
     }
 
-    // Strategy 2: Also fetch the JSON feed for latest posts
-    try {
-      const feedResponse = await fetch("https://www.indiehackers.com/feed.json", {
-        headers: {
-          "User-Agent": "Kaulby/1.0 (Community Monitoring Tool)",
-          "Accept": "application/json",
-        },
-        signal: AbortSignal.timeout(15000),
+    // Strategy 2: Also pull the JSON feed via shared helper (@/lib/indiehackers)
+    // so feed-parsing lives in one place. Feed items get adapted to this
+    // scanner's local FeedItem shape since the rest of the flow was built
+    // around those field names.
+    const feedResult = await fetchIndieHackersFeed(50);
+    const existingUrls = new Set(posts.map((p) => p.url));
+    for (const post of feedResult.posts) {
+      if (!post.url || existingUrls.has(post.url)) continue;
+      posts.push({
+        id: post.id,
+        url: post.url,
+        title: post.title,
+        content_text: post.body,
+        date_published: post.createdAt,
+        author: { name: post.author },
       });
-      if (feedResponse.ok) {
-        const data = await feedResponse.json();
-        const feedItems = (data.items || []) as FeedItem[];
-        // Deduplicate by URL
-        const existingUrls = new Set(posts.map(p => p.url));
-        for (const item of feedItems) {
-          if (item.url && !existingUrls.has(item.url)) {
-            posts.push(item);
-          }
-        }
-      }
-    } catch {
-      logger.debug("[IndieHackers] Feed fetch failed, continuing with Serper results");
+      existingUrls.add(post.url);
     }
 
     // 1. Run content matching to determine which items to save
