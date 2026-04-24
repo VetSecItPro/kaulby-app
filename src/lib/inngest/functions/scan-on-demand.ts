@@ -26,7 +26,7 @@ import {
 } from "@/lib/serper";
 import { fetchTrustpilotResilient } from "@/lib/trustpilot";
 import { findRelevantSubredditsCached } from "@/lib/ai";
-import { searchRedditResilient, searchRedditSiteWide } from "@/lib/reddit";
+import { searchRedditResilient, searchRedditPublicSiteWide } from "@/lib/reddit";
 import { searchX } from "./monitor-x";
 import { logger } from "@/lib/logger";
 
@@ -508,7 +508,7 @@ async function scanRedditForMonitor(monitor: MonitorData): Promise<number> {
 
     if (searchTerms.length > 0) {
       try {
-        const siteWideResult = await searchRedditSiteWide(searchTerms, 50);
+        const siteWideResult = await searchRedditPublicSiteWide(searchTerms, 50);
 
         if (siteWideResult.posts.length > 0) {
           logger.info("[Reddit] Site-wide fallback found posts", { count: siteWideResult.posts.length });

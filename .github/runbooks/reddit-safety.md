@@ -30,10 +30,20 @@ Per `src/lib/reddit.ts` and PR #195 (`.mdmp/reddit-spike-results-2026-04-21.md`)
    - Handles 429/503 with exponential backoff: 1s / 2s / 4s / Retry-After header
    - No comments (JSON endpoint serves posts only)
 
-3. **Serper `site:reddit.com`** — LEGACY, OPT-IN ONLY, DISABLED BY DEFAULT
-   - Gated behind `KAULBY_ALLOW_SERPER_REDDIT=true` env var
-   - Reason for the gate: Reddit v. SerpApi (Oct 2025) directly applies this to technique under DMCA §1201
-   - **Do NOT enable without explicit legal sign-off.** The gate exists only as an emergency valve if both Apify and Public JSON are simultaneously unavailable.
+3. **Reddit public search (`reddit.com/search.json`)** — DMCA-safe cross-subreddit search
+   - `searchRedditPublicSiteWide(keywords, limit)` in `src/lib/reddit.ts`
+   - Uses Reddit's OWN API (not Serper/Google), so no DMCA §1201 exposure
+   - Used when subreddit-picker-based searches return zero matches (via fallback
+     in both `monitor-reddit.ts` cron and `scan-on-demand.ts` on-demand path)
+   - ~60 req/min rate limit (same class as public JSON)
+
+**Deleted 2026-04-23:** the legacy Serper-based Reddit paths (`searchRedditSerper`,
+`searchRedditSiteWide`, `KAULBY_ALLOW_SERPER_REDDIT` env gate). They had been
+disabled since PR #195 (2026-04-21) and kept as "emergency opt-in" dead code —
+that made them a footgun risk. The new public search.json endpoint covers the
+same use case without DMCA exposure. See commit history if you ever need to
+restore that path — easier to re-add than to accidentally re-enable the
+DMCA-risky one.
 
 ### Per-tier cadence (target after COA 4 W2.1)
 
@@ -55,7 +65,7 @@ These are codified in `src/lib/reddit.ts` and verified by tests in `src/lib/__te
 
 2. **Never exceed ~60 req/min from a single IP** to the Public JSON endpoint. Our backoff is tuned to stay well under this, but if you're adding a new caller, budget for coexistence.
 
-3. **Never enable `KAULBY_ALLOW_SERPER_REDDIT=true` in production** without a documented sign-off. The audit in `.mdmp/apify-platform-cost-audit-2026-04-21.md` flags this as HIGH legal risk post-Oct 2025.
+3. **Never re-introduce Serper-based Reddit scraping.** The `KAULBY_ALLOW_SERPER_REDDIT` gate and `searchRedditSerper` function were deleted 2026-04-23. If you need cross-subreddit keyword search, use `searchRedditPublicSiteWide` (Reddit's own search.json endpoint — DMCA-safe). See `.mdmp/apify-platform-cost-audit-2026-04-21.md` for the legal context.
 
 4. **Never bypass the circuit breaker.** If Apify is failing, the fallback chain exists for a reason. Don't add retry-after-cooldown logic that pretends the breaker isn't open.
 
@@ -108,17 +118,28 @@ Scenarios and responses:
 
 ---
 
-## Opting into the legacy Serper path (emergency only)
+## Legacy Serper path (DELETED 2026-04-23)
 
-**Do NOT do this without legal sign-off.** Documented here for completeness:
+The `KAULBY_ALLOW_SERPER_REDDIT` env gate and its associated functions
+(`searchRedditSerper`, legacy `searchRedditSiteWide`) were deleted from
+`src/lib/reddit.ts` 2026-04-23. Rationale:
 
-```bash
-# .env.local (or Vercel env vars for prod — only with sign-off)
-KAULBY_ALLOW_SERPER_REDDIT=true
-SERPER_API_KEY=<your-serper-key>
-```
+- They had been DISABLED by default since PR #195 (2026-04-21)
+- Keeping disabled dead code in the codebase is a footgun — someone could
+  re-enable by typing `true` into a production env var
+- The new `searchRedditPublicSiteWide` function (using Reddit's own
+  `/search.json` endpoint) covers the same "cross-subreddit keyword search"
+  use case without DMCA §1201 exposure
+- Git history preserves the implementation if ever needed back
 
-The code path in `src/lib/reddit.ts:searchRedditResilient()` checks both the env flag AND `SERPER_API_KEY` presence. Either missing = no Serper calls. The function logs `[Reddit] Using LEGACY Serper path — Oct 2025 DMCA risk, remove ASAP` every time this path fires, so it's impossible to enable silently.
+**If you're looking for cross-subreddit search:** use
+`searchRedditPublicSiteWide(keywords, limit)`. It's DMCA-safe (Reddit's own
+endpoint) and returns the same `RedditSearchResult` shape.
+
+**If you're in a true emergency** (Apify down + Public JSON blocked + need
+site-wide search): the Serper code is recoverable via git log — specifically
+the commits prior to the 2026-04-23 cleanup PR. But legal sign-off
+requirements still apply.
 
 ---
 

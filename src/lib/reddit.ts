@@ -1,19 +1,25 @@
 /**
  * Reddit Integration Module
  *
- * Resilient priority chain — re-ordered 2026-04-21 via PR #195 in response to
- * the Oct 2025 Reddit v. SerpApi DMCA §1201 precedent:
- *   1. Apify `automation-lab/reddit-scraper` (PRIMARY) — $1.15/1K posts at FREE plan
- *   2. Reddit Public JSON API (FALLBACK) — free, anonymous, rate-limited, posts-only
- *   3. Serper `site:reddit.com` (LEGACY OPT-IN) — disabled by default, gated by
- *      `KAULBY_ALLOW_SERPER_REDDIT=true`. Carries direct DMCA §1201 risk.
+ * Resilient priority chain — current state after dead-code cleanup 2026-04-23:
+ *   1. Apify `automation-lab/reddit-scraper` (PRIMARY) — per-subreddit, keyword-agnostic
+ *   2. Reddit Public JSON API (FALLBACK) — per-subreddit search or /new, free, rate-limited
+ *   3. `searchRedditPublicSiteWide` — cross-subreddit keyword search via
+ *      reddit.com/search.json. Used by monitor-reddit/scan-on-demand when the
+ *      subreddit-picker finds zero matches. DMCA-safe (Reddit's own API).
+ *
+ * The legacy Serper-based path was deleted 2026-04-23 — it had been disabled
+ * behind `KAULBY_ALLOW_SERPER_REDDIT=true` since PR #195 (2026-04-21) in response
+ * to the Oct 2025 Reddit v. SerpApi DMCA §1201 precedent. Keeping disabled dead
+ * code was a footgun risk; the public search.json endpoint is Reddit's own API
+ * and covers the same use case without DMCA exposure.
  *
  * Before editing this file, read `.github/runbooks/reddit-safety.md` (R12). It
  * documents the hard rules, cease-and-desist playbook, and the GummySearch lesson.
  *
  * Cost optimizations:
  * - Query caching with 2-4hr TTL (saves 60-80% of API calls)
- * - Cross-user deduplication (same keywords = shared cache)
+ * - Cross-user deduplication via shared-scan dedup (see src/lib/shared-scan.ts)
  * - Smart TTL based on subreddit activity
  * - Circuit breaker per source (5-min cooldown after 3 consecutive failures)
  *
@@ -26,7 +32,6 @@
 
 import { cachedQuery, getRedditCacheTTL, CACHE_TTL } from "@/lib/cache";
 import { dedupedScan } from "@/lib/shared-scan";
-import { randomBytes } from "crypto";
 import { logger } from "@/lib/logger";
 import { captureEvent } from "@/lib/posthog";
 import { Redis } from "@upstash/redis";
@@ -162,103 +167,12 @@ interface RedditPost {
 
 interface RedditSearchResult {
   posts: RedditPost[];
-  source: "serper" | "apify" | "public";
+  source: "apify" | "public";
   error?: string;
 }
 
 // ============================================================================
-// TIER 1: Google Search APIs (Serper or SerpAPI) - PRIMARY
-// ============================================================================
-
-/**
- * Search Reddit via Serper (Google Search API)
- * Best value: $50/month for 50,000 searches
- *
- * To set up:
- * 1. Go to https://serper.dev
- * 2. Sign up (2,500 free searches to start)
- * 3. Get your API key
- * 4. Add SERPER_API_KEY to .env.local
- */
-async function searchRedditSerper(
-  subreddit: string,
-  keywords: string[],
-  limit: number = 50
-): Promise<RedditPost[]> {
-  const apiKey = process.env.SERPER_API_KEY;
-  if (!apiKey) {
-    throw new Error("Serper not configured");
-  }
-
-  try {
-    // Search for Reddit posts in the specific subreddit
-    // Include all search terms: keywords + company name (passed as first element when present)
-    const searchTerms = keywords.length > 0
-      ? keywords.map(k => k.includes(" ") ? `"${k}"` : k).join(" OR ")
-      : "";
-    const searchQuery = searchTerms
-      ? `site:reddit.com/r/${subreddit} ${searchTerms}`
-      : `site:reddit.com/r/${subreddit}`;
-
-    const response = await fetch("https://google.serper.dev/search", {
-      method: "POST",
-      signal: AbortSignal.timeout(30000),
-      headers: {
-        "X-API-KEY": apiKey,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        q: searchQuery,
-        num: Math.min(limit, 100),
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Serper error: ${response.status} - ${errorText}`);
-    }
-
-    const data = await response.json();
-
-    // Transform Serper results to our format
-    return (data.organic || []).map((result: {
-      link: string;
-      title: string;
-      snippet: string;
-    }) => transformSerperResult(result, subreddit));
-  } catch (error) {
-    logger.error("[Serper] Reddit search failed", { error: error instanceof Error ? error.message : String(error) });
-    throw error;
-  }
-}
-
-/**
- * Transform Serper result to RedditPost format
- */
-function transformSerperResult(
-  result: { link: string; title: string; snippet: string },
-  defaultSubreddit: string
-): RedditPost {
-  const urlMatch = result.link.match(/\/comments\/([a-z0-9]+)\//);
-  const subredditMatch = result.link.match(/\/r\/([^/]+)\//);
-
-  // SECURITY: Cryptographic randomness — FIX-002
-  return {
-    id: urlMatch?.[1] || `serper-${Date.now()}-${randomBytes(8).toString('hex')}`,
-    title: result.title.replace(/ : \w+$/, "").replace(/ - Reddit$/, ""),
-    selftext: result.snippet || "",
-    author: "unknown",
-    subreddit: subredditMatch?.[1] || defaultSubreddit,
-    permalink: result.link.replace("https://www.reddit.com", ""),
-    url: result.link,
-    score: 0,
-    num_comments: 0,
-    created_utc: Date.now() / 1000,
-  };
-}
-
-// ============================================================================
-// TIER 3: Apify (Backup)
+// PRIMARY: Apify reddit-scraper
 // ============================================================================
 
 /**
@@ -561,109 +475,11 @@ export async function searchRedditResilient(
     }
   }
 
-  // LEGACY SAFETY NET: Serper site:reddit.com — disabled by default due to Reddit's Oct 2025
-  // DMCA §1201 suit against SerpAPI for this exact technique. Opt-in via env var only.
-  const allowSerperReddit = process.env.KAULBY_ALLOW_SERPER_REDDIT === "true";
-  const hasSerper = process.env.SERPER_API_KEY;
-  if (allowSerperReddit && hasSerper && !isCircuitOpen("serper")) {
-    try {
-      logger.warn("[Reddit] Using LEGACY Serper path — Oct 2025 DMCA risk, remove ASAP", { subreddit });
-      const { data: posts, cached } = await cachedQuery<RedditPost[]>(
-        "serper:reddit",
-        cacheParams,
-        () => searchRedditSerper(subreddit, keywords, limit),
-        cacheTTL
-      );
-      if (cached) logger.debug("[Reddit] Cache hit", { subreddit, provider: "serper" });
-      recordSuccess("serper");
-      return { posts, source: "serper", error: "Used legacy Serper path — disable KAULBY_ALLOW_SERPER_REDDIT ASAP" };
-    } catch (error) {
-      recordFailure("serper");
-      logger.error("[Reddit] All providers failed", { subreddit, error: error instanceof Error ? error.message : String(error) });
-      return {
-        posts: [],
-        source: "serper",
-        error: `All Reddit providers failed: ${error instanceof Error ? error.message : "Unknown error"}`,
-      };
-    }
-  }
-
   logger.error("[Reddit] All providers exhausted (Apify primary + Public JSON fallback both unavailable or circuits open)", { subreddit });
   return {
     posts: [],
     source: "public",
-    error: "Apify + Public JSON unavailable. Set APIFY_API_KEY, or opt into legacy Serper via KAULBY_ALLOW_SERPER_REDDIT=true (not recommended).",
+    error: "Apify + Public JSON unavailable. Set APIFY_API_KEY and ensure Upstash Redis + network access.",
   };
 }
 
-/**
- * Site-wide Reddit search via Serper (no subreddit restriction).
- *
- * Used as a fallback when subreddit-specific searches return 0 results.
- * Searches across ALL of Reddit for the given keywords.
- */
-export async function searchRedditSiteWide(
-  keywords: string[],
-  limit: number = 50
-): Promise<RedditSearchResult> {
-  // Disabled 2026-04-21 — this used `site:reddit.com` Serper queries which is the exact technique
-  // Reddit sued SerpAPI over in Oct 2025 (DMCA §1201). Re-enable only with legal sign-off by
-  // setting KAULBY_ALLOW_SERPER_REDDIT=true.
-  if (process.env.KAULBY_ALLOW_SERPER_REDDIT !== "true") {
-    logger.debug("[Reddit] Site-wide Serper search disabled (set KAULBY_ALLOW_SERPER_REDDIT=true to force-enable)", {
-      keywordCount: keywords.length,
-    });
-    return { posts: [], source: "serper", error: "Site-wide Serper disabled (DMCA risk)" };
-  }
-  const apiKey = process.env.SERPER_API_KEY;
-  if (!apiKey) {
-    return { posts: [], source: "serper", error: "Serper not configured" };
-  }
-
-  try {
-    const searchTerms = keywords
-      .map(k => k.includes(" ") ? `"${k}"` : k)
-      .join(" OR ");
-    const searchQuery = `site:reddit.com ${searchTerms}`;
-
-    const { data: posts, cached } = await cachedQuery<RedditPost[]>(
-      "serper:reddit-sitewide",
-      { keywords: keywords.map(k => k.toLowerCase()).sort(), limit },
-      async () => {
-        const response = await fetch("https://google.serper.dev/search", {
-          method: "POST",
-          signal: AbortSignal.timeout(30000),
-          headers: {
-            "X-API-KEY": apiKey,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            q: searchQuery,
-            num: Math.min(limit, 100),
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error(`Serper error: ${response.status}`);
-        }
-
-        const data = await response.json();
-        return (data.organic || []).map((result: {
-          link: string;
-          title: string;
-          snippet: string;
-        }) => transformSerperResult(result, "unknown"));
-      },
-      CACHE_TTL.REDDIT_SEARCH
-    );
-
-    if (cached) {
-      logger.debug("[Reddit] Site-wide cache hit");
-    }
-
-    return { posts, source: "serper" };
-  } catch (error) {
-    logger.error("[Reddit] Site-wide search failed", { error: error instanceof Error ? error.message : String(error) });
-    return { posts: [], source: "serper", error: error instanceof Error ? error.message : "Site-wide search failed" };
-  }
-}
