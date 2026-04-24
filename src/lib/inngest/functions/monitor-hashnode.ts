@@ -1,6 +1,6 @@
 import { inngest } from "../client";
 import { logger } from "@/lib/logger";
-import { contentMatchesMonitor } from "@/lib/content-matcher";
+import { contentMatchesMonitor, includesTokenized } from "@/lib/content-matcher";
 import {
   getActiveMonitors,
   prefetchPlans,
@@ -109,13 +109,14 @@ export async function searchHashnode(keywords: string[], maxResults: number = 50
         logger.warn("[Hashnode] Feed GraphQL errors", { errors: data.errors });
       }
       const edges = data.data?.feed?.edges || [];
-      const lowerKeywords = keywords.map((k) => k.toLowerCase());
 
       for (const edge of edges) {
         const article = edge.node;
         if (!article || seenIds.has(article.id)) continue;
 
-        // Client-side keyword filter — match in title, brief, content, or tag names
+        // Client-side keyword filter — match in title, brief, content, or tag names.
+        // includesTokenized handles multi-word keywords like "Anthropic Claude" by
+        // matching when all tokens appear independently (not only as exact phrase).
         const haystack = [
           article.title || "",
           article.brief || "",
@@ -125,7 +126,7 @@ export async function searchHashnode(keywords: string[], maxResults: number = 50
           .join(" ")
           .toLowerCase();
 
-        if (lowerKeywords.some((kw) => haystack.includes(kw))) {
+        if (keywords.some((kw) => includesTokenized(haystack, kw))) {
           seenIds.add(article.id);
           articles.push(article);
         }
