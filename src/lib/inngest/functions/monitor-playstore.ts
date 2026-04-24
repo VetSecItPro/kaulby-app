@@ -1,6 +1,6 @@
 import { inngest } from "../client";
 import { logger } from "@/lib/logger";
-import { fetchPlayStoreReviews, isApifyConfigured, type PlayStoreReviewItem } from "@/lib/apify";
+import { fetchPlayStoreReviews, type PlayStoreReviewItem } from "@/lib/playstore";
 import {
   getActiveMonitors,
   prefetchPlans,
@@ -43,9 +43,8 @@ export const monitorPlayStore = inngest.createFunction(
     const hasWork = await hasAnyActiveMonitors(step);
     if (!hasWork) return { skipped: true, reason: "no active monitors in system" };
 
-    if (!isApifyConfigured()) {
-      return { message: "Apify API key not configured, skipping Play Store monitoring" };
-    }
+    // Play Store scraping is free + self-hosted (google-play-scraper npm package);
+    // no API key gating required here.
 
     const playStoreMonitors = await getActiveMonitors("playstore", step);
     if (playStoreMonitors.length === 0) {

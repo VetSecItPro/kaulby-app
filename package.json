@@ -58,6 +58,7 @@
     "dompurify": "3.3.3",
     "drizzle-orm": "0.45.1",
     "framer-motion": "12.38.0",
+    "google-play-scraper": "^10.1.2",
     "inngest": "3.54.0",
     "jspdf": "4.2.1",
     "langfuse": "3.38.6",
