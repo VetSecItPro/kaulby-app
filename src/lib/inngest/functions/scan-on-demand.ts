@@ -29,6 +29,7 @@ import { findRelevantSubredditsCached } from "@/lib/ai";
 import { searchRedditResilient, searchRedditPublicSiteWide } from "@/lib/reddit";
 import { searchX } from "./monitor-x";
 import { searchHashnode } from "./monitor-hashnode";
+import { searchDevTo } from "./monitor-devto";
 import { trackScanFailed } from "../utils/monitor-helpers";
 import { searchMultipleKeywords as searchHNMultipleKeywords } from "@/lib/hackernews";
 import { includesTokenized } from "@/lib/content-matcher";
