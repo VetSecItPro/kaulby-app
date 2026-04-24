@@ -348,7 +348,12 @@ export const analyzeContent = inngest.createFunction(
     retries: 2,
     timeouts: { finish: "5m" },
     concurrency: {
-      limit: 5, // Limit concurrent AI calls
+      // Bumped 5→10 on 2026-04-24: integration test showed 486-result backlog
+      // draining at ~37 analyses/min; doubling pipeline capacity without
+      // changing OpenRouter spend pattern (analyses still cost ~$0.0005 each).
+      // If we see 429s from OpenRouter, dial back to 7. Model concurrency
+      // inside OpenRouter free tier tends to be 100+/min for Flash.
+      limit: 10,
     },
   },
   { event: "content/analyze" },
