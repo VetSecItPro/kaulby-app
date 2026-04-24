@@ -48,7 +48,11 @@ export const scanOnDemand = inngest.createFunction(
     id: "scan-on-demand",
     name: "Scan Monitor On-Demand",
     retries: 2,
-    timeouts: { finish: "10m" },
+    // 30m covers worst-case: 16 platforms × ~90s each when Reddit/GitHub are
+    // cold and Apify is slow. Previous 10m budget was truncating scans mid-way
+    // for monitors with many platforms (observed 2026-04-24: Peloton got only
+    // last platform scanned, earlier ones ran but their step.run budget expired).
+    timeouts: { finish: "30m" },
     concurrency: {
       limit: 5, // Limit concurrent scans to prevent overload
     },
