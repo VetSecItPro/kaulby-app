@@ -36,11 +36,16 @@ interface CacheStats {
 
 // TTL configurations in milliseconds
 export const CACHE_TTL = {
-  // Reddit/Social content - moderate freshness needed
+  // Reddit/Social content - moderate freshness needed.
+  // NOTE: 2026-04-24 — getRedditCacheTTL now returns NICHE by default; this
+  // constant is kept for external callers (cachedQuery direct users) but is
+  // no longer the fallback for subreddit scrapes.
   REDDIT_SEARCH: 2 * 60 * 60 * 1000, // 2 hours
 
-  // High-frequency subreddits - shorter cache
-  REDDIT_HOT: 1 * 60 * 60 * 1000, // 1 hour
+  // High-frequency subreddits. 2h matches Growth/Scale tier's 2h scan cadence
+  // so two users scanning within one cycle always share the scrape. Staleness
+  // cap (~2h) is fine for HOT subs since post volume dominates.
+  REDDIT_HOT: 2 * 60 * 60 * 1000, // 2 hours (bumped from 1h to match tier scan cadence)
 
   // Low-activity content - longer cache
   REDDIT_NICHE: 4 * 60 * 60 * 1000, // 4 hours
@@ -504,15 +509,23 @@ const HIGH_ACTIVITY_SUBREDDITS = new Set([
 ]);
 
 /**
- * Get optimal cache TTL for a Reddit subreddit
+ * Get optimal cache TTL for a Reddit subreddit.
+ *
+ * Tiers:
+ * - HOT (1h): well-known high-traffic subs from HIGH_ACTIVITY_SUBREDDITS
+ * - NICHE (4h): everything else — typical niche/brand subs post 1-2/day,
+ *   so a 4-hour shared cache across monitors is both safe and cost-efficient.
+ *
+ * See docs/planning/apify-cost-optimization-2026-04-24.md Change 2.
  */
 export function getRedditCacheTTL(subreddit: string): number {
   const normalized = subreddit.toLowerCase();
 
   if (HIGH_ACTIVITY_SUBREDDITS.has(normalized)) {
-    return CACHE_TTL.REDDIT_HOT; // 1 hour for busy subreddits
+    return CACHE_TTL.REDDIT_HOT; // 1 hour for busy subreddits — freshness matters
   }
 
-  return CACHE_TTL.REDDIT_SEARCH; // 2 hours for normal subreddits
+  // Niche subs: 4h amortizes Apify cost across overlapping user scans.
+  return CACHE_TTL.REDDIT_NICHE;
 }
 

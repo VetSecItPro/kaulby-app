@@ -37,7 +37,8 @@ export const monitorTrustpilot = inngest.createFunction(
     timeouts: { finish: "14m" },
     concurrency: { limit: 5 },
   },
-  { cron: "28 */2 * * *" }, // :28 on even hours (staggered)
+  // Every 4h — reviews are low-velocity. See docs/planning/apify-cost-optimization-2026-04-24.md Change 4.
+  { cron: "28 */4 * * *" }, // :28 every 4 hours (staggered)
   async ({ step: _step }) => {
     const step = _step as unknown as MonitorStep;
 

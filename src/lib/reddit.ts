@@ -416,18 +416,49 @@ export async function searchRedditResilient(
   // Get optimal TTL based on subreddit activity
   const cacheTTL = getRedditCacheTTL(subreddit);
 
-  // PRIMARY: Apify automation-lab/reddit-scraper. Measured $0.003/25 items 2026-04-21.
+  // TIER 1 (NEW 2026-04-24, Change 5 of apify-cost-optimization): Public JSON
+  // keyword search. When the monitor has keywords, Reddit's own /search.json
+  // endpoint pre-filters results by relevance — dramatically better signal
+  // than scraping a full subreddit feed and matching client-side, AND it's
+  // free (no Apify bill, no DMCA risk). We try this FIRST for keyword
+  // monitors. Discovery monitors (no keywords) skip this and go to Apify.
   //
-  // PR-E.1: the Apify actor fetches r/<subreddit> WITHOUT any keyword filter
-  // (see searchRedditApify — it just passes the subreddit URL), so all users
-  // monitoring the same subreddit can share one scrape. We go through
-  // dedupedScan (keyword-agnostic key) instead of cachedQuery (which included
-  // keywords). At 100 Team users with 5-8x subreddit overlap this is the
-  // single biggest infra-cost savings lever — see docs/planning/kaulby-backlog.md.
+  // Quality note: Reddit's relevance ranking is strong; results here are
+  // typically HIGHER quality for AI analysis than generic feed scraping.
+  if (keywords.length > 0 && !isCircuitOpen("public")) {
+    try {
+      const { data: posts, cached } = await cachedQuery<RedditPost[]>(
+        "public:reddit-kw",
+        cacheParams,
+        () => searchRedditPublic(subreddit, limit, keywords),
+        cacheTTL,
+      );
+      if (cached) {
+        logger.debug("[Reddit] Cache hit", { subreddit, provider: "public-kw" });
+      }
+      if (posts.length > 0) {
+        recordSuccess("public");
+        return { posts, source: "public" };
+      }
+      // Empty result — fall through to Apify which may find content the
+      // keyword search missed (e.g. keyword in body but not title/rank).
+      logger.debug("[Reddit] Public keyword search returned 0, falling through to Apify", { subreddit });
+    } catch (error) {
+      recordFailure("public");
+      logger.warn("[Reddit] Public keyword search failed, falling through to Apify", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  // TIER 2: Apify automation-lab/reddit-scraper. Measured $0.003/25 items
+  // 2026-04-21. Used for discovery monitors (no keywords) and as fallback
+  // when keyword search above returns 0 or errors.
   //
-  // Window size: we use the subreddit's natural cache TTL in minutes so a
-  // high-activity sub like r/SaaS can dedup over a 5-min window while a
-  // quiet one dedups over 30+ min.
+  // PR-E.1: the Apify actor fetches r/<subreddit> WITHOUT any keyword filter,
+  // so all users monitoring the same subreddit can share one scrape via
+  // dedupedScan (keyword-agnostic key). At 100 Team users with 5-8x overlap
+  // this is a major cost lever.
   const hasApify = process.env.APIFY_API_KEY;
   if (hasApify && !isCircuitOpen("apify")) {
     try {
