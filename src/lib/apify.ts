@@ -204,6 +204,16 @@ async function runActor<T>(
 
   if (!runResponse.ok) {
     const error = await runResponse.text();
+    // Detect the specific "monthly quota exhausted" error so upstream callers
+    // can distinguish billing exhaustion (retry-after-billing-cycle) from
+    // transient actor failures.
+    if (
+      error.includes("platform-feature-disabled") ||
+      error.includes("Monthly usage hard limit exceeded")
+    ) {
+      logger.error("[Apify] Monthly quota exhausted — upgrade plan or wait for cycle reset", { actorId });
+      throw new Error("ApifyQuotaExhausted: Monthly usage hard limit exceeded");
+    }
     throw new Error(`Failed to start Apify actor: ${error}`);
   }
 
