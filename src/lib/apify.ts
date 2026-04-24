@@ -30,7 +30,6 @@ const ACTORS = {
   playStore: "neatrat/google-play-store-reviews-scraper", // Free tier available
   quora: "jupri/quora-scraper", // Note: requires paid rental
   // NEW PLATFORMS (Phase 2)
-  youtube: "streamers/youtube-comments-scraper", // Video comments (note: YouTube scanner uses official API, not this)
   g2: "powerai/g2-product-reviews-scraper", // Software reviews
   yelp: "tri_angle/yelp-review-scraper", // Local business reviews (75+ reviews per run)
   amazonReviews: "junglee/amazon-reviews-scraper", // Product reviews
@@ -110,19 +109,6 @@ interface QuoraAnswerItem {
 // ============================================
 // NEW PLATFORM INTERFACES (Phase 2)
 // ============================================
-
-interface YouTubeCommentItem {
-  commentId: string;
-  text: string;
-  author: string;
-  authorChannelUrl?: string;
-  publishedAt: string;
-  likeCount: number;
-  replyCount?: number;
-  videoId: string;
-  videoTitle?: string;
-  videoUrl?: string;
-}
 
 interface G2ReviewItem {
   reviewId: string;
@@ -497,50 +483,6 @@ export async function fetchQuoraAnswers(
 // ============================================
 
 /**
- * Fetch YouTube video comments
- * @param videoUrl - YouTube video URL (e.g., https://www.youtube.com/watch?v=abc123)
- * @param maxComments - Maximum number of comments to fetch (default 100)
- *
- * Uses streamers/youtube-comment-scraper actor
- */
-export async function fetchYouTubeComments(
-  videoUrl: string,
-  maxComments: number = 100
-): Promise<YouTubeCommentItem[]> {
-  // Extract video ID from URL if needed
-  let videoId = videoUrl;
-  if (videoUrl.includes("youtube.com") || videoUrl.includes("youtu.be")) {
-    const urlObj = new URL(videoUrl);
-    if (urlObj.hostname === "youtu.be") {
-      videoId = urlObj.pathname.slice(1);
-    } else {
-      videoId = urlObj.searchParams.get("v") || videoUrl;
-    }
-  }
-
-  const input = {
-    startUrls: [{ url: `https://www.youtube.com/watch?v=${videoId}` }],
-    maxComments,
-    sortBy: "newest",
-  };
-
-  const items = await runActor<Record<string, unknown>>(ACTORS.youtube, input);
-
-  return items.map((item) => ({
-    commentId: String(item.commentId || item.id || ""),
-    text: String(item.text || item.content || ""),
-    author: String(item.author || item.authorName || ""),
-    authorChannelUrl: item.authorChannelUrl ? String(item.authorChannelUrl) : undefined,
-    publishedAt: String(item.publishedAt || item.date || ""),
-    likeCount: Number(item.likeCount || item.likes || 0),
-    replyCount: item.replyCount ? Number(item.replyCount) : undefined,
-    videoId: String(item.videoId || videoId),
-    videoTitle: item.videoTitle ? String(item.videoTitle) : undefined,
-    videoUrl: `https://www.youtube.com/watch?v=${item.videoId || videoId}`,
-  }));
-}
-
-/**
  * Fetch G2 software reviews
  * @param productUrl - G2 product page URL (e.g., https://www.g2.com/products/slack/reviews)
  * @param maxReviews - Maximum number of reviews to fetch (default 50)
@@ -679,7 +621,6 @@ export type {
   PlayStoreReviewItem,
   QuoraAnswerItem,
   // New platforms
-  YouTubeCommentItem,
   G2ReviewItem,
   YelpReviewItem,
   AmazonReviewItem,
