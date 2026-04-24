@@ -46,7 +46,7 @@ import { PERSONA_PROBES, BANNED_OPENERS } from "@/lib/ai/quality-probes";
 const args = process.argv.slice(2);
 const KEEP = args.includes("--keep");
 const ONLY = args.find((a) => a.startsWith("--only="))?.split("=")[1];
-const MAX_WAIT_MS = 12 * 60 * 1000; // 12 min — scans + AI backlog (prior run showed 8 min wasn't enough)
+const MAX_WAIT_MS = 25 * 60 * 1000; // 25 min — extended for full AI analysis backlog to drain
 const POLL_INTERVAL_MS = 15 * 1000;
 
 const MONITOR_PREFIX = "[PLATFORM-TEST]";

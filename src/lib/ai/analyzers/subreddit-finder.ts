@@ -20,19 +20,22 @@ interface RedditSubredditSearchResult {
         subscribers: number;
         public_description: string;
         title: string;
+        over18?: boolean;
+        quarantine?: boolean;
+        subreddit_type?: string;
       };
     }>;
   };
 }
 
 /**
- * Use Reddit's official API to search for relevant subreddits
- * This is the proper way - using Reddit's own search, not guessing
+ * Use Reddit's official API to search for relevant subreddits.
+ * Excludes NSFW, quarantined, private, and low-subscriber subs.
  */
 async function searchRedditSubreddits(query: string, limit: number = 25): Promise<string[]> {
   try {
     const response = await fetch(
-      `https://www.reddit.com/subreddits/search.json?q=${encodeURIComponent(query)}&limit=${limit}&sort=relevance`,
+      `https://www.reddit.com/subreddits/search.json?q=${encodeURIComponent(query)}&limit=${limit}&sort=relevance&include_over_18=off`,
       {
         headers: {
           "User-Agent": "Kaulby/1.0",
@@ -47,10 +50,20 @@ async function searchRedditSubreddits(query: string, limit: number = 25): Promis
 
     const data: RedditSubredditSearchResult = await response.json();
 
-    // Filter to subreddits with at least 1000 subscribers (active communities)
     return data.data.children
-      .filter(child => child.data.subscribers >= 1000)
-      .map(child => child.data.display_name);
+      .filter((child) => {
+        const d = child.data;
+        if (!d || !d.display_name) return false;
+        if (d.over18) return false;
+        if (d.quarantine) return false;
+        if (d.subreddit_type && d.subreddit_type !== "public") return false;
+        // Reddit search is substring-match on name, returning tons of junk like
+        // "GAY_Zoom_Record" for "Zoom". 5k subscribers filters the dregs without
+        // excluding legit niche communities.
+        if ((d.subscribers || 0) < 5000) return false;
+        return true;
+      })
+      .map((child) => child.data.display_name);
   } catch (error) {
     logger.error("Reddit subreddit search error", { error: error instanceof Error ? error.message : String(error) });
     return [];
@@ -71,27 +84,38 @@ export async function findRelevantSubreddits(
   keywords: string[] = [],
   maxSubreddits: number = 10
 ): Promise<string[]> {
-  const allSubreddits = new Set<string>();
-
-  // Step 1: Use Reddit's native subreddit search for the company name
-  logger.debug("[SubredditFinder] Searching Reddit", { companyName });
-  const redditResults = await searchRedditSubreddits(companyName, 15);
-  redditResults.forEach(s => allSubreddits.add(s));
-  logger.debug("[SubredditFinder] Reddit results", { count: redditResults.length, subreddits: redditResults });
-
-  // Step 2: Also search for each keyword
-  for (const keyword of keywords.slice(0, 3)) { // Limit to avoid rate limiting
-    const keywordResults = await searchRedditSubreddits(keyword, 10);
-    keywordResults.forEach(s => allSubreddits.add(s));
-  }
-
-  // Step 3: Use AI to enhance with industry-specific and competitor subreddits
-  logger.debug("[SubredditFinder] Enhancing with AI suggestions");
+  // Start with AI suggestions FIRST. The LLM understands context ("Zoom the
+  // video-conferencing company") while Reddit's search is a dumb substring
+  // match that returns junk like "GAY_Zoom_Record" for "Zoom".
+  //
+  // Order matters: earlier entries in the final list get scanned first and
+  // dominate the result set (each sub has a per-call cost budget).
+  logger.debug("[SubredditFinder] Getting AI suggestions", { companyName });
   const aiSuggestions = await getAISuggestions(companyName, keywords, maxSubreddits);
-  aiSuggestions.forEach(s => allSubreddits.add(s));
   logger.debug("[SubredditFinder] AI suggestions", { count: aiSuggestions.length, subreddits: aiSuggestions });
 
-  const finalList = Array.from(allSubreddits).slice(0, maxSubreddits);
+  // Reddit search acts as a fill-in for niche communities the LLM may not know.
+  logger.debug("[SubredditFinder] Searching Reddit for fill-ins", { companyName });
+  const redditResults = await searchRedditSubreddits(companyName, 15);
+  logger.debug("[SubredditFinder] Reddit results", { count: redditResults.length, subreddits: redditResults });
+
+  const keywordResults: string[] = [];
+  for (const keyword of keywords.slice(0, 3)) {
+    const kr = await searchRedditSubreddits(keyword, 10);
+    keywordResults.push(...kr);
+  }
+
+  // Preserve order: AI first, then Reddit fill-ins, dedup preserving first occurrence.
+  const seen = new Set<string>();
+  const ordered: string[] = [];
+  for (const s of [...aiSuggestions, ...redditResults, ...keywordResults]) {
+    const key = s.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    ordered.push(s);
+  }
+
+  const finalList = ordered.slice(0, maxSubreddits);
   logger.info("[SubredditFinder] Final subreddit list", { count: finalList.length, subreddits: finalList });
 
   return finalList;
