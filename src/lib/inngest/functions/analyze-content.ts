@@ -341,13 +341,10 @@ async function runTeamAnalysis(
 }
 
 // Analyze content with AI
-// Display name is "Analyze Content (v2)" intentionally — 2026-04-23 Inngest
-// orphan-state fix. Revert after the canary has run a few cycles to confirm
-// analyze-content stays healthy across deploy cycles. See PR #221.
 export const analyzeContent = inngest.createFunction(
   {
     id: "analyze-content",
-    name: "Analyze Content (v2)",
+    name: "Analyze Content",
     retries: 2,
     timeouts: { finish: "5m" },
     concurrency: {
