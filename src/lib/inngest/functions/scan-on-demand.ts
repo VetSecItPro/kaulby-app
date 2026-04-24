@@ -611,17 +611,18 @@ async function scanHackerNewsForMonitor(monitor: MonitorData): Promise<number> {
     const matchedItems: MatchedHNStory[] = [];
     const seenIds = new Set<string>();
 
-    // Use the shared searchMultipleKeywords helper from @/lib/hackernews
-    // to keep cron + on-demand paths aligned. This combines keywords into a
-    // single OR query with a 24-hour timestamp filter instead of making N
-    // separate calls.
+    // Use the shared searchMultipleKeywords helper. Cron uses a 24-hour
+    // window because it runs every 2 hours (catches everything with overlap).
+    // On-demand is a user-initiated one-shot scan — widen to 30 days so a
+    // low-volume keyword doesn't return empty just because nothing posted
+    // in the last 24h. The helper combines keywords into a single OR query.
     const searchQueries = monitor.keywords.length > 0
       ? monitor.keywords
       : monitor.companyName ? [monitor.companyName] : [];
 
     if (searchQueries.length > 0) {
       try {
-        const hits = await searchHNMultipleKeywords(searchQueries, 24);
+        const hits = await searchHNMultipleKeywords(searchQueries, 24 * 30);
         logger.info("[HN] Algolia search results", { keywordCount: searchQueries.length, hitCount: hits.length });
 
         for (const hit of hits) {
