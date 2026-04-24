@@ -35,7 +35,8 @@ export const monitorGoogleReviews = inngest.createFunction(
     timeouts: { finish: "14m" },
     concurrency: { limit: 5 },
   },
-  { cron: "21 */2 * * *" }, // :21 on even hours (staggered)
+  // Every 4h — reviews are low-velocity. See docs/planning/apify-cost-optimization-2026-04-24.md Change 4.
+  { cron: "21 */4 * * *" }, // :21 every 4 hours (staggered)
   async ({ step: _step }) => {
     const step = _step as unknown as MonitorStep;
 

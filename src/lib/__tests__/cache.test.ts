@@ -166,9 +166,9 @@ describe("cache", () => {
       expect(getRedditCacheTTL("startups")).toBe(CACHE_TTL.REDDIT_HOT);
     });
 
-    it("returns standard TTL for low-activity subreddits", async () => {
+    it("returns NICHE TTL for low-activity subreddits (2026-04-24: was SEARCH)", async () => {
       const { getRedditCacheTTL, CACHE_TTL } = await loadModule();
-      expect(getRedditCacheTTL("obscuresubreddit")).toBe(CACHE_TTL.REDDIT_SEARCH);
+      expect(getRedditCacheTTL("obscuresubreddit")).toBe(CACHE_TTL.REDDIT_NICHE);
     });
 
     it("is case-insensitive for subreddit names", async () => {
@@ -182,7 +182,7 @@ describe("cache", () => {
     it("has expected TTL values", async () => {
       const { CACHE_TTL } = await loadModule();
       expect(CACHE_TTL.REDDIT_SEARCH).toBe(2 * 60 * 60 * 1000);
-      expect(CACHE_TTL.REDDIT_HOT).toBe(1 * 60 * 60 * 1000);
+      expect(CACHE_TTL.REDDIT_HOT).toBe(2 * 60 * 60 * 1000); // 2026-04-24: bumped 1h→2h to match Growth/Scale 2h scan cadence
       expect(CACHE_TTL.REVIEWS).toBe(6 * 60 * 60 * 1000);
       expect(CACHE_TTL.USER_DATA).toBe(5 * 60 * 1000);
       expect(CACHE_TTL.DEFAULT).toBe(2 * 60 * 60 * 1000);

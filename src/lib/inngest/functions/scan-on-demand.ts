@@ -418,7 +418,8 @@ async function scanRedditForMonitor(monitor: MonitorData): Promise<number> {
   for (const subreddit of subreddits) {
     try {
       // Use resilient Reddit search (Serper → Apify → Public JSON)
-      const searchResult = await searchRedditResilient(subreddit, monitor.keywords, 50);
+      // 30 items/sub matches cron cadence; see docs/planning/apify-cost-optimization-2026-04-24.md
+      const searchResult = await searchRedditResilient(subreddit, monitor.keywords, 30);
 
       if (searchResult.error) {
         logger.warn("[Reddit] Search warning", { subreddit, error: searchResult.error });
@@ -518,7 +519,7 @@ async function scanRedditForMonitor(monitor: MonitorData): Promise<number> {
 
     if (searchTerms.length > 0) {
       try {
-        const siteWideResult = await searchRedditPublicSiteWide(searchTerms, 50);
+        const siteWideResult = await searchRedditPublicSiteWide(searchTerms, 30);
 
         if (siteWideResult.posts.length > 0) {
           logger.info("[Reddit] Site-wide fallback found posts", { count: siteWideResult.posts.length });

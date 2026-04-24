@@ -109,7 +109,9 @@ export const monitorReddit = inngest.createFunction(
       for (const subreddit of subreddits) {
         // Use resilient Reddit search (Serper -> Apify -> Public JSON) with caching
         const searchResult = await step.run(`fetch-${monitor.id}-${subreddit}`, async () => {
-          return searchRedditResilient(subreddit, searchTerms, 50);
+          // 30 covers ~6-8h of content on typical subreddits at cron cadence;
+          // see docs/planning/apify-cost-optimization-2026-04-24.md Change 1.
+          return searchRedditResilient(subreddit, searchTerms, 30);
         });
 
         if (searchResult.error) {
@@ -207,7 +209,9 @@ export const monitorReddit = inngest.createFunction(
       // whose subreddit picker returned generic subs like r/technology for brand keywords.
       if (monitorMatchCount === 0 && searchTerms.length > 0) {
         const siteWideResult = await step.run(`reddit-sitewide-${monitor.id}`, async () => {
-          return searchRedditPublicSiteWide(searchTerms, 50);
+          // Sitewide fallback — 30 items is plenty for the fallback scenario
+          // (we only hit this when subreddit-specific scans returned 0).
+          return searchRedditPublicSiteWide(searchTerms, 30);
         });
 
         if (siteWideResult.posts.length > 0) {

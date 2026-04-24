@@ -34,7 +34,8 @@ export const monitorPlayStore = inngest.createFunction(
     timeouts: { finish: "14m" },
     concurrency: { limit: 5 },
   },
-  { cron: "24 1-23/2 * * *" }, // :24 on odd hours (staggered)
+  // Every 4h on odd hours — reviews are low-velocity. See docs/planning/apify-cost-optimization-2026-04-24.md Change 4.
+  { cron: "24 3,7,11,15,19,23 * * *" }, // :24 every 4 hours (staggered)
   async ({ step: _step }) => {
     const step = _step as unknown as MonitorStep;
 
