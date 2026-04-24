@@ -2147,35 +2147,27 @@ async function scanDevToForMonitor(monitor: MonitorData): Promise<number> {
     };
 
     for (const keyword of devtoKeywords) {
-      // Primary: full-text search with the whole keyword.
-      const searchArticles = await fetchDevToArticles(
-        `https://dev.to/api/articles?search=${encodeURIComponent(keyword)}&per_page=30`
+      // Dev.to's /articles?search= endpoint is unreliable — it returns
+      // recent articles even when nothing matches the keyword. TAG search
+      // actually filters. Strategy: tag each token in the keyword, plus
+      // a full-keyword tag for single-word cases.
+      const tokens = keyword
+        .toLowerCase()
+        .split(/\s+/)
+        .filter((t) => t.length >= 3 && /^[a-z0-9]+$/.test(t));
+
+      const tagQueries = Array.from(new Set([keyword.toLowerCase(), ...tokens])).filter(
+        (t) => /^[a-z0-9]+$/.test(t),
       );
 
-      // Multi-word keywords ("Anthropic Claude") often return 0 from Dev.to's
-      // search because it phrase-matches. Also query each word individually
-      // so the content-matcher has real candidates to filter.
-      const tokens = keyword.split(/\s+/).filter((t) => t.length >= 3);
-      const tokenArticlesArrays = tokens.length > 1
-        ? await Promise.all(
-            tokens.map((t) =>
-              fetchDevToArticles(
-                `https://dev.to/api/articles?search=${encodeURIComponent(t)}&per_page=30`
-              )
-            )
+      const articleArrays = await Promise.all(
+        tagQueries.map((t) =>
+          fetchDevToArticles(
+            `https://dev.to/api/articles?tag=${encodeURIComponent(t)}&per_page=30&state=fresh`
           )
-        : [];
-      const tokenArticles: DevToArticle[] = tokenArticlesArrays.flat();
-
-      // Secondary: tag search for single-word terms only.
-      const isSingleWord = !keyword.includes(" ");
-      const tagArticles = isSingleWord
-        ? await fetchDevToArticles(
-            `https://dev.to/api/articles?tag=${encodeURIComponent(keyword.toLowerCase())}&per_page=30&state=fresh`
-          )
-        : [];
-
-      const articles: DevToArticle[] = [...searchArticles, ...tokenArticles, ...tagArticles];
+        )
+      );
+      const articles: DevToArticle[] = articleArrays.flat();
 
       // 1. Run content matching to determine which items to save
       interface MatchedDevToArticle {

@@ -74,30 +74,42 @@ async function searchHNByDate(options: SearchOptions): Promise<HNAlgoliaResponse
 }
 
 /**
- * Search multiple keywords efficiently
- * Combines multiple queries into a single OR search
+ * Search multiple keywords efficiently.
+ *
+ * Why one-call-per-keyword instead of a combined `"a" OR "b"` query:
+ * empirically (2026-04-23) HN Algolia returns 0 hits when a query combines
+ * multiple QUOTED phrases via OR, even though each phrase alone returns
+ * results. The reliable pattern is one request per keyword + dedup by
+ * objectID.
  */
 export async function searchMultipleKeywords(
   keywords: string[],
   hoursAgo: number = 24
 ): Promise<HNAlgoliaStory[]> {
-  // Combine keywords into an OR search
-  // Algolia supports OR queries
-  const query = keywords
-    .map((k) => (k.includes(" ") ? `"${k}"` : k))
-    .join(" OR ");
-
   const timestamp = Math.floor(Date.now() / 1000) - hoursAgo * 3600;
   const numericFilters = `created_at_i>${timestamp}`;
+  const seen = new Set<string>();
+  const combined: HNAlgoliaStory[] = [];
 
-  const response = await searchHNByDate({
-    query,
-    tags: ["story"],
-    hitsPerPage: 100,
-    numericFilters,
-  });
+  for (const keyword of keywords) {
+    try {
+      const response = await searchHNByDate({
+        query: keyword,
+        tags: ["story"],
+        hitsPerPage: 50,
+        numericFilters,
+      });
+      for (const hit of response.hits) {
+        if (seen.has(hit.objectID)) continue;
+        seen.add(hit.objectID);
+        combined.push(hit);
+      }
+    } catch {
+      // Keep other keywords in the run — one bad request shouldn't kill the scan.
+    }
+  }
 
-  return response.hits;
+  return combined;
 }
 
 /**
