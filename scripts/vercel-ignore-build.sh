@@ -26,6 +26,14 @@ if [ -z "${VERCEL_GIT_PREVIOUS_SHA:-}" ]; then
   exit 1
 fi
 
+# If the previous SHA is missing (typical after a force-push/rebase that
+# orphaned it), fall back to building — git diff would error out here and
+# we don't want to silently skip a real build.
+if ! git cat-file -e "$VERCEL_GIT_PREVIOUS_SHA" 2>/dev/null; then
+  echo "VERCEL_GIT_PREVIOUS_SHA ($VERCEL_GIT_PREVIOUS_SHA) not reachable — building"
+  exit 1
+fi
+
 CHANGED_FILES=$(git diff --name-only "$VERCEL_GIT_PREVIOUS_SHA" HEAD)
 
 if [ -z "$CHANGED_FILES" ]; then
