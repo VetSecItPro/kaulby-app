@@ -31,6 +31,7 @@ import { searchX } from "./monitor-x";
 import { searchHashnode } from "./monitor-hashnode";
 import { trackScanFailed } from "../utils/monitor-helpers";
 import { searchMultipleKeywords as searchHNMultipleKeywords } from "@/lib/hackernews";
+import { includesTokenized } from "@/lib/content-matcher";
 import { logger } from "@/lib/logger";
 
 /**
@@ -319,16 +320,16 @@ async function contentMatchesMonitor(
 ): Promise<{ isMatch: boolean; matchInfo?: { type: string; signals?: string[] } }> {
   const text = `${content.title} ${content.body || ""}`.toLowerCase();
 
-  // For keyword monitors, use traditional keyword matching
+  // For keyword monitors, use traditional keyword matching.
+  // includesTokenized lets multi-word needles like "Anthropic Claude" match
+  // posts that mention both tokens independently (not only the exact phrase).
   if (monitor.monitorType !== "ai_discovery") {
-    // Check company name match
-    if (monitor.companyName && text.includes(monitor.companyName.toLowerCase())) {
+    if (monitor.companyName && includesTokenized(text, monitor.companyName)) {
       return { isMatch: true, matchInfo: { type: "company_mention" } };
     }
 
-    // Check keyword match
     if (monitor.keywords.length > 0) {
-      const matchedKeywords = monitor.keywords.filter((k) => text.includes(k.toLowerCase()));
+      const matchedKeywords = monitor.keywords.filter((k) => includesTokenized(text, k));
       if (matchedKeywords.length > 0) {
         return { isMatch: true, matchInfo: { type: "keyword", signals: matchedKeywords } };
       }
@@ -611,17 +612,18 @@ async function scanHackerNewsForMonitor(monitor: MonitorData): Promise<number> {
     const matchedItems: MatchedHNStory[] = [];
     const seenIds = new Set<string>();
 
-    // Use the shared searchMultipleKeywords helper from @/lib/hackernews
-    // to keep cron + on-demand paths aligned. This combines keywords into a
-    // single OR query with a 24-hour timestamp filter instead of making N
-    // separate calls.
+    // Use the shared searchMultipleKeywords helper. Cron uses a 24-hour
+    // window because it runs every 2 hours (catches everything with overlap).
+    // On-demand is a user-initiated one-shot scan — widen to 30 days so a
+    // low-volume keyword doesn't return empty just because nothing posted
+    // in the last 24h. The helper combines keywords into a single OR query.
     const searchQueries = monitor.keywords.length > 0
       ? monitor.keywords
       : monitor.companyName ? [monitor.companyName] : [];
 
     if (searchQueries.length > 0) {
       try {
-        const hits = await searchHNMultipleKeywords(searchQueries, 24);
+        const hits = await searchHNMultipleKeywords(searchQueries, 24 * 30);
         logger.info("[HN] Algolia search results", { keywordCount: searchQueries.length, hitCount: hits.length });
 
         for (const hit of hits) {
@@ -2145,12 +2147,27 @@ async function scanDevToForMonitor(monitor: MonitorData): Promise<number> {
     };
 
     for (const keyword of devtoKeywords) {
-      // Primary: full-text search (works with multi-word phrases)
+      // Primary: full-text search with the whole keyword.
       const searchArticles = await fetchDevToArticles(
         `https://dev.to/api/articles?search=${encodeURIComponent(keyword)}&per_page=30`
       );
 
-      // Secondary: tag search for single-word terms only
+      // Multi-word keywords ("Anthropic Claude") often return 0 from Dev.to's
+      // search because it phrase-matches. Also query each word individually
+      // so the content-matcher has real candidates to filter.
+      const tokens = keyword.split(/\s+/).filter((t) => t.length >= 3);
+      const tokenArticlesArrays = tokens.length > 1
+        ? await Promise.all(
+            tokens.map((t) =>
+              fetchDevToArticles(
+                `https://dev.to/api/articles?search=${encodeURIComponent(t)}&per_page=30`
+              )
+            )
+          )
+        : [];
+      const tokenArticles: DevToArticle[] = tokenArticlesArrays.flat();
+
+      // Secondary: tag search for single-word terms only.
       const isSingleWord = !keyword.includes(" ");
       const tagArticles = isSingleWord
         ? await fetchDevToArticles(
@@ -2158,8 +2175,7 @@ async function scanDevToForMonitor(monitor: MonitorData): Promise<number> {
           )
         : [];
 
-      // Combine both result sets
-      const articles: DevToArticle[] = [...searchArticles, ...tagArticles];
+      const articles: DevToArticle[] = [...searchArticles, ...tokenArticles, ...tagArticles];
 
       // 1. Run content matching to determine which items to save
       interface MatchedDevToArticle {
