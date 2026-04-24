@@ -69,14 +69,27 @@ async function searchDevTo(keywords: string[], maxResults: number = 50): Promise
 
   try {
     for (const keyword of keywords.slice(0, 5)) {
-      // Primary: full-text search (works with multi-word phrases like "Act Now Education")
+      // Primary: full-text search with the whole keyword.
       const searchData = await fetchArticles(
         `https://dev.to/api/articles?search=${encodeURIComponent(keyword)}&per_page=${Math.min(maxResults, 30)}`
       );
       addArticles(searchData);
 
+      // Dev.to's search endpoint phrase-matches, so multi-word keywords like
+      // "Anthropic Claude" frequently return 0. Also fetch per-token to give
+      // the downstream content-matcher real candidates to filter.
+      const tokens = keyword.split(/\s+/).filter((t) => t.length >= 3);
+      if (tokens.length > 1) {
+        for (const token of tokens) {
+          const tokenData = await fetchArticles(
+            `https://dev.to/api/articles?search=${encodeURIComponent(token)}&per_page=${Math.min(maxResults, 30)}`
+          );
+          addArticles(tokenData);
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+        }
+      }
+
       // Secondary: tag search for single-word terms (e.g., "devops", "react")
-      // Multi-word phrases aren't valid Dev.to tags, so skip them
       const isSingleWord = !keyword.includes(" ");
       if (isSingleWord) {
         const tagData = await fetchArticles(
