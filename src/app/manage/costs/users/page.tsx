@@ -76,17 +76,32 @@ async function getAllUserCosts() {
   };
 }
 
+// PERF-BUILDTIME-001: Intl instances hoisted to module level to avoid per-call creation
+const USD_FMT_2 = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+const NUM_FMT = new Intl.NumberFormat("en-US");
+const USD_FMT_CACHE = new Map<number, Intl.NumberFormat>([[2, USD_FMT_2]]);
+
 function formatCurrency(value: number, decimals = 2) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  }).format(value);
+  let fmt = USD_FMT_CACHE.get(decimals);
+  if (!fmt) {
+    fmt = new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    });
+    USD_FMT_CACHE.set(decimals, fmt);
+  }
+  return fmt.format(value);
 }
 
 function formatNumber(value: number) {
-  return new Intl.NumberFormat("en-US").format(value);
+  return NUM_FMT.format(value);
 }
 
 function formatDate(date: Date | null) {
