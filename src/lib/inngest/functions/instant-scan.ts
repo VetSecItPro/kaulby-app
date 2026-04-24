@@ -3,7 +3,7 @@ import { pooledDb } from "@/lib/db";
 import { monitors, results } from "@/lib/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
 import { isSerperConfigured } from "@/lib/serper";
-import { searchRedditSiteWide } from "@/lib/reddit";
+import { searchRedditPublicSiteWide } from "@/lib/reddit";
 import { logger } from "@/lib/logger";
 
 /**
@@ -55,7 +55,7 @@ export const instantScan = inngest.createFunction(
       try {
         // Reddit uses its own API; everything else uses Serper
         if (firstPlatform === "reddit") {
-          const searchResult = await searchRedditSiteWide([firstKeyword], 10);
+          const searchResult = await searchRedditPublicSiteWide([firstKeyword], 10);
           if (!searchResult || searchResult.posts.length === 0) {
             return { items: [], platform: firstPlatform };
           }
