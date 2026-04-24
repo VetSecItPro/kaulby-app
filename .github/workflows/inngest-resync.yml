@@ -1,0 +1,77 @@
+# Auto-resync Inngest after Vercel prod deploy.
+#
+# Why this exists: twice on 2026-04-23 we hit Inngest's "function orphan"
+# state after a merge — analyze-content / canary event trigger quietly
+# stopped firing on new events until a manual dashboard "Resync app" click.
+# See chaos-scenarios.md Scenario 1 for the incident class.
+#
+# How it works: on every push to main, wait for Vercel's prod deploy to
+# settle (~3 min), then hit PUT /api/inngest on kaulbyapp.com. Our Inngest
+# SDK serves this endpoint — a PUT triggers the SDK to rebuild the function
+# manifest and re-register with Inngest Cloud. This is the same action the
+# dashboard "Resync app" button fires, just automated.
+#
+# Runs free on GitHub Actions' public tier. No secrets required — /api/inngest
+# is a public endpoint gated by the SDK's internal signing-key validation.
+
+name: Inngest Auto-Resync
+
+on:
+  push:
+    branches: [main]
+
+# Cancel in-progress syncs if a new merge happens — no point re-syncing an
+# already-stale build.
+concurrency:
+  group: inngest-resync
+  cancel-in-progress: true
+
+jobs:
+  resync:
+    name: Resync Inngest after Vercel deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Wait for Vercel deploy (estimated 3 min)
+        run: |
+          echo "Waiting 180s for Vercel prod deploy to complete..."
+          sleep 180
+
+      - name: Poll deploy readiness
+        id: readiness
+        run: |
+          # Poll /api/inngest — if it returns 200 with function_count, the
+          # new deploy is live. Max 5 min wait.
+          for i in $(seq 1 20); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://kaulbyapp.com/api/inngest)
+            if [ "$STATUS" = "200" ]; then
+              echo "✅ Deploy ready on attempt $i"
+              echo "ready=true" >> $GITHUB_OUTPUT
+              break
+            fi
+            echo "attempt $i: status=$STATUS, waiting 15s..."
+            sleep 15
+          done
+
+      - name: Force Inngest re-register via PUT /api/inngest
+        run: |
+          RESPONSE=$(curl -s -X PUT https://kaulbyapp.com/api/inngest)
+          echo "Response: $RESPONSE"
+          # Check that the SDK returned a successful registration
+          if echo "$RESPONSE" | grep -q '"modified"'; then
+            echo "✅ Inngest re-registration successful"
+          else
+            echo "⚠️  Unexpected response — Inngest may not have re-registered. Manual resync may be needed."
+            exit 1
+          fi
+
+      - name: Verify function count
+        run: |
+          RESPONSE=$(curl -s https://kaulbyapp.com/api/inngest)
+          COUNT=$(echo "$RESPONSE" | python3 -c "import sys, json; print(json.load(sys.stdin).get('function_count', 0))")
+          echo "Registered functions: $COUNT"
+          if [ "$COUNT" -lt 40 ]; then
+            echo "⚠️  Function count ($COUNT) seems low — expected ~49"
+            exit 1
+          fi
+          echo "✅ Function count healthy"
