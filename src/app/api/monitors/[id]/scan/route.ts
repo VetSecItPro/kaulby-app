@@ -55,7 +55,8 @@ export async function POST(
       );
     }
 
-    // Check if already scanning
+    // Fast-path rejection when obviously already scanning. The atomic claim
+    // below is the real race guard; this just saves a useless cooldown lookup.
     if (monitor.isScanning) {
       return NextResponse.json(
         { error: "Scan already in progress", isScanning: true },
@@ -63,7 +64,8 @@ export async function POST(
       );
     }
 
-    // Check rate limiting
+    // Check rate limiting (uses lastManualScanAt from pre-claim read — safe
+    // because manual-scan cooldown is not affected by in-flight scans).
     const cooldownCheck = await canTriggerManualScan(userId, monitor.lastManualScanAt);
 
     if (!cooldownCheck.canScan) {
@@ -79,7 +81,32 @@ export async function POST(
       );
     }
 
-    // Trigger the on-demand scan via Inngest
+    // SEC-BIZ-01: atomic claim prevents concurrent-scan double-bill.
+    // Replaces the previous read-check-update pattern where two rapid POSTs
+    // could both pass the isScanning check and both dispatch to Inngest.
+    const claim = await db
+      .update(monitors)
+      .set({ isScanning: true })
+      .where(
+        and(
+          eq(monitors.id, id),
+          eq(monitors.userId, userId),
+          eq(monitors.isScanning, false)
+        )
+      )
+      .returning({ id: monitors.id });
+
+    if (claim.length === 0) {
+      // Monitor exists + belongs to user (verified above), so the only
+      // remaining reason the claim failed is isScanning was already true.
+      return NextResponse.json(
+        { error: "Scan already in progress", isScanning: true },
+        { status: 409 }
+      );
+    }
+
+    // Trigger the on-demand scan via Inngest only AFTER successfully
+    // claiming the scan slot — guarantees 1 dispatch per claim.
     await inngest.send({
       name: "monitor/scan-now",
       data: {
@@ -87,12 +114,6 @@ export async function POST(
         userId,
       },
     });
-
-    // Optimistically mark as scanning (Inngest will also do this, but this gives faster UI feedback)
-    await db
-      .update(monitors)
-      .set({ isScanning: true })
-      .where(eq(monitors.id, id));
 
     revalidateTag("monitors");
 

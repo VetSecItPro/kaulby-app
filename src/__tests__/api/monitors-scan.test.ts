@@ -184,9 +184,14 @@ describe("POST /api/monitors/[id]/scan", () => {
     });
     mockCanTriggerManualScan.mockResolvedValue({ canScan: true });
     mockInngestSend.mockResolvedValue(undefined);
+    // SEC-BIZ-01: route now uses atomic `.update().set().where().returning()`
+    // to claim the scan slot. Mock must return a non-empty array from
+    // .returning() so the route treats the claim as successful.
     mockDbUpdate.mockReturnValue({
       set: vi.fn().mockReturnValue({
-        where: vi.fn().mockResolvedValue(undefined),
+        where: vi.fn().mockReturnValue({
+          returning: vi.fn().mockResolvedValue([{ id: "mon_1" }]),
+        }),
       }),
     });
 
