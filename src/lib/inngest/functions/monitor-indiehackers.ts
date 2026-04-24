@@ -3,6 +3,10 @@ import { logger } from "@/lib/logger";
 import { contentMatchesMonitor } from "@/lib/content-matcher";
 import { captureEvent } from "@/lib/posthog";
 import {
+  fetchIndieHackersFeed,
+  type IndieHackersPost,
+} from "@/lib/indiehackers";
+import {
   getActiveMonitors,
   prefetchPlans,
   shouldSkipMonitor,
@@ -28,19 +32,6 @@ type IHFetchOutcome =
   | "feed_fail_scrape_empty"   // feed.json failed, HTML scrape returned 0 items
   | "all_failed";              // both feed.json and HTML scrape errored
 
-// Indie Hackers post interface
-interface IndieHackersPost {
-  id: string;
-  title: string;
-  body: string;
-  author: string;
-  url: string;
-  createdAt: string;
-  upvotes: number;
-  commentCount: number;
-  category?: string;
-}
-
 interface IHFetchResult {
   posts: IndieHackersPost[];
   outcome: IHFetchOutcome;
@@ -49,69 +40,32 @@ interface IHFetchResult {
 }
 
 /**
- * Fetch Indie Hackers posts via their public feed
- * IH doesn't have an official API, but we can scrape the JSON feed
+ * Cron IH strategy: feed first → HTML-scrape fallback.
+ * (On-demand uses a different chain; see scan-on-demand.ts.)
  */
 async function fetchIndieHackersPosts(keywords: string[], maxPosts: number = 50): Promise<IHFetchResult> {
-  let feedHttpStatus: number | undefined;
-  try {
-    // Indie Hackers has a public feed at /feed.json or we can scrape the homepage
-    const response = await fetch("https://www.indiehackers.com/feed.json", {
-      headers: {
-        "User-Agent": "Kaulby/1.0 (Community Monitoring Tool)",
-        "Accept": "application/json",
-      },
-    });
-    feedHttpStatus = response.status;
+  const feedResult = await fetchIndieHackersFeed(maxPosts);
+  const feedHttpStatus = feedResult.httpStatus;
 
-    if (!response.ok) {
-      // Fallback to scraping approach if feed doesn't exist / is blocked (429, 403, 5xx)
-      logger.info("[IndieHackers] Feed not available, using fallback scraping", { feedHttpStatus });
-      const scraped = await scrapeIndieHackers(keywords, maxPosts);
-      return {
-        posts: scraped.posts,
-        outcome: scraped.posts.length > 0 ? "feed_fail_scrape_ok" : scraped.errored ? "all_failed" : "feed_fail_scrape_empty",
-        httpStatus: feedHttpStatus,
-        errorMessage: scraped.errorMessage,
-      };
-    }
+  // Feed succeeded with posts
+  if (feedResult.posts.length > 0) {
+    return { posts: feedResult.posts, outcome: "feed_ok", httpStatus: feedHttpStatus };
+  }
 
-    const data = await response.json();
-    const posts: IndieHackersPost[] = [];
-
-    // Parse the feed items
-    if (data.items && Array.isArray(data.items)) {
-      for (const item of data.items.slice(0, maxPosts)) {
-        posts.push({
-          id: item.id || item.url || "",
-          title: item.title || "",
-          body: item.content_text || item.content_html || "",
-          author: item.author?.name || item.authors?.[0]?.name || "Unknown",
-          url: item.url || "",
-          createdAt: item.date_published || new Date().toISOString(),
-          upvotes: 0, // Not available in feed
-          commentCount: 0, // Not available in feed
-          category: item.tags?.[0] || undefined,
-        });
-      }
-    }
-
-    return {
-      posts,
-      outcome: posts.length > 0 ? "feed_ok" : "feed_empty",
-      httpStatus: feedHttpStatus,
-    };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error("[IndieHackers] Error fetching posts", { error: errorMessage });
+  // Feed returned HTTP error → try HTML scrape fallback
+  if (feedResult.errorMessage) {
+    logger.info("[IndieHackers] Feed not available, using fallback scraping", { feedHttpStatus });
     const scraped = await scrapeIndieHackers(keywords, maxPosts);
     return {
       posts: scraped.posts,
       outcome: scraped.posts.length > 0 ? "feed_fail_scrape_ok" : scraped.errored ? "all_failed" : "feed_fail_scrape_empty",
       httpStatus: feedHttpStatus,
-      errorMessage,
+      errorMessage: feedResult.errorMessage,
     };
   }
+
+  // Feed succeeded but returned 0 posts
+  return { posts: [], outcome: "feed_empty", httpStatus: feedHttpStatus };
 }
 
 interface IHScrapeResult {
