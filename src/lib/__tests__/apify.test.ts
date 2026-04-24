@@ -5,7 +5,6 @@ import {
   fetchAppStoreReviews,
   fetchPlayStoreReviews,
   fetchQuoraAnswers,
-  fetchYouTubeComments,
   fetchG2Reviews,
   fetchYelpReviews,
   fetchAmazonReviews,
@@ -495,91 +494,6 @@ describe("apify", () => {
 
       const callBody = JSON.parse(mockFetch.mock.calls[0][1].body as string);
       expect(callBody.sessionCookie).toBe("session_cookie_value");
-    });
-  });
-
-  describe("fetchYouTubeComments", () => {
-    it("fetches comments from video URL", async () => {
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              data: {
-                id: "run_123",
-                status: "RUNNING",
-                defaultDatasetId: "dataset_123",
-              },
-            }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              data: {
-                id: "run_123",
-                status: "SUCCEEDED",
-                defaultDatasetId: "dataset_123",
-              },
-            }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () =>
-            Promise.resolve([
-              {
-                commentId: "comment_1",
-                text: "Great video!",
-                author: "Viewer",
-                publishedAt: "2025-01-01",
-                likeCount: 10,
-                videoId: "abc123",
-              },
-            ]),
-        });
-
-      const comments = await fetchYouTubeComments(
-        "https://www.youtube.com/watch?v=abc123",
-        100
-      );
-
-      expect(comments).toHaveLength(1);
-      expect(comments[0].likeCount).toBe(10);
-    });
-
-    it("extracts video ID from youtu.be URL", async () => {
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              data: {
-                id: "run_123",
-                status: "RUNNING",
-                defaultDatasetId: "dataset_123",
-              },
-            }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              data: {
-                id: "run_123",
-                status: "SUCCEEDED",
-                defaultDatasetId: "dataset_123",
-              },
-            }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve([]),
-        });
-
-      await fetchYouTubeComments("https://youtu.be/xyz789", 100);
-
-      const callBody = JSON.parse(mockFetch.mock.calls[0][1].body as string);
-      expect(callBody.startUrls[0].url).toContain("v=xyz789");
     });
   });
 
