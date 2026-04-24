@@ -43,8 +43,8 @@ describe("hackernews", () => {
       expect(results[0].title).toBe("Test Story");
     });
 
-    it("combines keywords with OR operator", async () => {
-      mockFetch.mockResolvedValueOnce({
+    it("fires one request per keyword (HN Algolia breaks on combined OR of quoted phrases)", async () => {
+      mockFetch.mockResolvedValue({
         ok: true,
         json: () =>
           Promise.resolve({
@@ -59,22 +59,39 @@ describe("hackernews", () => {
 
       await searchMultipleKeywords(["keyword1", "keyword2", "keyword3"], 24);
 
-      const callUrl = mockFetch.mock.calls[0][0];
-      // URL-encoded: spaces become +, so "keyword1 OR keyword2 OR keyword3" becomes "keyword1+OR+keyword2+OR+keyword3"
-      expect(callUrl).toContain("keyword1+OR+keyword2+OR+keyword3");
+      expect(mockFetch).toHaveBeenCalledTimes(3);
+      const urls = mockFetch.mock.calls.map((c) => c[0] as string);
+      expect(urls[0]).toContain("query=keyword1");
+      expect(urls[1]).toContain("query=keyword2");
+      expect(urls[2]).toContain("query=keyword3");
     });
 
-    it("quotes multi-word keywords", async () => {
-      mockFetch.mockResolvedValueOnce({
+    it("passes multi-word keyword verbatim per-request (no quoting)", async () => {
+      mockFetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ hits: [], page: 0, nbPages: 0, nbHits: 0, hitsPerPage: 100, processingTimeMS: 5 }),
       });
 
       await searchMultipleKeywords(["multi word keyword", "single"], 24);
 
-      const callUrl = mockFetch.mock.calls[0][0];
-      // URL-encoded: quotes become %22, spaces become +, so '"multi word keyword"' becomes '%22multi+word+keyword%22'
-      expect(callUrl).toContain("%22multi+word+keyword%22");
+      const urls = mockFetch.mock.calls.map((c) => c[0] as string);
+      // URL-encoded: spaces become +
+      expect(urls[0]).toContain("query=multi+word+keyword");
+      expect(urls[1]).toContain("query=single");
+    });
+
+    it("dedups by objectID across keyword requests", async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            hits: [{ objectID: "shared", title: "t", url: null, author: "u", story_text: null, comment_text: null, created_at: "", created_at_i: 0, points: 0, num_comments: 0, _tags: ["story"] }],
+            page: 0, nbPages: 1, nbHits: 1, hitsPerPage: 50, processingTimeMS: 1,
+          }),
+      });
+
+      const results = await searchMultipleKeywords(["a", "b"], 24);
+      expect(results).toHaveLength(1);
     });
 
     it("filters by time range", async () => {
@@ -104,15 +121,14 @@ describe("hackernews", () => {
       expect(callUrl).toContain("numericFilters");
     });
 
-    it("throws error when API call fails", async () => {
-      mockFetch.mockResolvedValueOnce({
+    it("swallows per-keyword failures so one bad request doesn't kill the scan", async () => {
+      mockFetch.mockResolvedValue({
         ok: false,
         status: 500,
       });
 
-      await expect(searchMultipleKeywords(["test"], 24)).rejects.toThrow(
-        "HN Algolia API error: 500"
-      );
+      const results = await searchMultipleKeywords(["test"], 24);
+      expect(results).toEqual([]);
     });
 
     it("searches with tags=story by default", async () => {
