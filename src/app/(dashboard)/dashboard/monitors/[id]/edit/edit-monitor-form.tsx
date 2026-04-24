@@ -48,8 +48,8 @@ const ALL_PLATFORMS: PlatformDef[] = [
   // Business listing (optional URL)
   { id: "googlereviews", name: "Google Reviews", description: "Business reviews on Google", tier: "solo", needsUrl: false, optionalUrl: true, category: "business_listing", urlPlaceholder: "https://www.google.com/maps/place/... or Place ID", urlHelp: "Optional — paste your Google Maps URL for more accurate results, or we'll search by company name." },
   { id: "trustpilot", name: "Trustpilot", description: "Customer reviews and ratings", tier: "solo", needsUrl: false, optionalUrl: true, category: "business_listing", urlPlaceholder: "https://www.trustpilot.com/review/example.com", urlHelp: "Optional — paste your Trustpilot page URL for exact results, or we'll search by company name." },
-  { id: "g2", name: "G2", description: "Software reviews and ratings", tier: "growth", needsUrl: false, optionalUrl: true, category: "business_listing", urlPlaceholder: "https://www.g2.com/products/your-product/reviews", urlHelp: "Optional — paste your G2 product URL for exact results, or we'll search by company name." },
-  { id: "yelp", name: "Yelp", description: "Local business reviews", tier: "growth", needsUrl: false, optionalUrl: true, category: "business_listing", urlPlaceholder: "https://www.yelp.com/biz/business-name-city", urlHelp: "Optional — paste your Yelp page URL for exact results, or we'll search by company name." },
+  { id: "g2", name: "G2", description: "Software reviews and ratings", tier: "growth", needsUrl: true, category: "url_required", urlPlaceholder: "https://www.g2.com/products/your-product/reviews", urlHelp: "Paste your G2 product URL. Company-name fallback is unreliable on G2 — the URL gives exact results." },
+  { id: "yelp", name: "Yelp", description: "Local business reviews", tier: "growth", needsUrl: true, category: "url_required", urlPlaceholder: "https://www.yelp.com/biz/business-name-city", urlHelp: "Paste your Yelp page URL. Yelp coverage is local-business-only, so the URL is the most reliable way to find your page." },
 ];
 
 interface EditMonitorFormProps {
