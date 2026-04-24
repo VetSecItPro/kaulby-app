@@ -10,7 +10,7 @@ import "dotenv/config";
 import { config as loadEnv } from "dotenv";
 loadEnv({ path: ".env.local" });
 
-import { searchRedditResilient, searchRedditSiteWide } from "@/lib/reddit";
+import { searchRedditResilient, searchRedditPublicSiteWide } from "@/lib/reddit";
 
 async function probe(label: string, fn: () => Promise<any>) {
   console.log(`\n━━━ ${label} ━━━`);
@@ -62,8 +62,8 @@ async function main() {
 
   // Test 5: site-wide search for "Starbucks"
   await probe(
-    `Site-wide — searchRedditSiteWide (if available)`,
-    () => searchRedditSiteWide(["Starbucks"], 20).catch(() => ({ posts: [], source: "unavailable" as const, error: "function threw" })),
+    `Site-wide — searchRedditPublicSiteWide (if available)`,
+    () => searchRedditPublicSiteWide(["Starbucks"], 20).catch(() => ({ posts: [], source: "unavailable" as const, error: "function threw" })),
   );
 
   console.log("\n");
