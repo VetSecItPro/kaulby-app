@@ -180,14 +180,21 @@ Only include subreddits where this company/topic would ACTUALLY be discussed.`;
       analysisType: "subreddit-finder",
     });
 
-    // Extract just the subreddit names, prioritizing high relevance
+    // Strip r/ prefix — the LLM inconsistently prepends it, which then breaks
+    // the downstream scraper (it builds https://www.reddit.com/r/<name>/ and
+    // r/r/programming 404s). Also trim whitespace and lowercase for dedup.
+    const cleanName = (raw: string): string =>
+      raw.trim().replace(/^\/?r\//i, "").replace(/\/$/, "");
+
     const highRelevance = result.data.subreddits
-      .filter(s => s.relevance === "high")
-      .map(s => s.name);
+      .filter((s) => s.relevance === "high")
+      .map((s) => cleanName(s.name))
+      .filter(Boolean);
 
     const mediumRelevance = result.data.subreddits
-      .filter(s => s.relevance === "medium")
-      .map(s => s.name);
+      .filter((s) => s.relevance === "medium")
+      .map((s) => cleanName(s.name))
+      .filter(Boolean);
 
     return [...highRelevance, ...mediumRelevance].slice(0, maxSubreddits);
   } catch (error) {
