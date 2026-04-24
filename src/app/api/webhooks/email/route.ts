@@ -44,12 +44,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Webhook not configured" }, { status: 500 });
     }
     const signature = request.headers.get("resend-signature") || request.headers.get("x-resend-signature");
-    // Security: Use timing-safe comparison to prevent timing attacks on signature
-    if (!signature || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(webhookSecret))) {
+    // SEC-AUTH-007: Verify HMAC-SHA256 of raw body against signature (not secret comparison)
+    const rawBody = await request.text();
+    const expectedSig = crypto.createHmac("sha256", webhookSecret).update(rawBody).digest("hex");
+    const sigBuf = signature ? Buffer.from(signature) : Buffer.alloc(0);
+    const expBuf = Buffer.from(expectedSig);
+    if (!signature || sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
       return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
 
-    const payload = await request.json();
+    const payload = JSON.parse(rawBody);
 
     // SECURITY: Metadata only — FIX-011
 

@@ -113,6 +113,12 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // SEC-API-001: Rate limit DELETE to prevent abuse from compromised sessions
+    const writeRateLimit = await checkApiRateLimit(userId, "write");
+    if (!writeRateLimit.allowed) {
+      return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+    }
+
     const body = await req.json().catch(() => ({}));
     const id = body.id;
 
