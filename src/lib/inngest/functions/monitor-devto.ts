@@ -15,7 +15,7 @@ import {
 } from "../utils/monitor-helpers";
 
 // Dev.to article interface (from their API)
-interface DevToArticle {
+export interface DevToArticle {
   id: number;
   title: string;
   description: string;
@@ -45,7 +45,7 @@ interface DevToArticle {
  * 2. Tag-based search for single-word keywords (finds articles tagged with the term)
  * 3. Deduplicates across both approaches
  */
-async function searchDevTo(keywords: string[], maxResults: number = 50): Promise<DevToArticle[]> {
+export async function searchDevTo(keywords: string[], maxResults: number = 50): Promise<DevToArticle[]> {
   const articles: DevToArticle[] = [];
   const seenIds = new Set<number>();
 
