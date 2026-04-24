@@ -3,7 +3,6 @@ import {
   fetchGoogleReviews,
   fetchTrustpilotReviews,
   fetchAppStoreReviews,
-  fetchPlayStoreReviews,
   fetchQuoraAnswers,
   fetchG2Reviews,
   fetchYelpReviews,
@@ -366,52 +365,6 @@ describe("apify", () => {
 
       const callBody = JSON.parse(mockFetch.mock.calls[0][1].body as string);
       expect(callBody.appIds).toContain("123456789");
-    });
-  });
-
-  describe("fetchPlayStoreReviews", () => {
-    it("fetches reviews with package ID", async () => {
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              data: {
-                id: "run_123",
-                status: "RUNNING",
-                defaultDatasetId: "dataset_123",
-              },
-            }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              data: {
-                id: "run_123",
-                status: "SUCCEEDED",
-                defaultDatasetId: "dataset_123",
-              },
-            }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () =>
-            Promise.resolve([
-              {
-                reviewId: "review_1",
-                userName: "User123",
-                text: "Great app",
-                score: 5,
-                date: "2025-01-01",
-              },
-            ]),
-        });
-
-      const reviews = await fetchPlayStoreReviews("com.example.app", 50);
-
-      expect(reviews).toHaveLength(1);
-      expect(reviews[0].score).toBe(5);
     });
   });
 

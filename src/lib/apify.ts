@@ -6,7 +6,6 @@
  * - Google Reviews: compass/google-maps-reviews-scraper
  * - Trustpilot: epctex/trustpilot-scraper
  * - App Store: alexey/app-store-scraper
- * - Play Store: epctex/google-play-scraper
  * - Quora: jupri/quora-scraper
  *
  * Includes:
@@ -27,7 +26,6 @@ const ACTORS = {
   googleReviews: "compass/google-maps-reviews-scraper",
   trustpilot: "happitap/trustpilot-scraper",
   appStore: "thewolves/appstore-reviews-scraper", // Pay per result ($0.10/1000 reviews)
-  playStore: "neatrat/google-play-store-reviews-scraper", // Free tier available
   quora: "jupri/quora-scraper", // Note: requires paid rental
   // NEW PLATFORMS (Phase 2)
   g2: "powerai/g2-product-reviews-scraper", // Software reviews
@@ -77,19 +75,6 @@ interface AppStoreReviewItem {
   userName: string;
   version?: string;
   appId?: string;
-  url?: string;
-}
-
-interface PlayStoreReviewItem {
-  reviewId: string;
-  userName: string;
-  text: string;
-  score: number;
-  date: string;
-  thumbsUpCount?: number;
-  replyText?: string;
-  replyDate?: string;
-  appVersion?: string;
   url?: string;
 }
 
@@ -411,45 +396,6 @@ export async function fetchAppStoreReviews(
 }
 
 /**
- * Fetch Google Play Store reviews for an app
- * @param appUrl - Play Store URL or package ID
- * @param maxReviews - Maximum number of reviews to fetch (default 50)
- *
- * Uses neatrat/google-play-store-reviews-scraper actor
- */
-export async function fetchPlayStoreReviews(
-  appUrl: string,
-  maxReviews: number = 50
-): Promise<PlayStoreReviewItem[]> {
-  // Support both full URLs and package IDs
-  // URL format: https://play.google.com/store/apps/details?id=com.example.app
-  // Package ID format: com.example.app
-
-  const input = {
-    appIdOrUrl: appUrl, // Can be URL or package ID
-    maxReviews,
-    sortBy: "newest",
-  };
-
-  // Actor (neatrat/google-play-store-reviews-scraper) returns fields with different names
-  // than our PlayStoreReviewItem interface. Map them here.
-  const rawResults = await runActor<Record<string, unknown>>(ACTORS.playStore, input);
-
-  return rawResults.map((raw) => ({
-    reviewId: String(raw.reviewId || raw.id || `playstore-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
-    userName: String(raw.userName || raw.reviewer || raw.author || "Play Store User"),
-    text: String(raw.text || raw.body || raw.content || raw.review || ""),
-    score: Number(raw.score || raw.rating || raw.stars || 0),
-    date: String(raw.date || raw.at || raw.reviewCreatedVersion || new Date().toISOString()),
-    thumbsUpCount: raw.thumbsUpCount != null ? Number(raw.thumbsUpCount) : (raw.thumbsUp != null ? Number(raw.thumbsUp) : undefined),
-    replyText: raw.replyText != null ? String(raw.replyText) : (raw.developerComment != null ? String(raw.developerComment) : undefined),
-    replyDate: raw.replyDate != null ? String(raw.replyDate) : undefined,
-    appVersion: raw.appVersion != null ? String(raw.appVersion) : (raw.version != null ? String(raw.version) : undefined),
-    url: raw.url != null ? String(raw.url) : undefined,
-  }));
-}
-
-/**
  * Fetch Quora answers for a search query
  * @param query - Search query to find relevant questions/answers
  * @param maxResults - Maximum number of results to fetch (default 30)
@@ -618,7 +564,6 @@ export type {
   GoogleReviewItem,
   TrustpilotReviewItem,
   AppStoreReviewItem,
-  PlayStoreReviewItem,
   QuoraAnswerItem,
   // New platforms
   G2ReviewItem,

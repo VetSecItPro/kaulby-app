@@ -8,9 +8,9 @@ import {
   fetchGoogleReviews,
   fetchYelpReviews,
   fetchAppStoreReviews,
-  fetchPlayStoreReviews,
   isApifyConfigured,
 } from "@/lib/apify";
+import { fetchPlayStoreReviews } from "@/lib/playstore";
 import {
   fetchYouTubeCommentsApi,
   isYouTubeApiConfigured,

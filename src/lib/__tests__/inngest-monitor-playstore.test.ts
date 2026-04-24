@@ -15,8 +15,11 @@ vi.mock("@/lib/inngest/utils/monitor-helpers", () => mockHelpers);
 const mockFetchPlayStoreReviews = vi.fn();
 const mockIsApifyConfigured = vi.fn();
 
-vi.mock("@/lib/apify", () => ({
+vi.mock("@/lib/playstore", () => ({
   fetchPlayStoreReviews: mockFetchPlayStoreReviews,
+}));
+
+vi.mock("@/lib/apify", () => ({
   isApifyConfigured: mockIsApifyConfigured,
 }));
 
