@@ -12,6 +12,9 @@
 
 import { db } from "@/lib/db";
 import { aiLogs, monitors, results, users } from "@/lib/db/schema";
+// NOTE: vendor_metrics table is added in a separate PR (#265). Until that
+// merges, getVendorHealth() returns empty (try/catch caught) and the tile
+// renders "no snapshots yet" gracefully.
 import { and, count, desc, eq, gte, isNotNull, sql, sum } from "drizzle-orm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -23,7 +26,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowLeft, Activity, DollarSign, Gauge, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Activity, DollarSign, Gauge, AlertTriangle, ExternalLink, Heart } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -195,12 +198,43 @@ async function getRecentFailures(): Promise<
   }));
 }
 
+/**
+ * Latest snapshot per (vendor, metric). Fed by the hourly
+ * snapshot-vendor-metrics cron. Used by the System Health tile.
+ */
+async function getVendorHealth(): Promise<
+  Array<{ vendor: string; metric: string; value: number | null; metadata: unknown; recordedAt: Date }>
+> {
+  // PostgreSQL DISTINCT ON pattern: pick the newest row per (vendor, metric).
+  const rows = await db.execute<{
+    vendor: string;
+    metric: string;
+    value: number | null;
+    metadata: unknown;
+    recorded_at: Date;
+  }>(sql`
+    SELECT DISTINCT ON (vendor, metric)
+      vendor, metric, value, metadata, recorded_at
+    FROM vendor_metrics
+    WHERE recorded_at > NOW() - INTERVAL '6 hours'
+    ORDER BY vendor, metric, recorded_at DESC
+  `);
+
+  return rows.rows.map((r) => ({
+    vendor: String(r.vendor),
+    metric: String(r.metric),
+    value: r.value != null ? Number(r.value) : null,
+    metadata: r.metadata,
+    recordedAt: r.recorded_at as Date,
+  }));
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // PAGE
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default async function ObservabilityPage() {
-  const [cadenceHealth, aiCostByTier, scanVolume, recentFailures] = await Promise.all([
+  const [cadenceHealth, aiCostByTier, scanVolume, recentFailures, vendorHealth] = await Promise.all([
     getCadenceHealth().catch((e) => {
       console.error("[observability] cadence query failed", e);
       return [] as Awaited<ReturnType<typeof getCadenceHealth>>;
@@ -216,6 +250,10 @@ export default async function ObservabilityPage() {
     getRecentFailures().catch((e) => {
       console.error("[observability] failures query failed", e);
       return [] as Awaited<ReturnType<typeof getRecentFailures>>;
+    }),
+    getVendorHealth().catch((e) => {
+      console.error("[observability] vendor-health query failed", e);
+      return [] as Awaited<ReturnType<typeof getVendorHealth>>;
     }),
   ]);
 
@@ -238,12 +276,41 @@ export default async function ObservabilityPage() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
+        <SystemHealthTile data={vendorHealth} />
         <CadenceHealthTile data={cadenceHealth} />
         <AiCostByTierTile data={aiCostByTier} />
         <ScanVolumeTile data={scanVolume} />
         <RecentFailuresTile data={recentFailures} />
       </div>
+
+      <div className="rounded-lg border bg-muted/30 p-4">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
+          Drill-in to vendor consoles (when admin needs deep-dive)
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <DrillInLink label="PostHog" href="https://us.posthog.com/project" />
+          <DrillInLink label="Sentry" href="https://sentry.io/issues/" />
+          <DrillInLink label="Langfuse" href="https://us.cloud.langfuse.com/" />
+          <DrillInLink label="Apify Console" href="https://console.apify.com/billing" />
+          <DrillInLink label="OpenRouter" href="https://openrouter.ai/activity" />
+          <DrillInLink label="xAI Console" href="https://console.x.ai/" />
+          <DrillInLink label="Inngest Cloud" href="https://app.inngest.com/" />
+          <DrillInLink label="Vercel" href="https://vercel.com/vetsecitpro/kaulby-app/observability" />
+          <DrillInLink label="Polar" href="https://polar.sh/dashboard" />
+        </div>
+      </div>
     </div>
+  );
+}
+
+function DrillInLink({ label, href }: { label: string; href: string }) {
+  return (
+    <Button asChild variant="outline" size="sm">
+      <a href={href} target="_blank" rel="noopener noreferrer" className="gap-1">
+        {label}
+        <ExternalLink className="h-3 w-3" />
+      </a>
+    </Button>
   );
 }
 
@@ -520,6 +587,116 @@ function RecentFailuresTile({
                 })}
               </TableBody>
             </Table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function SystemHealthTile({
+  data,
+}: {
+  data: Array<{ vendor: string; metric: string; value: number | null; metadata: unknown; recordedAt: Date }>;
+}) {
+  // Group by vendor
+  const byVendor = new Map<string, typeof data>();
+  for (const row of data) {
+    const list = byVendor.get(row.vendor) ?? [];
+    list.push(row);
+    byVendor.set(row.vendor, list);
+  }
+
+  // Determine vendor status from latest snapshot rows
+  type VendorStatus = "healthy" | "warning" | "critical" | "unknown";
+  function getVendorStatus(rows: typeof data): { status: VendorStatus; summary: string } {
+    if (rows.length === 0) return { status: "unknown", summary: "no snapshot yet" };
+    const failedRow = rows.find((r) => r.metric === "_snapshot_failed" && r.value === 1);
+    if (failedRow) {
+      const md = failedRow.metadata as { error?: string } | null;
+      return { status: "critical", summary: md?.error ?? "snapshot failed" };
+    }
+    const vendor = rows[0].vendor;
+    // Apify: check usage_pct
+    if (vendor === "apify") {
+      const pctRow = rows.find((r) => r.metric === "monthly_usage_pct");
+      const pct = pctRow?.value ?? 0;
+      if (pct >= 95) return { status: "critical", summary: `${pct.toFixed(0)}% of monthly quota used` };
+      if (pct >= 75) return { status: "warning", summary: `${pct.toFixed(0)}% of monthly quota used` };
+      return { status: "healthy", summary: `${pct.toFixed(0)}% of monthly quota used` };
+    }
+    // OpenRouter: check credit_remaining_usd
+    if (vendor === "openrouter") {
+      const usedRow = rows.find((r) => r.metric === "usage_total_usd");
+      const remRow = rows.find((r) => r.metric === "credit_remaining_usd");
+      if (remRow?.value != null) {
+        if (remRow.value < 1) return { status: "critical", summary: `$${remRow.value.toFixed(2)} remaining` };
+        if (remRow.value < 5) return { status: "warning", summary: `$${remRow.value.toFixed(2)} remaining` };
+        return { status: "healthy", summary: `$${remRow.value.toFixed(2)} remaining` };
+      }
+      return {
+        status: "healthy",
+        summary: usedRow?.value != null ? `$${usedRow.value.toFixed(2)} used MTD` : "active",
+      };
+    }
+    // xAI: check key_active
+    if (vendor === "xai") {
+      const activeRow = rows.find((r) => r.metric === "key_active");
+      if (activeRow?.value === 1) return { status: "healthy", summary: "key active" };
+      if (activeRow?.value === 0) return { status: "critical", summary: "key disabled" };
+      return { status: "unknown", summary: "no status" };
+    }
+    return { status: "unknown", summary: "unknown vendor" };
+  }
+
+  const vendorList = Array.from(byVendor.entries()).sort(([a], [b]) => a.localeCompare(b));
+
+  return (
+    <Card className="md:col-span-2">
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <Heart className="h-5 w-5 text-muted-foreground" />
+          <CardTitle>System Health (Vendors)</CardTitle>
+        </div>
+        <CardDescription>
+          Latest hourly snapshot from Apify, OpenRouter, xAI. Hourly cron writes to vendor_metrics.
+          Empty rows = waiting for first snapshot (cron runs at :00 each hour).
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {vendorList.length === 0 ? (
+          <div className="text-sm text-muted-foreground py-8 text-center">
+            No vendor snapshots yet. The hourly cron will populate this on the next :00 minute mark.
+          </div>
+        ) : (
+          <div className="grid gap-3 md:grid-cols-3">
+            {vendorList.map(([vendor, rows]) => {
+              const { status, summary } = getVendorStatus(rows);
+              const ageMin = (Date.now() - rows[0].recordedAt.getTime()) / 60_000;
+              const stale = ageMin > 90; // Cron is hourly; > 90 min late = problem
+              return (
+                <div
+                  key={vendor}
+                  className="rounded-lg border p-4 space-y-2"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-sm font-medium">{vendor}</span>
+                    {status === "healthy" && <Badge className="bg-green-100 text-green-800">healthy</Badge>}
+                    {status === "warning" && <Badge className="bg-yellow-100 text-yellow-800">warning</Badge>}
+                    {status === "critical" && <Badge variant="destructive">critical</Badge>}
+                    {status === "unknown" && <Badge variant="outline">unknown</Badge>}
+                  </div>
+                  <p className="text-xs text-muted-foreground">{summary}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {stale ? (
+                      <span className="text-yellow-600">⚠ stale ({Math.round(ageMin)}m old)</span>
+                    ) : (
+                      <span>{Math.round(ageMin)}m ago</span>
+                    )}
+                  </p>
+                </div>
+              );
+            })}
           </div>
         )}
       </CardContent>
