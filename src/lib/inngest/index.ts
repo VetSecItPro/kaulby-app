@@ -54,6 +54,8 @@ export { chatCleanup } from "./functions/chat-cleanup";
 export { githubWebhookProcessor } from "./functions/github-webhook-processor";
 // Observability Phase 8: daily rollup of aiLogs/results/vendor_metrics
 export { snapshotDailyMetrics } from "./functions/snapshot-daily-metrics";
+// Observability Phase 5: every-15-min admin alerts on vendor thresholds + scan failure rate
+export { checkVendorThresholds } from "./functions/check-vendor-thresholds";
 
 // All functions for the Inngest handler
 import { monitorReddit } from "./functions/monitor-reddit";
@@ -108,6 +110,8 @@ import { githubWebhookProcessor } from "./functions/github-webhook-processor";
 import { snapshotVendorMetrics } from "./functions/snapshot-vendor-metrics";
 // Observability Phase 8: daily rollup table writer (00:05 CT)
 import { snapshotDailyMetrics } from "./functions/snapshot-daily-metrics";
+// Observability Phase 5: 15-min admin alerts cron
+import { checkVendorThresholds } from "./functions/check-vendor-thresholds";
 
 export const functions = [
   monitorReddit,
@@ -170,6 +174,8 @@ export const functions = [
   snapshotVendorMetrics,
   // Observability — daily rollup (00:05 CT) feeding trend charts
   snapshotDailyMetrics,
+  // Observability — every-15-min threshold alerts cron
+  checkVendorThresholds,
   // Chat cleanup
   chatCleanup,
   // COA 4 W2.4
