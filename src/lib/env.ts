@@ -82,23 +82,45 @@ export type ServerEnv = z.infer<typeof serverEnvSchema>;
 
 let cached: ServerEnv | undefined;
 
+/**
+ * Production = Vercel production deploy. Non-prod (preview, dev, CI E2E)
+ * gets a softer treatment so missing-secret regressions don't fail the
+ * deploy/test boot — they log warnings instead. Production still throws
+ * so a real misconfigured deploy fails fast with a structured error.
+ *
+ * Why this distinction matters: CI E2E runs `next dev` against a public
+ * repo with no production secrets — CLERK_WEBHOOK_SECRET, POLAR_*, etc
+ * aren't available there. Throwing on every preview build would block
+ * legitimate development. The original guard tripped E2E on PR #279.
+ */
+function isProductionDeploy(): boolean {
+  return process.env.VERCEL_ENV === "production";
+}
+
 function parseEnv(): ServerEnv {
   const result = serverEnvSchema.safeParse(process.env);
   if (!result.success) {
     const issues = result.error.issues
       .map((i) => `  - ${i.path.join(".")}: ${i.message}`)
       .join("\n");
-    // Print directly to stderr — don't go through logger because logger may
-    // depend on env vars itself, and we want this visible in the deploy log
-    // even if structured logging is broken.
-    const msg = `[env] Server environment validation failed:\n${issues}\n\nFix the missing/malformed env vars in your deployment config.`;
+    const msg = `[env] Server environment validation failed:\n${issues}`;
     if (process.env.NODE_ENV !== "test") {
       // eslint-disable-next-line no-console
       console.error(msg);
     }
-    // Throw so the server fails to boot with a clear error rather than
-    // crashing later at the first vendor call.
-    throw new Error(msg);
+    if (isProductionDeploy()) {
+      // Production: throw so the server fails to boot with a structured
+      // error rather than 401-ing webhooks at first request.
+      throw new Error(`${msg}\n\nFix the missing/malformed env vars in your Vercel production env.`);
+    }
+    // Non-production (dev, preview, CI E2E): warn but boot anyway. The fields
+    // pass through as whatever process.env has, callers see undefined for
+    // missing vars (existing behavior pre-PR #279).
+    if (process.env.NODE_ENV !== "test") {
+      // eslint-disable-next-line no-console
+      console.warn("[env] Validation issues above — booting anyway since this is a non-production environment. Set VERCEL_ENV=production for strict enforcement.");
+    }
+    return process.env as unknown as ServerEnv;
   }
   return result.data;
 }
