@@ -40,7 +40,15 @@ interface VendorMetricRow {
 
 /**
  * Apify usage snapshot.
- * Endpoint: GET /v2/users/me — returns the current month's usage data.
+ *
+ * IMPORTANT: /v2/users/me returns `currentUsage.usageTotalUsd: null` on FREE
+ * tier — that field is only populated for paid plans. The actual current-cycle
+ * spend lives at /v2/users/me/usage/monthly under `monthlyServiceUsage`,
+ * which we sum across all per-service rows.
+ *
+ * Discovered 2026-04-25 when the prod free quota was at 119.6% but this
+ * cron would have reported 0% silently — that's how 13 of 16 platforms
+ * stopped scanning without firing the Phase 5 quota alert.
  */
 async function fetchApifyMetrics(): Promise<VendorMetricRow[]> {
   const apiKey = process.env.APIFY_API_KEY;
@@ -54,26 +62,47 @@ async function fetchApifyMetrics(): Promise<VendorMetricRow[]> {
   }
 
   try {
-    const res = await fetch(`https://api.apify.com/v2/users/me?token=${apiKey}`, {
-      signal: AbortSignal.timeout(15000),
-    });
-    if (!res.ok) {
-      throw new Error(`Apify /users/me HTTP ${res.status}`);
-    }
-    const body = await res.json();
-    const data = body?.data ?? {};
-    const plan = data?.plan ?? {};
-    const usage = data?.currentUsage ?? {};
+    // /users/me has plan limits; /users/me/usage/monthly has actual spend.
+    // Two parallel calls because they're independent endpoints.
+    const [meRes, usageRes] = await Promise.all([
+      fetch(`https://api.apify.com/v2/users/me?token=${apiKey}`, {
+        signal: AbortSignal.timeout(15000),
+      }),
+      fetch(`https://api.apify.com/v2/users/me/usage/monthly?token=${apiKey}`, {
+        signal: AbortSignal.timeout(15000),
+      }),
+    ]);
+    if (!meRes.ok) throw new Error(`Apify /users/me HTTP ${meRes.status}`);
+    if (!usageRes.ok) throw new Error(`Apify /usage/monthly HTTP ${usageRes.status}`);
+
+    const meBody = await meRes.json();
+    const usageBody = await usageRes.json();
+    const plan = meBody?.data?.plan ?? {};
+    const usageData = usageBody?.data ?? {};
+
     const limit = Number(plan?.maxMonthlyUsageUsd ?? 0);
-    const used = Number(usage?.usageTotalUsd ?? 0);
+
+    // Sum per-service spend. Each service row has amountAfterVolumeDiscountUsd
+    // (post-discount, what actually counts against the cap).
+    const serviceUsage = (usageData?.monthlyServiceUsage ?? {}) as Record<string, { amountAfterVolumeDiscountUsd?: number }>;
+    const used = Object.values(serviceUsage).reduce(
+      (sum, s) => sum + Number(s?.amountAfterVolumeDiscountUsd ?? 0),
+      0,
+    );
     const remaining = Math.max(0, limit - used);
+    const cycle = usageData?.usageCycle ?? null;
 
     return [
       {
         vendor: "apify",
         metric: "monthly_usage_used_usd",
         value: used,
-        metadata: { tier: plan?.tier ?? "FREE", planId: plan?.id ?? "FREE" },
+        metadata: {
+          tier: plan?.tier ?? "FREE",
+          planId: plan?.id ?? "FREE",
+          cycleStart: cycle?.startAt ?? null,
+          cycleEnd: cycle?.endAt ?? null,
+        },
       },
       {
         vendor: "apify",
