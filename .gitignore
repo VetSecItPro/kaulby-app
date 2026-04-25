@@ -86,3 +86,4 @@ ARCHITECTURE.md
 .test-ship-quarantine.json
 .monitor-reports/
 eval-last-report.json
+.qatest-reports/

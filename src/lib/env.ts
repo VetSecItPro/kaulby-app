@@ -83,42 +83,37 @@ export type ServerEnv = z.infer<typeof serverEnvSchema>;
 let cached: ServerEnv | undefined;
 
 /**
- * Production = Vercel production deploy. Non-prod (preview, dev, CI E2E)
- * gets a softer treatment so missing-secret regressions don't fail the
- * deploy/test boot — they log warnings instead. Production still throws
- * so a real misconfigured deploy fails fast with a structured error.
+ * SEV-1 hot-fix 2026-04-25: env validation no longer throws in any
+ * environment. Production was returning 500 on every dynamic route because
+ * the strict Zod schema (specifically `ENCRYPTION_KEY: z.string().min(64)`)
+ * was rejecting a real value, throwing during instrumentation.register(),
+ * and crashing the Next.js runtime.
  *
- * Why this distinction matters: CI E2E runs `next dev` against a public
- * repo with no production secrets — CLERK_WEBHOOK_SECRET, POLAR_*, etc
- * aren't available there. Throwing on every preview build would block
- * legitimate development. The original guard tripped E2E on PR #279.
+ * Original intent (PR #279): "fail fast at boot when prod is misconfigured."
+ * Real-world cost: a single overly-strict schema field can take down the
+ * entire site. Worse than 401-ing one webhook at first request.
+ *
+ * New behavior — ALL environments:
+ *   1. Run schema validation
+ *   2. If validation fails, log structured error to stderr
+ *   3. Return `process.env` cast as ServerEnv anyway
+ *   4. Never throw, never crash boot
+ *
+ * The validation still surfaces misconfig in deploy logs (catchable by
+ * Sentry / Vercel log monitoring). It just no longer blocks the server
+ * from running. Future improvement: pipe these warnings into a Sentry
+ * breadcrumb so misconfig drift is tracked without crashing production.
  */
-function isProductionDeploy(): boolean {
-  return process.env.VERCEL_ENV === "production";
-}
-
 function parseEnv(): ServerEnv {
   const result = serverEnvSchema.safeParse(process.env);
   if (!result.success) {
     const issues = result.error.issues
       .map((i) => `  - ${i.path.join(".")}: ${i.message}`)
       .join("\n");
-    const msg = `[env] Server environment validation failed:\n${issues}`;
+    const msg = `[env] Server environment validation failed (warn-only — server will still boot):\n${issues}`;
     if (process.env.NODE_ENV !== "test") {
       // eslint-disable-next-line no-console
       console.error(msg);
-    }
-    if (isProductionDeploy()) {
-      // Production: throw so the server fails to boot with a structured
-      // error rather than 401-ing webhooks at first request.
-      throw new Error(`${msg}\n\nFix the missing/malformed env vars in your Vercel production env.`);
-    }
-    // Non-production (dev, preview, CI E2E): warn but boot anyway. The fields
-    // pass through as whatever process.env has, callers see undefined for
-    // missing vars (existing behavior pre-PR #279).
-    if (process.env.NODE_ENV !== "test") {
-      // eslint-disable-next-line no-console
-      console.warn("[env] Validation issues above — booting anyway since this is a non-production environment. Set VERCEL_ENV=production for strict enforcement.");
     }
     return process.env as unknown as ServerEnv;
   }
