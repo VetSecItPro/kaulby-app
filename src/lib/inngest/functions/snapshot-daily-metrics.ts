@@ -32,6 +32,22 @@ interface RollupRow {
   metadata?: Record<string, unknown> | null;
 }
 
+// PERF-BUILDTIME-002: hoisted formatters — daily cron only, but cleaner.
+const CT_DATE_FORMATTER = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/Chicago",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+const CT_HOUR_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/Chicago",
+  hour: "2-digit",
+  hour12: false,
+});
+
 /**
  * Compute the (start, end, label) for "yesterday in Central Time".
  * Returns the day's start/end as UTC Date objects + the YYYY-MM-DD label
@@ -40,15 +56,7 @@ interface RollupRow {
 function getYesterdayCT(): { start: Date; end: Date; dateLabel: string } {
   // Compute "now in CT" by formatting; subtract 1 day; floor to midnight CT.
   const now = new Date();
-  const ctNowParts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Chicago",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).formatToParts(now);
+  const ctNowParts = CT_DATE_FORMATTER.formatToParts(now);
   const get = (t: string) => ctNowParts.find((p) => p.type === t)?.value ?? "00";
   const ctYear = Number(get("year"));
   const ctMonth = Number(get("month"));
@@ -84,13 +92,7 @@ function getCtOffsetMs(localDate: Date): number {
     0, 0, 0,
   );
   // Format that UTC instant as CT and read the resulting hour to derive offset.
-  const ctHour = Number(
-    new Intl.DateTimeFormat("en-US", {
-      timeZone: "America/Chicago",
-      hour: "2-digit",
-      hour12: false,
-    }).format(new Date(utcMs)),
-  );
+  const ctHour = Number(CT_HOUR_FORMATTER.format(new Date(utcMs)));
   // If CT shows "18:00" for UTC 00:00, offset is -6h (CST). If "19:00", -5h (CDT).
   // Inverse: offsetHours = ctHour - 24 (when ctHour > 12).
   const offsetHours = ctHour > 12 ? ctHour - 24 : -ctHour;

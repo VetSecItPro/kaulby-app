@@ -38,6 +38,14 @@ const PLATFORM_GUIDELINES: Record<string, string> = {
   default: "Be helpful, genuine, add value, avoid being promotional.",
 };
 
+// PERF-BUILDTIME-003: hoisted to module scope. Was re-allocated per request +
+// used `.includes()` (O(n)). Now O(1) via Set.has().
+const ALLOWED_PLATFORMS = new Set([
+  "reddit", "hackernews", "producthunt", "devto", "hashnode", "github",
+  "youtube", "trustpilot", "googlereviews", "g2", "yelp", "amazon",
+  "appstore", "playstore", "indiehackers", "x",
+]);
+
 export async function POST(req: Request) {
   try {
     const userId = await getEffectiveUserId();
@@ -93,9 +101,8 @@ export async function POST(req: Request) {
     const cleanProductContext = productContext ? sanitizeInput(productContext, 200) : "";
 
     // Security: Validate platform against allowlist to prevent prompt injection via platform field
-    const ALLOWED_PLATFORMS = ["reddit", "hackernews", "producthunt", "devto", "hashnode", "github", "youtube", "trustpilot", "googlereviews", "g2", "yelp", "amazon", "appstore", "playstore", "indiehackers", "x"];
     const normalizedPlatform = platform.toLowerCase().trim();
-    if (!ALLOWED_PLATFORMS.includes(normalizedPlatform)) {
+    if (!ALLOWED_PLATFORMS.has(normalizedPlatform)) {
       return NextResponse.json({ error: "Invalid platform" }, { status: 400 });
     }
 

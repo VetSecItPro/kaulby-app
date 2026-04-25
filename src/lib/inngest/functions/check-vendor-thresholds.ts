@@ -17,7 +17,7 @@ import { inngest } from "../client";
 import { logger } from "@/lib/logger";
 import { pooledDb, db } from "@/lib/db";
 import { vendorMetrics, monitors } from "@/lib/db/schema";
-import { and, gte, isNotNull, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { sendEmailWithRetry } from "@/lib/email/send-with-retry";
 
 interface FiredAlert {
@@ -135,22 +135,17 @@ async function evaluateScanFailureRate(): Promise<RuleEvaluation> {
   // active monitors for a rough proxy.
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
 
-  const failuresRow = await db
-    .select({ count: sql<number>`COUNT(*)` })
-    .from(monitors)
-    .where(
-      and(
-        isNotNull(monitors.lastCheckFailedAt),
-        gte(monitors.lastCheckFailedAt, oneHourAgo),
-      ),
-    );
-
-  const totalRow = await db
-    .select({ count: sql<number>`COUNT(*)` })
+  // PERF-DB-001 + PERF-ASYNC-001: collapse two round-trips into one query.
+  // FILTER clause computes both counts in a single table scan.
+  const result = await db
+    .select({
+      failed: sql<number>`COUNT(*) FILTER (WHERE ${monitors.lastCheckFailedAt} >= ${oneHourAgo})`,
+      total: sql<number>`COUNT(*)`,
+    })
     .from(monitors);
 
-  const failures = Number(failuresRow[0]?.count ?? 0);
-  const total = Number(totalRow[0]?.count ?? 1);
+  const failures = Number(result[0]?.failed ?? 0);
+  const total = Number(result[0]?.total ?? 1);
   const rate = total > 0 ? (failures / total) * 100 : 0;
 
   if (rate >= 25) {
