@@ -5,12 +5,17 @@
  * vendor_metrics instead of hitting Apify/OpenRouter/xAI APIs on every
  * page load. Decouples admin UX from vendor API availability + rate limits.
  *
- * v1 covers the cost-heavy vendors only:
- * - Apify (account quota — main cost concern, exhausted today)
+ * Coverage:
+ * - Apify (account quota — main cost concern)
  * - OpenRouter (account credits — primary AI billing)
  * - xAI Grok (account credits — X-platform scraping)
- *
- * Future: add Sentry, Polar, Inngest, Vercel, PostHog, Langfuse, Resend.
+ * - Sentry (open issues count, error rate)
+ * - Polar (active subscriptions, customer count)
+ * - Inngest (recent function run health)
+ * - Resend (24h email volume + bounce rate)
+ * - PostHog (key-event volume — needs personal API key)
+ * - Langfuse (trace volume + p95 latency, last 1h)
+ * - Vercel (last deployment status — needs VERCEL_TOKEN)
  *
  * Per-vendor try/catch isolation: one vendor outage doesn't break the
  * snapshot for others. Failures are logged + a `_snapshot_failed: true`
@@ -223,6 +228,423 @@ async function fetchXaiMetrics(): Promise<VendorMetricRow[]> {
   }
 }
 
+/**
+ * Sentry: open unresolved issues + 24h event volume.
+ * Endpoint: GET /api/0/projects/{org}/{project}/issues/?query=is:unresolved&statsPeriod=24h
+ */
+async function fetchSentryMetrics(): Promise<VendorMetricRow[]> {
+  const token = process.env.SENTRY_AUTH_TOKEN;
+  const org = process.env.SENTRY_ORG;
+  const project = process.env.SENTRY_PROJECT;
+  if (!token || !org || !project) {
+    return [{
+      vendor: "sentry",
+      metric: "_snapshot_failed",
+      value: 1,
+      metadata: { error: "SENTRY_AUTH_TOKEN/SENTRY_ORG/SENTRY_PROJECT not set" },
+    }];
+  }
+
+  try {
+    const url = `https://sentry.io/api/0/projects/${encodeURIComponent(org)}/${encodeURIComponent(project)}/issues/?query=is:unresolved&statsPeriod=24h&limit=100`;
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) {
+      throw new Error(`Sentry /issues HTTP ${res.status}`);
+    }
+    const issues = (await res.json()) as Array<{ id: string; title: string; count: string; level: string }>;
+    const unresolvedCount = issues.length;
+    const totalEvents24h = issues.reduce((sum, i) => sum + Number(i.count ?? 0), 0);
+    const topIssue = issues[0] ?? null;
+
+    return [
+      {
+        vendor: "sentry",
+        metric: "unresolved_issues",
+        value: unresolvedCount,
+        metadata: topIssue
+          ? { topIssueId: topIssue.id, topIssueTitle: topIssue.title, topIssueLevel: topIssue.level }
+          : null,
+      },
+      {
+        vendor: "sentry",
+        metric: "events_last_24h",
+        value: totalEvents24h,
+        metadata: null,
+      },
+    ];
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    logger.warn("[snapshot-vendor-metrics] sentry failed", { error: msg });
+    return [{
+      vendor: "sentry",
+      metric: "_snapshot_failed",
+      value: 1,
+      metadata: { error: msg },
+    }];
+  }
+}
+
+/**
+ * Polar: active subscriptions count for our org.
+ * Endpoint: GET /v1/subscriptions?organization_id=...&active=true
+ */
+async function fetchPolarMetrics(): Promise<VendorMetricRow[]> {
+  const token = process.env.POLAR_ACCESS_TOKEN;
+  const orgId = process.env.POLAR_ORG_ID;
+  if (!token || !orgId) {
+    return [{
+      vendor: "polar",
+      metric: "_snapshot_failed",
+      value: 1,
+      metadata: { error: "POLAR_ACCESS_TOKEN/POLAR_ORG_ID not set" },
+    }];
+  }
+
+  try {
+    const url = `https://api.polar.sh/v1/subscriptions?organization_id=${encodeURIComponent(orgId)}&active=true&limit=100`;
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) {
+      throw new Error(`Polar /subscriptions HTTP ${res.status}`);
+    }
+    const body = (await res.json()) as { items?: Array<{ status: string; product_id: string }>; pagination?: { total_count?: number } };
+    const items = body?.items ?? [];
+    const activeCount = body?.pagination?.total_count ?? items.length;
+    // Per-product breakdown for tier-mix metadata.
+    const byProduct = items.reduce<Record<string, number>>((acc, sub) => {
+      const key = sub.product_id ?? "unknown";
+      acc[key] = (acc[key] ?? 0) + 1;
+      return acc;
+    }, {});
+
+    return [
+      {
+        vendor: "polar",
+        metric: "active_subscriptions",
+        value: activeCount,
+        metadata: { byProduct },
+      },
+    ];
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    logger.warn("[snapshot-vendor-metrics] polar failed", { error: msg });
+    return [{
+      vendor: "polar",
+      metric: "_snapshot_failed",
+      value: 1,
+      metadata: { error: msg },
+    }];
+  }
+}
+
+/**
+ * Inngest: signing key authenticates against REST API for run inspection.
+ * Endpoint: GET /v1/events?limit=1 — confirms key validity + returns recent events.
+ * For deeper run health we'd query /v1/runs but that requires app_id; v1 is just
+ * a connectivity + recent-event-count probe.
+ */
+async function fetchInngestMetrics(): Promise<VendorMetricRow[]> {
+  const key = process.env.INNGEST_SIGNING_KEY;
+  if (!key) {
+    return [{
+      vendor: "inngest",
+      metric: "_snapshot_failed",
+      value: 1,
+      metadata: { error: "INNGEST_SIGNING_KEY not set" },
+    }];
+  }
+
+  try {
+    const res = await fetch("https://api.inngest.com/v1/events?limit=50", {
+      headers: { Authorization: `Bearer ${key}` },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) {
+      throw new Error(`Inngest /events HTTP ${res.status}`);
+    }
+    const body = (await res.json()) as { data?: unknown[] };
+    const recentEventCount = Array.isArray(body?.data) ? body.data.length : 0;
+    return [
+      {
+        vendor: "inngest",
+        metric: "recent_events_count",
+        value: recentEventCount,
+        metadata: null,
+      },
+      {
+        vendor: "inngest",
+        metric: "api_reachable",
+        value: 1,
+        metadata: null,
+      },
+    ];
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    logger.warn("[snapshot-vendor-metrics] inngest failed", { error: msg });
+    return [{
+      vendor: "inngest",
+      metric: "_snapshot_failed",
+      value: 1,
+      metadata: { error: msg },
+    }];
+  }
+}
+
+/**
+ * Resend: 24h email send volume.
+ * Endpoint: GET /emails — paginated list. We pull first page (default 50) and
+ * count those with created_at within last 24h. Good enough for v1; if volume
+ * grows past ~50/hr, switch to a counter table.
+ */
+async function fetchResendMetrics(): Promise<VendorMetricRow[]> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    return [{
+      vendor: "resend",
+      metric: "_snapshot_failed",
+      value: 1,
+      metadata: { error: "RESEND_API_KEY not set" },
+    }];
+  }
+
+  try {
+    const res = await fetch("https://api.resend.com/emails?limit=100", {
+      headers: { Authorization: `Bearer ${apiKey}` },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) {
+      throw new Error(`Resend /emails HTTP ${res.status}`);
+    }
+    const body = (await res.json()) as { data?: Array<{ created_at: string; last_event?: string }> };
+    const emails = body?.data ?? [];
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+    const last24h = emails.filter((e) => new Date(e.created_at).getTime() >= cutoff);
+    const bounced = last24h.filter((e) => e.last_event === "bounced").length;
+    const complained = last24h.filter((e) => e.last_event === "complained").length;
+
+    return [
+      {
+        vendor: "resend",
+        metric: "emails_sent_24h",
+        value: last24h.length,
+        metadata: null,
+      },
+      {
+        vendor: "resend",
+        metric: "bounces_24h",
+        value: bounced,
+        metadata: null,
+      },
+      {
+        vendor: "resend",
+        metric: "complaints_24h",
+        value: complained,
+        metadata: null,
+      },
+    ];
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    logger.warn("[snapshot-vendor-metrics] resend failed", { error: msg });
+    return [{
+      vendor: "resend",
+      metric: "_snapshot_failed",
+      value: 1,
+      metadata: { error: msg },
+    }];
+  }
+}
+
+/**
+ * PostHog: DAU + key-event counts via HogQL.
+ * Requires a PERSONAL API key (NEXT_PUBLIC_POSTHOG_KEY is write-only).
+ * Skipped gracefully if POSTHOG_PERSONAL_API_KEY + POSTHOG_PROJECT_ID not set.
+ */
+async function fetchPostHogMetrics(): Promise<VendorMetricRow[]> {
+  const apiKey = process.env.POSTHOG_PERSONAL_API_KEY;
+  const projectId = process.env.POSTHOG_PROJECT_ID;
+  const host = process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://us.posthog.com";
+  if (!apiKey || !projectId) {
+    return [{
+      vendor: "posthog",
+      metric: "_snapshot_failed",
+      value: 1,
+      metadata: { error: "POSTHOG_PERSONAL_API_KEY/POSTHOG_PROJECT_ID not set" },
+    }];
+  }
+
+  try {
+    // HogQL: count distinct users in last 24h.
+    const query = "SELECT count(DISTINCT distinct_id) FROM events WHERE timestamp > now() - INTERVAL 1 DAY";
+    const res = await fetch(`${host}/api/projects/${encodeURIComponent(projectId)}/query/`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ query: { kind: "HogQLQuery", query } }),
+      signal: AbortSignal.timeout(20000),
+    });
+    if (!res.ok) {
+      throw new Error(`PostHog /query HTTP ${res.status}`);
+    }
+    const body = (await res.json()) as { results?: Array<Array<number>> };
+    const dau = body?.results?.[0]?.[0] ?? 0;
+    return [
+      {
+        vendor: "posthog",
+        metric: "dau",
+        value: Number(dau),
+        metadata: null,
+      },
+    ];
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    logger.warn("[snapshot-vendor-metrics] posthog failed", { error: msg });
+    return [{
+      vendor: "posthog",
+      metric: "_snapshot_failed",
+      value: 1,
+      metadata: { error: msg },
+    }];
+  }
+}
+
+/**
+ * Langfuse: trace volume + p95 latency, last hour.
+ * Endpoint: GET /api/public/traces?fromTimestamp=...
+ * Auth: Basic with public:secret.
+ */
+async function fetchLangfuseMetrics(): Promise<VendorMetricRow[]> {
+  const publicKey = process.env.LANGFUSE_PUBLIC_KEY;
+  const secretKey = process.env.LANGFUSE_SECRET_KEY;
+  const host = process.env.LANGFUSE_HOST ?? "https://cloud.langfuse.com";
+  if (!publicKey || !secretKey) {
+    return [{
+      vendor: "langfuse",
+      metric: "_snapshot_failed",
+      value: 1,
+      metadata: { error: "LANGFUSE_PUBLIC_KEY/LANGFUSE_SECRET_KEY not set" },
+    }];
+  }
+
+  try {
+    const fromTs = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const auth = Buffer.from(`${publicKey}:${secretKey}`).toString("base64");
+    const res = await fetch(`${host}/api/public/traces?fromTimestamp=${encodeURIComponent(fromTs)}&limit=100`, {
+      headers: { Authorization: `Basic ${auth}` },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) {
+      throw new Error(`Langfuse /traces HTTP ${res.status}`);
+    }
+    const body = (await res.json()) as { data?: Array<{ latency?: number }>; meta?: { totalItems?: number } };
+    const traces = body?.data ?? [];
+    const totalCount = body?.meta?.totalItems ?? traces.length;
+    const latencies = traces
+      .map((t) => Number(t.latency ?? 0))
+      .filter((n) => n > 0)
+      .sort((a, b) => a - b);
+    const p95 = latencies.length > 0 ? latencies[Math.floor(latencies.length * 0.95)] : null;
+
+    return [
+      {
+        vendor: "langfuse",
+        metric: "traces_last_hour",
+        value: totalCount,
+        metadata: null,
+      },
+      {
+        vendor: "langfuse",
+        metric: "p95_latency_ms",
+        value: p95 ?? null,
+        metadata: { sampleSize: latencies.length },
+      },
+    ];
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    logger.warn("[snapshot-vendor-metrics] langfuse failed", { error: msg });
+    return [{
+      vendor: "langfuse",
+      metric: "_snapshot_failed",
+      value: 1,
+      metadata: { error: msg },
+    }];
+  }
+}
+
+/**
+ * Vercel: last deployment status + build duration.
+ * Endpoint: GET /v6/deployments?teamId=...&limit=1
+ * Requires VERCEL_TOKEN (project-scoped or team-scoped).
+ */
+async function fetchVercelMetrics(): Promise<VendorMetricRow[]> {
+  const token = process.env.VERCEL_TOKEN;
+  const teamId = process.env.VERCEL_TEAM_ID;
+  if (!token) {
+    return [{
+      vendor: "vercel",
+      metric: "_snapshot_failed",
+      value: 1,
+      metadata: { error: "VERCEL_TOKEN not set" },
+    }];
+  }
+
+  try {
+    const url = `https://api.vercel.com/v6/deployments?limit=1${teamId ? `&teamId=${encodeURIComponent(teamId)}` : ""}`;
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) {
+      throw new Error(`Vercel /deployments HTTP ${res.status}`);
+    }
+    const body = (await res.json()) as { deployments?: Array<{ state: string; ready?: number; createdAt: number; url: string; meta?: { githubCommitMessage?: string } }> };
+    const latest = body?.deployments?.[0];
+    if (!latest) {
+      return [{
+        vendor: "vercel",
+        metric: "no_deployments_found",
+        value: 1,
+        metadata: null,
+      }];
+    }
+    const buildMs = latest.ready && latest.createdAt ? latest.ready - latest.createdAt : null;
+    return [
+      {
+        vendor: "vercel",
+        metric: "last_deploy_state_ok",
+        value: latest.state === "READY" ? 1 : 0,
+        metadata: {
+          state: latest.state,
+          url: latest.url,
+          commitMsg: latest.meta?.githubCommitMessage ?? null,
+          ageSec: Math.round((Date.now() - latest.createdAt) / 1000),
+        },
+      },
+      {
+        vendor: "vercel",
+        metric: "last_build_duration_ms",
+        value: buildMs,
+        metadata: null,
+      },
+    ];
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    logger.warn("[snapshot-vendor-metrics] vercel failed", { error: msg });
+    return [{
+      vendor: "vercel",
+      metric: "_snapshot_failed",
+      value: 1,
+      metadata: { error: msg },
+    }];
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // CRON HANDLER
 // ─────────────────────────────────────────────────────────────────────────────
@@ -241,12 +663,19 @@ export const snapshotVendorMetrics = inngest.createFunction(
 
     // Run vendor fetches in parallel — independent APIs, no shared state.
     // step.run wraps each so Inngest retries are scoped per-vendor.
-    const [apify, openrouter, xai] = await Promise.all([
+    const [apify, openrouter, xai, sentry, polar, inngestApi, resend, posthog, langfuse, vercel] = await Promise.all([
       step.run("fetch-apify", () => fetchApifyMetrics()),
       step.run("fetch-openrouter", () => fetchOpenRouterMetrics()),
       step.run("fetch-xai", () => fetchXaiMetrics()),
+      step.run("fetch-sentry", () => fetchSentryMetrics()),
+      step.run("fetch-polar", () => fetchPolarMetrics()),
+      step.run("fetch-inngest", () => fetchInngestMetrics()),
+      step.run("fetch-resend", () => fetchResendMetrics()),
+      step.run("fetch-posthog", () => fetchPostHogMetrics()),
+      step.run("fetch-langfuse", () => fetchLangfuseMetrics()),
+      step.run("fetch-vercel", () => fetchVercelMetrics()),
     ]);
-    allRows.push(...apify, ...openrouter, ...xai);
+    allRows.push(...apify, ...openrouter, ...xai, ...sentry, ...polar, ...inngestApi, ...resend, ...posthog, ...langfuse, ...vercel);
 
     // Single batch insert. Real type for value/metadata aligns with schema.
     if (allRows.length > 0) {
@@ -267,6 +696,13 @@ export const snapshotVendorMetrics = inngest.createFunction(
       apifyRows: apify.length,
       openrouterRows: openrouter.length,
       xaiRows: xai.length,
+      sentryRows: sentry.length,
+      polarRows: polar.length,
+      inngestRows: inngestApi.length,
+      resendRows: resend.length,
+      posthogRows: posthog.length,
+      langfuseRows: langfuse.length,
+      vercelRows: vercel.length,
     };
   },
 );

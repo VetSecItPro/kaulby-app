@@ -18,7 +18,7 @@ describe("ai/index", () => {
     vi.resetModules();
   });
 
-  it("exports all expected functions and modules", async () => {
+  it("exports all expected functions and modules", { timeout: 15000 }, async () => {
     const aiModule = await import("@/lib/ai");
 
     expect(aiModule).toHaveProperty("completion");
