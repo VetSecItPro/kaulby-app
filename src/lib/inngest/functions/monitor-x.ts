@@ -1,6 +1,7 @@
 import { inngest } from "../client";
 import { logger } from "@/lib/logger";
 import { logAiCall } from "@/lib/ai/log";
+import { calculateCostFromXaiTicks } from "@/lib/ai/pricing";
 import { contentMatchesMonitor } from "@/lib/content-matcher";
 import {
   getActiveMonitors,
@@ -130,16 +131,10 @@ export async function searchX(
       cost_in_usd_ticks?: number;
     } | undefined;
 
-    // xAI reports cost via cost_in_usd_ticks. Empirical calibration 2026-04-23:
-    // one grok-4-latest call with x_search tool reported ticks=406,887,500 for
-    // a 6028+1682 token call that should have cost ~$0.04 based on grok-4
-    // public token pricing ($3/1M input, $15/1M output). That matches a
-    // conversion of 1 tick = $1e-7 (10M ticks per dollar). Using this rate
-    // explicitly rather than inferring every call.
-    const XAI_USD_PER_TICK = 1e-7;
-    const costUsd = xaiUsage?.cost_in_usd_ticks
-      ? xaiUsage.cost_in_usd_ticks * XAI_USD_PER_TICK
-      : 0;
+    // Cost calculation centralized in @/lib/ai/pricing — see that module
+    // for the calibration math and the 1000x bug history (this file used
+    // 1e-7 instead of 1e-10 from 2026-04-23 to 2026-04-25).
+    const costUsd = calculateCostFromXaiTicks(xaiUsage?.cost_in_usd_ticks);
 
     await logAiCall({
       model: "grok-4-latest",
