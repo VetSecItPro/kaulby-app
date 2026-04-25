@@ -2122,9 +2122,55 @@ async function execGetIntegrationsStatus(userId: string): Promise<ToolResult> {
 // AI TOOL EXECUTORS
 // ═══════════════════════════════════════════════════════════════════════════
 
+// SEC-LLM-006: per-tool rate limit on suggest_reply.
+// The Ask agent loop can chain multiple suggest_reply calls in a single turn.
+// Global API rate limits cap the *outer* /ai/ask call but not per-tool fan-out.
+// Lazy-init Upstash limiter at first use (matches the pattern in src/lib/ai/rate-limit.ts).
+// 10/min/user is generous for normal use (a single Ask turn rarely chains >3) and
+// catches abusive patterns where an injection payload spins suggest_reply in a loop.
+let suggestReplyLimiter: import("@upstash/ratelimit").Ratelimit | null | undefined;
+
+async function checkSuggestReplyLimit(userId: string): Promise<{ allowed: boolean; reset?: number }> {
+  if (suggestReplyLimiter === undefined) {
+    const hasRedis = Boolean(
+      process.env.UPSTASH_REDIS_REST_URL?.trim() && process.env.UPSTASH_REDIS_REST_TOKEN?.trim()
+    );
+    if (!hasRedis) {
+      suggestReplyLimiter = null;
+    } else {
+      const { Ratelimit } = await import("@upstash/ratelimit");
+      const { Redis } = await import("@upstash/redis");
+      suggestReplyLimiter = new Ratelimit({
+        redis: new Redis({
+          url: process.env.UPSTASH_REDIS_REST_URL!.trim(),
+          token: process.env.UPSTASH_REDIS_REST_TOKEN!.trim(),
+        }),
+        limiter: Ratelimit.slidingWindow(10, "1 m"),
+        prefix: "kaulby:tool:suggest-reply",
+        analytics: false,
+      });
+    }
+  }
+  if (!suggestReplyLimiter) return { allowed: true }; // Fail open without Redis (dev-local)
+  const result = await suggestReplyLimiter.limit(userId);
+  return { allowed: result.success, reset: result.reset };
+}
+
 async function execSuggestReply(userId: string, params: Record<string, unknown>): Promise<ToolResult> {
   const plan = await getUserPlan(userId);
   if (plan === "free") return { success: false, error: "Reply suggestions require a Pro or Team plan." };
+
+  // SEC-LLM-006: per-tool rate limit
+  const limitCheck = await checkSuggestReplyLimit(userId);
+  if (!limitCheck.allowed) {
+    const secondsUntilReset = limitCheck.reset
+      ? Math.max(0, Math.round((limitCheck.reset - Date.now()) / 1000))
+      : 60;
+    return {
+      success: false,
+      error: `Reply suggestion rate limit reached (10/min). Try again in ${secondsUntilReset}s.`,
+    };
+  }
 
   const resultId = params.result_id as string;
   const result = await verifyResultOwnership(userId, resultId);
