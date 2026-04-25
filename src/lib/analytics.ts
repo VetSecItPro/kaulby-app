@@ -28,6 +28,13 @@ export type AnalyticsEvents = {
     platform: string;
     errorType: string;
   };
+  "monitor.scan_skipped": {
+    userId: string;
+    monitorId: string;
+    platform: string;
+    reason: "platform_not_in_plan" | "refresh_delay_not_elapsed" | "cadence_not_elapsed" | "schedule_not_active";
+    tier: PlanKey;
+  };
   "ai_analysis.completed": {
     userId: string;
     resultId: string;

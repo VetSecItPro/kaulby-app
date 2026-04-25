@@ -127,14 +127,35 @@ export function shouldSkipMonitor(
   platform: Platform
 ): boolean {
   const plan = getPlan(monitor.userId, planMap);
-  if (!canAccessPlatformWithPlan(plan, platform)) return true;
+
+  // Skip-reason telemetry: fire fire-and-forget PostHog event so
+  // /manage/observability can validate the cadence matrix is biting in
+  // production. Reasons match the AnalyticsEvents schema literal union.
+  const emitSkip = (
+    reason: "platform_not_in_plan" | "refresh_delay_not_elapsed" | "cadence_not_elapsed" | "schedule_not_active",
+  ): void => {
+    void track("monitor.scan_skipped", {
+      userId: monitor.userId,
+      monitorId: monitor.id,
+      platform,
+      reason,
+      tier: plan as PlanKey,
+    });
+  };
+
+  if (!canAccessPlatformWithPlan(plan, platform)) {
+    emitSkip("platform_not_in_plan");
+    return true;
+  }
   if (
     !shouldProcessMonitorWithPlan(
       plan,
       monitor.lastCheckedAt as Date | null
     )
-  )
+  ) {
+    emitSkip("refresh_delay_not_elapsed");
     return true;
+  }
   // Per-tier per-platform-velocity cadence gate. Layers on top of the
   // tier-flat refreshDelayHours check above so e.g. Growth users on a
   // "slow" platform (reviews) only scan every 8h instead of every 2h —
@@ -147,9 +168,14 @@ export function shouldSkipMonitor(
       platform,
       monitor.lastCheckedAt as Date | null
     )
-  )
+  ) {
+    emitSkip("cadence_not_elapsed");
     return true;
-  if (!isMonitorScheduleActive(monitor)) return true;
+  }
+  if (!isMonitorScheduleActive(monitor)) {
+    emitSkip("schedule_not_active");
+    return true;
+  }
   return false;
 }
 
