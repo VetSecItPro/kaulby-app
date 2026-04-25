@@ -33,3 +33,6 @@ export {
 
 // HMAC signing for email tracking URLs (RT-001 open redirect fix)
 export { signTrackingParams, verifyTrackingSignature } from "./hmac";
+
+// SSRF prevention for outbound fetches with user-supplied URLs
+export { validateOutboundUrl, type OutboundUrlValidationResult } from "./outbound-url";

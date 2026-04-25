@@ -6,30 +6,13 @@ import { eq, and } from "drizzle-orm";
 import crypto from "crypto";
 import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
+import { validateOutboundUrl } from "@/lib/security";
 
-// SECURITY (SEC-SSRF-001): Validate webhook URLs to prevent SSRF
+// SECURITY (SEC-SSRF-001 + SEC-SSRF-002): SSRF prevention shared across all
+// webhook surfaces. Replaced local string-prefix check (which had a too-broad
+// 172.* match, missed IPv6 / CGNAT / userinfo, and was easy to bypass).
 function isValidWebhookUrl(url: string): boolean {
-  try {
-    const parsed = new URL(url);
-    // Must be HTTPS in production
-    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return false;
-    // Block private/internal IP ranges
-    const hostname = parsed.hostname.toLowerCase();
-    if (
-      hostname === "localhost" ||
-      hostname === "127.0.0.1" ||
-      hostname === "0.0.0.0" ||
-      hostname.startsWith("10.") ||
-      hostname.startsWith("172.") ||
-      hostname.startsWith("192.168.") ||
-      hostname === "169.254.169.254" || // AWS metadata
-      hostname.endsWith(".internal") ||
-      hostname.endsWith(".local")
-    ) return false;
-    return true;
-  } catch {
-    return false;
-  }
+  return validateOutboundUrl(url).ok;
 }
 
 export const dynamic = "force-dynamic";

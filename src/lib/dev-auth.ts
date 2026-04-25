@@ -4,16 +4,53 @@ import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
 /**
+ * Defense-in-depth: refuse to apply the dev-auth bypass if the env signature
+ * looks like production even when individual flags say "dev". Catches the
+ * regression scenario where a deploy slips through with NODE_ENV=development
+ * + ALLOW_DEV_AUTH_BYPASS=true (e.g., self-hosted prod, copy-paste of dev env
+ * to a paid hosting provider not named Vercel).
+ *
+ * If any of these production signals are present, we ignore the bypass flags
+ * regardless of value:
+ * - DATABASE_URL points to neon.tech / supabase / aws / a real cloud DB
+ * - CLERK_SECRET_KEY starts with sk_live_
+ * - POLAR_ACCESS_TOKEN is set (Polar tokens are live-only by default)
+ * - SENTRY_AUTH_TOKEN is set
+ * - VERCEL_URL or VERCEL_ENV is set (already in original guard, kept here)
+ */
+function looksLikeProduction(): boolean {
+  const dbUrl = process.env.DATABASE_URL ?? "";
+  if (
+    dbUrl.includes("neon.tech") ||
+    dbUrl.includes("supabase") ||
+    dbUrl.includes("amazonaws.com") ||
+    dbUrl.includes("rds.") ||
+    dbUrl.includes("googleapis") ||
+    dbUrl.includes("postgres.com")
+  ) return true;
+  if ((process.env.CLERK_SECRET_KEY ?? "").startsWith("sk_live_")) return true;
+  if (process.env.POLAR_ACCESS_TOKEN) return true;
+  if (process.env.SENTRY_AUTH_TOKEN) return true;
+  if (process.env.VERCEL || process.env.VERCEL_URL || process.env.VERCEL_ENV) return true;
+  return false;
+}
+
+/**
  * Get the effective user ID for the current request.
  * In local development, returns the first user in the database for easier testing.
  * In production, returns the authenticated Clerk user ID.
+ *
+ * Bypass requires ALL of:
+ * 1. NODE_ENV=development
+ * 2. ALLOW_DEV_AUTH_BYPASS=true
+ * 3. No Vercel env signals
+ * 4. No production-shape env signals (looksLikeProduction() returns false)
  */
 export async function getEffectiveUserId(): Promise<string | null> {
-  // SECURITY: Only allow dev bypass with explicit opt-in
+  // SECURITY: Only allow dev bypass with explicit opt-in AND non-prod env shape
   const isLocalDev = process.env.NODE_ENV === "development" &&
                      process.env.ALLOW_DEV_AUTH_BYPASS === "true" &&
-                     !process.env.VERCEL &&
-                     !process.env.VERCEL_ENV;
+                     !looksLikeProduction();
 
   if (isLocalDev) {
     // In local dev, prefer the admin user for full-feature testing
@@ -78,10 +115,11 @@ export async function verifyUserInDb(clerkUserId: string): Promise<string | null
 /**
  * Check if we're in local development mode.
  * This is used for dev bypasses in various parts of the app.
+ * Same fail-closed semantics as getEffectiveUserId — bypass is denied if
+ * any production env signature is detected.
  */
 export function isLocalDev(): boolean {
   return process.env.NODE_ENV === "development" &&
          process.env.ALLOW_DEV_AUTH_BYPASS === "true" &&
-         !process.env.VERCEL &&
-         !process.env.VERCEL_ENV;
+         !looksLikeProduction();
 }
