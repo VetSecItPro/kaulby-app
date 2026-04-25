@@ -102,6 +102,8 @@ import { checkAIVisibilityJob } from "./functions/ai-visibility";
 // Chat cleanup
 import { chatCleanup } from "./functions/chat-cleanup";
 import { githubWebhookProcessor } from "./functions/github-webhook-processor";
+// Observability: hourly vendor metrics snapshot (Apify/OpenRouter/xAI)
+import { snapshotVendorMetrics } from "./functions/snapshot-vendor-metrics";
 
 export const functions = [
   monitorReddit,
@@ -160,6 +162,8 @@ export const functions = [
   syncHubspotContacts,
   // AI Visibility
   checkAIVisibilityJob,
+  // Observability — hourly vendor metric snapshots
+  snapshotVendorMetrics,
   // Chat cleanup
   chatCleanup,
   // COA 4 W2.4
