@@ -50,19 +50,39 @@ export const TOOL_METADATA: Record<string, ToolMeta> = {
   hide_result:     { category: "safe_write", label: "Hiding result…" },
   unhide_result:   { category: "safe_write", label: "Unhiding result…" },
   mark_viewed:     { category: "safe_write", label: "Marking as viewed…" },
-  // Action writes — user asked for it, just do it
-  create_monitor:  { category: "safe_write", label: "Creating monitor…" },
-  update_monitor:  { category: "safe_write", label: "Updating monitor…" },
+  // Action writes
+  // SEC-LLM-011: tools that create/modify monitor configuration or trigger
+  // external actions are now `dangerous_write` and require user confirmation.
+  // Combined with prompt-injection (mitigated in PR #278 but not eliminable
+  // at the model level), an attacker payload landing in a scraped post body
+  // could otherwise chain: injection → flipped intent → tool call → cross-team
+  // impact. The confirmation flow (already plumbed in /ai/ask) makes the user
+  // see and approve the action before execution.
+  create_monitor: {
+    category: "dangerous_write",
+    label: "Creating monitor…",
+    confirmationMessage: "Confirm creating a new monitor with the keywords and platforms shown above?",
+  },
+  update_monitor: {
+    category: "dangerous_write",
+    label: "Updating monitor…",
+    confirmationMessage: "Confirm updating this monitor's configuration? Existing scans and history are preserved.",
+  },
   pause_monitor:   { category: "safe_write", label: "Pausing monitor…" },
   resume_monitor: {
     category: "safe_write",
     label: "Resuming monitor…",
   },
   trigger_scan: {
-    category: "safe_write",
+    category: "dangerous_write",
     label: "Triggering scan…",
+    confirmationMessage: "Confirm triggering a manual scan? This counts against your daily scan quota and may incur AI/scraper costs.",
   },
-  duplicate_monitor: { category: "safe_write", label: "Duplicating monitor…" },
+  duplicate_monitor: {
+    category: "dangerous_write",
+    label: "Duplicating monitor…",
+    confirmationMessage: "Confirm duplicating this monitor? A second monitor with the same configuration will start scanning, doubling your daily quota usage for these keywords.",
+  },
   delete_monitor: {
     category: "dangerous_write",
     label: "Deleting monitor…",
@@ -82,9 +102,17 @@ export const TOOL_METADATA: Record<string, ToolMeta> = {
   list_saved_searches:          { category: "read", label: "Loading saved searches…" },
   create_saved_search:          { category: "safe_write", label: "Saving search…" },
   delete_saved_search:          { category: "safe_write", label: "Deleting saved search…" },
-  // Webhook tools (Team tier)
+  // Webhook tools (Team tier) — webhook creation is dangerous_write because
+  // it establishes an outbound exfiltration channel. Even with PR #277 SSRF
+  // validation blocking private IPs, an attacker who slipped a public URL
+  // through prompt injection could exfiltrate result data. Confirmation
+  // gating ensures the user sees the destination before it's saved.
   list_webhooks:                { category: "read", label: "Loading webhooks…" },
-  create_webhook:               { category: "safe_write", label: "Creating webhook…" },
+  create_webhook: {
+    category: "dangerous_write",
+    label: "Creating webhook…",
+    confirmationMessage: "Confirm creating a webhook to this URL? Result data will be POSTed to this destination going forward — only approve if you recognize and trust the URL.",
+  },
   delete_webhook:               { category: "dangerous_write", label: "Deleting webhook…", confirmationMessage: "This will permanently delete this webhook. Continue?" },
   // Notification tools
   get_notifications:            { category: "read", label: "Loading notifications…" },
