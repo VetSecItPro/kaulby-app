@@ -1307,3 +1307,33 @@ export const resultAnalysesRelations = relations(resultAnalyses, ({ one }) => ({
 
 export type ResultAnalysis = typeof resultAnalyses.$inferSelect;
 export type NewResultAnalysis = typeof resultAnalyses.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// vendor_metrics — hourly snapshots from external vendor APIs (Apify,
+// OpenRouter, xAI Grok, Sentry, Polar, Inngest, etc).
+//
+// Purpose: admin dashboard at /manage/observability/vendors reads from
+// our DB instead of hitting vendor APIs on every page render. Cron writes
+// snapshots once per hour; admin dashboard reads "latest per (vendor, metric)"
+// for tile rendering. Trend charts read time-series for last 24h/7d/30d.
+//
+// Single denormalized table with `value` numeric + `metadata` jsonb covers
+// all vendor shapes without per-vendor schemas.
+// ---------------------------------------------------------------------------
+export const vendorMetrics = pgTable("vendor_metrics", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  vendor: text("vendor").notNull(), // 'apify' | 'openrouter' | 'xai' | 'sentry' | etc.
+  metric: text("metric").notNull(), // 'usage_credits_remaining' | 'mrr_cents' | etc.
+  value: real("value"), // numeric value; null if metric is metadata-only
+  metadata: jsonb("metadata"), // vendor-specific extras
+  recordedAt: timestamp("recorded_at").defaultNow().notNull(),
+}, (table) => [
+  // Primary lookup pattern: latest row per (vendor, metric) — composite index
+  // sorted DESC on recordedAt enables index-only scan for "most recent value".
+  index("vendor_metrics_lookup_idx").on(table.vendor, table.metric, table.recordedAt.desc()),
+  // For trend charts that filter by recordedAt range
+  index("vendor_metrics_recorded_at_idx").on(table.recordedAt),
+]);
+
+export type VendorMetric = typeof vendorMetrics.$inferSelect;
+export type NewVendorMetric = typeof vendorMetrics.$inferInsert;
