@@ -233,14 +233,21 @@ const MessageBubble = memo(function MessageBubble({
           )}
         </div>
 
-        {/* Pending confirmation */}
+        {/* Pending confirmation — A11Y-KB-001: aria-live announces the
+            inline confirmation card to screen readers when it appears. */}
         {!isUser && message.pendingConfirmation && onConfirm && (
-          <div className="mt-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 w-full">
+          <div
+            role="alertdialog"
+            aria-live="assertive"
+            aria-labelledby={`confirm-title-${message.id}`}
+            aria-describedby={`confirm-msg-${message.id}`}
+            className="mt-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 w-full"
+          >
             <div className="flex items-center gap-2 mb-2">
-              <AlertTriangle className="h-4 w-4 text-amber-500" />
-              <p className="text-sm font-medium text-amber-500">Confirmation Required</p>
+              <AlertTriangle aria-hidden="true" className="h-4 w-4 text-amber-500" />
+              <p id={`confirm-title-${message.id}`} className="text-sm font-medium text-amber-500">Confirmation Required</p>
             </div>
-            <p className="text-sm text-muted-foreground mb-3">
+            <p id={`confirm-msg-${message.id}`} className="text-sm text-muted-foreground mb-3">
               {message.pendingConfirmation.message}
             </p>
             <div className="flex gap-2">
@@ -333,8 +340,10 @@ function LoadingIndicator() {
   }, []);
 
   return (
-    <div className="flex items-center gap-2">
-      <div className="flex gap-1">
+    // A11Y-ARIA-002: aria-live announces rotating status text to screen readers
+    // so they don't miss the progress indication while the AI is thinking.
+    <div role="status" aria-live="polite" className="flex items-center gap-2">
+      <div aria-hidden="true" className="flex gap-1">
         <span className="w-2 h-2 rounded-full bg-current animate-bounce" style={{ animationDelay: "0ms" }} />
         <span className="w-2 h-2 rounded-full bg-current animate-bounce" style={{ animationDelay: "150ms" }} />
         <span className="w-2 h-2 rounded-full bg-current animate-bounce" style={{ animationDelay: "300ms" }} />
@@ -399,24 +408,39 @@ function ConversationSidebar({
           <p className="text-xs text-muted-foreground text-center py-4">No conversations yet</p>
         ) : (
           conversations.map((conv) => (
+            // A11Y-STRUCT-001: replaced `<div onClick>` with semantic <div role="button">
+            // + tabIndex + onKeyDown so keyboard users can select conversations.
+            // Using button role rather than <button> element to keep the nested
+            // delete <button> valid (HTML5 disallows nested buttons).
             <div
               key={conv.id}
+              role="button"
+              tabIndex={0}
+              aria-current={activeId === conv.id ? "true" : undefined}
+              aria-label={`Conversation: ${conv.title}${activeId === conv.id ? " (current)" : ""}`}
               className={cn(
-                "group flex items-center gap-1 rounded-md px-2 py-1.5 cursor-pointer transition-colors",
+                "group flex items-center gap-1 rounded-md px-2 py-1.5 cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 activeId === conv.id ? "bg-muted" : "hover:bg-muted/50"
               )}
               onClick={() => onSelect(conv.id)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onSelect(conv.id);
+                }
+              }}
             >
-              <MessageSquare className="h-3 w-3 shrink-0 text-muted-foreground" />
+              <MessageSquare aria-hidden="true" className="h-3 w-3 shrink-0 text-muted-foreground" />
               <span className="text-xs truncate flex-1">{conv.title}</span>
               <button
+                aria-label={`Delete conversation: ${conv.title}`}
                 onClick={(e) => {
                   e.stopPropagation();
                   onDelete(conv.id);
                 }}
                 className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:bg-destructive/10 rounded"
               >
-                <Trash2 className="h-3 w-3 text-muted-foreground" />
+                <Trash2 aria-hidden="true" className="h-3 w-3 text-muted-foreground" />
               </button>
             </div>
           ))
@@ -902,8 +926,8 @@ export function AIChat({
               className="flex-1"
               aria-label="Chat message"
             />
-            <Button type="submit" disabled={!input.trim() || isLoading}>
-              <Send className="h-4 w-4" />
+            <Button type="submit" disabled={!input.trim() || isLoading} aria-label="Send message">
+              <Send aria-hidden="true" className="h-4 w-4" />
             </Button>
           </form>
           <p className="text-[10px] text-muted-foreground text-center mt-2">
