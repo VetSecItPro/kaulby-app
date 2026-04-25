@@ -74,6 +74,12 @@ vi.mock("@/lib/monitor-schedule", () => ({
   isMonitorScheduleActive: (...args: unknown[]) => mockIsMonitorScheduleActive(...args),
 }));
 
+const mockIsCadenceElapsed = vi.fn();
+
+vi.mock("@/lib/scan-cadence", () => ({
+  isCadenceElapsed: (...args: unknown[]) => mockIsCadenceElapsed(...args),
+}));
+
 const mockCalculateStaggerDelay = vi.fn();
 const mockFormatStaggerDuration = vi.fn();
 const mockAddJitter = vi.fn();
@@ -123,6 +129,7 @@ describe("inngest monitor-helpers", () => {
     mockCanAccessPlatformWithPlan.mockReturnValue(true);
     mockShouldProcessMonitorWithPlan.mockReturnValue(true);
     mockIsMonitorScheduleActive.mockReturnValue(true);
+    mockIsCadenceElapsed.mockReturnValue(true);
     mockIncrementResultsCount.mockResolvedValue(undefined);
     mockInngestSend.mockResolvedValue(undefined);
   });
@@ -242,6 +249,33 @@ describe("inngest monitor-helpers", () => {
 
       const skip = shouldSkipMonitor(monitor, planMap, "reddit");
       expect(skip).toBe(true);
+    });
+
+    it("returns true when per-tier per-platform cadence has not elapsed", () => {
+      const planMap = { user1: "growth" };
+      mockCanAccessPlatformWithPlan.mockReturnValue(true);
+      mockShouldProcessMonitorWithPlan.mockReturnValue(true);
+      mockIsMonitorScheduleActive.mockReturnValue(true);
+      mockIsCadenceElapsed.mockReturnValue(false);
+
+      const skip = shouldSkipMonitor(monitor, planMap, "reddit");
+      expect(skip).toBe(true);
+      expect(mockIsCadenceElapsed).toHaveBeenCalledWith(
+        "growth",
+        "reddit",
+        monitor.lastCheckedAt,
+      );
+    });
+
+    it("returns false when cadence elapsed and all other gates pass", () => {
+      const planMap = { user1: "growth" };
+      mockCanAccessPlatformWithPlan.mockReturnValue(true);
+      mockShouldProcessMonitorWithPlan.mockReturnValue(true);
+      mockIsMonitorScheduleActive.mockReturnValue(true);
+      mockIsCadenceElapsed.mockReturnValue(true);
+
+      const skip = shouldSkipMonitor(monitor, planMap, "trustpilot");
+      expect(skip).toBe(false);
     });
   });
 
