@@ -152,9 +152,20 @@ export async function completion(params: {
 }
 
 // Structured JSON completion
+//
+// SEC-LLM-004: optional Zod schema validates AI output AFTER JSON.parse.
+// Without it the function casts via `as T` which provides zero runtime
+// guarantees — a hallucinating model can write arbitrary fields/types
+// to DB and UI. With a schema:
+//   - If `strictSchema: true` (default): throws on validation failure
+//   - If `strictSchema: false`: logs warn but returns the parsed data
+//     (use this for progressive rollout per-analyzer when you want to
+//     observe failure rates before escalating to throw)
 export async function jsonCompletion<T>(params: {
   messages: OpenAI.ChatCompletionMessageParam[];
   model?: string;
+  schema?: import("zod").ZodSchema<T>;
+  strictSchema?: boolean;
 }): Promise<{ data: T; meta: Omit<Awaited<ReturnType<typeof completion>>, "content"> }> {
   // SEC-LLM-014: Cap total input size to prevent financial DoS on OpenRouter credits
   const totalChars = params.messages.reduce((sum, m) => sum + (typeof m.content === "string" ? m.content.length : 0), 0);
@@ -168,33 +179,58 @@ export async function jsonCompletion<T>(params: {
   // shorter prose responses. Cost impact at Flash rates: +$0.0003/call
   // worst-case, negligible.
   const result = await completion({
-    ...params,
+    messages: params.messages,
+    model: params.model,
     temperature: 0.3, // Lower temperature for structured output
     maxTokens: 2048,
   });
 
+  let data: T;
   try {
     // Try to parse JSON from the response
     const jsonMatch = result.content.match(/```json\n?([\s\S]*?)\n?```/) ||
                       result.content.match(/\{[\s\S]*\}/);
 
     const jsonStr = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : result.content;
-    const data = JSON.parse(jsonStr) as T;
-
-    return {
-      data,
-      meta: {
-        model: result.model,
-        promptTokens: result.promptTokens,
-        completionTokens: result.completionTokens,
-        latencyMs: result.latencyMs,
-        cost: result.cost,
-      },
-    };
+    data = JSON.parse(jsonStr) as T;
   } catch {
     // SECURITY: Don't leak raw AI response content in error messages
     throw new Error("Failed to parse JSON response from AI model");
   }
+
+  // SEC-LLM-004: schema validation. Defaults to strict (throw on mismatch).
+  if (params.schema) {
+    const parsed = params.schema.safeParse(data);
+    if (!parsed.success) {
+      const issueSummary = parsed.error.issues
+        .slice(0, 5)
+        .map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`)
+        .join("; ");
+      const strict = params.strictSchema !== false;
+      logger.warn("[ai] AI output failed schema validation", {
+        model: result.model,
+        issueSummary,
+        strict,
+      });
+      if (strict) {
+        throw new Error(`AI output failed schema validation: ${issueSummary}`);
+      }
+    } else {
+      // Use the parsed data — Zod transforms (default values, coercion) apply
+      data = parsed.data;
+    }
+  }
+
+  return {
+    data,
+    meta: {
+      model: result.model,
+      promptTokens: result.promptTokens,
+      completionTokens: result.completionTokens,
+      latencyMs: result.latencyMs,
+      cost: result.cost,
+    },
+  };
 }
 
 // AI completion with tool calling support
