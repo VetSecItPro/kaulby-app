@@ -1,21 +1,25 @@
-import { getAiCostByTier, getScanVolumeByTier, safe } from "../_queries";
+import {
+  getAiCostByTier,
+  getAiCostTrend30d,
+  getScanVolumeByTier,
+  safe,
+} from "../_queries";
 import { AiCostByTierTile, ScanVolumeTile } from "../_tiles";
+import { AiCostTrendChart } from "../_charts";
 
 export const dynamic = "force-dynamic";
 
 export default async function CostsPage() {
-  const [aiCost, scanVolume] = await Promise.all([
+  const [aiCost, scanVolume, aiTrend] = await Promise.all([
     safe("ai-cost", getAiCostByTier),
     safe("scan-volume", getScanVolumeByTier),
+    safe("ai-trend-30d", getAiCostTrend30d),
   ]);
   return (
     <div className="space-y-6">
+      <AiCostTrendChart data={aiTrend} />
       <AiCostByTierTile data={aiCost} fullWidth />
       <ScanVolumeTile data={scanVolume} fullWidth />
-      <p className="text-xs text-muted-foreground">
-        Phase 6 will add 30-day AI-spend stacked-area + scan-volume trend charts here,
-        reading from the daily_metrics rollup.
-      </p>
     </div>
   );
 }

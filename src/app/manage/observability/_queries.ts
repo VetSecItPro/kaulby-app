@@ -181,6 +181,56 @@ export async function getVendorHealth(): Promise<
 }
 
 /**
+ * Phase 6 chart sources — read from the daily_metrics rollup (Phase 8).
+ * One row per (date, metric_key, dimensions). Charts get cheap reads.
+ */
+
+export type DailyTrendPoint = { date: string; tier: string; value: number };
+
+/**
+ * AI cost per tier per day, last 30 days.
+ * Returns sparse rows — chart code densifies (fills missing days as 0).
+ */
+export async function getAiCostTrend30d(): Promise<DailyTrendPoint[]> {
+  const rows = await db.execute<{ date: string; tier: string; value: number }>(sql`
+    SELECT date, dimensions->>'tier' AS tier, value
+    FROM daily_metrics
+    WHERE metric_key = 'ai_cost_usd'
+      AND date >= TO_CHAR(NOW() - INTERVAL '30 days', 'YYYY-MM-DD')
+    ORDER BY date ASC, tier ASC
+  `);
+  return rows.rows.map((r) => ({
+    date: String(r.date),
+    tier: String(r.tier ?? "unknown"),
+    value: Number(r.value ?? 0),
+  }));
+}
+
+/**
+ * Vendor metric value per day, last 30 days.
+ * Used for charts like "Apify monthly_usage_pct over time" or
+ * "OpenRouter credit_remaining_usd over time".
+ */
+export async function getVendorMetricTrend30d(
+  vendor: string,
+  metric: string,
+): Promise<Array<{ date: string; value: number }>> {
+  const rows = await db.execute<{ date: string; value: number }>(sql`
+    SELECT date, value
+    FROM daily_metrics
+    WHERE metric_key = 'vendor_value_max'
+      AND dimensions->>'vendor' = ${vendor}
+      AND dimensions->>'metric' = ${metric}
+      AND date >= TO_CHAR(NOW() - INTERVAL '30 days', 'YYYY-MM-DD')
+    ORDER BY date ASC
+  `);
+  return rows.rows.map((r) => ({
+    date: String(r.date),
+    value: Number(r.value ?? 0),
+  }));
+}
+
+/**
  * Wraps a query with a try/catch that returns an empty array on failure.
  * Per-tile error isolation: one bad query shouldn't break the page.
  */
