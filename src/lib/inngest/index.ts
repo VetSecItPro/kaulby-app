@@ -52,6 +52,8 @@ export { checkAIVisibilityJob } from "./functions/ai-visibility";
 export { chatCleanup } from "./functions/chat-cleanup";
 // COA 4 W2.4: GitHub webhook async processor
 export { githubWebhookProcessor } from "./functions/github-webhook-processor";
+// Observability Phase 8: daily rollup of aiLogs/results/vendor_metrics
+export { snapshotDailyMetrics } from "./functions/snapshot-daily-metrics";
 
 // All functions for the Inngest handler
 import { monitorReddit } from "./functions/monitor-reddit";
@@ -104,6 +106,8 @@ import { chatCleanup } from "./functions/chat-cleanup";
 import { githubWebhookProcessor } from "./functions/github-webhook-processor";
 // Observability: hourly vendor metrics snapshot (Apify/OpenRouter/xAI)
 import { snapshotVendorMetrics } from "./functions/snapshot-vendor-metrics";
+// Observability Phase 8: daily rollup table writer (00:05 CT)
+import { snapshotDailyMetrics } from "./functions/snapshot-daily-metrics";
 
 export const functions = [
   monitorReddit,
@@ -164,6 +168,8 @@ export const functions = [
   checkAIVisibilityJob,
   // Observability — hourly vendor metric snapshots
   snapshotVendorMetrics,
+  // Observability — daily rollup (00:05 CT) feeding trend charts
+  snapshotDailyMetrics,
   // Chat cleanup
   chatCleanup,
   // COA 4 W2.4
