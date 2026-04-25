@@ -25,9 +25,12 @@ const TIER_COLORS: Record<string, string> = {
   unknown: "#cbd5e1",
 };
 
+// PERF-BUILDTIME-001: hoisted formatter — was creating implicit Intl objects
+// per cell × per chart. Module-level singleton is allocated once per page load.
+const DATE_LABEL_FORMATTER = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" });
+
 function formatDateLabel(d: string): string {
-  const dt = new Date(d);
-  return dt.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return DATE_LABEL_FORMATTER.format(new Date(d));
 }
 
 /**

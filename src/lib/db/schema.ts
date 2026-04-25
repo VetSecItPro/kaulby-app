@@ -699,6 +699,10 @@ export const workspaceInvites = pgTable("workspace_invites", {
 }, (table) => [
   index("workspace_invites_workspace_id_idx").on(table.workspaceId),
   index("workspace_invites_workspace_status_idx").on(table.workspaceId, table.status),
+  // PERF-SCALE-002: existing query at /api/workspace/invite filters by
+  // (workspaceId, email, status). Without email-aware index it scans every
+  // row in the workspace partition. Composite index covers the lookup.
+  index("workspace_invites_workspace_email_idx").on(table.workspaceId, table.email),
 ]);
 
 // Community Growth - track community size over time (Phase 3)
