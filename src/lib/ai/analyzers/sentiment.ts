@@ -1,5 +1,6 @@
 import { jsonCompletion } from "../openrouter";
 import { buildAnalysisPrompt } from "../prompts";
+import { sentimentResultSchema } from "../schemas";
 
 export interface SentimentResult {
   sentiment: "positive" | "negative" | "neutral";
@@ -25,6 +26,10 @@ export async function analyzeSentiment(
       { role: "system", content: system },
       { role: "user", content: user },
     ],
+    // SEC-LLM-004: warn-only schema validation; escalate to throw after
+    // observing failure rate in prod logs.
+    schema: sentimentResultSchema as unknown as import("zod").ZodSchema<SentimentResult>,
+    strictSchema: false,
   });
 
   return {

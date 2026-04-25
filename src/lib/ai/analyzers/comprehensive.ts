@@ -1,6 +1,7 @@
 import { jsonCompletion, MODELS } from "../openrouter";
 import { SYSTEM_PROMPTS, withPersonaVoice } from "../prompts";
 import { type AnalysisMeta } from "./sentiment";
+import { comprehensiveResultSchema } from "../schemas";
 
 // Comprehensive analysis result for Team tier
 export interface ComprehensiveAnalysisResult {
@@ -124,6 +125,11 @@ ${content}
     // Caller-driven model: COA 4 W1.6 added tier routing so Team tier can pass
     // MODELS.team (Claude Sonnet 4.5) while Pro/Free continue on Flash.
     model: options?.model ?? MODELS.primary,
+    // SEC-LLM-004: validate AI output structure. Starting in warn-only mode
+    // (strictSchema: false) — observe failure rate in logs for ~1-2 weeks,
+    // then escalate to throw once we know the prompt-vs-schema fit is solid.
+    schema: comprehensiveResultSchema as unknown as import("zod").ZodSchema<ComprehensiveAnalysisResult>,
+    strictSchema: false,
   });
 
   return {

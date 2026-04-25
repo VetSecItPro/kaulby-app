@@ -1,6 +1,7 @@
 import { jsonCompletion } from "../openrouter";
 import { buildAnalysisPrompt } from "../prompts";
 import { type AnalysisMeta } from "./sentiment";
+import { summarizeResultSchema } from "../schemas";
 
 export interface SummaryResult {
   summary: string;
@@ -37,6 +38,9 @@ export async function summarizeContent(
       { role: "system", content: system },
       { role: "user", content: user },
     ],
+    // SEC-LLM-004: warn-only schema validation
+    schema: summarizeResultSchema as unknown as import("zod").ZodSchema<SummaryResult>,
+    strictSchema: false,
   });
 
   return {

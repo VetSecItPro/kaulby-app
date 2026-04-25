@@ -1,6 +1,7 @@
 import { jsonCompletion } from "../openrouter";
 import { buildAnalysisPrompt } from "../prompts";
 import { type AnalysisMeta } from "./sentiment";
+import { painPointResultSchema } from "../schemas";
 
 export interface PainPointResult {
   category: "competitor_mention" | "pricing_concern" | "feature_request" | "support_need" | "negative_experience" | "positive_feedback" | "general_discussion" | null;
@@ -20,6 +21,9 @@ export async function analyzePainPoints(
       { role: "system", content: system },
       { role: "user", content: user },
     ],
+    // SEC-LLM-004: warn-only schema validation
+    schema: painPointResultSchema as unknown as import("zod").ZodSchema<PainPointResult>,
+    strictSchema: false,
   });
 
   return {
