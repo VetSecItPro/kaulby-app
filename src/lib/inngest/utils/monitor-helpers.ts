@@ -25,6 +25,7 @@ import {
   getStaggerWindow,
 } from "./stagger";
 import { isMonitorScheduleActive } from "@/lib/monitor-schedule";
+import { isCadenceElapsed } from "@/lib/scan-cadence";
 import { AI_BATCH_CONFIG } from "@/lib/ai/sampling";
 import { inngest } from "../client";
 import { track } from "@/lib/analytics";
@@ -130,6 +131,20 @@ export function shouldSkipMonitor(
   if (
     !shouldProcessMonitorWithPlan(
       plan,
+      monitor.lastCheckedAt as Date | null
+    )
+  )
+    return true;
+  // Per-tier per-platform-velocity cadence gate. Layers on top of the
+  // tier-flat refreshDelayHours check above so e.g. Growth users on a
+  // "slow" platform (reviews) only scan every 8h instead of every 2h —
+  // saving Apify/AI cost without affecting freshness for fast platforms.
+  // Plan is read fresh per cron tick via prefetchPlans, so tier upgrades
+  // take effect on the next scheduled tick.
+  if (
+    !isCadenceElapsed(
+      plan,
+      platform,
       monitor.lastCheckedAt as Date | null
     )
   )
