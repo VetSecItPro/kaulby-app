@@ -77,59 +77,15 @@ function getOpenRouter(): OpenAI {
   return _openrouter as OpenAI;
 }
 
-// Model pricing (per 1M tokens) - for cost tracking
-// Using ONLY Gemini 2.5 Flash for maximum cost savings
-// Flash costs: $0.075 input, $0.30 output = 40-50x cheaper than Claude
-const MODEL_PRICING = {
-  // Primary model - used for ALL tiers
-  "google/gemini-2.5-flash": {
-    input: 0.075,
-    output: 0.3,
-  },
-  // Legacy models - kept for historical cost tracking of old AI calls
-  "google/gemini-2.5-pro-preview-05-06": {
-    input: 1.25,
-    output: 5.0,
-  },
-  "openai/gpt-4o-mini": {
-    input: 0.15,
-    output: 0.6,
-  },
-  "anthropic/claude-sonnet-4": {
-    input: 3.0,
-    output: 15.0,
-  },
-  "anthropic/claude-sonnet-4-5": {
-    input: 3.0,
-    output: 15.0,
-  },
-  // Added 2026-04-23 after shootout surfaced missing entries — see
-  // .mdmp/SHOOTOUT_RESULTS_2026-04-23.md. Without these, calculateCost()
-  // silently returned 0 for Haiku + Pro runs, making cost comparisons useless.
-  "anthropic/claude-haiku-4-5": {
-    input: 1.0,
-    output: 5.0,
-  },
-  "google/gemini-2.5-pro": {
-    input: 1.25,
-    output: 5.0,
-  },
-} as const;
-
-// Calculate cost
-export function calculateCost(
-  model: keyof typeof MODEL_PRICING,
-  promptTokens: number,
-  completionTokens: number
-): number {
-  const pricing = MODEL_PRICING[model];
-  if (!pricing) return 0;
-
-  const inputCost = (promptTokens / 1_000_000) * pricing.input;
-  const outputCost = (completionTokens / 1_000_000) * pricing.output;
-
-  return inputCost + outputCost;
-}
+// Pricing centralized in @/lib/ai/pricing — single source of truth
+// for all model rates + xAI tick conversion + sanity guards. See pricing.ts
+// for the unit-error history that motivated centralization.
+//
+// Imported locally for the calculateCost() calls below, and re-exported so
+// existing call sites that import from "@/lib/ai/openrouter" keep working.
+// New call sites should import from "@/lib/ai/pricing" directly.
+import { calculateCost, MODEL_PRICING, type SupportedModel } from "./pricing";
+export { calculateCost, MODEL_PRICING, type SupportedModel };
 
 /**
  * When set, OPENROUTER_MODEL_OVERRIDE forces every completion call to use the
@@ -177,7 +133,7 @@ export async function completion(params: {
       completionTokens: usage?.completion_tokens || 0,
       latencyMs,
       cost: calculateCost(
-        model as keyof typeof MODEL_PRICING,
+        model,
         usage?.prompt_tokens || 0,
         usage?.completion_tokens || 0
       ),
@@ -280,7 +236,7 @@ export async function completionWithTools(params: {
       completionTokens: usage?.completion_tokens || 0,
       latencyMs,
       cost: calculateCost(
-        model as keyof typeof MODEL_PRICING,
+        model,
         usage?.prompt_tokens || 0,
         usage?.completion_tokens || 0
       ),
