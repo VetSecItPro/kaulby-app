@@ -1337,3 +1337,37 @@ export const vendorMetrics = pgTable("vendor_metrics", {
 
 export type VendorMetric = typeof vendorMetrics.$inferSelect;
 export type NewVendorMetric = typeof vendorMetrics.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// daily_metrics — pre-aggregated daily rollups for trend charts.
+//
+// Purpose: charts that show 30-day trends (AI cost by tier, scan volume,
+// vendor quota utilization) shouldn't aggregate raw aiLogs/results/vendor_metrics
+// on every render — that's slow and gets slower as data grows. A daily cron
+// at 00:05 CT rolls yesterday's data into one row per (date, metric_key,
+// dimensions). Charts read from here = single index scan per chart.
+//
+// metric_key examples: 'ai_cost_usd', 'scan_count', 'apify_usage_pct'
+// dimensions examples: { tier: 'solo' }, { platform: 'reddit' }, { vendor: 'apify' }
+//
+// PK on (date, metric_key, dimensions) prevents duplicate rollups if the
+// cron runs twice (idempotency via ON CONFLICT DO UPDATE).
+// ---------------------------------------------------------------------------
+export const dailyMetrics = pgTable("daily_metrics", {
+  date: text("date").notNull(), // YYYY-MM-DD (CT)
+  metricKey: text("metric_key").notNull(),
+  dimensions: jsonb("dimensions").notNull().default({}), // {} for global metrics
+  value: real("value").notNull(),
+  metadata: jsonb("metadata"), // optional extras (sample size, source range)
+  computedAt: timestamp("computed_at").defaultNow().notNull(),
+}, (table) => [
+  // Composite primary key — date + metric_key + dimensions uniquely identify a rollup.
+  // Implemented as a unique index since Drizzle multi-col PK syntax varies; query
+  // patterns work the same as if it were a true PK.
+  uniqueIndex("daily_metrics_pk_idx").on(table.date, table.metricKey, table.dimensions),
+  // Chart-fetch pattern: WHERE metric_key = X ORDER BY date — composite covers it.
+  index("daily_metrics_lookup_idx").on(table.metricKey, table.date),
+]);
+
+export type DailyMetric = typeof dailyMetrics.$inferSelect;
+export type NewDailyMetric = typeof dailyMetrics.$inferInsert;
