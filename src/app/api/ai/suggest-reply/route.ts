@@ -153,8 +153,23 @@ Return JSON: {"suggestions": [{"text": "...", "tone": "helpful|professional|casu
         confidence: Math.max(0, Math.min(1, s.confidence)),
       }));
 
+    // SEC-LLM-005: extract URLs from each suggestion so the UI can surface
+    // a "verify before posting" warning for external links. We don't strip
+    // them — legitimate replies may contain references — but we make the
+    // user see them deliberately. Defends against prompt-injection chains
+    // where an attacker payload slipped into AI output and gets weaponized
+    // when a user copy-pastes the reply to a public platform.
+    const { extractUrlsFromSuggestions } = await import("@/lib/ai/extract-urls");
+    const urlInfo = extractUrlsFromSuggestions(suggestions);
+    const suggestionsWithUrls = suggestions.map((s, i) => ({
+      ...s,
+      urls: urlInfo.perSuggestion[i].urls,
+      warningMessage: urlInfo.perSuggestion[i].warningMessage,
+    }));
+
     return NextResponse.json({
-      suggestions,
+      suggestions: suggestionsWithUrls,
+      hasExternalUrls: urlInfo.anyHasExternalUrls,
       meta: {
         model: result.meta.model,
         tokensUsed: result.meta.promptTokens + result.meta.completionTokens,
