@@ -1,7 +1,7 @@
 import type { PlanKey } from "@/lib/plans";
 import { NextRequest, NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "crypto";
-import { db, users } from "@/lib/db";
+import { db, pooledDb, users } from "@/lib/db";
 import { webhookEvents } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { getPlanFromProductId, isTeamSeatProduct, PolarPlanKey } from "@/lib/polar";
@@ -281,7 +281,11 @@ export async function POST(request: NextRequest) {
           // Security (SEC-11): Use advisory lock to prevent race condition on founding member assignment.
           // Without the lock, two concurrent webhooks could both read the same COUNT and assign
           // the same foundingMemberNumber.
-          const result = await db.transaction(async (tx) => {
+          // CRITICAL: db (neon-http) doesn't support transactions — only single
+          // statements over HTTP. Use pooledDb (neon-serverless WebSocket) for
+          // anything wrapped in db.transaction(). Skipping this caused every
+          // Solo/Growth subscription.active webhook to 500 silently in prod.
+          const result = await pooledDb.transaction(async (tx) => {
             // Advisory lock scoped to this transaction — released automatically on commit
             await tx.execute(sql`SELECT pg_advisory_xact_lock(${sql.raw("hashtext('founding-member')")})`);
 
