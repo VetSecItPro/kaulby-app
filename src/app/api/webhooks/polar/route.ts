@@ -107,8 +107,28 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // SECURITY (SEC-INTEG-008): Idempotency guard — skip duplicate webhook events
-    const eventId = (event.data?.id as string) || createHmac("sha256", "polar-webhook").update(JSON.stringify(event)).digest("hex").slice(0, 32);
+    // SECURITY (SEC-INTEG-008): Idempotency guard - skip duplicate webhook events.
+    //
+    // CRITICAL: Polar webhook envelope is { type, timestamp, data } with NO
+    // top-level event ID. data.id is the RESOURCE id (subscription/checkout/
+    // order). Using bare data.id meant subscription.created and
+    // subscription.canceled for the same subscription would collide and the
+    // second event would be rejected as a duplicate, freezing the state
+    // machine on the first event ever received.
+    //
+    // Fix: prefer the Standard Webhooks 'webhook-id' header (Polar sends this
+    // per the spec - unique per delivery, stable across retries). Fall back
+    // to hash of (type + body), which scopes idempotency to a specific
+    // event-on-resource transition.
+    const webhookId =
+      request.headers.get("webhook-id") ||
+      request.headers.get("polar-webhook-id") ||
+      request.headers.get("x-webhook-id");
+    const eventId = webhookId
+      || createHmac("sha256", "polar-webhook")
+           .update(`${event.type}:${body}`)
+           .digest("hex")
+           .slice(0, 64);
     try {
       await db.insert(webhookEvents).values({
         eventId,
