@@ -447,6 +447,78 @@ export const resetUsageCounters = inngest.createFunction(
   }
 );
 
+// PERF-SCALE-004: vendor_metrics is hourly (~10 rows/hr) and the daily_metrics
+// rollup already holds the long-tail aggregates. 90d is enough for incident
+// forensics and matches how vendor health tiles read (6h DISTINCT ON window
+// in getVendorHealth — never more than a few days back).
+//
+// PERF-SCALE-003: daily_metrics keeps 2y to match the activity_logs audit
+// trail. Trend charts read 30-day windows; older rollups are useful only for
+// year-over-year comparison.
+//
+// Hard-delete (no soft-delete grace) because:
+//  1. These tables are pure telemetry — no user data, no recovery scenario
+//  2. Aggregates can be recomputed from primary sources (aiLogs, results) if
+//     ever needed — daily_metrics is itself a rollup
+//  3. Adding `deletedAt` columns would be heavyweight for what's an
+//     append-only metrics surface
+//
+// Index-backed: vendor_metrics_recorded_at_idx and daily_metrics_lookup_idx
+// (metricKey, date) make these DELETEs fast even as tables grow.
+export const cleanupVendorMetrics = inngest.createFunction(
+  {
+    id: "cleanup-vendor-metrics",
+    name: "Cleanup vendor_metrics (90d)",
+    retries: 3,
+    timeouts: { finish: "10m" },
+  },
+  { cron: "0 5 * * 0" }, // Sunday 05:00 UTC — after data-retention (03:00) and ai-logs (04:00)
+  async ({ step, logger }) => {
+    const deleted = await step.run("delete-old-vendor-metrics", async () => {
+      const { vendorMetrics } = await import("@/lib/db/schema");
+      const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+      const [{ value }] = await pooledDb
+        .select({ value: count() })
+        .from(vendorMetrics)
+        .where(lt(vendorMetrics.recordedAt, cutoff));
+      if (value > 0) {
+        await pooledDb.delete(vendorMetrics).where(lt(vendorMetrics.recordedAt, cutoff));
+      }
+      return value;
+    });
+    logger.info(`Deleted ${deleted} vendor_metrics rows older than 90 days`);
+    return { success: true, deletedRows: deleted };
+  },
+);
+
+export const cleanupDailyMetrics = inngest.createFunction(
+  {
+    id: "cleanup-daily-metrics",
+    name: "Cleanup daily_metrics (2y)",
+    retries: 3,
+    timeouts: { finish: "10m" },
+  },
+  { cron: "30 5 * * 0" }, // Sunday 05:30 UTC — staggered after vendor_metrics
+  async ({ step, logger }) => {
+    const deleted = await step.run("delete-old-daily-metrics", async () => {
+      const { dailyMetrics } = await import("@/lib/db/schema");
+      // daily_metrics.date is a `date` column (YYYY-MM-DD string per Drizzle)
+      const cutoffDate = new Date(Date.now() - 730 * 24 * 60 * 60 * 1000);
+      const cutoffStr = cutoffDate.toISOString().slice(0, 10); // YYYY-MM-DD
+      const [{ value }] = await pooledDb
+        .select({ value: count() })
+        .from(dailyMetrics)
+        .where(lt(dailyMetrics.date, cutoffStr));
+      if (value > 0) {
+        await pooledDb.delete(dailyMetrics).where(lt(dailyMetrics.date, cutoffStr));
+      }
+      return value;
+    });
+    logger.info(`Deleted ${deleted} daily_metrics rows older than 2 years`);
+    return { success: true, deletedRows: deleted };
+  },
+);
+
 // Clean up old AI logs (keep 90 days for all users)
 export const cleanupAiLogs = inngest.createFunction(
   {
