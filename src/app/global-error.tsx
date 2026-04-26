@@ -36,7 +36,7 @@ export default function GlobalError({
         <div className="max-w-md w-full text-center space-y-6">
           <div className="flex justify-center">
             <div className="rounded-full bg-red-500/10 p-4">
-              {/* A11Y: Decorative SVGs — FIX-301 */}
+              {/* A11Y: Decorative SVGs - FIX-301 */}
               <svg
                 className="h-8 w-8 text-red-500"
                 fill="none"

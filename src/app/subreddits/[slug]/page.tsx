@@ -311,7 +311,7 @@ export default async function SubredditPage({
   // Normalize slug (lowercase, remove r/ prefix if present)
   const normalizedSlug = slug.toLowerCase().replace(/^r\//, "");
 
-  // Fetch DB stats and live stats in parallel — use whichever responds
+  // Fetch DB stats and live stats in parallel - use whichever responds
   const [dbStats, liveStats] = await Promise.all([
     getSubredditStats(normalizedSlug),
     fetchLiveStats(normalizedSlug),

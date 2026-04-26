@@ -110,7 +110,7 @@ export function AudiencesList({ audiences, suggestions = [] }: AudiencesListProp
         </Link>
       </div>
 
-      {/* Sort controls — only show if 2+ audiences */}
+      {/* Sort controls - only show if 2+ audiences */}
       {audiences.length > 1 && (
         <div className="flex items-center justify-end gap-2">
           <Select

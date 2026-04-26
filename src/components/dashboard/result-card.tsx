@@ -85,7 +85,7 @@ interface ResultCardProps {
   highlightKeywords?: string[];
   /** Show lead score badge (default: true) */
   showLeadScore?: boolean;
-  // Task 2.2: Bulk selection support — opt-in. When `onSelectionChange` is
+  // Task 2.2: Bulk selection support - opt-in. When `onSelectionChange` is
   // passed, a checkbox renders top-left; otherwise the card is unchanged for
   // existing callers (digest emails, shared reports, etc.).
   selected?: boolean;
@@ -206,7 +206,7 @@ export const ResultCard = memo(function ResultCard({
                   onSelectionChange?.(result.id, checked === true)
                 }
                 onKeyDown={(e) => {
-                  // Space key toggles selection (default on radix) — no-op here,
+                  // Space key toggles selection (default on radix) - no-op here,
                   // kept for explicit intent. Enter falls through to default.
                   if (e.key === " ") e.stopPropagation();
                 }}

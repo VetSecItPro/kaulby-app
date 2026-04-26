@@ -635,7 +635,7 @@ export function TeamSettings({ subscriptionStatus }: TeamSettingsProps) {
           </div>
         )}
 
-        {/* Seat limit reached — buy extra seat */}
+        {/* Seat limit reached - buy extra seat */}
         {permissions.canInviteMembers(role) && workspace.seatCount >= workspace.seatLimit && (
           <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20 space-y-3">
             <p className="text-sm text-amber-600 dark:text-amber-400">
@@ -670,7 +670,7 @@ export function TeamSettings({ subscriptionStatus }: TeamSettingsProps) {
                 {buyingSeat ? (
                   <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing...</>
                 ) : (
-                  "Add Seat — $20/mo"
+                  "Add Seat - $20/mo"
                 )}
               </Button>
               <span className="text-xs text-muted-foreground">per additional member</span>

@@ -446,7 +446,7 @@ export function IntegrationsSettings({
           })
         );
       } catch {
-        // Silently fail — fall back to defaults
+        // Silently fail - fall back to defaults
       }
     }
     fetchStatus();

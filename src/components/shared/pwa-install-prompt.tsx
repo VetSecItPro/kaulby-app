@@ -227,7 +227,7 @@ export function PWAInstallPrompt() {
               </p>
             ) : (
               <p className="text-xs text-muted-foreground mt-0.5">
-                Installs locally — no app store, works offline
+                Installs locally - no app store, works offline
               </p>
             )}
           </div>

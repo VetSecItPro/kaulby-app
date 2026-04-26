@@ -1,4 +1,4 @@
-// PERF: Lazy-load filters to reduce 224kB bundle — FIX-201
+// PERF: Lazy-load filters to reduce 224kB bundle - FIX-201
 import type { Metadata } from "next";
 import { Suspense } from "react";
 

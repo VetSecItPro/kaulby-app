@@ -91,7 +91,7 @@ const SUGGESTED_QUESTIONS = [
   "Which platforms have the most negative sentiment?",
   "Find posts where someone is looking for alternatives",
   "Summarize my monitoring data for this week",
-  "Compare my monitors — which one is performing best?",
+  "Compare my monitors - which one is performing best?",
 ];
 
 const LOADING_MESSAGES = [
@@ -233,7 +233,7 @@ const MessageBubble = memo(function MessageBubble({
           )}
         </div>
 
-        {/* Pending confirmation — A11Y-KB-001: aria-live announces the
+        {/* Pending confirmation - A11Y-KB-001: aria-live announces the
             inline confirmation card to screen readers when it appears. */}
         {!isUser && message.pendingConfirmation && onConfirm && (
           <div
@@ -496,7 +496,7 @@ export function AIChat({
       savedMessageCountRef.current = 0;
       return;
     }
-    // Skip loading from DB if we just created this conversation — messages are already in state
+    // Skip loading from DB if we just created this conversation - messages are already in state
     if (skipNextLoadRef.current) {
       skipNextLoadRef.current = false;
       return;
@@ -567,7 +567,7 @@ export function AIChat({
       });
       savedMessageCountRef.current += unsaved.length;
     } catch {
-      // Silent fail — messages still visible in UI
+      // Silent fail - messages still visible in UI
     }
   }, []);
 
@@ -723,7 +723,7 @@ export function AIChat({
         const cancelMessage: ChatMessage = {
           id: `assistant-cancel-${Date.now()}`,
           role: "assistant",
-          content: "No problem — action cancelled.",
+          content: "No problem - action cancelled.",
           timestamp: new Date(),
         };
         setMessages((prev) => [...prev, cancelMessage]);
@@ -921,7 +921,7 @@ export function AIChat({
               ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask anything — search results, create monitors, find leads…"
+              placeholder="Ask anything - search results, create monitors, find leads…"
               disabled={isLoading}
               className="flex-1"
               aria-label="Chat message"

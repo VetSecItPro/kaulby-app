@@ -83,7 +83,7 @@ function formatNumber(num: number): string {
 async function getAllSubredditStats() {
   try {
     const identifiers = ALL_TRACKED_SUBREDDITS.map(s => `r/${s}`);
-    // DB: Bounded query on static identifier list — FIX-102
+    // DB: Bounded query on static identifier list - FIX-102
     const stats = await db.query.communityGrowth.findMany({
       where: inArray(communityGrowth.identifier, identifiers),
       orderBy: [desc(communityGrowth.recordedAt)],
@@ -300,7 +300,7 @@ export default async function SubredditsIndexPage() {
         </div>
       </section>
 
-      {/* SECURITY: XSS prevention — FIX-007
+      {/* SECURITY: XSS prevention - FIX-007
           Schema.org structured data uses JSON.stringify on static data (ALL_TRACKED_SUBREDDITS),
           not user input. This is safe for SEO/AEO purposes. */}
       {/* Schema.org Structured Data */}

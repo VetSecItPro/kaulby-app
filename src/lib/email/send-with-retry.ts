@@ -1,6 +1,6 @@
 /**
  * Resilient email sending with retry + failure tracking.
- * No silent failures — every failed email is recorded in the database.
+ * No silent failures - every failed email is recorded in the database.
  */
 
 import { Resend } from "resend";
@@ -65,7 +65,7 @@ export async function sendEmailWithRetry(params: SendEmailParams): Promise<SendR
   const { emailType, userId } = params;
   let lastError: unknown;
 
-  // Build the Resend payload dynamically — cast needed because Resend's union type
+  // Build the Resend payload dynamically - cast needed because Resend's union type
   // requires exactly one of html/text/react, but we accept either at runtime
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const resendPayload: any = {
@@ -80,7 +80,7 @@ export async function sendEmailWithRetry(params: SendEmailParams): Promise<SendR
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       const result = await getResend().emails.send(resendPayload);
-      // Success on retry — log recovery
+      // Success on retry - log recovery
       if (attempt > 0) {
         logger.info("[Email] Recovered after retry", {
           emailType,
@@ -95,7 +95,7 @@ export async function sendEmailWithRetry(params: SendEmailParams): Promise<SendR
 
       // Don't retry permanent errors (invalid email, auth failure, etc.)
       if (!isTransientError(error)) {
-        logger.error("[Email] Permanent failure — not retrying", {
+        logger.error("[Email] Permanent failure - not retrying", {
           emailType,
           recipient: params.to,
           error: errorMsg,
@@ -106,7 +106,7 @@ export async function sendEmailWithRetry(params: SendEmailParams): Promise<SendR
       // Retry with exponential backoff: 1s, 2s, 4s
       if (attempt < maxRetries) {
         const delayMs = Math.pow(2, attempt) * 1000;
-        logger.warn("[Email] Transient failure — retrying", {
+        logger.warn("[Email] Transient failure - retrying", {
           emailType,
           recipient: params.to,
           attempt: attempt + 1,
@@ -118,7 +118,7 @@ export async function sendEmailWithRetry(params: SendEmailParams): Promise<SendR
     }
   }
 
-  // All retries exhausted — record failure in database
+  // All retries exhausted - record failure in database
   const errorMsg = lastError instanceof Error ? lastError.message : String(lastError);
   try {
     await pooledDb.insert(emailDeliveryFailures).values({

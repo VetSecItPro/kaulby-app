@@ -43,7 +43,7 @@ export function ScanButton({ monitorId, isActive, initialIsScanning, onScanCompl
   const [pollInterval, setPollInterval] = useState(10000);
   const [stopped, setStopped] = useState(false);
 
-  // Live countdown timer — ticks every second while cooldown is active
+  // Live countdown timer - ticks every second while cooldown is active
   useEffect(() => {
     if (!cooldownEndsAt || canScan) return;
 
@@ -174,7 +174,7 @@ export function ScanButton({ monitorId, isActive, initialIsScanning, onScanCompl
     );
   }
 
-  // Currently scanning — show progress
+  // Currently scanning - show progress
   if (isScanning) {
     const progressText = scanProgress?.currentPlatform
       ? `Scanning ${scanProgress.currentPlatform}... (${scanProgress.platformsCompleted}/${scanProgress.platformsTotal})`

@@ -51,7 +51,7 @@ interface OnboardingChatProps {
 
 const WELCOME_MESSAGE = `Hi! I'm Kaulby AI, and I'll help you get set up in a few minutes.
 
-To get started — **what's your business or product about?** Tell me what you do and I'll suggest what to monitor.`;
+To get started - **what's your business or product about?** Tell me what you do and I'll suggest what to monitor.`;
 
 // ---------------------------------------------------------------------------
 // Simple markdown renderer (no framer-motion, no external deps)
@@ -200,7 +200,7 @@ function ProgressSidebar({
 
           {monitors.length === 0 ? (
             <p className="text-xs text-muted-foreground/60 pl-1">
-              None yet — tell me about your business
+              None yet - tell me about your business
             </p>
           ) : (
             <div className="space-y-1.5">
@@ -270,7 +270,7 @@ function ProgressSidebar({
         )}
       </div>
 
-      {/* Go to Dashboard button — shown when at least one monitor is created */}
+      {/* Go to Dashboard button - shown when at least one monitor is created */}
       {(isComplete || monitors.length > 0) && (
         <div className="p-4 border-t">
           <Button
@@ -300,7 +300,7 @@ export function OnboardingChat({ userPlan, userName }: OnboardingChatProps) {
     id: "welcome",
     role: "assistant",
     content: userName
-      ? `Hi ${userName}! I'm Kaulby AI, and I'll help you get set up in a few minutes.\n\nTo get started — **what's your business or product about?** Tell me what you do and I'll suggest what to monitor.`
+      ? `Hi ${userName}! I'm Kaulby AI, and I'll help you get set up in a few minutes.\n\nTo get started - **what's your business or product about?** Tell me what you do and I'll suggest what to monitor.`
       : WELCOME_MESSAGE,
     timestamp: new Date(),
   };

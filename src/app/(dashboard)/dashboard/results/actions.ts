@@ -9,7 +9,7 @@ import { track } from "@/lib/analytics";
 import { checkApiRateLimit } from "@/lib/rate-limit";
 
 // Task 2.2: Bulk actions + Saved Views. The user-facing promise is "triage 50
-// results in under a minute" — so every batch action is a single UPDATE
+// results in under a minute" - so every batch action is a single UPDATE
 // scoped to ids the caller owns (verified via a monitor join), and both the
 // list of ids and the saved-view name are length-capped to keep the write
 // predictable under rate limit.
@@ -27,7 +27,7 @@ type SavedViewFilters = {
 
 /**
  * Fetch the subset of `ids` whose owning monitor belongs to `userId`.
- * This is the authorization guard for every batch action — we only write to
+ * This is the authorization guard for every batch action - we only write to
  * result rows the caller provably owns, even if the caller sends a mixed list.
  */
 async function filterOwnedResultIds(
@@ -88,7 +88,7 @@ export async function markResultViewed(resultId: string) {
     })
     .where(eq(results.id, resultId));
 
-  // Task 1.4: taxonomy event — feeds the "which alerts get acted on?" funnel.
+  // Task 1.4: taxonomy event - feeds the "which alerts get acted on?" funnel.
   track("result.action_taken", { userId, resultId, action: "mark_read" });
 
   revalidatePath("/dashboard/results");
@@ -158,7 +158,7 @@ export async function toggleResultHidden(resultId: string) {
     })
     .where(eq(results.id, resultId));
 
-  // Task 1.4: only fire on hide (not un-hide) — the un-hide case is rare and
+  // Task 1.4: only fire on hide (not un-hide) - the un-hide case is rare and
   // doesn't carry signal about which results users find noisy.
   if (newHidden) {
     track("result.action_taken", { userId, resultId, action: "hide" });

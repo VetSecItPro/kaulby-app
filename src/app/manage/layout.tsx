@@ -11,7 +11,7 @@ export default async function ManageLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // SECURITY: Admin bypass requires explicit opt-in, never on Vercel — FIX-001
+  // SECURITY: Admin bypass requires explicit opt-in, never on Vercel - FIX-001
   const isLocalDev = process.env.NODE_ENV === "development" &&
                      process.env.ALLOW_DEV_AUTH_BYPASS === "true" &&
                      !process.env.VERCEL &&

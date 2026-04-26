@@ -37,7 +37,7 @@ async function getMonitorStats() {
     .from(monitors)
     .leftJoin(users, eq(monitors.userId, users.id))
     .orderBy(desc(monitors.createdAt))
-    // PERF: Limit admin query to prevent full table scan — FIX-007
+    // PERF: Limit admin query to prevent full table scan - FIX-007
     .limit(500);
 
   // Result counts per monitor (only for the monitors we fetched)
@@ -298,7 +298,7 @@ export default async function MonitorsPage() {
                 {data.stuckMonitors.map((m) => (
                   <TableRow key={m.id}>
                     <TableCell className="font-medium">{m.name}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{m.userEmail || "—"}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{m.userEmail || "-"}</TableCell>
                     <TableCell className="text-right text-muted-foreground text-sm">
                       {m.lastCheckedAt ? formatDate(m.lastCheckedAt) : "Never"}
                     </TableCell>

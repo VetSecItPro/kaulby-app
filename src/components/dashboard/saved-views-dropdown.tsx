@@ -108,7 +108,7 @@ export function SavedViewsDropdown({ onApplyView }: SavedViewsDropdownProps) {
             <DropdownMenuItem
               key={v.id}
               onSelect={(e) => {
-                // Prevent closing for the delete click inside — we call
+                // Prevent closing for the delete click inside - we call
                 // onApplyView only when the main row is selected.
                 e.preventDefault();
                 onApplyView(v.filters);

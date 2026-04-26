@@ -71,7 +71,7 @@ export function ResultsFilters({
   return (
     <div className="flex flex-wrap items-center justify-end gap-3">
 
-      {/* Platform filter — only show if monitor has 2+ platforms */}
+      {/* Platform filter - only show if monitor has 2+ platforms */}
       {platforms.length > 1 && (
         <div className="flex flex-wrap gap-1.5">
           <Button
@@ -99,7 +99,7 @@ export function ResultsFilters({
               onClick={() => {
                 // Analytics: platform filter usage tells us which platforms users
                 // actually slice by (informs which platforms to surface by default).
-                // Fires on both select and deselect — "value" reflects the new state.
+                // Fires on both select and deselect - "value" reflects the new state.
                 const nextValue = activePlatform === platform ? "all" : platform;
                 trackClient("ui.filter_applied", {
                   filterType: "platform",

@@ -386,7 +386,7 @@ export default async function IntegrationsPage() {
                           {f.statusCode}
                         </Badge>
                       ) : (
-                        <span className="text-muted-foreground">—</span>
+                        <span className="text-muted-foreground">-</span>
                       )}
                     </TableCell>
                     <TableCell className="max-w-[300px] truncate text-sm text-muted-foreground">
@@ -444,7 +444,7 @@ export default async function IntegrationsPage() {
                         <p className="text-xs text-muted-foreground">{k.prefix}...</p>
                       </div>
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{k.email || "—"}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{k.email || "-"}</TableCell>
                     <TableCell className="text-right font-medium">{k.totalRequests.toLocaleString()}</TableCell>
                     <TableCell className="text-right">{k.dailyRequests.toLocaleString()}</TableCell>
                     <TableCell className="text-right text-muted-foreground text-sm">

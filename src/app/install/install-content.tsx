@@ -38,7 +38,7 @@ interface BenefitInfo {
 // ---------------------------------------------------------------------------
 
 function detectPlatform(ua: string): Platform {
-  // iOS Safari — exclude Chrome-on-iOS (CriOS) and Firefox-on-iOS (FxiOS)
+  // iOS Safari - exclude Chrome-on-iOS (CriOS) and Firefox-on-iOS (FxiOS)
   if (/iPhone|iPad/.test(ua) && !/CriOS|FxiOS/.test(ua)) return "ios";
   if (/Android/.test(ua)) return "android";
   if (/Edg/.test(ua)) return "edge";

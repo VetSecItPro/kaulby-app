@@ -11,7 +11,7 @@ const features = [
   {
     icon: MessageSquare,
     title: "Natural language queries",
-    description: "Ask about your data in plain English — no filters or syntax needed.",
+    description: "Ask about your data in plain English - no filters or syntax needed.",
   },
   {
     icon: ExternalLink,
@@ -26,7 +26,7 @@ const features = [
   {
     icon: Wrench,
     title: "47 tools at your fingertips",
-    description: "Search, analyze sentiment, find trends, score leads — all through chat.",
+    description: "Search, analyze sentiment, find trends, score leads - all through chat.",
   },
 ];
 

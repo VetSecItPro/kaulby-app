@@ -32,7 +32,7 @@ export const NotificationBell = memo(function NotificationBell() {
       const data = await res.json();
       setNotifications(data.notifications || []);
     } catch {
-      // Silently fail — bell just won't update
+      // Silently fail - bell just won't update
     }
   }, []);
 

@@ -1,4 +1,4 @@
-// PERF: Code-split admin sections — FIX-203
+// PERF: Code-split admin sections - FIX-203
 import { db } from "@/lib/db";
 import { users, monitors, results, aiLogs, errorLogs, emailEvents, webhookDeliveries, apiKeys } from "@/lib/db/schema";
 import { count, sum, desc, sql, gte, and, lt, eq, isNull } from "drizzle-orm";
@@ -114,7 +114,7 @@ async function getUserGrowth() {
 }
 
 async function getPlatformDistribution() {
-  // PERF: Scope to last 30 days to avoid full table scan — FIX-008
+  // PERF: Scope to last 30 days to avoid full table scan - FIX-008
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
@@ -131,7 +131,7 @@ async function getPlatformDistribution() {
 }
 
 async function getSentimentBreakdown() {
-  // PERF: Scope to last 30 days to avoid full table scan — FIX-008
+  // PERF: Scope to last 30 days to avoid full table scan - FIX-008
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
@@ -328,7 +328,7 @@ async function getSystemHealth() {
     },
   ];
 
-  // Health checks — verify services are reachable
+  // Health checks - verify services are reachable
   let emailHealthy = false;
   try {
     if (process.env.RESEND_API_KEY) {

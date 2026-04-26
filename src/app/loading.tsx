@@ -3,7 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function Loading() {
   return (
     <div className="flex flex-col min-h-screen">
-      {/* A11Y: Screen reader text — FIX-313 */}
+      {/* A11Y: Screen reader text - FIX-313 */}
       <span className="sr-only">Loading...</span>
 
       {/* Header skeleton */}

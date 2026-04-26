@@ -22,7 +22,7 @@ export function MarketingHeader() {
           <span className="text-xl md:text-2xl font-bold gradient-text">Kaulby</span>
         </Link>
         <nav className="hidden md:flex items-center gap-6">
-          {/* A11Y: Client component for active state indication — FIX-019 */}
+          {/* A11Y: Client component for active state indication - FIX-019 */}
           <MarketingNavLinks />
           <AuthButtons />
         </nav>

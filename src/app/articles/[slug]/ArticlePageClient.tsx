@@ -21,7 +21,7 @@ export function ArticlePageClient({
   const Icon = config.icon;
 
   // SECURITY [FIX-008]: htmlContent is static developer-authored data from blog-articles.ts (string literals in source).
-  // DOMPurify runs client-side as defense-in-depth. SSR returns raw static HTML — accepted risk since
+  // DOMPurify runs client-side as defense-in-depth. SSR returns raw static HTML - accepted risk since
   // compromising this data requires source code access. Adding isomorphic-dompurify (jsdom ~2MB) not justified.
   const sanitizedHtml = useMemo(() => {
     if (typeof window !== "undefined") {

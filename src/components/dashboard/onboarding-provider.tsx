@@ -92,7 +92,7 @@ export function OnboardingProvider({ children, isNewUser, userName, userPlan = "
   );
 }
 
-// Safe default for SSR — during server rendering the provider context isn't
+// Safe default for SSR - during server rendering the provider context isn't
 // hydrated yet, so we return a no-op default instead of throwing.
 const SSR_DEFAULT: OnboardingContextType = {
   showOnboarding: false,

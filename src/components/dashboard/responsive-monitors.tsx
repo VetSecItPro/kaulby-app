@@ -117,7 +117,7 @@ export function ResponsiveMonitors({ monitors, refreshInfo }: ResponsiveMonitors
     );
   }
 
-  // After mount: render only the active layout — prevents duplicate API calls
+  // After mount: render only the active layout - prevents duplicate API calls
   return (
     <MountedContext.Provider value={true}>
       {isDesktop

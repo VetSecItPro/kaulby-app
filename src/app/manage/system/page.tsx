@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 const services = [
   {
     title: "Database",
-    description: "PostgreSQL (Neon) — table sizes, row counts, connections, indexes",
+    description: "PostgreSQL (Neon) - table sizes, row counts, connections, indexes",
     href: "/manage/system/database",
     icon: Database,
     color: "text-blue-500",
@@ -17,7 +17,7 @@ const services = [
   },
   {
     title: "AI Service",
-    description: "OpenRouter — costs, tokens, latency, cache efficiency, model breakdown",
+    description: "OpenRouter - costs, tokens, latency, cache efficiency, model breakdown",
     href: "/manage/system/ai",
     icon: Zap,
     color: "text-amber-500",
@@ -25,7 +25,7 @@ const services = [
   },
   {
     title: "Email",
-    description: "Resend — send volume, open/click rates, domain health, engagement",
+    description: "Resend - send volume, open/click rates, domain health, engagement",
     href: "/manage/system/email",
     icon: Mail,
     color: "text-green-500",
@@ -33,7 +33,7 @@ const services = [
   },
   {
     title: "Payments",
-    description: "Polar — MRR/ARR, subscriptions, transactions, founding members",
+    description: "Polar - MRR/ARR, subscriptions, transactions, founding members",
     href: "/manage/system/payments",
     icon: CreditCard,
     color: "text-purple-500",

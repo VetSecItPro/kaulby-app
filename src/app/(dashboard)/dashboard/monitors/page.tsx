@@ -1,4 +1,4 @@
-// PERF: Dynamic import creation wizard — FIX-202
+// PERF: Dynamic import creation wizard - FIX-202
 import type { Metadata } from "next";
 import { Suspense } from "react";
 

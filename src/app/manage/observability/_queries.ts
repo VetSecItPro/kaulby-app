@@ -4,7 +4,7 @@
  * Each query is wrapped in a `safe<Query>()` helper at the call site so a
  * failure in one query doesn't break the page. See `_safe.ts`.
  *
- * All queries are hot — they aggregate raw aiLogs/results/monitors. Phase 6
+ * All queries are hot - they aggregate raw aiLogs/results/monitors. Phase 6
  * trend charts read from the daily_metrics rollup instead.
  */
 
@@ -181,7 +181,7 @@ export async function getVendorHealth(): Promise<
 }
 
 /**
- * Phase 6 chart sources — read from the daily_metrics rollup (Phase 8).
+ * Phase 6 chart sources - read from the daily_metrics rollup (Phase 8).
  * One row per (date, metric_key, dimensions). Charts get cheap reads.
  */
 
@@ -189,7 +189,7 @@ export type DailyTrendPoint = { date: string; tier: string; value: number };
 
 /**
  * AI cost per tier per day, last 30 days.
- * Returns sparse rows — chart code densifies (fills missing days as 0).
+ * Returns sparse rows - chart code densifies (fills missing days as 0).
  */
 export async function getAiCostTrend30d(): Promise<DailyTrendPoint[]> {
   const rows = await db.execute<{ date: string; tier: string; value: number }>(sql`

@@ -62,7 +62,7 @@ const sidebarLinks = [
     href: "/dashboard/insights",
     icon: Lightbulb,
   },
-  // Discover page hidden for MVP — repurposing as "Market Pulse" in V2
+  // Discover page hidden for MVP - repurposing as "Market Pulse" in V2
   // { title: "Discover", href: "/dashboard/discover", icon: Compass },
   {
     title: "Ask Kaulby AI",

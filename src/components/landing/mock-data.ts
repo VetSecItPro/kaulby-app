@@ -47,7 +47,7 @@ export const MOCK_RESULTS: MockResult[] = [
   {
     id: "1",
     platform: "reddit",
-    title: "Just switched from Asana to Trellis — the AI task prioritization is actually useful",
+    title: "Just switched from Asana to Trellis - the AI task prioritization is actually useful",
     author: "u/productivitynerd",
     time: "2h ago",
     sentiment: "positive",
@@ -89,7 +89,7 @@ export const MOCK_RESULTS: MockResult[] = [
   {
     id: "4",
     platform: "producthunt",
-    title: "Trellis 3.0 — AI-powered project management for modern teams",
+    title: "Trellis 3.0 - AI-powered project management for modern teams",
     author: "trellis_team",
     time: "1d ago",
     sentiment: "positive",

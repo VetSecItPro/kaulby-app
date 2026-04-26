@@ -15,7 +15,7 @@ export default async function OnboardingChatPage() {
     redirect("/sign-in");
   }
 
-  // Check if user already has monitors — if so, redirect to dashboard
+  // Check if user already has monitors - if so, redirect to dashboard
   if (userId) {
     const [monitorCount] = await db
       .select({ count: count() })

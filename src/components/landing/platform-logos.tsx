@@ -1,5 +1,5 @@
 /**
- * Platform logos for landing page — inline SVGs.
+ * Platform logos for landing page - inline SVGs.
  * Replaces @icons-pack/react-simple-icons (59MB) with ~3KB of inline SVGs.
  */
 

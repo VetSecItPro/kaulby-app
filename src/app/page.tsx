@@ -33,7 +33,7 @@ export default function HomePage() {
     <div className="flex flex-col min-h-screen overflow-hidden">
       {/* Background gradient effects */}
       <div className="fixed inset-0 -z-10 overflow-hidden">
-        {/* PERF: will-change prevents repaint storms — FIX-324 */}
+        {/* PERF: will-change prevents repaint storms - FIX-324 */}
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-indigo-500/20 rounded-full blur-3xl animate-pulse" style={{ willChange: 'transform', animationDuration: '8s' }} />
         <div className="absolute top-1/3 right-1/4 w-96 h-96 bg-teal-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: "2s", willChange: 'transform', animationDuration: '8s' }} />
         <div className="absolute bottom-1/4 left-1/3 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: "4s", willChange: 'transform', animationDuration: '8s' }} />
@@ -120,7 +120,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* 2. Use Cases — Outcome-focused blocks */}
+        {/* 2. Use Cases - Outcome-focused blocks */}
         <UseCaseBlocks />
 
         {/* 3. How It Works */}
@@ -157,7 +157,7 @@ export default function HomePage() {
                 <StepCard
                   number={3}
                   title="Get Actionable Insights"
-                  description="See clustered pain points, AI recommendations, and buying signals — with links to the original conversations."
+                  description="See clustered pain points, AI recommendations, and buying signals - with links to the original conversations."
                 />
               </AnimatedStepCard>
             </div>
@@ -165,7 +165,7 @@ export default function HomePage() {
         </AnimatedSection>
         </div>
 
-        {/* 4. Product — Feature Tabs */}
+        {/* 4. Product - Feature Tabs */}
         <AnimatedSection className="py-16 md:py-24 px-4">
           <div className="container mx-auto">
             <div className="text-center mb-10 md:mb-16">
@@ -179,7 +179,7 @@ export default function HomePage() {
               </TextReveal>
               <TextReveal delay={0.2}>
                 <p className="text-sm md:text-base text-muted-foreground max-w-2xl mx-auto px-4">
-                  From mentions feed to AI-powered insights — explore how Kaulby turns raw conversations into business intelligence.
+                  From mentions feed to AI-powered insights - explore how Kaulby turns raw conversations into business intelligence.
                 </p>
               </TextReveal>
             </div>
@@ -254,7 +254,7 @@ export default function HomePage() {
           </div>
         </AnimatedSection>
 
-        {/* 6. Why Kaulby — Value Props */}
+        {/* 6. Why Kaulby - Value Props */}
         <AnimatedSection>
           <TestimonialSection />
         </AnimatedSection>

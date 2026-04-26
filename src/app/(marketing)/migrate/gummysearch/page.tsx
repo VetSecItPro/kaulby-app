@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Check, ArrowRight, Zap } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Switch from GummySearch to Kaulby — Migration Guide",
+  title: "Switch from GummySearch to Kaulby - Migration Guide",
   description:
     "GummySearch only monitors Reddit. Kaulby monitors 16 platforms with AI-powered pain point detection, lead scoring, and competitor intelligence. Here's how to switch.",
   openGraph: {
@@ -73,8 +73,8 @@ const comparisonRows = [
   },
   {
     feature: "Reddit Depth",
-    gummysearch: "Strong — subreddit search, hot posts, audience insights",
-    kaulby: "Good — keyword monitoring, subreddit tracking, AI analysis",
+    gummysearch: "Strong - subreddit search, hot posts, audience insights",
+    kaulby: "Good - keyword monitoring, subreddit tracking, AI analysis",
     kaulbyWins: false,
   },
 ];
@@ -121,13 +121,13 @@ export default function GummySearchMigrationPage() {
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8">
             Love Reddit research but need more platforms, AI-powered pain point detection,
-            and lead scoring? Kaulby gives you everything GummySearch does — plus 16 more platforms
-            and deeper AI analysis — at the same price.
+            and lead scoring? Kaulby gives you everything GummySearch does - plus 16 more platforms
+            and deeper AI analysis - at the same price.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link href="/sign-up">
               <Button size="lg" className="gap-2">
-                Start Free — No Credit Card <ArrowRight className="h-4 w-4" />
+                Start Free - No Credit Card <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
             <Link href="/pricing">
@@ -220,7 +220,7 @@ export default function GummySearchMigrationPage() {
               <CardContent className="text-sm text-muted-foreground">
                 Both tools are $29/mo for Pro. But Kaulby includes 16 platforms,
                 lead scoring, team workspaces, API access, scheduled reports, and
-                webhook integrations — all included.
+                webhook integrations - all included.
               </CardContent>
             </Card>
           </div>
