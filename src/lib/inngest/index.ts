@@ -29,7 +29,7 @@ export { analyzeContentBatch } from "./functions/analyze-content-batch";
 export { aiQualityCanary } from "./functions/ai-quality-canary";
 export { sendAlert, sendDailyDigest, sendWeeklyDigest, sendMonthlyDigest } from "./functions/send-alerts";
 export { sendWeeklyDigestCron } from "./functions/send-weekly-digest";
-export { dataRetention, resetUsageCounters, cleanupAiLogs } from "./functions/data-retention";
+export { dataRetention, resetUsageCounters, cleanupAiLogs, cleanupVendorMetrics, cleanupDailyMetrics } from "./functions/data-retention";
 export { expireReverseTrials } from "./functions/expire-trials";
 // Task DL.3: cleanupWebhookDeliveries was removed — retention now handled by dataRetention.
 export { sendWebhookEvent, processWebhookDelivery, retryWebhookDeliveries } from "./functions/webhook-delivery";
@@ -85,7 +85,7 @@ import { analyzeContentBatch } from "./functions/analyze-content-batch";
 import { aiQualityCanary } from "./functions/ai-quality-canary";
 import { sendAlert, sendDailyDigest, sendWeeklyDigest, sendMonthlyDigest } from "./functions/send-alerts";
 import { sendWeeklyDigestCron } from "./functions/send-weekly-digest";
-import { dataRetention, resetUsageCounters, cleanupAiLogs } from "./functions/data-retention";
+import { dataRetention, resetUsageCounters, cleanupAiLogs, cleanupVendorMetrics, cleanupDailyMetrics } from "./functions/data-retention";
 import { expireReverseTrials } from "./functions/expire-trials";
 import { sendWebhookEvent, processWebhookDelivery, retryWebhookDeliveries } from "./functions/webhook-delivery";
 import { scheduledAccountDeletion } from "./functions/account-deletion";
@@ -146,6 +146,8 @@ export const functions = [
   dataRetention,
   resetUsageCounters,
   cleanupAiLogs,
+  cleanupVendorMetrics,
+  cleanupDailyMetrics,
   expireReverseTrials,
   sendWebhookEvent,
   processWebhookDelivery,
