@@ -4,7 +4,7 @@ import { createHmac, timingSafeEqual } from "crypto";
 import { db, pooledDb, users } from "@/lib/db";
 import { webhookEvents } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
-import { getPlanFromProductId, isTeamSeatProduct, PolarPlanKey } from "@/lib/polar";
+import { getPlanFromProductId, getPolarClient, isTeamSeatProduct, PolarPlanKey } from "@/lib/polar";
 import { workspaces } from "@/lib/db/schema";
 
 // PERF: Webhook processing may take longer than default 10s — FIX-016
@@ -550,6 +550,50 @@ export async function POST(request: NextRequest) {
             event: "subscription_revoked",
             properties: { provider: "polar" },
           });
+
+          // Cascade-cancel any active seat-addon subscriptions. Without this,
+          // a Growth user who downgrades keeps paying $20/mo per extra seat
+          // for capacity their workspace can no longer use - silent billing
+          // for nothing. Set cancelAtPeriodEnd so they keep the seats through
+          // the rest of their seat billing period (Approach B), then the
+          // existing seat-revoked handler decrements seatLimit naturally.
+          //
+          // Wrapped in its own try/catch: a Polar API failure here must not
+          // fail the webhook (Polar would retry the whole revoke event,
+          // re-running the user downgrade we just did).
+          try {
+            const polar = await getPolarClient();
+            if (polar && revokedCustomerId) {
+              const list = await polar.subscriptions.list({
+                customerId: [revokedCustomerId],
+                active: true,
+                limit: 100,
+              });
+              const subs = list?.result?.items ?? [];
+              const seatAddons = subs.filter((s) => isTeamSeatProduct(s.productId));
+              for (const sub of seatAddons) {
+                await polar.subscriptions.update({
+                  id: sub.id,
+                  subscriptionUpdate: { cancelAtPeriodEnd: true },
+                });
+              }
+              if (seatAddons.length > 0) {
+                captureEvent({
+                  distinctId: revokedUser.id,
+                  event: "seat_addons_cascade_canceled",
+                  properties: { provider: "polar", count: seatAddons.length },
+                });
+                logger.info(`Cascade-canceled ${seatAddons.length} seat addon(s) after main subscription revoke`, {
+                  userId: revokedUser.id,
+                });
+              }
+            }
+          } catch (err) {
+            logger.error("Cascade seat-addon cancel failed (main revoke still committed)", {
+              userId: revokedUser.id,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
         }
         break;
       }
