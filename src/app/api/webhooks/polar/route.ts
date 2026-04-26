@@ -116,8 +116,19 @@ export async function POST(request: NextRequest) {
         provider: "polar",
       });
     } catch (dupError: unknown) {
-      // Unique constraint violation = duplicate event — return 200 to stop retries
-      if (dupError instanceof Error && dupError.message?.includes("unique")) {
+      // Unique constraint violation = duplicate event - return 200 to stop retries.
+      // Drizzle/Neon wrap pg errors; check both the message and the pg error code
+      // (23505 = unique_violation) so the duplicate guard works across drivers.
+      // Confirmed via sandbox e2e: raw pg → 'unique' substring; Neon serverless
+      // wrap → 'duplicate key' substring + cause.code='23505'.
+      const errMsg = dupError instanceof Error ? dupError.message : String(dupError);
+      const pgCode = (dupError as { code?: string; cause?: { code?: string } })?.code
+        ?? (dupError as { cause?: { code?: string } })?.cause?.code;
+      if (
+        errMsg.includes("unique") ||
+        errMsg.includes("duplicate key") ||
+        pgCode === "23505"
+      ) {
         return NextResponse.json({ received: true, duplicate: true });
       }
       throw dupError;
