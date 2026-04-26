@@ -36,6 +36,35 @@ import { searchMultipleKeywords as searchHNMultipleKeywords } from "@/lib/hacker
 import { includesTokenized } from "@/lib/content-matcher";
 import { logger } from "@/lib/logger";
 
+// PERF-DX-001: Registry pattern replaces a 16-case `switch` over Platform.
+// Each entry pairs an optional `gate` (env/config check) with a `scan` function.
+// Adding a new platform = one row, not a new case + step.run boilerplate.
+// `Partial<Record<...>>` so platforms without a scanner (e.g. deferred "quora")
+// are simply absent rather than failing exhaustiveness.
+type ScannerEntry = {
+  gate?: () => boolean;
+  scan: (monitor: MonitorData) => Promise<number>;
+};
+
+const SCANNERS: Partial<Record<Platform, ScannerEntry>> = {
+  reddit:        { scan: (m) => scanRedditForMonitor(m) },
+  hackernews:    { scan: (m) => scanHackerNewsForMonitor(m) },
+  googlereviews: { gate: () => isSerperConfigured() || isApifyConfigured(), scan: (m) => scanGoogleReviewsForMonitor(m) },
+  trustpilot:    { gate: () => isSerperConfigured(),                         scan: (m) => scanTrustpilotForMonitor(m) },
+  appstore:      { scan: (m) => scanAppStoreForMonitor(m) },
+  playstore:     { gate: () => isApifyConfigured(),                          scan: (m) => scanPlayStoreForMonitor(m) },
+  producthunt:   { scan: (m) => scanProductHuntForMonitor(m) },
+  youtube:       { gate: () => isYouTubeApiConfigured(),                     scan: (m) => scanYouTubeForMonitor(m) },
+  g2:            { gate: () => isSerperConfigured(),                         scan: (m) => scanG2ForMonitor(m) },
+  yelp:          { gate: () => isSerperConfigured() || isApifyConfigured(), scan: (m) => scanYelpForMonitor(m) },
+  amazonreviews: { gate: () => isSerperConfigured(),                         scan: (m) => scanAmazonReviewsForMonitor(m) },
+  github:        { scan: (m) => scanGitHubForMonitor(m) },
+  hashnode:      { scan: (m) => scanHashnodeForMonitor(m) },
+  indiehackers:  { scan: (m) => scanIndieHackersForMonitor(m) },
+  devto:         { scan: (m) => scanDevToForMonitor(m) },
+  x:             { scan: (m) => scanXForMonitor(m) },
+};
+
 /**
  * Scan a single monitor on-demand when user clicks "Scan Now"
  *
@@ -138,119 +167,14 @@ export const scanOnDemand = inngest.createFunction(
             .where(eq(monitors.id, monitorId));
         });
 
+        // PERF-DX-001: dispatch via SCANNERS registry. Gate (if any) is
+        // checked before paying for a step.run; absent platforms are skipped.
         let platformCount = 0;
-
-        switch (platform) {
-          case "reddit":
-            platformCount = await step.run(`scan-reddit-${monitorId}`, async () => {
-              return scanRedditForMonitor(monitor);
-            });
-            break;
-
-          case "hackernews":
-            platformCount = await step.run(`scan-hackernews-${monitorId}`, async () => {
-              return scanHackerNewsForMonitor(monitor);
-            });
-            break;
-
-          case "googlereviews":
-            if (isSerperConfigured() || isApifyConfigured()) {
-              platformCount = await step.run(`scan-googlereviews-${monitorId}`, async () => {
-                return scanGoogleReviewsForMonitor(monitor);
-              });
-            }
-            break;
-
-          case "trustpilot":
-            if (isSerperConfigured()) {
-              platformCount = await step.run(`scan-trustpilot-${monitorId}`, async () => {
-                return scanTrustpilotForMonitor(monitor);
-              });
-            }
-            break;
-
-          case "appstore":
-            // Always runs — Apple RSS is free (no API key needed), Serper/Apify are fallbacks
-            platformCount = await step.run(`scan-appstore-${monitorId}`, async () => {
-              return scanAppStoreForMonitor(monitor);
-            });
-            break;
-
-          case "playstore":
-            if (isApifyConfigured()) {
-              platformCount = await step.run(`scan-playstore-${monitorId}`, async () => {
-                return scanPlayStoreForMonitor(monitor);
-              });
-            }
-            break;
-
-          case "producthunt":
-            platformCount = await step.run(`scan-producthunt-${monitorId}`, async () => {
-              return scanProductHuntForMonitor(monitor);
-            });
-            break;
-
-          case "youtube":
-            if (isYouTubeApiConfigured()) {
-              platformCount = await step.run(`scan-youtube-${monitorId}`, async () => {
-                return scanYouTubeForMonitor(monitor);
-              });
-            }
-            break;
-
-          case "g2":
-            if (isSerperConfigured()) {
-              platformCount = await step.run(`scan-g2-${monitorId}`, async () => {
-                return scanG2ForMonitor(monitor);
-              });
-            }
-            break;
-
-          case "yelp":
-            if (isSerperConfigured() || isApifyConfigured()) {
-              platformCount = await step.run(`scan-yelp-${monitorId}`, async () => {
-                return scanYelpForMonitor(monitor);
-              });
-            }
-            break;
-
-          case "amazonreviews":
-            if (isSerperConfigured()) {
-              platformCount = await step.run(`scan-amazonreviews-${monitorId}`, async () => {
-                return scanAmazonReviewsForMonitor(monitor);
-              });
-            }
-            break;
-
-          case "github":
-            platformCount = await step.run(`scan-github-${monitorId}`, async () => {
-              return scanGitHubForMonitor(monitor);
-            });
-            break;
-
-          case "hashnode":
-            platformCount = await step.run(`scan-hashnode-${monitorId}`, async () => {
-              return scanHashnodeForMonitor(monitor);
-            });
-            break;
-
-          case "indiehackers":
-            platformCount = await step.run(`scan-indiehackers-${monitorId}`, async () => {
-              return scanIndieHackersForMonitor(monitor);
-            });
-            break;
-
-          case "devto":
-            platformCount = await step.run(`scan-devto-${monitorId}`, async () => {
-              return scanDevToForMonitor(monitor);
-            });
-            break;
-
-          case "x":
-            platformCount = await step.run(`scan-x-${monitorId}`, async () => {
-              return scanXForMonitor(monitor);
-            });
-            break;
+        const entry = SCANNERS[platform];
+        if (entry && (!entry.gate || entry.gate())) {
+          platformCount = await step.run(`scan-${platform}-${monitorId}`, async () => {
+            return entry.scan(monitor);
+          });
         }
 
         platformResults[platform] = platformCount;
