@@ -196,7 +196,7 @@ export async function getAiCostTrend30d(): Promise<DailyTrendPoint[]> {
     SELECT date, dimensions->>'tier' AS tier, value
     FROM daily_metrics
     WHERE metric_key = 'ai_cost_usd'
-      AND date >= TO_CHAR(NOW() - INTERVAL '30 days', 'YYYY-MM-DD')
+      AND date >= (CURRENT_DATE - INTERVAL '30 days')::date
     ORDER BY date ASC, tier ASC
   `);
   return rows.rows.map((r) => ({
@@ -221,7 +221,7 @@ export async function getVendorMetricTrend30d(
     WHERE metric_key = 'vendor_value_max'
       AND dimensions->>'vendor' = ${vendor}
       AND dimensions->>'metric' = ${metric}
-      AND date >= TO_CHAR(NOW() - INTERVAL '30 days', 'YYYY-MM-DD')
+      AND date >= (CURRENT_DATE - INTERVAL '30 days')::date
     ORDER BY date ASC
   `);
   return rows.rows.map((r) => ({
