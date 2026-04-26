@@ -117,6 +117,7 @@ export function TeamSettings({ subscriptionStatus }: TeamSettingsProps) {
   const [hasMoreActivity, setHasMoreActivity] = useState(false);
   const [loadingActivity, setLoadingActivity] = useState(false);
   const [buyingSeat, setBuyingSeat] = useState(false);
+  const [removingSeat, setRemovingSeat] = useState(false);
 
   const isEnterprise = subscriptionStatus === "growth";
 
@@ -675,6 +676,61 @@ export function TeamSettings({ subscriptionStatus }: TeamSettingsProps) {
               </Button>
               <span className="text-xs text-muted-foreground">per additional member</span>
             </div>
+          </div>
+        )}
+
+        {/* Remove extra seat (only when seatLimit > 3 baseline AND user owns workspace) */}
+        {permissions.canInviteMembers(role) && workspace.seatLimit > 3 && (
+          <div className="p-4 rounded-lg border space-y-3">
+            <p className="text-sm">
+              You have {workspace.seatLimit - 3} extra seat{workspace.seatLimit - 3 === 1 ? "" : "s"} ($20/mo each).
+            </p>
+            <div className="flex items-center gap-3">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={removingSeat || workspace.seatCount > workspace.seatLimit - 1}
+                onClick={async () => {
+                  if (workspace.seatCount > workspace.seatLimit - 1) {
+                    toast.error(
+                      `Remove a member first - you have ${workspace.seatCount} members but only ${workspace.seatLimit - 1} seats would remain.`,
+                    );
+                    return;
+                  }
+                  if (!confirm("Cancel one extra seat? You'll keep it through the end of the current billing period, then it will be removed automatically.")) {
+                    return;
+                  }
+                  setRemovingSeat(true);
+                  try {
+                    const res = await fetch("/api/polar/seat-addon", { method: "DELETE" });
+                    const data = await res.json();
+                    if (res.ok) {
+                      toast.success(data.message || "Seat scheduled for removal at period end.");
+                    } else {
+                      toast.error(data.error || "Failed to cancel seat");
+                    }
+                  } catch {
+                    toast.error("Something went wrong. Please try again.");
+                  } finally {
+                    setRemovingSeat(false);
+                  }
+                }}
+              >
+                {removingSeat ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing...</>
+                ) : (
+                  "Remove one extra seat"
+                )}
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                Keeps access through period end
+              </span>
+            </div>
+            {workspace.seatCount > workspace.seatLimit - 1 && (
+              <p className="text-xs text-amber-600 dark:text-amber-400">
+                Remove a workspace member first to free up a seat.
+              </p>
+            )}
           </div>
         )}
 

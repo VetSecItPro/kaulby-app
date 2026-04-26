@@ -4,19 +4,31 @@ export type { BillingInterval } from "@/lib/plans";
 
 // Polar SDK - dynamically imported to prevent build errors when not installed
 // Install with: pnpm add @polar-sh/sdk
+type PolarRequestOptions = {
+  headers?: Record<string, string>;
+};
+
 type PolarClient = {
   checkouts: {
-    create: (params: {
-      products: string[];
-      customerEmail?: string;
-      successUrl?: string;
-      metadata?: Record<string, string>;
-    }) => Promise<{ id: string; url: string }>;
+    create: (
+      params: {
+        products: string[];
+        customerEmail?: string;
+        successUrl?: string;
+        metadata?: Record<string, string>;
+      },
+      options?: PolarRequestOptions,
+    ) => Promise<{ id: string; url: string }>;
   };
   customerSessions: {
     create: (params: { customerId: string; returnUrl?: string | null }) => Promise<{ customerPortalUrl: string }>;
   };
   subscriptions: {
+    list: (params: {
+      customerId?: string[];
+      active?: boolean;
+      limit?: number;
+    }) => Promise<{ result?: { items?: Array<{ id: string; productId: string; createdAt: string | Date }> } }>;
     update: (params: {
       id: string;
       subscriptionUpdate: {
@@ -30,6 +42,21 @@ type PolarClient = {
 
 // Polar client - initialized lazily to avoid import errors
 let _polarClient: PolarClient | null = null;
+
+/**
+ * POLAR_ENV controls which Polar backend the SDK talks to:
+ *   "sandbox"    → https://sandbox-api.polar.sh (test cards, no real money)
+ *   "production" → https://api.polar.sh         (default, real money)
+ *
+ * Sandbox and production are completely separate accounts at Polar — the
+ * access token, org, products, and webhooks all differ. Set POLAR_ENV=sandbox
+ * (in .env.sandbox or Vercel preview env) along with sandbox values for
+ * POLAR_ACCESS_TOKEN, POLAR_WEBHOOK_SECRET, and POLAR_*_PRODUCT_ID to test
+ * the full checkout/webhook lifecycle without real charges.
+ */
+export function getPolarServer(): "production" | "sandbox" {
+  return process.env.POLAR_ENV === "sandbox" ? "sandbox" : "production";
+}
 
 export async function getPolarClient(): Promise<PolarClient | null> {
   if (!process.env.POLAR_ACCESS_TOKEN) {
@@ -47,6 +74,7 @@ export async function getPolarClient(): Promise<PolarClient | null> {
     const Polar = sdk.Polar;
     _polarClient = new Polar({
       accessToken: process.env.POLAR_ACCESS_TOKEN,
+      server: getPolarServer(),
     }) as unknown as PolarClient;
     return _polarClient;
   } catch {
