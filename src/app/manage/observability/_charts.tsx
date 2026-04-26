@@ -1,29 +1,21 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart as LineIcon, TrendingUp } from "lucide-react";
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  Legend,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
 
-const TIER_COLORS: Record<string, string> = {
-  free: "#94a3b8",
-  solo: "#3b82f6",
-  scale: "#8b5cf6",
-  growth: "#a855f7",
-  pro: "#3b82f6",
-  team: "#8b5cf6",
-  unknown: "#cbd5e1",
-};
+// PERF-BUNDLE-001: recharts pulls D3 (~150kB) into the client bundle. Lazy-load
+// the chart impls so the admin observability shell renders instantly and only
+// downloads recharts when a chart is actually visible. ssr:false avoids hydration
+// mismatch on chart container dimensions.
+const AreaChartImpl = dynamic(() => import("./_charts-impl").then((m) => m.AreaChartImpl), {
+  ssr: false,
+  loading: () => <div className="h-[300px] animate-pulse bg-muted/30 rounded" />,
+});
+const LineChartImpl = dynamic(() => import("./_charts-impl").then((m) => m.LineChartImpl), {
+  ssr: false,
+  loading: () => <div className="h-[250px] animate-pulse bg-muted/30 rounded" />,
+});
 
 // PERF-BUILDTIME-001: hoisted formatter — was creating implicit Intl objects
 // per cell × per chart. Module-level singleton is allocated once per page load.
@@ -85,29 +77,7 @@ export function AiCostTrendChart({ data }: { data: Array<{ date: string; tier: s
             No daily_metrics rows yet. The rollup cron writes one batch per day at 00:05 CT.
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={pivoted}>
-              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-              <XAxis dataKey="date" className="text-xs" />
-              <YAxis className="text-xs" tickFormatter={(v) => `$${Number(v).toFixed(0)}`} />
-              <Tooltip
-                formatter={(v: number) => [`$${Number(v).toFixed(2)}`, ""]}
-                contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))" }}
-              />
-              <Legend />
-              {tiers.map((t) => (
-                <Area
-                  key={t}
-                  type="monotone"
-                  dataKey={t}
-                  stackId="1"
-                  stroke={TIER_COLORS[t] ?? "#94a3b8"}
-                  fill={TIER_COLORS[t] ?? "#94a3b8"}
-                  fillOpacity={0.7}
-                />
-              ))}
-            </AreaChart>
-          </ResponsiveContainer>
+          <AreaChartImpl data={pivoted} tiers={tiers} />
         )}
       </CardContent>
     </Card>
@@ -142,18 +112,7 @@ export function VendorMetricTrendChart({
             No daily_metrics rows yet. The rollup cron writes one batch per day at 00:05 CT.
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={formatted}>
-              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-              <XAxis dataKey="date" className="text-xs" />
-              <YAxis className="text-xs" tickFormatter={(v) => `${Number(v).toFixed(0)}${unit}`} />
-              <Tooltip
-                formatter={(v: number) => [`${Number(v).toFixed(2)}${unit}`, ""]}
-                contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))" }}
-              />
-              <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
+          <LineChartImpl data={formatted} unit={unit} />
         )}
       </CardContent>
     </Card>
