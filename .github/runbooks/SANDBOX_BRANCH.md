@@ -10,3 +10,5 @@ Sandbox env vars (POLAR_ENV=sandbox + sandbox token + sandbox product IDs) are s
 on Vercel's Preview environment scope so this branch's deploys read them automatically.
 
 See `.github/runbooks/polar-sandbox-setup.md` for the full setup.
+
+Last redeployed: 2026-04-26T21:51:39Z
