@@ -4,7 +4,7 @@ import { createHmac, timingSafeEqual } from "crypto";
 import { db, users } from "@/lib/db";
 import { webhookEvents } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
-import { getPlanFromProductId, PolarPlanKey } from "@/lib/polar";
+import { getPlanFromProductId, isTeamSeatProduct, PolarPlanKey } from "@/lib/polar";
 import { workspaces } from "@/lib/db/schema";
 
 // PERF: Webhook processing may take longer than default 10s — FIX-016
@@ -461,6 +461,35 @@ export async function POST(request: NextRequest) {
       case "subscription.revoked": {
         // Subscription actually expired or was revoked — now downgrade to free
         const revokedCustomerId = eventData.customerId as string;
+        const revokedProductId = eventData.productId as string | undefined;
+
+        // Seat-addon revocation (Approach B): the user's billing period ended
+        // for a seat-addon they previously canceled. Decrement seatLimit on
+        // their workspace; do NOT downgrade their main tier.
+        if (revokedProductId && isTeamSeatProduct(revokedProductId)) {
+          const ownerUser = await db.query.users.findFirst({
+            where: eq(users.polarCustomerId, revokedCustomerId),
+            columns: { id: true },
+          });
+          if (ownerUser) {
+            // GREATEST guard prevents seatLimit dropping below the 3 baseline
+            // included with Growth, even if multiple revoke events race.
+            await db
+              .update(workspaces)
+              .set({
+                seatLimit: sql`GREATEST(${workspaces.seatLimit} - 1, 3)`,
+              })
+              .where(eq(workspaces.ownerId, ownerUser.id));
+
+            captureEvent({
+              distinctId: ownerUser.id,
+              event: "team_seat_revoked",
+              properties: { provider: "polar", productId: revokedProductId },
+            });
+            logger.info(`Team seat revoked at period end`, { userId: ownerUser.id });
+          }
+          break;
+        }
 
         await db
           .update(users)
