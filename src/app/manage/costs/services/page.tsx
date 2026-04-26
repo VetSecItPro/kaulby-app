@@ -351,7 +351,7 @@ export default async function ServiceCostsPage() {
                 </Button>
               </a>
             </div>
-            <CardDescription>Based on Inngest free tier — may not reflect current pricing</CardDescription>
+            <CardDescription>Based on Inngest free tier - may not reflect current pricing</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">

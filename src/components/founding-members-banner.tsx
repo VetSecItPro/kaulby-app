@@ -20,7 +20,7 @@ interface FoundingMembersBannerProps {
  *
  * Renders nothing while loading (prevents flash) and when the 1000 cap
  * is hit (program ended). The count comes from a 60s-cached public
- * endpoint, so the banner is eventually consistent, not real-time —
+ * endpoint, so the banner is eventually consistent, not real-time -
  * which is fine for marketing copy.
  *
  */
@@ -34,7 +34,7 @@ export function FoundingMembersBanner({ variant = "hero" }: FoundingMembersBanne
       .then((data: FoundingMembersCount) => setCount(data))
       .catch((err) => {
         if (err.name !== "AbortError") {
-          // Silent fail — banner just doesn't render, page still works.
+          // Silent fail - banner just doesn't render, page still works.
         }
       });
     return () => controller.abort();

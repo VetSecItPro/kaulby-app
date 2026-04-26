@@ -17,7 +17,7 @@ const LineChartImpl = dynamic(() => import("./_charts-impl").then((m) => m.LineC
   loading: () => <div className="h-[250px] animate-pulse bg-muted/30 rounded" />,
 });
 
-// PERF-BUILDTIME-001: hoisted formatter — was creating implicit Intl objects
+// PERF-BUILDTIME-001: hoisted formatter - was creating implicit Intl objects
 // per cell × per chart. Module-level singleton is allocated once per page load.
 const DATE_LABEL_FORMATTER = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" });
 

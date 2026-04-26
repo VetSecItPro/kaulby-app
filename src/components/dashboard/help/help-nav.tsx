@@ -27,7 +27,7 @@ interface SectionItem {
   badge?: string;
 }
 
-// Section navigation data — colocated here because icons are React components
+// Section navigation data - colocated here because icons are React components
 // that can't be serialized across the server→client boundary
 const sections: SectionItem[] = [
   { id: "faq", title: "Quick Answers", icon: HelpCircle },

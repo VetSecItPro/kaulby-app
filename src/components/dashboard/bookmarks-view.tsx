@@ -226,7 +226,7 @@ export function BookmarksView({ results, collections, bookmarkMap }: BookmarksVi
               {filteredResults.length} result{filteredResults.length !== 1 ? "s" : ""}
             </span>
             <div className="flex flex-wrap items-center justify-end gap-2">
-              {/* Platform filter — only show if 2+ platforms */}
+              {/* Platform filter - only show if 2+ platforms */}
               {availablePlatforms.length > 1 && (
                 <Select
                   value={platformFilter || "all"}

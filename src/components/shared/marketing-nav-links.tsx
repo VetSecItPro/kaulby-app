@@ -10,7 +10,7 @@ export const navLinks = [
   { href: "mailto:support@kaulbyapp.com", label: "Support", external: true },
 ];
 
-// A11Y: Active state on marketing nav links — FIX-019
+// A11Y: Active state on marketing nav links - FIX-019
 export function MarketingNavLinks() {
   const pathname = usePathname();
 

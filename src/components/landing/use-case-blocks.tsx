@@ -31,7 +31,7 @@ const useCases: UseCase[] = [
     icon: AlertTriangle,
     title: "Find Customer Pain Points Before You Build",
     description:
-      "See what users are actually complaining about across Reddit, reviews, and communities. Kaulby clusters recurring complaints by category — pricing concerns, support needs, negative experiences, feature requests — so you know exactly what to fix.",
+      "See what users are actually complaining about across Reddit, reviews, and communities. Kaulby clusters recurring complaints by category - pricing concerns, support needs, negative experiences, feature requests - so you know exactly what to fix.",
     highlight: "Stop guessing what customers want. Read what they're already saying.",
     accentFrom: "from-indigo-500/20",
     accentTo: "to-indigo-600/5",
@@ -42,7 +42,7 @@ const useCases: UseCase[] = [
     icon: Target,
     title: "Track Competitor Complaints and Feature Gaps",
     description:
-      "Monitor your competitors' names across 16 platforms. When their users complain about missing features or poor experiences, you'll see it first — and can position your product as the answer.",
+      "Monitor your competitors' names across 16 platforms. When their users complain about missing features or poor experiences, you'll see it first - and can position your product as the answer.",
     highlight: "Every competitor complaint is your opportunity.",
     accentFrom: "from-teal-500/20",
     accentTo: "to-teal-600/5",
@@ -53,7 +53,7 @@ const useCases: UseCase[] = [
     icon: Zap,
     title: "Catch Buying-Signal Posts",
     description:
-      "Kaulby's AI scores every mention for purchase intent. When someone posts 'looking for an alternative to [competitor]' or 'need a tool that does X', you'll know within hours — not weeks.",
+      "Kaulby's AI scores every mention for purchase intent. When someone posts 'looking for an alternative to [competitor]' or 'need a tool that does X', you'll know within hours - not weeks.",
     highlight: "Find people actively looking for solutions like yours.",
     accentFrom: "from-cyan-500/20",
     accentTo: "to-cyan-600/5",
@@ -64,7 +64,7 @@ const useCases: UseCase[] = [
     icon: Globe,
     title: "Monitor Your Brand Across 16 Platforms",
     description:
-      "Reddit, Hacker News, Google Reviews, Trustpilot, G2, YouTube, X, and 10 more — all in one dashboard. Get alerted when your brand is mentioned, whether it's praise, a complaint, or a question that needs a response.",
+      "Reddit, Hacker News, Google Reviews, Trustpilot, G2, YouTube, X, and 10 more - all in one dashboard. Get alerted when your brand is mentioned, whether it's praise, a complaint, or a question that needs a response.",
     highlight: "One dashboard. Every conversation that matters.",
     accentFrom: "from-violet-500/20",
     accentTo: "to-violet-600/5",

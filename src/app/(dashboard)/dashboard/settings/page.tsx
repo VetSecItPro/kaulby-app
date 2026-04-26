@@ -1,4 +1,4 @@
-// PERF: Dynamic import settings tabs — FIX-204
+// PERF: Dynamic import settings tabs - FIX-204
 import type { Metadata } from "next";
 import { Suspense } from "react";
 

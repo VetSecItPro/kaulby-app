@@ -47,7 +47,7 @@ export const viewport: Viewport = {
 // Metadata
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://kaulbyapp.com"),
-  title: "Kaulby — Find Customer Pain Points, Competitor Gaps & Buying Signals",
+  title: "Kaulby - Find Customer Pain Points, Competitor Gaps & Buying Signals",
   description: "Monitor Reddit, Hacker News, reviews, and 16 platforms. AI-powered pain point detection, competitor intelligence, and buying signal scoring for founders and SaaS teams.",
   icons: {
     icon: [
@@ -59,7 +59,7 @@ export const metadata: Metadata = {
     ],
   },
   openGraph: {
-    title: "Kaulby — Find Customer Pain Points, Competitor Gaps & Buying Signals",
+    title: "Kaulby - Find Customer Pain Points, Competitor Gaps & Buying Signals",
     description: "Monitor Reddit, reviews, Hacker News, and 16 platforms. AI surfaces pain points, competitor weaknesses, and buying signals for founders and SaaS teams.",
     url: "https://kaulbyapp.com",
     siteName: "Kaulby",
@@ -68,14 +68,14 @@ export const metadata: Metadata = {
         url: "/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "Kaulby — Customer Pain Points, Competitor Gaps & Buying Signals Dashboard",
+        alt: "Kaulby - Customer Pain Points, Competitor Gaps & Buying Signals Dashboard",
       },
     ],
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Kaulby — Find Customer Pain Points, Competitor Gaps & Buying Signals",
+    title: "Kaulby - Find Customer Pain Points, Competitor Gaps & Buying Signals",
     description: "Monitor Reddit, reviews, and 16 platforms. AI-powered pain point detection, competitor intelligence, and buying signal scoring.",
     images: ["/opengraph-image"],
   },
@@ -105,7 +105,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} antialiased bg-background`}
         suppressHydrationWarning
       >
-        {/* A11Y: Skip to main content link — FIX-302 */}
+        {/* A11Y: Skip to main content link - FIX-302 */}
         <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:bg-primary focus:text-primary-foreground focus:px-4 focus:py-2 focus:rounded">
           Skip to main content
         </a>

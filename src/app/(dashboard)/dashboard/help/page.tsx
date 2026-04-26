@@ -193,7 +193,7 @@ export default function HelpPage() {
                 <div>
                   <p className="font-medium text-sm">Days 1-3</p>
                   <p className="text-sm text-muted-foreground">
-                    Results start flowing in. You might see anywhere from a handful to hundreds of mentions depending on how often your brand is discussed. Use this time to refine your keywords — too many irrelevant results means your terms are too broad.
+                    Results start flowing in. You might see anywhere from a handful to hundreds of mentions depending on how often your brand is discussed. Use this time to refine your keywords - too many irrelevant results means your terms are too broad.
                   </p>
                 </div>
               </div>
@@ -210,7 +210,7 @@ export default function HelpPage() {
 
             <div className="p-4 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
               <p className="text-sm text-amber-800 dark:text-amber-200">
-                <strong>Not seeing results?</strong> This could mean: (1) your brand isn&apos;t being discussed much publicly yet — which is valuable information, (2) your keywords are too specific, or (3) you need to wait for the next scan cycle. Check the Troubleshooting section for more help.
+                <strong>Not seeing results?</strong> This could mean: (1) your brand isn&apos;t being discussed much publicly yet - which is valuable information, (2) your keywords are too specific, or (3) you need to wait for the next scan cycle. Check the Troubleshooting section for more help.
               </p>
             </div>
           </CardContent>
@@ -293,7 +293,7 @@ export default function HelpPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              A monitor is a saved search configuration that continuously scans selected platforms for conversations matching your criteria. Think of it as a persistent, intelligent Google Alert that works across communities, forums, and review sites — and tells you not just <em>what</em> people are saying, but <em>how they feel</em> about it.
+              A monitor is a saved search configuration that continuously scans selected platforms for conversations matching your criteria. Think of it as a persistent, intelligent Google Alert that works across communities, forums, and review sites - and tells you not just <em>what</em> people are saying, but <em>how they feel</em> about it.
             </p>
 
             <div className="space-y-4">
@@ -301,7 +301,7 @@ export default function HelpPage() {
               <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground ml-2">
                 <li>Click <strong>Monitors</strong> in the sidebar, then <strong>New Monitor</strong></li>
                 <li>Enter a descriptive <strong>Monitor Name</strong> (e.g., &quot;Brand Mentions&quot;, &quot;Competitor X Feedback&quot;)</li>
-                <li>Enter your <strong>Company/Brand Name</strong> — this is the primary search term</li>
+                <li>Enter your <strong>Company/Brand Name</strong> - this is the primary search term</li>
                 <li>Optionally add <strong>Additional Keywords</strong> to narrow results (e.g., &quot;pricing&quot;, &quot;support&quot;)</li>
                 <li>Select which <strong>Platforms</strong> to monitor (Reddit on Free; 9 platforms on Pro; all 16 platforms on Team)</li>
                 <li>Click <strong>Create Monitor</strong></li>
@@ -395,7 +395,7 @@ export default function HelpPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              The keywords you choose determine what conversations Kaulby finds. Your company/brand name is always the primary search term — additional keywords help you find specific types of mentions.
+              The keywords you choose determine what conversations Kaulby finds. Your company/brand name is always the primary search term - additional keywords help you find specific types of mentions.
             </p>
 
             <div className="space-y-4">
@@ -577,7 +577,7 @@ export default function HelpPage() {
                   <Badge className="bg-primary/10 text-primary border-primary/20">Pro</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Android app reviews from Google Play. Often has different feedback than iOS — important to monitor both if you have a mobile app.
+                  Android app reviews from Google Play. Often has different feedback than iOS - important to monitor both if you have a mobile app.
                 </p>
               </div>
 
@@ -587,7 +587,7 @@ export default function HelpPage() {
                   <Badge className="bg-primary/10 text-primary border-primary/20">Pro</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Q&A platform where people seek recommendations. Great for finding users actively looking for solutions — high-intent leads.
+                  Q&A platform where people seek recommendations. Great for finding users actively looking for solutions - high-intent leads.
                 </p>
               </div>
 
@@ -660,7 +660,7 @@ export default function HelpPage() {
                   Start with: <strong>Reddit, Hacker News, G2, Product Hunt</strong>
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Tech-savvy buyers research heavily on these platforms. G2 is especially critical for enterprise sales — buyers often check G2 reviews before demos.
+                  Tech-savvy buyers research heavily on these platforms. G2 is especially critical for enterprise sales - buyers often check G2 reviews before demos.
                 </p>
               </div>
 
@@ -680,7 +680,7 @@ export default function HelpPage() {
                   Start with: <strong>Google Reviews, Yelp, Trustpilot</strong>
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Google Reviews is #1 — it appears directly in search results. Yelp matters for restaurants and local services. Trustpilot for service businesses.
+                  Google Reviews is #1 - it appears directly in search results. Yelp matters for restaurants and local services. Trustpilot for service businesses.
                 </p>
               </div>
 
@@ -690,7 +690,7 @@ export default function HelpPage() {
                   Start with: <strong>App Store, Play Store, Reddit, Product Hunt</strong>
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  App store reviews are critical — they affect your rating and downloads. Reddit for community feedback. Product Hunt for launches.
+                  App store reviews are critical - they affect your rating and downloads. Reddit for community feedback. Product Hunt for launches.
                 </p>
               </div>
 
@@ -700,7 +700,7 @@ export default function HelpPage() {
                   Start with: <strong>Reddit, Hacker News, Quora, Product Hunt</strong>
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Focus on discovery platforms where people ask &quot;what&apos;s the best tool for X&quot; — these are your best leads. Add review platforms once you have customers.
+                  Focus on discovery platforms where people ask &quot;what&apos;s the best tool for X&quot; - these are your best leads. Add review platforms once you have customers.
                 </p>
               </div>
             </div>
@@ -840,7 +840,7 @@ export default function HelpPage() {
               <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground ml-2">
                 <li><strong>Pain Point:</strong> User expressing frustration with a problem your product could solve</li>
                 <li><strong>Solution Request:</strong> User actively looking for product recommendations</li>
-                <li><strong>Feature Request:</strong> User wanting specific functionality — valuable product feedback</li>
+                <li><strong>Feature Request:</strong> User wanting specific functionality - valuable product feedback</li>
                 <li><strong>Competitor Mention:</strong> Discussion comparing you to alternatives</li>
                 <li><strong>Positive Feedback:</strong> Praise, recommendations, or success stories</li>
               </ul>
@@ -909,51 +909,51 @@ export default function HelpPage() {
               <div className="p-4 rounded-lg border border-green-200 dark:border-green-800">
                 <h4 className="font-medium text-green-800 dark:text-green-200 mb-2">Positive Mentions</h4>
                 <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• <strong>Thank them publicly</strong> — a simple &quot;Thanks for the kind words!&quot; builds community</li>
+                  <li>• <strong>Thank them publicly</strong> - a simple &quot;Thanks for the kind words!&quot; builds community</li>
                   <li>• <strong>Ask for permission</strong> to use their feedback as a testimonial</li>
                   <li>• <strong>Share internally</strong> with your team to boost morale</li>
-                  <li>• <strong>Add to marketing</strong> — screenshots of genuine praise are powerful social proof</li>
+                  <li>• <strong>Add to marketing</strong> - screenshots of genuine praise are powerful social proof</li>
                 </ul>
               </div>
 
               <div className="p-4 rounded-lg border border-red-200 dark:border-red-800">
                 <h4 className="font-medium text-red-800 dark:text-red-200 mb-2">Negative Mentions</h4>
                 <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• <strong>Respond quickly</strong> — speed matters. Aim to reply within hours, not days</li>
-                  <li>• <strong>Be empathetic</strong> — acknowledge their frustration before offering solutions</li>
-                  <li>• <strong>Take it offline</strong> — offer to continue the conversation via email or DM</li>
-                  <li>• <strong>Follow up publicly</strong> — when resolved, post an update so others can see you care</li>
-                  <li>• <strong>Log the feedback</strong> — track recurring complaints for product improvements</li>
+                  <li>• <strong>Respond quickly</strong> - speed matters. Aim to reply within hours, not days</li>
+                  <li>• <strong>Be empathetic</strong> - acknowledge their frustration before offering solutions</li>
+                  <li>• <strong>Take it offline</strong> - offer to continue the conversation via email or DM</li>
+                  <li>• <strong>Follow up publicly</strong> - when resolved, post an update so others can see you care</li>
+                  <li>• <strong>Log the feedback</strong> - track recurring complaints for product improvements</li>
                 </ul>
               </div>
 
               <div className="p-4 rounded-lg border border-blue-200 dark:border-blue-800">
                 <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-2">Solution Requests / People Looking for Help</h4>
                 <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• <strong>Be helpful first</strong> — answer their question genuinely, don&apos;t just pitch</li>
-                  <li>• <strong>Disclose your affiliation</strong> — &quot;Full disclosure: I work at [Company]&quot; builds trust</li>
-                  <li>• <strong>Offer a trial or demo</strong> — make it easy to try your solution</li>
-                  <li>• <strong>Respect the community</strong> — some subreddits have rules against self-promotion</li>
+                  <li>• <strong>Be helpful first</strong> - answer their question genuinely, don&apos;t just pitch</li>
+                  <li>• <strong>Disclose your affiliation</strong> - &quot;Full disclosure: I work at [Company]&quot; builds trust</li>
+                  <li>• <strong>Offer a trial or demo</strong> - make it easy to try your solution</li>
+                  <li>• <strong>Respect the community</strong> - some subreddits have rules against self-promotion</li>
                 </ul>
               </div>
 
               <div className="p-4 rounded-lg border border-purple-200 dark:border-purple-800">
                 <h4 className="font-medium text-purple-800 dark:text-purple-200 mb-2">Competitor Comparisons</h4>
                 <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• <strong>Stay professional</strong> — never badmouth competitors</li>
-                  <li>• <strong>Highlight differences</strong> — focus on what makes you unique, not what&apos;s wrong with them</li>
-                  <li>• <strong>Let customers speak</strong> — share relevant case studies or testimonials</li>
-                  <li>• <strong>Learn from it</strong> — competitor praise reveals what customers value</li>
+                  <li>• <strong>Stay professional</strong> - never badmouth competitors</li>
+                  <li>• <strong>Highlight differences</strong> - focus on what makes you unique, not what&apos;s wrong with them</li>
+                  <li>• <strong>Let customers speak</strong> - share relevant case studies or testimonials</li>
+                  <li>• <strong>Learn from it</strong> - competitor praise reveals what customers value</li>
                 </ul>
               </div>
 
               <div className="p-4 rounded-lg border border-amber-200 dark:border-amber-800">
                 <h4 className="font-medium text-amber-800 dark:text-amber-200 mb-2">Feature Requests</h4>
                 <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• <strong>Acknowledge the request</strong> — even if you can&apos;t build it, say you&apos;ve heard it</li>
-                  <li>• <strong>Track frequency</strong> — requests mentioned multiple times deserve attention</li>
-                  <li>• <strong>Share your roadmap</strong> — if you&apos;re planning to build it, let them know</li>
-                  <li>• <strong>Suggest workarounds</strong> — sometimes there&apos;s an existing way to solve their problem</li>
+                  <li>• <strong>Acknowledge the request</strong> - even if you can&apos;t build it, say you&apos;ve heard it</li>
+                  <li>• <strong>Track frequency</strong> - requests mentioned multiple times deserve attention</li>
+                  <li>• <strong>Share your roadmap</strong> - if you&apos;re planning to build it, let them know</li>
+                  <li>• <strong>Suggest workarounds</strong> - sometimes there&apos;s an existing way to solve their problem</li>
                 </ul>
               </div>
             </div>
@@ -1005,7 +1005,7 @@ export default function HelpPage() {
 
             <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
               <p className="text-sm text-muted-foreground">
-                <strong>Note:</strong> Digests only send when there are new results to report. If no new mentions were found, you won&apos;t receive an email — no spam.
+                <strong>Note:</strong> Digests only send when there are new results to report. If no new mentions were found, you won&apos;t receive an email - no spam.
               </p>
             </div>
           </CardContent>
@@ -1158,8 +1158,8 @@ export default function HelpPage() {
               <li>Go to <strong>Settings</strong> → scroll to <strong>API Access</strong></li>
               <li>Click <strong>Create API Key</strong></li>
               <li>Give your key a descriptive name (e.g., &quot;Production App&quot;, &quot;Zapier Integration&quot;)</li>
-              <li><strong>Copy the key immediately</strong> — it won&apos;t be shown again</li>
-              <li>Store it securely in your environment variables — never commit it to code</li>
+              <li><strong>Copy the key immediately</strong> - it won&apos;t be shown again</li>
+              <li>Store it securely in your environment variables - never commit it to code</li>
             </ol>
 
             <div className="p-4 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
@@ -1297,26 +1297,26 @@ export default function HelpPage() {
                   </tr>
                   <tr className="border-b">
                     <td className="py-3 pr-4">Slack/Discord</td>
-                    <td className="text-center py-3 px-4">—</td>
+                    <td className="text-center py-3 px-4">-</td>
                     <td className="text-center py-3 px-4 bg-primary/5">✓</td>
                     <td className="text-center py-3 px-4">✓</td>
                   </tr>
                   <tr className="border-b">
                     <td className="py-3 pr-4">Webhooks</td>
-                    <td className="text-center py-3 px-4">—</td>
-                    <td className="text-center py-3 px-4 bg-primary/5">—</td>
+                    <td className="text-center py-3 px-4">-</td>
+                    <td className="text-center py-3 px-4 bg-primary/5">-</td>
                     <td className="text-center py-3 px-4">✓</td>
                   </tr>
                   <tr className="border-b">
                     <td className="py-3 pr-4">API access</td>
-                    <td className="text-center py-3 px-4">—</td>
-                    <td className="text-center py-3 px-4 bg-primary/5">—</td>
+                    <td className="text-center py-3 px-4">-</td>
+                    <td className="text-center py-3 px-4 bg-primary/5">-</td>
                     <td className="text-center py-3 px-4">✓</td>
                   </tr>
                   <tr className="border-b">
                     <td className="py-3 pr-4">Team members</td>
-                    <td className="text-center py-3 px-4">—</td>
-                    <td className="text-center py-3 px-4 bg-primary/5">—</td>
+                    <td className="text-center py-3 px-4">-</td>
+                    <td className="text-center py-3 px-4 bg-primary/5">-</td>
                     <td className="text-center py-3 px-4">5 included</td>
                   </tr>
                   <tr>
@@ -1347,7 +1347,7 @@ export default function HelpPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Need Pro features for a quick project? The Day Pass gives you 24 hours of Pro-level access for a one-time fee — no subscription required.
+              Need Pro features for a quick project? The Day Pass gives you 24 hours of Pro-level access for a one-time fee - no subscription required.
             </p>
 
             <div className="space-y-3">
@@ -1384,7 +1384,7 @@ export default function HelpPage() {
                 <li>Go to <strong>Settings</strong></li>
                 <li>Find your current plan in the <strong>Subscription</strong> section</li>
                 <li>Click <strong>Upgrade</strong> on the plan you want</li>
-                <li>Complete checkout — new features are available immediately</li>
+                <li>Complete checkout - new features are available immediately</li>
               </ol>
             </div>
 
@@ -1429,7 +1429,7 @@ export default function HelpPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              The Team plan allows multiple people to access your Kaulby account. All team members share monitors, results, and settings — perfect for marketing, product, and support teams working together.
+              The Team plan allows multiple people to access your Kaulby account. All team members share monitors, results, and settings - perfect for marketing, product, and support teams working together.
             </p>
 
             <div className="space-y-3">
@@ -1612,7 +1612,7 @@ export default function HelpPage() {
                 <h4 className="font-medium mb-2">No results appearing for my monitor</h4>
                 <ul className="text-sm text-muted-foreground space-y-1">
                   <li>• <strong>Wait for the first scan:</strong> New monitors can take up to 24 hours (Free) or 4 hours (Pro) for first results</li>
-                  <li>• <strong>Check your keywords:</strong> May be too specific — try broader terms</li>
+                  <li>• <strong>Check your keywords:</strong> May be too specific - try broader terms</li>
                   <li>• <strong>Verify platforms:</strong> Ensure the platforms you selected are active and included in your plan</li>
                   <li>• <strong>Low volume topic:</strong> Some topics simply don&apos;t have many public discussions</li>
                 </ul>
@@ -1651,7 +1651,7 @@ export default function HelpPage() {
               <div className="p-4 rounded-lg border">
                 <h4 className="font-medium mb-2">Results seem outdated</h4>
                 <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• <strong>Refresh cycles:</strong> Free: 24hr, Pro: 4hr, Team: 2hr — check your plan</li>
+                  <li>• <strong>Refresh cycles:</strong> Free: 24hr, Pro: 4hr, Team: 2hr - check your plan</li>
                   <li>• <strong>Manual refresh:</strong> Click the refresh icon on a monitor to trigger an immediate scan</li>
                   <li>• <strong>Platform delays:</strong> Some platforms have inherent delays in indexing new content</li>
                 </ul>
@@ -1670,9 +1670,9 @@ export default function HelpPage() {
               <div className="p-4 rounded-lg border">
                 <h4 className="font-medium mb-2">Getting irrelevant results</h4>
                 <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• <strong>Keywords too broad:</strong> &quot;App&quot; or &quot;software&quot; matches too much — be specific</li>
+                  <li>• <strong>Keywords too broad:</strong> &quot;App&quot; or &quot;software&quot; matches too much - be specific</li>
                   <li>• <strong>Common word conflicts:</strong> If your brand name is a common word, add context keywords</li>
-                  <li>• <strong>Hide irrelevant:</strong> Click &quot;Hide&quot; on results you don&apos;t want to see — we learn from this</li>
+                  <li>• <strong>Hide irrelevant:</strong> Click &quot;Hide&quot; on results you don&apos;t want to see - we learn from this</li>
                   <li>• <strong>Use audiences:</strong> Segment monitors by topic to better organize results</li>
                 </ul>
               </div>
@@ -1680,7 +1680,7 @@ export default function HelpPage() {
               <div className="p-4 rounded-lg border">
                 <h4 className="font-medium mb-2">Monitor limit reached</h4>
                 <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• <strong>Free plan:</strong> Limited to 1 monitor — upgrade to Pro (10) or Team (30)</li>
+                  <li>• <strong>Free plan:</strong> Limited to 1 monitor - upgrade to Pro (10) or Team (30)</li>
                   <li>• <strong>Delete unused:</strong> Remove monitors you no longer need to make room</li>
                   <li>• <strong>Combine keywords:</strong> One monitor can track multiple keywords (3 Free, 20 Pro, 35 Team)</li>
                 </ul>
@@ -1689,7 +1689,7 @@ export default function HelpPage() {
               <div className="p-4 rounded-lg border">
                 <h4 className="font-medium mb-2">Can&apos;t access certain platforms</h4>
                 <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• <strong>Plan restrictions:</strong> Free users only have Reddit access — Pro has 9 platforms, Team has all 17</li>
+                  <li>• <strong>Plan restrictions:</strong> Free users only have Reddit access - Pro has 9 platforms, Team has all 17</li>
                   <li>• <strong>Grayed out:</strong> Platforms showing as locked require Pro or Team plan depending on the platform</li>
                   <li>• <strong>Day Pass:</strong> Need temporary access? Buy a 24-hour Day Pass for $9</li>
                 </ul>

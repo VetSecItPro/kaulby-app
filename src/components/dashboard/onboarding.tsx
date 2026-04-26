@@ -605,7 +605,7 @@ export function OnboardingWizard({ isOpen, onClose, userName, userPlan = "free" 
                 })}
               </div>
 
-              {/* Upgrade nudge for free plan — collapsed list of locked platforms */}
+              {/* Upgrade nudge for free plan - collapsed list of locked platforms */}
               {userPlan === "free" && (
                 <details className="rounded-lg border border-primary/20 bg-primary/5 p-3">
                   <summary className="text-sm text-center cursor-pointer select-none list-none">

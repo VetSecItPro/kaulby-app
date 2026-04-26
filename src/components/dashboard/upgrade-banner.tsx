@@ -85,7 +85,7 @@ export function UpgradeBanner({ plan, variant = "full", context = "dashboard" }:
             <div>
               <p className="text-sm font-medium">Catch Buying Signals Faster</p>
               <p className="text-xs text-muted-foreground">
-                Pro monitors refresh every 4 hours — catch buying signals before competitors
+                Pro monitors refresh every 4 hours - catch buying signals before competitors
               </p>
             </div>
           </div>
@@ -171,7 +171,7 @@ export function ResultsLimitBanner({
               {hiddenCount} more {hiddenCount === 1 ? "mention" : "mentions"} hidden
             </p>
             <p className="text-xs text-muted-foreground">
-              Pro monitors refresh every 4 hours — catch buying signals before competitors
+              Pro monitors refresh every 4 hours - catch buying signals before competitors
             </p>
           </div>
         </div>

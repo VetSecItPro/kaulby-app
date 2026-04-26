@@ -3,7 +3,7 @@ import Image from "next/image";
 
 export default function SignInPage() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-black px-4"> {/* A11Y: Semantic landmark — FIX-307 */}
+    <main className="flex min-h-screen flex-col items-center justify-center bg-black px-4"> {/* A11Y: Semantic landmark - FIX-307 */}
       {/* Logo */}
       <div className="mb-8 animate-fade-in">
         <Image

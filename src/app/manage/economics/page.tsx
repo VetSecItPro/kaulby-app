@@ -451,7 +451,7 @@ export default async function UnitEconomicsPage() {
               <Gift className="h-4 w-4 text-amber-500" />
               Free Tier Subsidy Breakdown
             </CardTitle>
-            <CardDescription>Free users with AI usage — these are acquisition costs, not losses. Negative values are expected.</CardDescription>
+            <CardDescription>Free users with AI usage - these are acquisition costs, not losses. Negative values are expected.</CardDescription>
           </CardHeader>
           <CardContent>
             <Table>

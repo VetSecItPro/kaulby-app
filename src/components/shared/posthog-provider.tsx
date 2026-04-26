@@ -5,8 +5,8 @@ import { useEffect, type ReactNode } from "react";
 // Task 2.3: PostHog client-side provider.
 //
 // Why a provider at all if cookie-consent.tsx already inits PostHog? Two reasons:
-// 1. Explicit composition — the layout shows *where* analytics is wired.
-// 2. SPA route-change pageview tracking — cookie-consent only fires init; we
+// 1. Explicit composition - the layout shows *where* analytics is wired.
+// 2. SPA route-change pageview tracking - cookie-consent only fires init; we
 //    rely on PostHog's built-in capture_pageview, but this provider gives us a
 //    single hook point if we need to add custom pageview logic later.
 //
@@ -38,7 +38,7 @@ async function ensurePostHog() {
       });
     }
   } catch {
-    // Silent — analytics never blocks the UI.
+    // Silent - analytics never blocks the UI.
   }
 }
 

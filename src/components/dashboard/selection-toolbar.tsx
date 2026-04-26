@@ -1,6 +1,6 @@
 "use client";
 
-// Task 2.2: SelectionToolbar — appears when the user selects >=1 result card.
+// Task 2.2: SelectionToolbar - appears when the user selects >=1 result card.
 // Centralizes bulk actions so the page renders a single sticky bar instead of
 // repeating the same dropdown on each card. Keyboard accessible: Cmd/Ctrl+A
 // selects all visible, Escape clears selection.
@@ -57,7 +57,7 @@ export function SelectionToolbar({
         await action(selectedIds);
         onActionComplete();
       } catch (err) {
-        // Surface error via alert — toast system lives in a separate hook; the
+        // Surface error via alert - toast system lives in a separate hook; the
         // user-facing copy is intentionally minimal so we don't leak server
         // messages (e.g. rate-limit retry-after seconds).
         console.error("[SelectionToolbar] bulk action failed", err);

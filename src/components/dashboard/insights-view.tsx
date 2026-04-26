@@ -582,7 +582,7 @@ function RecommendationCard({
         {!expanded && rec.actions.length > 0 && (
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <ArrowRight className="h-3 w-3" />
-            <span>{rec.actions.length} action steps — click to expand</span>
+            <span>{rec.actions.length} action steps - click to expand</span>
           </div>
         )}
       </CardContent>
@@ -729,7 +729,7 @@ export function InsightsView() {
         onValueChange={(v) => {
           setActiveTab(v as InsightTab);
           // Analytics: which insight views users actually explore (pain-points
-          // is the default — recommendations/trending are the discovery paths).
+          // is the default - recommendations/trending are the discovery paths).
           trackClient("ui.tab_switched", { pageSection: "insights", tabName: v });
         }}
       >

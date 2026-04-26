@@ -473,7 +473,7 @@ const toolPages: Record<string, {
   },
 };
 
-// SEO: Dynamic metadata per slug for search rankings — FIX-010
+// SEO: Dynamic metadata per slug for search rankings - FIX-010
 export async function generateMetadata({
   params,
 }: {

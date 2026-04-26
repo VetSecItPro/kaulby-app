@@ -26,7 +26,7 @@ import { MarketingHeader } from "@/components/shared/marketing-header";
 import { MarketingFooter } from "@/components/shared/marketing-footer";
 import type { Metadata } from "next";
 
-// SEO: Full metadata for GummySearch migration landing page — FIX-028
+// SEO: Full metadata for GummySearch migration landing page - FIX-028
 export const metadata: Metadata = {
   title: "GummySearch Alternative | Migrate to Kaulby - 17 Platform Monitoring",
   description:
@@ -41,9 +41,9 @@ export const metadata: Metadata = {
     "brand monitoring",
   ],
   openGraph: {
-    title: "GummySearch is Closing — Kaulby is Here",
+    title: "GummySearch is Closing - Kaulby is Here",
     description:
-      "Everything you loved about GummySearch — plus 15 more platforms, better AI, and a team committed to keeping it running.",
+      "Everything you loved about GummySearch - plus 15 more platforms, better AI, and a team committed to keeping it running.",
     url: "https://kaulbyapp.com/gummysearch",
     type: "website",
   },

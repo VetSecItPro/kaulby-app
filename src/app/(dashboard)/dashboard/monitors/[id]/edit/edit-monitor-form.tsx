@@ -39,16 +39,16 @@ const ALL_PLATFORMS: PlatformDef[] = [
   { id: "x", name: "X (Twitter)", description: "Posts and conversations on X", tier: "solo", needsUrl: false, category: "keyword" },
   { id: "devto", name: "Dev.to", description: "Developer blog posts and discussions", tier: "growth", needsUrl: false, category: "keyword" },
   { id: "hashnode", name: "Hashnode", description: "Tech blog network", tier: "growth", needsUrl: false, category: "keyword" },
-  // quora: deferred — see .mdmp/apify-platform-cost-audit-2026-04-21.md
+  // quora: deferred - see .mdmp/apify-platform-cost-audit-2026-04-21.md
   // URL-required
   { id: "youtube", name: "YouTube", description: "Video comments and discussions", tier: "solo", needsUrl: true, category: "url_required", urlPlaceholder: "https://www.youtube.com/@channel or video URL", urlHelp: "Paste your YouTube channel URL or a specific video URL to monitor comments." },
   { id: "appstore", name: "App Store", description: "iOS app reviews", tier: "growth", needsUrl: true, category: "url_required", urlPlaceholder: "https://apps.apple.com/us/app/name/id123456", urlHelp: "Open your app in the App Store, tap Share, and copy the link." },
   { id: "playstore", name: "Play Store", description: "Android app reviews", tier: "growth", needsUrl: true, category: "url_required", urlPlaceholder: "https://play.google.com/store/apps/details?id=com.app", urlHelp: "Open your app in Google Play, tap Share, and copy the link." },
   { id: "amazonreviews", name: "Amazon Reviews", description: "Product reviews on Amazon", tier: "growth", needsUrl: true, category: "url_required", urlPlaceholder: "https://amazon.com/dp/B08N5WRWNW or ASIN", urlHelp: "Copy your product's Amazon URL, or find the ASIN in the product details section." },
   // Business listing (optional URL)
-  { id: "googlereviews", name: "Google Reviews", description: "Business reviews on Google", tier: "solo", needsUrl: false, optionalUrl: true, category: "business_listing", urlPlaceholder: "https://www.google.com/maps/place/... or Place ID", urlHelp: "Optional — paste your Google Maps URL for more accurate results, or we'll search by company name." },
-  { id: "trustpilot", name: "Trustpilot", description: "Customer reviews and ratings", tier: "solo", needsUrl: false, optionalUrl: true, category: "business_listing", urlPlaceholder: "https://www.trustpilot.com/review/example.com", urlHelp: "Optional — paste your Trustpilot page URL for exact results, or we'll search by company name." },
-  { id: "g2", name: "G2", description: "Software reviews and ratings", tier: "growth", needsUrl: true, category: "url_required", urlPlaceholder: "https://www.g2.com/products/your-product/reviews", urlHelp: "Paste your G2 product URL. Company-name fallback is unreliable on G2 — the URL gives exact results." },
+  { id: "googlereviews", name: "Google Reviews", description: "Business reviews on Google", tier: "solo", needsUrl: false, optionalUrl: true, category: "business_listing", urlPlaceholder: "https://www.google.com/maps/place/... or Place ID", urlHelp: "Optional - paste your Google Maps URL for more accurate results, or we'll search by company name." },
+  { id: "trustpilot", name: "Trustpilot", description: "Customer reviews and ratings", tier: "solo", needsUrl: false, optionalUrl: true, category: "business_listing", urlPlaceholder: "https://www.trustpilot.com/review/example.com", urlHelp: "Optional - paste your Trustpilot page URL for exact results, or we'll search by company name." },
+  { id: "g2", name: "G2", description: "Software reviews and ratings", tier: "growth", needsUrl: true, category: "url_required", urlPlaceholder: "https://www.g2.com/products/your-product/reviews", urlHelp: "Paste your G2 product URL. Company-name fallback is unreliable on G2 - the URL gives exact results." },
   { id: "yelp", name: "Yelp", description: "Local business reviews", tier: "growth", needsUrl: true, category: "url_required", urlPlaceholder: "https://www.yelp.com/biz/business-name-city", urlHelp: "Paste your Yelp page URL. Yelp coverage is local-business-only, so the URL is the most reliable way to find your page." },
 ];
 
@@ -207,7 +207,7 @@ export function EditMonitorForm({ monitorId, limits, userPlan }: EditMonitorForm
 
     if (githubSecretConfigured) {
       const confirmed = confirm(
-        "A webhook secret already exists for this monitor. Rotating will invalidate the current secret immediately — GitHub deliveries signed with the old secret will fail until you update the config. Continue?"
+        "A webhook secret already exists for this monitor. Rotating will invalidate the current secret immediately - GitHub deliveries signed with the old secret will fail until you update the config. Continue?"
       );
       if (!confirmed) return;
     }
@@ -239,7 +239,7 @@ export function EditMonitorForm({ monitorId, limits, userPlan }: EditMonitorForm
       setCopiedField(field);
       setTimeout(() => setCopiedField((prev) => (prev === field ? null : prev)), 1500);
     } catch {
-      // Clipboard API may be blocked in insecure contexts — silently ignore;
+      // Clipboard API may be blocked in insecure contexts - silently ignore;
       // the value is still visible in the textarea for manual copy.
     }
   };
@@ -427,7 +427,7 @@ export function EditMonitorForm({ monitorId, limits, userPlan }: EditMonitorForm
             </CardContent>
           </Card>
 
-          {/* Section 2: Platforms — grouped by category */}
+          {/* Section 2: Platforms - grouped by category */}
           <Card>
             <CardHeader>
               <CardTitle>Platforms</CardTitle>
@@ -447,7 +447,7 @@ export function EditMonitorForm({ monitorId, limits, userPlan }: EditMonitorForm
                   <Label className="text-sm font-semibold">Discussion & Social Platforms</Label>
                 </div>
                 <p className="text-xs text-muted-foreground -mt-1">
-                  Search by keywords — your company name and keywords find relevant posts and discussions.
+                  Search by keywords - your company name and keywords find relevant posts and discussions.
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {ALL_PLATFORMS.filter(p => p.category === "keyword").map(renderPlatformCard)}

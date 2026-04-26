@@ -3,7 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 
-// Safe auth check — returns null if Clerk secret key is missing (e.g. CI)
+// Safe auth check - returns null if Clerk secret key is missing (e.g. CI)
 async function getAuthUserId(): Promise<string | null> {
   try {
     const { userId } = await auth();
@@ -13,7 +13,7 @@ async function getAuthUserId(): Promise<string | null> {
   }
 }
 
-// Navigation auth buttons (server component — no ClerkProvider needed)
+// Navigation auth buttons (server component - no ClerkProvider needed)
 export async function AuthButtons() {
   const userId = await getAuthUserId();
 

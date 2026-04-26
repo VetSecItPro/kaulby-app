@@ -158,7 +158,7 @@ export function SystemHealth({
             <Server className="h-5 w-5" />
             Service Status
           </CardTitle>
-          <CardDescription>Real-time health of connected services — click a service for details</CardDescription>
+          <CardDescription>Real-time health of connected services - click a service for details</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-4">
@@ -209,7 +209,7 @@ export function SystemHealth({
             <Activity className="h-5 w-5" />
             Background Jobs
           </CardTitle>
-          <CardDescription>Inngest function status (estimated — pending API integration)</CardDescription>
+          <CardDescription>Inngest function status (estimated - pending API integration)</CardDescription>
         </CardHeader>
         <CardContent>
           {jobs.length > 0 ? (

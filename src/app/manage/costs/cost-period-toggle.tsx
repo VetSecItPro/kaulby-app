@@ -128,7 +128,7 @@ export function CostPeriodToggle({ dailyData, weeklyData, monthlyData }: CostPer
                     </TableCell>
                     <TableCell className="text-right">
                       {change === null ? (
-                        <span className="text-muted-foreground">—</span>
+                        <span className="text-muted-foreground">-</span>
                       ) : (
                         <span
                           className={`inline-flex items-center gap-1 ${

@@ -58,7 +58,7 @@ interface Plan {
   trialDays: number;
 }
 
-// Plans ordered in ascending price — Free / Solo / Scale / Growth.
+// Plans ordered in ascending price - Free / Solo / Scale / Growth.
 // Each tier's features list emphasizes what makes THAT tier different from the one before,
 // not an exhaustive feature dump. The comparison table below handles the exhaustive view.
 const plans: Plan[] = [
@@ -148,7 +148,7 @@ const plans: Plan[] = [
   },
 ];
 
-// Feature comparison — only rows with real tier differences. No "✓ everywhere" noise.
+// Feature comparison - only rows with real tier differences. No "✓ everywhere" noise.
 // Grouped mentally by buyer question: (1) what am I monitoring? (2) how smart is the AI?
 // (3) how does it reach me? (4) can my team use it?
 const featureComparison = [
@@ -157,13 +157,13 @@ const featureComparison = [
   { feature: "Keywords per monitor", free: "3", solo: "Unlimited", scale: "Unlimited", growth: "Unlimited" },
   { feature: "Platforms", free: "Reddit", solo: "9", scale: "12", growth: "All 16" },
   { feature: "Refresh cadence", free: "24 hr", solo: "6 hr", scale: "4 hr", growth: "2 hr" },
-  { feature: "Real-time channels", free: "—", solo: "Reddit", scale: "Reddit", growth: "Reddit + GitHub" },
+  { feature: "Real-time channels", free: "-", solo: "Reddit", scale: "Reddit", growth: "Reddit + GitHub" },
   { feature: "Result history", free: "3 days", solo: "90 days", scale: "90 days", growth: "1 year" },
   // AI INTELLIGENCE
   { feature: "Sentiment + pain-point detection", free: "Sentiment only", solo: true, scale: true, growth: true },
   { feature: "Ask Kaulby (AI chat)", free: false, solo: true, scale: true, growth: true },
   { feature: "Comprehensive AI analyst reports", free: false, solo: false, scale: false, growth: true },
-  { feature: "Email digest", free: "—", solo: "Daily", scale: "Daily", growth: "Twice daily" },
+  { feature: "Email digest", free: "-", solo: "Daily", scale: "Daily", growth: "Twice daily" },
   // DELIVERY & INTEGRATIONS
   { feature: "Email + Slack/Discord alerts", free: false, solo: true, scale: true, growth: true },
   { feature: "CSV export", free: false, solo: true, scale: true, growth: true },
@@ -171,7 +171,7 @@ const featureComparison = [
   { feature: "REST API access", free: false, solo: false, scale: false, growth: true },
   // TEAM
   { feature: "Seats included", free: "1", solo: "1", scale: "1", growth: "3" },
-  { feature: "Additional seats", free: "—", solo: "—", scale: "—", growth: "+$20/mo each" },
+  { feature: "Additional seats", free: "-", solo: "-", scale: "-", growth: "+$20/mo each" },
   { feature: "Shared workspace + roles", free: false, solo: false, scale: false, growth: true },
 ];
 
@@ -276,7 +276,7 @@ export default function PricingPage() {
             </div>
             <span className="text-2xl font-bold gradient-text">Kaulby</span>
           </Link>
-          {/* A11Y: Consider wrapping in <nav> — FIX-303 */}
+          {/* A11Y: Consider wrapping in <nav> - FIX-303 */}
           <nav className="flex items-center gap-4">
             <Link href="/articles" className="text-sm font-medium">
               Articles
@@ -549,7 +549,7 @@ export default function PricingPage() {
             <h2 className="text-2xl font-bold text-center mb-8">
               Compare Plans
             </h2>
-            {/* A11Y: Mobile scroll — FIX-317 */}
+            {/* A11Y: Mobile scroll - FIX-317 */}
             <div className="overflow-x-auto">
               <div className="rounded-lg border overflow-hidden">
                 <Table>
@@ -619,7 +619,7 @@ export default function PricingPage() {
             <h2 className="text-2xl font-bold text-center mb-8">
               Frequently Asked Questions
             </h2>
-            {/* A11Y: Keyboard navigation instructions — FIX-322 */}
+            {/* A11Y: Keyboard navigation instructions - FIX-322 */}
             <p className="sr-only">Use arrow keys to navigate questions. Press Enter or Space to expand.</p>
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="free-plan">

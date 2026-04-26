@@ -20,7 +20,7 @@ const valueProps: ValueProp[] = [
     icon: Brain,
     title: "Pain Points Clustered Automatically",
     description:
-      "AI categorizes every mention — pricing concerns, support needs, feature requests, negative experiences — so you see exactly what to fix.",
+      "AI categorizes every mention - pricing concerns, support needs, feature requests, negative experiences - so you see exactly what to fix.",
     stat: "7",
     statLabel: "pain point categories",
   },
@@ -28,7 +28,7 @@ const valueProps: ValueProp[] = [
     icon: Globe,
     title: "16 Platforms, One Dashboard",
     description:
-      "Reddit, Hacker News, Google Reviews, Trustpilot, G2, YouTube, X, and 10 more — never miss a conversation that matters.",
+      "Reddit, Hacker News, Google Reviews, Trustpilot, G2, YouTube, X, and 10 more - never miss a conversation that matters.",
     stat: "17",
     statLabel: "platforms tracked",
   },
@@ -36,7 +36,7 @@ const valueProps: ValueProp[] = [
     icon: Zap,
     title: "Buying Signals Scored by Intent",
     description:
-      "Every mention is scored for purchase intent. Find people actively looking for solutions like yours — before your competitors do.",
+      "Every mention is scored for purchase intent. Find people actively looking for solutions like yours - before your competitors do.",
     stat: "100",
     statLabel: "lead score scale",
   },
@@ -60,7 +60,7 @@ const valueProps: ValueProp[] = [
     icon: BarChart3,
     title: "AI Recommendations, Not Just Data",
     description:
-      "Get prioritized action plans: what to fix, what to improve, and what to respond to — ranked by impact and urgency.",
+      "Get prioritized action plans: what to fix, what to improve, and what to respond to - ranked by impact and urgency.",
     stat: "3-7",
     statLabel: "actions per analysis",
   },
@@ -126,7 +126,7 @@ export function TestimonialSection() {
             Turn conversations into competitive advantage
           </h2>
           <p className="text-sm md:text-base text-muted-foreground max-w-2xl mx-auto">
-            Kaulby is not just monitoring — it&apos;s a customer research engine that surfaces
+            Kaulby is not just monitoring - it&apos;s a customer research engine that surfaces
             pain points, competitor gaps, and buying signals automatically.
           </p>
         </div>

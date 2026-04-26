@@ -137,7 +137,7 @@ async function getContentData() {
       title: l.title,
       platform: l.platform,
       leadScore: l.leadScore || 0,
-      category: l.conversationCategory || "—",
+      category: l.conversationCategory || "-",
       engagement: l.engagementScore || 0,
       createdAt: l.createdAt,
       sourceUrl: l.sourceUrl,

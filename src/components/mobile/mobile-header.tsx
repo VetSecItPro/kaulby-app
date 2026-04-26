@@ -24,7 +24,7 @@ import { NotificationBell } from "@/components/dashboard/notification-bell";
 const menuItems = [
   { title: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
   { title: "Insights", href: "/dashboard/insights", icon: Lightbulb },
-  // Discover page hidden for MVP — repurposing as "Market Pulse" in V2
+  // Discover page hidden for MVP - repurposing as "Market Pulse" in V2
   { title: "Ask Kaulby AI", href: "/dashboard/ask", icon: Sparkles },
   { title: "Audiences", href: "/dashboard/audiences", icon: Users },
   { title: "Help", href: "/dashboard/help", icon: HelpCircle },

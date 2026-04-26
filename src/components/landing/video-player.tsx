@@ -29,7 +29,7 @@ export function VideoPlayer({
       ([entry]) => {
         if (entry.isIntersecting) {
           video.play().catch(() => {
-            // Autoplay blocked — that's fine, poster shows
+            // Autoplay blocked - that's fine, poster shows
           });
         } else {
           video.pause();

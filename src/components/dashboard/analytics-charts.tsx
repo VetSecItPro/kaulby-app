@@ -106,7 +106,7 @@ const TOOLTIP_CONTENT_STYLE = {
   borderRadius: "8px",
 } as const;
 
-// CSS SVG donut chart — replaces recharts PieChart to trim bundle weight.
+// CSS SVG donut chart - replaces recharts PieChart to trim bundle weight.
 // Uses stroke-dasharray / stroke-dashoffset on a single <circle> per segment.
 interface DonutSegment {
   label: string;

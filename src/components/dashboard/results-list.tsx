@@ -53,7 +53,7 @@ export function ResultsList({ results, hasUnlimitedAi = true, highlightKeywords 
   const [allMarkedRead, setAllMarkedRead] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const loadMoreRef = useRef<HTMLDivElement>(null);
-  // Task 2.2: bulk selection state — a Set gives O(1) toggle on click.
+  // Task 2.2: bulk selection state - a Set gives O(1) toggle on click.
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [saveViewOpen, setSaveViewOpen] = useState(false);
 
@@ -127,7 +127,7 @@ export function ResultsList({ results, hasUnlimitedAi = true, highlightKeywords 
   // Reset visible count when filters change
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
-    // Filter changes invalidate the current selection — ids that are no
+    // Filter changes invalidate the current selection - ids that are no
     // longer visible shouldn't remain selected.
     setSelectedIds(new Set());
   }, [filter, categoryFilter]);
@@ -161,7 +161,7 @@ export function ResultsList({ results, hasUnlimitedAi = true, highlightKeywords 
   // the browser's select-all in empty states.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      // Ignore if focus is in an input/textarea/contenteditable — users
+      // Ignore if focus is in an input/textarea/contenteditable - users
       // typing in the search bar expect native select-all.
       const target = e.target as HTMLElement | null;
       if (target) {
@@ -261,7 +261,7 @@ export function ResultsList({ results, hasUnlimitedAi = true, highlightKeywords 
         {filteredResults.length === 0 ? (
           <div className="text-center py-12 px-4">
             <div className="max-w-md mx-auto">
-              {/* A11Y: Empty state for filtered results — FIX-323 */}
+              {/* A11Y: Empty state for filtered results - FIX-323 */}
               <p className="text-lg font-medium text-muted-foreground mb-2">
                 No results match your filters
               </p>

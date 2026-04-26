@@ -48,7 +48,7 @@ async function initPostHog() {
       });
     }
   } catch {
-    // Silently fail — analytics should never break the app
+    // Silently fail - analytics should never break the app
   }
 }
 
@@ -58,13 +58,13 @@ export function CookieConsent() {
   useEffect(() => {
     const consent = getStoredConsent();
     if (consent === null) {
-      // No decision yet — show banner
+      // No decision yet - show banner
       setVisible(true);
     } else if (consent === "granted") {
-      // Already accepted — initialize PostHog
+      // Already accepted - initialize PostHog
       initPostHog();
     }
-    // "denied" — do nothing
+    // "denied" - do nothing
   }, []);
 
   const handleAccept = () => {

@@ -162,7 +162,7 @@ const DEMO_RESULTS = [
     sentiment: "positive" as const,
     conversationCategory: "money_talk" as const,
     leadScore: 91,
-    aiSummary: "Detailed G2 review comparing 5 social listening tools. Mentions budget allocation of $200/mo for team of 8. High buying intent — requesting demos from top 2 picks.",
+    aiSummary: "Detailed G2 review comparing 5 social listening tools. Mentions budget allocation of $200/mo for team of 8. High buying intent - requesting demos from top 2 picks.",
     isViewed: false,
     monitor: "Industry Pain Points",
   },
