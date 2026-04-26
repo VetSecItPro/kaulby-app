@@ -87,3 +87,4 @@ ARCHITECTURE.md
 .monitor-reports/
 eval-last-report.json
 .qatest-reports/
+.launch-reports/
