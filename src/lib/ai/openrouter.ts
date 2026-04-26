@@ -91,10 +91,35 @@ export { calculateCost, MODEL_PRICING, type SupportedModel };
  * When set, OPENROUTER_MODEL_OVERRIDE forces every completion call to use the
  * named model regardless of what the caller passed in. Used by
  * scripts/eval-shootout.ts to pin all analyzers to a single candidate model
- * per round. DO NOT set this in production — it defeats tier routing.
+ * per round.
+ *
+ * SEC-LLM-008: production guard. The override is silently ignored when any
+ * production env signal is present, even if NODE_ENV is something else. A
+ * leaked or accidentally-set override on a production deploy would route
+ * every paid AI call through whatever model the env var named — including
+ * an attacker-controlled OpenRouter id, or an absurdly expensive model.
+ * The guard fails closed: prod gets requested model, dev/test gets override.
  */
+function isProductionEnv(): boolean {
+  if (process.env.VERCEL_ENV === "production") return true;
+  if ((process.env.CLERK_SECRET_KEY ?? "").startsWith("sk_live_")) return true;
+  if ((process.env.DATABASE_URL ?? "").includes("neon.tech")) return true;
+  return false;
+}
+
 function resolveModel(requested: string): string {
-  return process.env.OPENROUTER_MODEL_OVERRIDE?.trim() || requested;
+  const override = process.env.OPENROUTER_MODEL_OVERRIDE?.trim();
+  if (!override) return requested;
+  if (isProductionEnv()) {
+    // Don't log the override value — keep it out of any structured logs
+    // even at warn level, in case it ever contains an attacker-supplied
+    // model id. Just record that the override was rejected.
+    if (typeof console !== "undefined" && process.env.NODE_ENV !== "test") {
+      console.warn("[openrouter] OPENROUTER_MODEL_OVERRIDE ignored in production");
+    }
+    return requested;
+  }
+  return override;
 }
 
 // AI completion with fallback

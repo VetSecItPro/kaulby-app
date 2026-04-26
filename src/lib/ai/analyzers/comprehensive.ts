@@ -2,6 +2,7 @@ import { jsonCompletion, MODELS } from "../openrouter";
 import { SYSTEM_PROMPTS, withPersonaVoice } from "../prompts";
 import { type AnalysisMeta } from "./sentiment";
 import { comprehensiveResultSchema } from "../schemas";
+import { sanitizeContentForAi, sanitizeFieldForAi, sanitizeFieldArrayForAi } from "../prompt-safety";
 
 // Comprehensive analysis result for Team tier
 export interface ComprehensiveAnalysisResult {
@@ -94,20 +95,29 @@ export async function analyzeComprehensive(
   context: ComprehensiveAnalysisContext,
   options?: { model?: string }
 ): Promise<{ result: ComprehensiveAnalysisResult; meta: AnalysisMeta }> {
-  // Build context-aware user message
+  // SEC-LLM-001/002: every user-controlled field gets sanitized before
+  // interpolation. The platform string is enum-bound (typed Platform),
+  // numeric fields are coerced. monitor name + keywords + business name
+  // + subreddit + content go through the prompt-safety helpers.
+  const safeKeywords = sanitizeFieldArrayForAi(context.keywords);
+  const safeMonitorName = context.monitorName ? sanitizeFieldForAi(context.monitorName) : "";
+  const safeBusinessName = context.businessName ? sanitizeFieldForAi(context.businessName) : "";
+  const safeSubreddit = context.subreddit ? sanitizeFieldForAi(context.subreddit, 50) : "";
+  const safeContent = sanitizeContentForAi(content);
+
   const userMessage = `
 PLATFORM: ${context.platform}
-KEYWORDS MATCHED: ${context.keywords.join(", ")}
-${context.monitorName ? `MONITOR: ${context.monitorName}` : ""}
-${context.businessName ? `BUSINESS: ${context.businessName}` : ""}
-${context.subreddit ? `SUBREDDIT: ${context.subreddit}` : ""}
-${context.authorKarma ? `AUTHOR KARMA: ${context.authorKarma}` : ""}
-${context.postScore ? `POST SCORE: ${context.postScore}` : ""}
+KEYWORDS MATCHED: ${safeKeywords.join(", ")}
+${safeMonitorName ? `MONITOR: ${safeMonitorName}` : ""}
+${safeBusinessName ? `BUSINESS: ${safeBusinessName}` : ""}
+${safeSubreddit ? `SUBREDDIT: ${safeSubreddit}` : ""}
+${context.authorKarma ? `AUTHOR KARMA: ${Number(context.authorKarma)}` : ""}
+${context.postScore ? `POST SCORE: ${Number(context.postScore)}` : ""}
 
 ---
 
 MENTION TEXT:
-${content}
+${safeContent}
 `.trim();
 
   // COA 4 W2.6 — Team tier gets Kaulby's persona voice prepended; Pro/Free

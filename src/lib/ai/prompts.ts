@@ -625,6 +625,13 @@ EXECUTIVE SUMMARY RULES:
 };
 
 // Function to build prompts with context
+// SEC-LLM-001: every analyzer routes through this builder, so sanitizing
+// content here gives every per-result analyzer (sentiment, pain-points,
+// summarize, comprehensive, conversation-category, batch-summary, etc.)
+// prompt-injection defense for free. The comprehensive analyzer additionally
+// sanitizes its monitor-name + keywords interpolation in its own file.
+import { sanitizeContentForAi } from "./prompt-safety";
+
 export function buildAnalysisPrompt(
   type: keyof typeof SYSTEM_PROMPTS,
   content: string,
@@ -632,7 +639,12 @@ export function buildAnalysisPrompt(
 ): { system: string; user: string } {
   const system = SYSTEM_PROMPTS[type];
 
-  let user = content;
+  // Sanitize content before any interpolation. The helper applies NFKC
+  // normalization, strips zero-width chars, and neutralizes role markers
+  // / common injection openers.
+  const safeContent = sanitizeContentForAi(content);
+
+  let user = safeContent;
 
   if (context && Object.keys(context).length > 0) {
     // priorSummaries is pre-formatted plain text — include it directly
@@ -643,8 +655,11 @@ export function buildAnalysisPrompt(
     const parts: string[] = [];
 
     if (priorSummaries) {
+      // priorSummaries comes from our DB but originated as AI output on
+      // earlier (potentially attacker-controlled) content — sanitize it
+      // through the same boundary just in case stored injection sneaks back.
       parts.push(
-        `Recent summaries from this monitor (oldest last — look for patterns or contradictions):\n${priorSummaries}`
+        `Recent summaries from this monitor (oldest last — look for patterns or contradictions):\n${sanitizeContentForAi(String(priorSummaries))}`
       );
     }
 
@@ -652,7 +667,7 @@ export function buildAnalysisPrompt(
       parts.push(`Context:\n${JSON.stringify(otherContext, null, 2)}`);
     }
 
-    parts.push(`Text to analyze:\n${content}`);
+    parts.push(`Text to analyze:\n${safeContent}`);
     user = parts.join("\n\n---\n\n");
   }
 
