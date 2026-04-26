@@ -19,6 +19,15 @@
 
 set -e
 
+# Always build the long-lived `sandbox` branch, regardless of changed files.
+# That branch is the host for the Polar sandbox webhook URL, so its preview
+# alias must reflect the latest env-var bindings even when the only commits
+# are doc updates.
+if [ "${VERCEL_GIT_COMMIT_REF:-}" = "sandbox" ]; then
+  echo "On sandbox branch — building (skips skip-detection)"
+  exit 1
+fi
+
 # VERCEL_GIT_PREVIOUS_SHA is Vercel's idea of "the prior commit on this ref".
 # If unset (first build on a branch), build to be safe.
 if [ -z "${VERCEL_GIT_PREVIOUS_SHA:-}" ]; then
