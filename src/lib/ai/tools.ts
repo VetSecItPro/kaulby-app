@@ -887,116 +887,94 @@ async function verifyResultOwnership(userId: string, resultId: string) {
 // Tool executors
 // ---------------------------------------------------------------------------
 
+// PERF-DX-002: Registry pattern replaces a 50-case `switch` over toolName.
+// Each entry is a uniform `(userId, params) => Promise<ToolResult>` lambda
+// that adapts the executor's specific param shape. Behavior is identical to
+// the prior switch — same executor called, same param extraction, same
+// try/catch wrapping in executeTool() below.
+type ToolHandler = (userId: string, params: Record<string, unknown>) => Promise<ToolResult>;
+
+const TOOL_HANDLERS: Record<string, ToolHandler> = {
+  // Read tools
+  list_monitors:           (uid)      => execListMonitors(uid),
+  get_monitor:             (uid, p)   => execGetMonitor(uid, p.monitor_id as string),
+  search_results:          (uid, p)   => execSearchResults(uid, p),
+  get_result_details:      (uid, p)   => execGetResultDetails(uid, p.result_id as string),
+  get_insights_summary:    (uid, p)   => execGetInsightsSummary(uid, p),
+  get_saved_results:       (uid, p)   => execGetSavedResults(uid, p),
+  list_audiences:          (uid)      => execListAudiences(uid),
+  get_aggregations:        (uid, p)   => execGetAggregations(uid, p),
+  get_subscription_info:   (uid)      => execGetSubscriptionInfo(uid),
+  get_alerts:              (uid, p)   => execGetAlerts(uid, p),
+  get_recent_activity:     (uid, p)   => execGetRecentActivity(uid, p),
+  analyze_sentiment_trends:(uid, p)   => execAnalyzeSentimentTrends(uid, p),
+  find_leads:              (uid, p)   => execFindLeads(uid, p),
+  compare_monitors:        (uid, p)   => execCompareMonitors(uid, p),
+
+  // Result toggles
+  save_result:    (uid, p) => execToggleResult(uid, p.result_id as string, "isSaved", true),
+  unsave_result:  (uid, p) => execToggleResult(uid, p.result_id as string, "isSaved", false),
+  hide_result:    (uid, p) => execToggleResult(uid, p.result_id as string, "isHidden", true),
+  unhide_result:  (uid, p) => execToggleResult(uid, p.result_id as string, "isHidden", false),
+  mark_viewed:    (uid, p) => execMarkViewed(uid, p.result_id as string),
+
+  // Monitor mutations
+  create_monitor:    (uid, p) => execCreateMonitor(uid, p),
+  update_monitor:    (uid, p) => execUpdateMonitor(uid, p),
+  pause_monitor:     (uid, p) => execSetMonitorActive(uid, p.monitor_id as string, false),
+  resume_monitor:    (uid, p) => execSetMonitorActive(uid, p.monitor_id as string, true),
+  trigger_scan:      (uid, p) => execTriggerScan(uid, p.monitor_id as string),
+  duplicate_monitor: (uid, p) => execDuplicateMonitor(uid, p.monitor_id as string),
+  delete_monitor:    (uid, p) => execDeleteMonitor(uid, p.monitor_id as string),
+
+  // Audience tools
+  create_audience:             (uid, p) => execCreateAudience(uid, p),
+  update_audience:             (uid, p) => execUpdateAudience(uid, p),
+  delete_audience:             (uid, p) => execDeleteAudience(uid, p.audience_id as string),
+  add_monitor_to_audience:     (uid, p) => execAddMonitorToAudience(uid, p),
+  remove_monitor_from_audience:(uid, p) => execRemoveMonitorFromAudience(uid, p),
+
+  // Bookmark tools
+  create_bookmark:            (uid, p) => execCreateBookmark(uid, p),
+  list_bookmark_collections:  (uid)    => execListBookmarkCollections(uid),
+  create_bookmark_collection: (uid, p) => execCreateBookmarkCollection(uid, p),
+
+  // Saved search tools
+  list_saved_searches:  (uid)    => execListSavedSearches(uid),
+  create_saved_search:  (uid, p) => execCreateSavedSearch(uid, p),
+  delete_saved_search:  (uid, p) => execDeleteSavedSearch(uid, p.search_id as string),
+
+  // Webhook tools
+  list_webhooks:  (uid)    => execListWebhooks(uid),
+  create_webhook: (uid, p) => execCreateWebhook(uid, p),
+  delete_webhook: (uid, p) => execDeleteWebhook(uid, p.webhook_id as string),
+
+  // Notification tools
+  get_notifications:       (uid, p) => execGetNotifications(uid, p),
+  mark_notifications_read: (uid, p) => execMarkNotificationsRead(uid, p),
+
+  // Report tools
+  create_share_link:  (uid, p) => execCreateShareLink(uid, p),
+  export_results_csv: (uid, p) => execExportResultsCsv(uid, p),
+
+  // Integration tools
+  get_integrations_status: (uid) => execGetIntegrationsStatus(uid),
+
+  // AI tools
+  suggest_reply: (uid, p) => execSuggestReply(uid, p),
+};
+
 export async function executeTool(
   toolName: string,
   params: Record<string, unknown>,
   userId: string
 ): Promise<ToolResult> {
+  const handler = TOOL_HANDLERS[toolName];
+  if (!handler) {
+    return { success: false, error: `Unknown tool: ${toolName}` };
+  }
   try {
-    switch (toolName) {
-      case "list_monitors":
-        return await execListMonitors(userId);
-      case "get_monitor":
-        return await execGetMonitor(userId, params.monitor_id as string);
-      case "search_results":
-        return await execSearchResults(userId, params);
-      case "get_result_details":
-        return await execGetResultDetails(userId, params.result_id as string);
-      case "get_insights_summary":
-        return await execGetInsightsSummary(userId, params);
-      case "get_saved_results":
-        return await execGetSavedResults(userId, params);
-      case "list_audiences":
-        return await execListAudiences(userId);
-      case "get_aggregations":
-        return await execGetAggregations(userId, params);
-      case "get_subscription_info":
-        return await execGetSubscriptionInfo(userId);
-      case "get_alerts":
-        return await execGetAlerts(userId, params);
-      case "get_recent_activity":
-        return await execGetRecentActivity(userId, params);
-      case "analyze_sentiment_trends":
-        return await execAnalyzeSentimentTrends(userId, params);
-      case "find_leads":
-        return await execFindLeads(userId, params);
-      case "compare_monitors":
-        return await execCompareMonitors(userId, params);
-      case "save_result":
-        return await execToggleResult(userId, params.result_id as string, "isSaved", true);
-      case "unsave_result":
-        return await execToggleResult(userId, params.result_id as string, "isSaved", false);
-      case "hide_result":
-        return await execToggleResult(userId, params.result_id as string, "isHidden", true);
-      case "unhide_result":
-        return await execToggleResult(userId, params.result_id as string, "isHidden", false);
-      case "mark_viewed":
-        return await execMarkViewed(userId, params.result_id as string);
-      case "create_monitor":
-        return await execCreateMonitor(userId, params);
-      case "update_monitor":
-        return await execUpdateMonitor(userId, params);
-      case "pause_monitor":
-        return await execSetMonitorActive(userId, params.monitor_id as string, false);
-      case "resume_monitor":
-        return await execSetMonitorActive(userId, params.monitor_id as string, true);
-      case "trigger_scan":
-        return await execTriggerScan(userId, params.monitor_id as string);
-      case "duplicate_monitor":
-        return await execDuplicateMonitor(userId, params.monitor_id as string);
-      case "delete_monitor":
-        return await execDeleteMonitor(userId, params.monitor_id as string);
-      // Audience tools
-      case "create_audience":
-        return await execCreateAudience(userId, params);
-      case "update_audience":
-        return await execUpdateAudience(userId, params);
-      case "delete_audience":
-        return await execDeleteAudience(userId, params.audience_id as string);
-      case "add_monitor_to_audience":
-        return await execAddMonitorToAudience(userId, params);
-      case "remove_monitor_from_audience":
-        return await execRemoveMonitorFromAudience(userId, params);
-      // Bookmark tools
-      case "create_bookmark":
-        return await execCreateBookmark(userId, params);
-      case "list_bookmark_collections":
-        return await execListBookmarkCollections(userId);
-      case "create_bookmark_collection":
-        return await execCreateBookmarkCollection(userId, params);
-      // Saved search tools
-      case "list_saved_searches":
-        return await execListSavedSearches(userId);
-      case "create_saved_search":
-        return await execCreateSavedSearch(userId, params);
-      case "delete_saved_search":
-        return await execDeleteSavedSearch(userId, params.search_id as string);
-      // Webhook tools
-      case "list_webhooks":
-        return await execListWebhooks(userId);
-      case "create_webhook":
-        return await execCreateWebhook(userId, params);
-      case "delete_webhook":
-        return await execDeleteWebhook(userId, params.webhook_id as string);
-      // Notification tools
-      case "get_notifications":
-        return await execGetNotifications(userId, params);
-      case "mark_notifications_read":
-        return await execMarkNotificationsRead(userId, params);
-      // Report tools
-      case "create_share_link":
-        return await execCreateShareLink(userId, params);
-      case "export_results_csv":
-        return await execExportResultsCsv(userId, params);
-      // Integration tools
-      case "get_integrations_status":
-        return await execGetIntegrationsStatus(userId);
-      // AI tools
-      case "suggest_reply":
-        return await execSuggestReply(userId, params);
-      default:
-        return { success: false, error: `Unknown tool: ${toolName}` };
-    }
+    return await handler(userId, params);
   } catch (error) {
     logger.error(`[AI Tool] ${toolName} failed`, { error: error instanceof Error ? error.message : String(error) });
     return { success: false, error: "Tool execution failed. Please try again." };
