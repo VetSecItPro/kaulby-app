@@ -15,6 +15,28 @@ function clerkConfigured(): boolean {
   ));
 }
 
+// PERF-COST-004: Build the CORS allow-set once per cold start. Env-derived inputs
+// don't change at runtime; rebuilding per-request burns allocations on every
+// mutating API call. NODE_ENV=development still allows arbitrary localhost ports
+// at request time (handled inline below).
+let _allowedOrigins: Set<string> | null = null;
+function getAllowedOrigins(): Set<string> {
+  if (_allowedOrigins) return _allowedOrigins;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const set = new Set([
+    new URL(appUrl).origin,
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://localhost:3002",
+  ]);
+  if (process.env.VERCEL_URL) set.add(`https://${process.env.VERCEL_URL}`);
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    set.add(`https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`);
+  }
+  _allowedOrigins = set;
+  return set;
+}
+
 // Lazy-loaded Clerk middleware to avoid initialization errors when not configured
 let clerkHandler: ((request: NextRequest, event: never) => Promise<Response>) | null = null;
 
@@ -138,25 +160,12 @@ export default async function middleware(request: NextRequest) {
   ) {
     const origin = request.headers.get("origin");
     if (origin) {
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-      const allowedOrigins = new Set([
-        new URL(appUrl).origin,
-        "http://localhost:3000",
-        "http://localhost:3001",
-        "http://localhost:3002",
-      ]);
-      // In development, allow any localhost port
-      if (process.env.NODE_ENV === "development" && origin.startsWith("http://localhost:")) {
-        allowedOrigins.add(origin);
-      }
-      // Include Vercel preview/production URLs
-      if (process.env.VERCEL_URL) {
-        allowedOrigins.add(`https://${process.env.VERCEL_URL}`);
-      }
-      if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
-        allowedOrigins.add(`https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`);
-      }
-      if (!allowedOrigins.has(origin)) {
+      const allowedOrigins = getAllowedOrigins();
+      // In development, allow any localhost port at request time (per-request
+      // override, not cached, so port-juggling still works locally).
+      const isDevLocalhost =
+        process.env.NODE_ENV === "development" && origin.startsWith("http://localhost:");
+      if (!isDevLocalhost && !allowedOrigins.has(origin)) {
         return NextResponse.json(
           { error: "Cross-origin request blocked" },
           { status: 403 }
