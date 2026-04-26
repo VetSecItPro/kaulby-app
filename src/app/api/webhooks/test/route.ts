@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getEffectiveUserId } from "@/lib/dev-auth";
 import { checkApiRateLimit, parseJsonBody, BodyTooLargeError } from "@/lib/rate-limit";
-import { sanitizeUrl } from "@/lib/security";
+import { sanitizeUrl, validateOutboundUrl } from "@/lib/security";
 import { generateTestPayload } from "@/lib/webhooks/events";
 import crypto from "crypto";
 import { logger } from "@/lib/logger";
@@ -53,6 +53,17 @@ export async function POST(request: NextRequest) {
     if (!sanitized) {
       return NextResponse.json(
         { error: "Invalid webhook URL" },
+        { status: 400 },
+      );
+    }
+
+    // SSRF defense: block private/loopback/link-local/cloud-metadata targets
+    // before issuing the test fetch. Without this, a tester could probe internal
+    // network services (10.x, 169.254.169.254, ::1, etc.) via this endpoint.
+    const ssrfCheck = validateOutboundUrl(sanitized);
+    if (!ssrfCheck.ok) {
+      return NextResponse.json(
+        { error: `Webhook URL rejected: ${ssrfCheck.reason}` },
         { status: 400 },
       );
     }
