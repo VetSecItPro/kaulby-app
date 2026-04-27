@@ -34,11 +34,35 @@ type PolarClient = {
       subscriptionUpdate: {
         revoke?: boolean;
         cancelAtPeriodEnd?: boolean;
+        productId?: string;
+        // Polar enum: "invoice" | "prorate" | "next_period" | "reset"
+        // Kaulby policy is "next_period" (no proration, change applies at next bill).
+        prorationBehavior?: "invoice" | "prorate" | "next_period" | "reset";
       };
     }) => Promise<{ id: string; status: string }>;
     revoke: (params: { id: string }) => Promise<{ id: string; status: string }>;
   };
 };
+
+/**
+ * Kaulby billing policy: NO proration, NO mid-cycle refunds.
+ *
+ * All subscription changes (tier downgrades, seat-addon cancellations,
+ * subscription cancellations) take effect at the END of the current billing
+ * period. The customer keeps what they paid for through the period, then the
+ * change applies on the next renewal.
+ *
+ * Pass this constant as `prorationBehavior` on every subscriptions.update call
+ * so we override Polar's org-level default (which may be "prorate"). If the
+ * Polar dashboard org setting also matches, customer-portal-initiated changes
+ * follow the same policy. If they don't match, the per-API-call value wins
+ * for changes initiated through our code.
+ *
+ * To configure the Polar dashboard:
+ *   sandbox.polar.sh → org settings → Subscription proration: "next_period"
+ *   polar.sh         → org settings → Subscription proration: "next_period"
+ */
+export const KAULBY_PRORATION_BEHAVIOR = "next_period" as const;
 
 // Polar client - initialized lazily to avoid import errors
 let _polarClient: PolarClient | null = null;
@@ -172,7 +196,7 @@ export async function cancelSubscription(
       id: subscriptionId,
       subscriptionUpdate: options.immediate
         ? { revoke: true }
-        : { cancelAtPeriodEnd: true },
+        : { cancelAtPeriodEnd: true, prorationBehavior: KAULBY_PRORATION_BEHAVIOR },
     });
     return true;
   } catch (error) {

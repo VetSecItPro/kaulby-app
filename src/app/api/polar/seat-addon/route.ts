@@ -209,9 +209,12 @@ export async function DELETE(request: NextRequest) {
     // Polar's subscription cancel: schedules revocation at period end. The
     // user keeps the seat through the rest of the billing cycle (Approach B),
     // and `subscription.revoked` fires on the webhook when the period ends.
+    // KAULBY_PRORATION_BEHAVIOR enforces our no-proration / no-refund policy
+    // even if the Polar org dashboard default is set differently.
+    const { KAULBY_PRORATION_BEHAVIOR: prorationBehavior } = await import("@/lib/polar");
     await polar.subscriptions.update({
       id: target.id,
-      subscriptionUpdate: { cancelAtPeriodEnd: true },
+      subscriptionUpdate: { cancelAtPeriodEnd: true, prorationBehavior },
     });
 
     logger.info(`Seat-addon cancellation scheduled`, {
