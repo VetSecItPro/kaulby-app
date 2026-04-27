@@ -133,7 +133,7 @@ export default function GummySearchPage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/sign-up?ref=gummysearch">
               <Button size="lg" className="gap-2 text-lg px-8">
-                Start Free Migration
+                Start Migration
                 <ArrowRight className="h-5 w-5" />
               </Button>
             </Link>
@@ -144,7 +144,7 @@ export default function GummySearchPage() {
             </Link>
           </div>
           <p className="text-sm text-muted-foreground mt-4">
-            Free forever tier available. No credit card required.
+            $15 Day Pass to try first. 14-day money-back guarantee on monthly plans.
           </p>
         </div>
       </section>

@@ -52,13 +52,14 @@ export default function TermsPage() {
         <section>
           <h2 className="text-2xl font-semibold mb-4">4. Subscription and Billing</h2>
           <p className="text-muted-foreground leading-relaxed">
-            Kaulby offers free and paid subscription plans. Paid subscriptions are billed in advance on a
-            monthly basis. You may cancel your subscription at any time, and cancellation will take effect
-            at the end of the current billing period.
+            Kaulby offers monthly and annual subscription plans plus a one-time Day Pass. Paid
+            subscriptions are billed in advance on a monthly or annual basis. You may cancel your
+            subscription at any time, and cancellation will take effect at the end of the current
+            billing period.
           </p>
           <ul className="list-disc list-inside text-muted-foreground mt-4 space-y-2">
-            <li>Free plan: Limited monitors and results</li>
-            <li>Solo plan: Extended limits and AI features for individual operators</li>
+            <li>Day Pass: $15 one-time, 24 hours of Scale-tier access (no auto-renewal)</li>
+            <li>Solo plan: Core limits and AI features for individual operators</li>
             <li>Scale plan: Expanded limits with review-site coverage (G2, Yelp, Amazon)</li>
             <li>Growth plan: Maximum limits with team workspaces, API access, and priority support</li>
           </ul>
