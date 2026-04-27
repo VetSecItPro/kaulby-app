@@ -5,7 +5,7 @@ import { WebhookEvent } from "@clerk/nextjs/server";
 import { db, users } from "@/lib/db";
 import { webhookEvents } from "@/lib/db/schema";
 
-// PERF: Webhook processing may take longer than default 10s — FIX-016
+// PERF: Webhook processing may take longer than default 10s - FIX-016
 export const maxDuration = 60;
 import { eq, sql } from "drizzle-orm";
 import { upsertContact, sendWelcomeEmail } from "@/lib/email";
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // SECURITY (SEC-INTEG-008): Idempotency guard — prevent duplicate event processing
+  // SECURITY (SEC-INTEG-008): Idempotency guard - prevent duplicate event processing
   const eventId = svix_id;
   try {
     await db.insert(webhookEvents).values({
@@ -234,7 +234,7 @@ export async function POST(request: NextRequest) {
       }
 
       default:
-        // Unhandled Clerk event type — no action needed
+        // Unhandled Clerk event type - no action needed
     }
 
     return NextResponse.json({ received: true });

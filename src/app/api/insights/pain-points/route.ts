@@ -31,7 +31,7 @@ const CATEGORY_DESCRIPTIONS: Record<string, string> = {
   general_discussion: "General conversations mentioning your brand or keywords",
 };
 
-// Severity ranking — higher = more urgent to address
+// Severity ranking - higher = more urgent to address
 const CATEGORY_SEVERITY: Record<string, number> = {
   negative_experience: 5,
   support_need: 4,
@@ -155,7 +155,7 @@ export async function GET(request: Request) {
     const painPoints: PainPointGroup[] = [];
 
     for (const [category, categoryResults] of groupedByCategory) {
-      // Skip positive feedback from pain points list — it's not a problem to fix
+      // Skip positive feedback from pain points list - it's not a problem to fix
       if (category === "positive_feedback") continue;
 
       const platforms = Array.from(new Set(categoryResults.map((r) => r.platform)));
@@ -235,7 +235,7 @@ export async function GET(request: Request) {
   }
 }
 
-// Simple keyword extraction — top N most frequent significant words
+// Simple keyword extraction - top N most frequent significant words
 function extractTopKeywords(texts: string[], limit: number): string[] {
   const stopWords = new Set([
     "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",

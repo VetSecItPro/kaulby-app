@@ -40,7 +40,7 @@ export async function GET(request: Request) {
 
     const userPlan = await getUserPlan(userId);
 
-    // Free users get a teaser — no AI recommendations
+    // Free users get a teaser - no AI recommendations
     if (userPlan === "free") {
       return NextResponse.json({
         recommendations: [],
@@ -189,7 +189,7 @@ function buildPainPointSummary(
 }
 
 function hashSummary(summary: string): string {
-  // Simple hash for cache key — just use length + first/last chars
+  // Simple hash for cache key - just use length + first/last chars
   return `${summary.length}-${summary.slice(0, 50)}-${summary.slice(-50)}`;
 }
 

@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, X, Loader2, Sparkles, Lock, AlertCircle, Clock, Wand2, Search, CheckCircle2, Globe, Link2, Info } from "lucide-react";
+import { ArrowLeft, X, Loader2, Wand2, Lock, AlertCircle, Clock, Search, CheckCircle2, Globe, Link2, Info } from "lucide-react";
 import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
 import Link from "next/link";
@@ -747,7 +747,7 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
                   {keywordSuggestions.length > 0 && !isAtKeywordLimit && (
                     <div className="mt-3 p-3 rounded-lg bg-muted/50 border border-dashed">
                       <div className="flex items-center gap-2 mb-2">
-                        <Sparkles className="h-4 w-4 text-primary" />
+                        <Wand2 className="h-4 w-4 text-primary" />
                         <span className="text-xs font-medium text-muted-foreground">
                           Suggested keywords{selectedPlatforms.length > 0 ? " for your platforms" : ""}
                         </span>

@@ -7,7 +7,7 @@ import crypto from "crypto";
 import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
-// PERF: Email webhook processing may take longer than default 10s — FIX-016
+// PERF: Email webhook processing may take longer than default 10s - FIX-016
 export const maxDuration = 60;
 
 /**
@@ -55,12 +55,12 @@ export async function POST(request: NextRequest) {
 
     const payload = JSON.parse(rawBody);
 
-    // SECURITY: Metadata only — FIX-011
+    // SECURITY: Metadata only - FIX-011
 
     // Resend wraps email data in "data" object
     const email = payload.data || payload;
 
-    // SECURITY (SEC-INTEG-008): Idempotency guard — prevent duplicate email forwarding
+    // SECURITY (SEC-INTEG-008): Idempotency guard - prevent duplicate email forwarding
     const eventId = email.email_id || payload.id || `resend-${Date.now()}`;
     try {
       await db.insert(webhookEvents).values({
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Fields extracted — proceeding to forward check
+    // Fields extracted - proceeding to forward check
 
     // Only forward emails sent to support@kaulbyapp.com (prevents loops)
     const toAddresses = Array.isArray(to) ? to : [to];
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
     );
 
     if (!isForKaulby) {
-      // Not addressed to support inbox — skip forwarding
+      // Not addressed to support inbox - skip forwarding
       return NextResponse.json({ received: true, forwarded: false });
     }
 

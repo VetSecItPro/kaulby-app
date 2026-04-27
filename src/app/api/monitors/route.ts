@@ -194,7 +194,7 @@ export async function POST(request: Request) {
     // Get user's plan (use dbUserId for DB lookups)
     const plan = await getUserPlan(dbUserId);
 
-    // Check non-monitor limits first (keywords, platforms) — these don't need transaction protection
+    // Check non-monitor limits first (keywords, platforms) - these don't need transaction protection
     // Check keywords limit (only if keywords provided)
     if (sanitizedKeywords.length > 0) {
       const keywordCheck = checkKeywordsLimit(sanitizedKeywords, plan);
@@ -319,7 +319,7 @@ export async function POST(request: Request) {
     // Revalidate cache
     revalidateTag("monitors");
 
-    // Task 1.4: typed taxonomy event — fires once per monitor create for the
+    // Task 1.4: typed taxonomy event - fires once per monitor create for the
     // activation funnel. Kept alongside the legacy `monitor_created` event
     // because existing PostHog dashboards may depend on the legacy name.
     track("monitor.created", {

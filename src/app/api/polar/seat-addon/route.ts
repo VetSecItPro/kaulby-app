@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
  *
  * Cancel the user's most-recent seat-addon subscription. Polar will keep the
  * subscription active until the end of the current billing period and then
- * emit `subscription.revoked` — the webhook handler decrements seatLimit at
+ * emit `subscription.revoked` - the webhook handler decrements seatLimit at
  * that point (Approach B: honor what they paid for).
  *
  * Member-count guard: blocks cancellation if removing one seat would put

@@ -133,7 +133,7 @@ export async function POST(
     }
 
     // FIX-112: All checks and mutations inside transaction to prevent race conditions.
-    // Status check + seat limit + all writes are atomic — prevents double-acceptance
+    // Status check + seat limit + all writes are atomic - prevents double-acceptance
     // and concurrent seat limit bypass.
     const workspace = await db.transaction(async (tx) => {
       // Re-check invite status inside transaction (prevents double-acceptance race)

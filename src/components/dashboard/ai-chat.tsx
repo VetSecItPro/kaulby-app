@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Send,
   MessageSquare,
-  Sparkles,
+  Wand2,
   ExternalLink,
   Copy,
   Check,
@@ -827,7 +827,7 @@ export function AIChat({
       <Card className="border-dashed">
         <CardHeader className="text-center">
           <div className="mx-auto w-12 h-12 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center mb-4">
-            <Sparkles className="h-6 w-6 text-white" />
+            <Wand2 className="h-6 w-6 text-white" />
           </div>
           <CardTitle>AI Chat - Pro Feature</CardTitle>
         </CardHeader>
@@ -883,7 +883,7 @@ export function AIChat({
                       className="justify-start text-left h-auto py-2 px-3 text-sm"
                       onClick={() => handleSuggestedQuestion(question)}
                     >
-                      <Sparkles className="h-3 w-3 mr-2 shrink-0 text-violet-500" />
+                      <Wand2 className="h-3 w-3 mr-2 shrink-0 text-violet-500" />
                       <span className="line-clamp-1">{question}</span>
                     </Button>
                   ))}

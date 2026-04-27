@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MessageSquare, Sparkles, BarChart3, Radio } from "lucide-react";
+import { MessageSquare, Wand2, BarChart3, Radio } from "lucide-react";
 import { BrowserFrame } from "./browser-frame";
 import { MockMentionsFeed } from "./mock-mentions-feed";
 import { MockInsightsView } from "./mock-insights-view";
@@ -18,7 +18,7 @@ const tabs = [
   {
     id: "insights",
     label: "AI Insights",
-    icon: Sparkles,
+    icon: Wand2,
     subtitle:
       "AI discovers topics, trends, and sentiment patterns automatically.",
   },

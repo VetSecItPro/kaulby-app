@@ -2,7 +2,7 @@
  * One-click unsubscribe from the Monday weekly digest (Task 2.4).
  *
  * This is a GET endpoint so the link works directly from the email client
- * without requiring re-authentication — matching the List-Unsubscribe UX
+ * without requiring re-authentication - matching the List-Unsubscribe UX
  * required by major inbox providers.
  *
  * Security: the link is signed with HMAC (signTrackingParams) using the
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Missing params" }, { status: 400 });
   }
 
-  // Reuse the tracking-HMAC helper — bind the signature to this specific
+  // Reuse the tracking-HMAC helper - bind the signature to this specific
   // user id + a stable "type" so it can't be replayed against other endpoints.
   const valid = verifyTrackingSignature(
     { eid: uid, uid, type: "weekly-digest-unsub", url: "" },
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Failed to unsubscribe" }, { status: 500 });
   }
 
-  // Render a tiny confirmation page — no app shell, no auth needed.
+  // Render a tiny confirmation page - no app shell, no auth needed.
   return new NextResponse(
     `<!doctype html><html><body style="font-family:system-ui;background:#0a0a0a;color:#fafafa;text-align:center;padding:80px 24px;">
       <h1 style="font-size:24px;margin:0 0 12px;">Unsubscribed</h1>

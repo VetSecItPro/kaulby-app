@@ -87,8 +87,8 @@ export async function GET(request: NextRequest) {
       ? items[items.length - 1].createdAt.toISOString()
       : null;
 
-    // SECURITY: No-cache on sensitive data — FIX-006
-    // DB: Returns user-scoped columns; explicit column selection deferred — FIX-117
+    // SECURITY: No-cache on sensitive data - FIX-006
+    // DB: Returns user-scoped columns; explicit column selection deferred - FIX-117
     const response = NextResponse.json({
       items: items.map((r) => ({
         id: r.id,

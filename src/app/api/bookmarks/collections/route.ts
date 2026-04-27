@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
   }
   const { name, color } = parsed.data;
 
-  // Limit collections per user — atomic check+insert to prevent race condition
+  // Limit collections per user - atomic check+insert to prevent race condition
   const collection = await db.transaction(async (tx) => {
     const existingCount = await tx
       .select({ count: count() })
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
 /**
  * DELETE /api/bookmarks/collections
  * Delete a collection. Body: { id: string }
- * Bookmarks in the collection are NOT deleted — they become uncategorized.
+ * Bookmarks in the collection are NOT deleted - they become uncategorized.
  */
 export async function DELETE(request: NextRequest) {
   const userId = await getEffectiveUserId();

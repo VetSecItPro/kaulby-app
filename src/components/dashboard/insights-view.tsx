@@ -15,7 +15,7 @@ import {
   Minus,
   Lightbulb,
   ExternalLink,
-  Sparkles,
+  Wand2,
   Network,
   Lock,
   Zap,
@@ -238,7 +238,7 @@ function TopicCard({
               <CardTitle className="text-base">{topic.topic}</CardTitle>
               {topic.isAIGenerated && (
                 <Badge variant="outline" className="text-xs text-purple-500 border-purple-500/50">
-                  <Sparkles className="h-3 w-3 mr-1" />
+                  <Wand2 className="h-3 w-3 mr-1" />
                   AI
                 </Badge>
               )}
@@ -885,7 +885,7 @@ export function InsightsView() {
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 text-amber-500" />
+                      <Wand2 className="h-4 w-4 text-amber-500" />
                       Recommendations
                     </CardTitle>
                   </CardHeader>
@@ -1088,7 +1088,7 @@ function TrendingTopicsContent({
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-amber-500" />
+              <Wand2 className="h-4 w-4 text-amber-500" />
               Discovered Topics
             </CardTitle>
           </CardHeader>
@@ -1155,7 +1155,7 @@ function TrendingTopicsContent({
           <h2 className="text-lg font-semibold flex items-center gap-2">
             {data.aiTopics && data.aiTopics.length > 0 ? (
               <>
-                <Sparkles className="h-5 w-5 text-purple-500" />
+                <Wand2 className="h-5 w-5 text-purple-500" />
                 AI-Enhanced Topics
               </>
             ) : (

@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // SECURITY: Input sanitization — FIX-003
+      // SECURITY: Input sanitization - FIX-003
       const sanitizedName = sanitizeMonitorInput(name);
       const sanitizedKeywords = keywords
         .map((k: string) => (typeof k === "string" ? sanitizeMonitorInput(k) : ""))
@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // SECURITY (SEC-LOGIC-012): Enforce plan limits on v1 API — same as dashboard route
+      // SECURITY (SEC-LOGIC-012): Enforce plan limits on v1 API - same as dashboard route
       const plan = await getUserPlan(userId);
 
       const monitorCheck = await canCreateMonitor(userId);

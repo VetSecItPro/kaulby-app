@@ -505,7 +505,7 @@ async function generatePdfReport(
   doc.setFontSize(11);
   doc.setFont("helvetica", "normal");
   doc.text(
-    `${companyName} — Last ${days} days — Generated ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}`,
+    `${companyName} - Last ${days} days - Generated ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}`,
     margin,
     28
   );

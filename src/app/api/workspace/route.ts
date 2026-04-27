@@ -148,7 +148,7 @@ export async function POST(request: Request) {
       return ws;
     });
 
-    // Log activity (outside transaction — non-critical)
+    // Log activity (outside transaction - non-critical)
     await logActivity({
       workspaceId: newWorkspace.id,
       userId: user.id,

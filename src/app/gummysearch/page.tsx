@@ -20,7 +20,7 @@ import {
   Brain,
   Download,
   Clock,
-  Sparkles,
+  Wand2,
 } from "lucide-react";
 import { MarketingHeader } from "@/components/shared/marketing-header";
 import { MarketingFooter } from "@/components/shared/marketing-footer";
@@ -119,7 +119,7 @@ export default function GummySearchPage() {
       <section className="py-20 px-4">
         <div className="container mx-auto max-w-4xl text-center">
           <Badge variant="secondary" className="mb-4 text-sm px-4 py-1">
-            <Sparkles className="h-3 w-3 mr-1" />
+            <Wand2 className="h-3 w-3 mr-1" />
             For GummySearch Users
           </Badge>
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6">

@@ -32,7 +32,7 @@ import {
   Briefcase,
   Code,
   ShoppingCart,
-  Sparkles,
+  Wand2,
   X,
   Loader2,
   Lock,
@@ -91,7 +91,7 @@ const MONITOR_TEMPLATES = [
   },
   {
     id: "custom",
-    icon: Sparkles,
+    icon: Wand2,
     title: "Custom Keywords",
     description: "Start from scratch with your own keywords",
     placeholder: "Enter any keyword",
@@ -325,7 +325,7 @@ export function OnboardingWizard({ isOpen, onClose, userName, userPlan = "free" 
                 className="gap-2 border-violet-500/50 text-violet-400 hover:bg-violet-500/10"
                 disabled={!tosAccepted}
               >
-                <Sparkles className="h-4 w-4" />
+                <Wand2 className="h-4 w-4" />
                 Set up with AI
               </Button>
               <Button onClick={handleNext} className="gap-2" disabled={!tosAccepted}>

@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 export const metadata: Metadata = { title: "Dashboard | Kaulby" };
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Eye, Sparkles } from "lucide-react";
+import { PlusCircle, Eye, Wand2 } from "lucide-react";
 import Link from "next/link";
 import { QuickStartGuide } from "@/components/dashboard/onboarding";
 import { SampleResultsPreview } from "@/components/dashboard/sample-results";
@@ -127,7 +127,7 @@ export default async function DashboardPage() {
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-10 text-center">
             <div className="rounded-full bg-primary/10 p-3 mb-4">
-              <Sparkles className="h-6 w-6 text-primary" />
+              <Wand2 className="h-6 w-6 text-primary" />
             </div>
             <h3 className="font-semibold mb-2">Discover what people are saying about you</h3>
             <p className="text-sm text-muted-foreground max-w-md mb-4">
