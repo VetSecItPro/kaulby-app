@@ -11,7 +11,6 @@ import {
   index,
   uniqueIndex,
   primaryKey,
-  foreignKey,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 
@@ -142,9 +141,17 @@ export const activityActionEnum = pgEnum("activity_action", [
 export const workspaces = pgTable("workspaces", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
-  // FK to users.id declared via foreignKey() in the callback below — inline
-  // .references() can't be used because users.workspaceId references workspaces.id,
-  // creating a circular dependency at table-definition time.
+  // ownerId is a Clerk user ID. The FK constraint workspaces_owner_id_users_id_fk
+  // (ON DELETE CASCADE, ON UPDATE CASCADE) is declared at the DB level via
+  // drizzle/0003_clerk_id_cascade.sql, NOT here. Reason: declaring it inline
+  // (or via foreignKey() callback) creates a circular type-inference loop
+  // between workspaces and users (because users.workspaceId references
+  // workspaces.id). The circularity makes TypeScript fall back to `any` for
+  // both tables, which cascades to every Drizzle query in the app. Keeping
+  // the FK at DB-level only is the pragmatic compromise — runtime safety is
+  // preserved (Postgres enforces it), only schema.ts's drizzle-kit generation
+  // is unaware. Future drizzle-kit pushes need to be reviewed manually for
+  // any spurious "drop constraint" diff on this column.
   ownerId: text("owner_id"), // Clerk user ID of workspace owner
   seatLimit: integer("seat_limit").default(3).notNull(),
   seatCount: integer("seat_count").default(1).notNull(), // Current number of members
@@ -152,13 +159,6 @@ export const workspaces = pgTable("workspaces", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
   index("workspaces_owner_id_idx").on(table.ownerId),
-  foreignKey({
-    columns: [table.ownerId],
-    foreignColumns: [users.id],
-    name: "workspaces_owner_id_users_id_fk",
-  })
-    .onDelete("cascade")
-    .onUpdate("cascade"),
 ]);
 
 // Activity logs - audit trail for workspace actions
