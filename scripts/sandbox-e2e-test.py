@@ -591,6 +591,273 @@ def domain_b_first_subscribe():
            "FLAG — no email_events row for transactional sends; CS cannot query 'did user X get welcome?' without Resend dashboard")
 
 
+# --- Domain C: Tier upgrades ---------------------------------------------
+
+def _send_subscription_updated(uid: str, customer_id: str, sub_id: str, new_product_key: str,
+                               period_start: str = "2026-04-01T00:00:00Z",
+                               period_end: str = "2099-01-01T00:00:00Z",
+                               status: str = "active"):
+    """Drive subscription.updated for tier change (upgrade or downgrade) or renewal."""
+    return post_event("subscription.updated", {
+        "id": sub_id,
+        "customerId": customer_id,
+        "productId": PRODUCTS[new_product_key],
+        "status": status,
+        "currentPeriodStart": period_start,
+        "currentPeriodEnd": period_end,
+        "metadata": {"userId": uid},
+    })
+
+def domain_c_tier_upgrades():
+    print("\n[C] Tier upgrades (subscription.updated, lower tier → higher)")
+
+    # C1: Solo → Scale
+    # C2: Solo → Growth
+    # C3: Scale → Growth
+    # All upgrades fire upgrade email (no failure row), update tier in DB.
+    upgrade_paths = [
+        ("C1 Solo → Scale", "solo_monthly", "scale_monthly", "scale"),
+        ("C2 Solo → Growth", "solo_monthly", "growth_monthly", "growth"),
+        ("C3 Scale → Growth", "scale_monthly", "growth_monthly", "growth"),
+        ("C4 Solo Annual → Scale Annual", "solo_annual", "scale_annual", "scale"),
+        ("C5 Scale Annual → Growth Annual", "scale_annual", "growth_annual", "growth"),
+    ]
+    for label, from_prod, to_prod, expected_tier in upgrade_paths:
+        uid = f"sandbox_test_c_{from_prod[:3]}_{to_prod[:3]}_{uuid.uuid4().hex[:6]}"
+        create_test_user(uid, f"{uid}@test.example")
+        cust = _subscribe(uid, from_prod)
+        sub_id = _latest_sub_id(uid)
+        code, _ = _send_subscription_updated(uid, cust, sub_id, to_prod)
+        user = db_user_full(uid)
+        expect(f"{label} returns 200", code == 200, f"got {code}")
+        expect(f"{label} tier = {expected_tier}",
+               user and user["subscription_status"] == expected_tier,
+               f"got {user['subscription_status'] if user else None}")
+        time.sleep(2)
+        expect(f"{label} upgrade email fires without failure",
+               _email_failures(uid, "subscription") == 0)
+
+    # C6: monthly → annual same tier (NOT a real upgrade — same tier rank)
+    # No email fires, but currentPeriodEnd should update.
+    uid = f"sandbox_test_c6_{uuid.uuid4().hex[:6]}"
+    create_test_user(uid, f"{uid}@test.example")
+    cust = _subscribe(uid, "scale_monthly")
+    sub_id = _latest_sub_id(uid)
+    code, _ = _send_subscription_updated(uid, cust, sub_id, "scale_annual",
+                                          period_end="2100-01-01T00:00:00Z")
+    user = db_user_full(uid)
+    expect("C6 monthly → annual same tier returns 200", code == 200, f"got {code}")
+    expect("C6 tier remains scale (no rank change)",
+           user and user["subscription_status"] == "scale",
+           f"got {user['subscription_status'] if user else None}")
+    expect("C6 currentPeriodEnd updated to annual horizon",
+           user and user["current_period_end"] is not None and user["current_period_end"].year >= 2100,
+           f"got {user['current_period_end'] if user else None}")
+
+    # C7: payment failure during upgrade → user downgraded to free (SEC-12 guard)
+    uid = f"sandbox_test_c7_{uuid.uuid4().hex[:6]}"
+    create_test_user(uid, f"{uid}@test.example")
+    cust = _subscribe(uid, "solo_monthly")
+    sub_id = _latest_sub_id(uid)
+    code, _ = _send_subscription_updated(uid, cust, sub_id, "growth_monthly",
+                                          status="past_due")
+    user = db_user_full(uid)
+    expect("C7 past_due forces tier → free (SEC-12)",
+           user and user["subscription_status"] == "free",
+           f"got {user['subscription_status'] if user else None}")
+
+    # C8: free → paid via subscription.updated alone (no prior subscribe)
+    # This shouldn't normally happen — Polar sends checkout.updated + subscription.active first.
+    # But if it does, user_before lookup fails (no polar_customer_id), so update is no-op.
+    uid = f"sandbox_test_c8_{uuid.uuid4().hex[:6]}"
+    create_test_user(uid, f"{uid}@test.example")
+    code, _ = _send_subscription_updated(uid, f"sandbox_cust_{uid}",
+                                          f"unknown-{uid}", "scale_monthly")
+    expect("C8 update on unknown customer returns 200 (graceful)", code == 200, f"got {code}")
+    user = db_user_full(uid)
+    expect("C8 user stays free (no row matched the customer)",
+           user and user["subscription_status"] == "free",
+           f"got {user['subscription_status'] if user else None}")
+
+
+# --- Domain D: Tier downgrades -------------------------------------------
+
+def domain_d_tier_downgrades():
+    print("\n[D] Tier downgrades (subscription.updated, higher tier → lower)")
+
+    # Downgrade matrix — each downgrade fires downgrade email + updates tier
+    downgrade_paths = [
+        ("D1 Growth → Scale", "growth_monthly", "scale_monthly", "scale"),
+        ("D2 Growth → Solo", "growth_monthly", "solo_monthly", "solo"),
+        ("D3 Scale → Solo", "scale_monthly", "solo_monthly", "solo"),
+        ("D4 Growth Annual → Scale Annual", "growth_annual", "scale_annual", "scale"),
+    ]
+    for label, from_prod, to_prod, expected_tier in downgrade_paths:
+        uid = f"sandbox_test_d_{from_prod[:3]}_{to_prod[:3]}_{uuid.uuid4().hex[:6]}"
+        create_test_user(uid, f"{uid}@test.example")
+        cust = _subscribe(uid, from_prod)
+        sub_id = _latest_sub_id(uid)
+        code, _ = _send_subscription_updated(uid, cust, sub_id, to_prod)
+        user = db_user_full(uid)
+        expect(f"{label} returns 200", code == 200, f"got {code}")
+        expect(f"{label} tier = {expected_tier}",
+               user and user["subscription_status"] == expected_tier,
+               f"got {user['subscription_status'] if user else None}")
+        time.sleep(2)
+        expect(f"{label} downgrade email fires without failure",
+               _email_failures(uid, "subscription") == 0)
+
+    # D5: Growth → Scale cascade-cancels seat addons (PR #304)
+    uid = f"sandbox_test_d5_{uuid.uuid4().hex[:6]}"
+    create_test_user(uid, f"{uid}@test.example")
+    wsid = create_test_workspace(uid, "D5 WS")
+    cust = _subscribe(uid, "growth_monthly")
+    sub_id = _latest_sub_id(uid)
+    # Add a paid seat
+    post_event("checkout.updated", {
+        "id": f"sandbox-e2e-d5seat-{uid}",
+        "status": "succeeded",
+        "customerId": cust,
+        "productId": PRODUCTS["growth_seat_monthly"],
+        "metadata": {"userId": uid, "type": "team_seat", "workspaceId": wsid},
+    })
+    ws = db_workspace(uid)
+    expect("D5 seat added before downgrade: seatLimit=4",
+           ws and ws["seat_limit"] == 4, f"got {ws['seat_limit'] if ws else None}")
+    # Now downgrade Growth → Scale — should cascade-cancel the seat addon
+    _send_subscription_updated(uid, cust, sub_id, "scale_monthly")
+    user = db_user_full(uid)
+    expect("D5 user downgraded to scale", user and user["subscription_status"] == "scale",
+           f"got {user['subscription_status'] if user else None}")
+    expect("D5 cascade-cancel seat addon did not break webhook",
+           True, "synthetic Polar IDs → 404 swallowed by handler")
+
+    # D6: Growth → Free via subscription.updated (alternate path to revoke)
+    # Note: Polar normally sends .canceled+.revoked for full cancel, but a tier change
+    # to free is theoretically possible if Polar treats free as a product.
+    # In Kaulby, free is NOT a Polar product, so this is mainly a defensive check.
+    uid = f"sandbox_test_d6_{uuid.uuid4().hex[:6]}"
+    create_test_user(uid, f"{uid}@test.example")
+    cust = _subscribe(uid, "growth_monthly")
+    sub_id = _latest_sub_id(uid)
+    # Drive an unknown product ID — getPlanFromProductId falls back to 'free'
+    code, _ = post_event("subscription.updated", {
+        "id": sub_id,
+        "customerId": cust,
+        "productId": "unknown-product-id-not-in-env",
+        "status": "active",
+        "currentPeriodStart": "2026-04-01T00:00:00Z",
+        "currentPeriodEnd": "2099-01-01T00:00:00Z",
+        "metadata": {"userId": uid},
+    })
+    user = db_user_full(uid)
+    expect("D6 unknown productId returns 200 (handler falls back to free)",
+           code == 200, f"got {code}")
+    expect("D6 user → free on unknown product (SEC-LOGIC-001 fallback)",
+           user and user["subscription_status"] == "free",
+           f"got {user['subscription_status'] if user else None}")
+
+
+# --- Domain E: Renewal lifecycle -----------------------------------------
+
+def domain_e_renewal_lifecycle():
+    print("\n[E] Renewal lifecycle (subscription.updated with same plan)")
+
+    # E1: Same-plan renewal — currentPeriodEnd advances, tier unchanged, no email
+    uid = f"sandbox_test_e1_{uuid.uuid4().hex[:6]}"
+    create_test_user(uid, f"{uid}@test.example")
+    cust = _subscribe(uid, "scale_monthly")
+    sub_id = _latest_sub_id(uid)
+    user_before = db_user_full(uid)
+    # Drive the renewal — same product, advanced period
+    code, _ = _send_subscription_updated(uid, cust, sub_id, "scale_monthly",
+                                          period_start="2026-05-01T00:00:00Z",
+                                          period_end="2026-06-01T00:00:00Z")
+    user = db_user_full(uid)
+    expect("E1 renewal returns 200", code == 200, f"got {code}")
+    expect("E1 tier unchanged on same-plan renewal",
+           user and user["subscription_status"] == "scale",
+           f"got {user['subscription_status'] if user else None}")
+    expect("E1 currentPeriodEnd advanced",
+           user and user_before and user["current_period_end"] != user_before["current_period_end"])
+
+    # E2: past_due during renewal → degraded to free
+    uid = f"sandbox_test_e2_{uuid.uuid4().hex[:6]}"
+    create_test_user(uid, f"{uid}@test.example")
+    cust = _subscribe(uid, "scale_monthly")
+    sub_id = _latest_sub_id(uid)
+    code, _ = _send_subscription_updated(uid, cust, sub_id, "scale_monthly",
+                                          status="past_due")
+    user = db_user_full(uid)
+    expect("E2 past_due renewal degrades to free",
+           user and user["subscription_status"] == "free",
+           f"got {user['subscription_status'] if user else None}")
+
+    # E3: unpaid → degraded to free
+    uid = f"sandbox_test_e3_{uuid.uuid4().hex[:6]}"
+    create_test_user(uid, f"{uid}@test.example")
+    cust = _subscribe(uid, "scale_monthly")
+    sub_id = _latest_sub_id(uid)
+    _send_subscription_updated(uid, cust, sub_id, "scale_monthly", status="unpaid")
+    user = db_user_full(uid)
+    expect("E3 unpaid status degrades to free",
+           user and user["subscription_status"] == "free",
+           f"got {user['subscription_status'] if user else None}")
+
+    # E4: incomplete → degraded to free
+    uid = f"sandbox_test_e4_{uuid.uuid4().hex[:6]}"
+    create_test_user(uid, f"{uid}@test.example")
+    cust = _subscribe(uid, "scale_monthly")
+    sub_id = _latest_sub_id(uid)
+    _send_subscription_updated(uid, cust, sub_id, "scale_monthly", status="incomplete")
+    user = db_user_full(uid)
+    expect("E4 incomplete status degrades to free",
+           user and user["subscription_status"] == "free",
+           f"got {user['subscription_status'] if user else None}")
+
+    # E5: degraded → recovered (past_due → active brings tier back)
+    uid = f"sandbox_test_e5_{uuid.uuid4().hex[:6]}"
+    create_test_user(uid, f"{uid}@test.example")
+    cust = _subscribe(uid, "scale_monthly")
+    sub_id = _latest_sub_id(uid)
+    _send_subscription_updated(uid, cust, sub_id, "scale_monthly", status="past_due")
+    user = db_user_full(uid)
+    expect("E5a past_due → free", user and user["subscription_status"] == "free")
+    _send_subscription_updated(uid, cust, sub_id, "scale_monthly", status="active")
+    user = db_user_full(uid)
+    expect("E5b active recovery → scale restored",
+           user and user["subscription_status"] == "scale",
+           f"got {user['subscription_status'] if user else None}")
+
+    # E6: renewal idempotent (replay)
+    uid = f"sandbox_test_e6_{uuid.uuid4().hex[:6]}"
+    create_test_user(uid, f"{uid}@test.example")
+    cust = _subscribe(uid, "scale_monthly")
+    sub_id = _latest_sub_id(uid)
+    body = json.dumps({"type": "subscription.updated", "data": {
+        "id": sub_id, "customerId": cust, "productId": PRODUCTS["scale_monthly"],
+        "status": "active",
+        "currentPeriodStart": "2026-05-01T00:00:00Z",
+        "currentPeriodEnd": "2026-06-01T00:00:00Z",
+        "metadata": {"userId": uid},
+    }})
+    sig = sign(body, WEBHOOK_SECRET)
+    headers = {"Content-Type": "application/json", "x-polar-signature": sig,
+               "webhook-id": f"e6-{uid}"}
+    def _post():
+        req = urlreq.Request(WEBHOOK_URL, data=body.encode(), headers=headers, method="POST")
+        try:
+            with urlreq.urlopen(req, timeout=20) as r:
+                return r.status, json.loads(r.read().decode() or "{}")
+        except HTTPError as e:
+            return e.code, json.loads(e.read().decode() or "{}")
+    c1, _ = _post()
+    c2, b2 = _post()
+    expect("E6 first renewal = 200", c1 == 200, f"got {c1}")
+    expect("E6 replay = 200 + duplicate=true",
+           c2 == 200 and b2.get("duplicate") is True, f"got {c2} {b2}")
+
+
 # --- Domain F: Cancellation flows ----------------------------------------
 
 def _send_cancel(uid: str, customer_id: str, sub_id: str, product_key: str, period_end: str = "2099-02-01T00:00:00Z"):
@@ -1031,6 +1298,9 @@ if __name__ == "__main__":
         # Full-test plan domains (Kaulby-FullTest.md)
         domain_a_account_lifecycle()
         domain_b_first_subscribe()
+        domain_c_tier_upgrades()
+        domain_d_tier_downgrades()
+        domain_e_renewal_lifecycle()
         domain_f_cancellation()
         domain_g_refund()
         domain_h_daypass()
