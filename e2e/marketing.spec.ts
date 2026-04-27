@@ -30,12 +30,11 @@ test.describe("Marketing Pages", () => {
     await expect(page.getByRole("heading", { name: /pricing/i })).toBeVisible();
 
     // Check plan cards exist by looking for plan names with their descriptions
-    await expect(page.getByText("Try Kaulby with a single monitor")).toBeVisible();
+    // (Free tier retired 2026-04-27 — page now shows 3 paid tiers + Day Pass.)
     await expect(page.getByText("For one operator watching their brand")).toBeVisible();
     await expect(page.getByText("For teams operationalizing brand intelligence")).toBeVisible();
 
     // Check pricing amounts are visible
-    await expect(page.getByText("$0")).toBeVisible();
     await expect(page.getByText("$39")).toBeVisible();
     await expect(page.getByText("$149")).toBeVisible();
   });

@@ -39,15 +39,14 @@ test.describe("Pricing Page - Plan Cards", () => {
     await expect(page).toHaveTitle(/Kaulby/i);
   });
 
-  test("displays all four subscription plan cards", async ({ page }) => {
+  test("displays all three paid subscription plan cards", async ({ page }) => {
     test.setTimeout(60_000);
     await page.goto("/pricing", GOTO_OPTS);
 
-    // Free plan
-    await expect(page.getByText("Try Kaulby with a single monitor")).toBeVisible(VISIBLE_OPTS);
+    // Free tier retired 2026-04-27 (Apify costs); page now shows 3 paid tiers + Day Pass.
     // Solo plan (was Pro)
     await expect(page.getByText("For one operator watching their brand")).toBeVisible(VISIBLE_OPTS);
-    // Scale plan (new mid tier)
+    // Scale plan (mid tier)
     await expect(page.getByText("For the operator who outgrew Solo")).toBeVisible(VISIBLE_OPTS);
     // Growth plan (was Team)
     await expect(page.getByText("For teams operationalizing brand intelligence")).toBeVisible(VISIBLE_OPTS);
@@ -57,7 +56,6 @@ test.describe("Pricing Page - Plan Cards", () => {
     test.setTimeout(60_000);
     await page.goto("/pricing", GOTO_OPTS);
 
-    await expect(page.getByText("$0")).toBeVisible(VISIBLE_OPTS);
     await expect(page.getByText("$39")).toBeVisible(VISIBLE_OPTS);   // Solo
     await expect(page.getByText("$79")).toBeVisible(VISIBLE_OPTS);   // Scale
     await expect(page.getByText("$149")).toBeVisible(VISIBLE_OPTS);  // Growth
@@ -79,22 +77,23 @@ test.describe("Pricing Page - Plan Cards", () => {
     await expect(page.getByText("One-Time", { exact: true })).toBeVisible(VISIBLE_OPTS);
   });
 
-  test("free plan has correct features listed", async ({ page }) => {
+  test("Solo plan has correct entry-tier features listed", async ({ page }) => {
     test.setTimeout(60_000);
     await page.goto("/pricing", GOTO_OPTS);
 
-    // Check a few key free plan features
-    await expect(page.getByText("1 monitor").first()).toBeVisible(VISIBLE_OPTS);
-    await expect(page.getByText("Reddit only").first()).toBeVisible(VISIBLE_OPTS);
-    await expect(page.getByText(/3 keywords/i).first()).toBeVisible(VISIBLE_OPTS);
+    // Solo (entry paid tier) feature highlights — replaces the old free-tier feature check.
+    await expect(page.getByText("10 monitors").first()).toBeVisible(VISIBLE_OPTS);
+    await expect(page.getByText(/9 platforms/i).first()).toBeVisible(VISIBLE_OPTS);
+    await expect(page.getByText(/unlimited keywords/i).first()).toBeVisible(VISIBLE_OPTS);
   });
 
-  test("paid plans show 14-day free trial", async ({ page }) => {
+  test("paid plans show 14-day money-back guarantee", async ({ page }) => {
     test.setTimeout(60_000);
     await page.goto("/pricing", GOTO_OPTS);
 
-    const trialText = page.getByText(/14-day free trial/i);
-    await expect(trialText.first()).toBeVisible(VISIBLE_OPTS);
+    // Free trial replaced by money-back guarantee on monthly plans (2026-04-27).
+    const guaranteeText = page.getByText(/14-day money-back guarantee/i);
+    await expect(guaranteeText.first()).toBeVisible(VISIBLE_OPTS);
   });
 });
 
@@ -171,9 +170,8 @@ test.describe("Pricing Page - Feature Comparison", () => {
     test.setTimeout(60_000);
     await page.goto("/pricing", GOTO_OPTS);
 
-    // Table headers: Feature, Free, Solo, Scale, Growth
+    // Table headers: Feature, Solo, Scale, Growth (Free retired 2026-04-27)
     await expect(page.getByRole("columnheader", { name: /feature/i })).toBeVisible(VISIBLE_OPTS);
-    await expect(page.getByRole("columnheader", { name: /free/i })).toBeVisible(VISIBLE_OPTS);
     await expect(page.getByRole("columnheader", { name: /solo/i })).toBeVisible(VISIBLE_OPTS);
 
     // Scale header contains "Popular" badge
@@ -213,14 +211,14 @@ test.describe("Pricing Page - FAQ", () => {
     test.setTimeout(60_000);
     await page.goto("/pricing", GOTO_OPTS);
 
-    // Click on "Is there really a free plan?" question
-    const freeQuestion = page.getByRole("button", { name: /is there really a free plan/i });
-    await expect(freeQuestion).toBeVisible(VISIBLE_OPTS);
-    await freeQuestion.click();
+    // "How can I try Kaulby before subscribing?" replaced "Is there really a free plan?" (2026-04-27).
+    const tryQuestion = page.getByRole("button", { name: /how can i try kaulby before subscribing/i });
+    await expect(tryQuestion).toBeVisible(VISIBLE_OPTS);
+    await tryQuestion.click();
 
-    // Answer should become visible (use .first() — text may appear in both FAQ answer and plan card)
+    // Answer mentions Day Pass + 24 hours.
     await expect(
-      page.getByText(/free forever/i).first()
+      page.getByText(/24 hours of full scale-tier access/i).first()
     ).toBeVisible(VISIBLE_OPTS);
   });
 
@@ -244,15 +242,6 @@ test.describe("Pricing Page - FAQ", () => {
 // ---------------------------------------------------------------------------
 
 test.describe("Pricing Page - CTAs", () => {
-  test("free plan CTA links to sign-up", async ({ page }) => {
-    test.setTimeout(60_000);
-    await page.goto("/pricing", GOTO_OPTS);
-
-    const freeCtaLink = page.getByRole("link", { name: /get started free/i });
-    await expect(freeCtaLink).toBeVisible(VISIBLE_OPTS);
-    await expect(freeCtaLink).toHaveAttribute("href", "/sign-up");
-  });
-
   test("solo plan CTA links to sign-up with plan parameter", async ({ page }) => {
     test.setTimeout(60_000);
     await page.goto("/pricing", GOTO_OPTS);
@@ -285,11 +274,11 @@ test.describe("Pricing Page - CTAs", () => {
     await page.goto("/pricing", GOTO_OPTS);
 
     await expect(page.getByText(/14-day money-back guarantee/i)).toBeVisible(VISIBLE_OPTS);
-    await expect(page.getByText(/no credit card for free tier/i)).toBeVisible(VISIBLE_OPTS);
+    await expect(page.getByText(/day pass: \$15 for 24h/i)).toBeVisible(VISIBLE_OPTS);
     await expect(page.getByText(/cancel anytime/i).first()).toBeVisible(VISIBLE_OPTS);
   });
 
-  test("bottom CTA section has start free button", async ({ page }) => {
+  test("bottom CTA section has Day Pass button", async ({ page }) => {
     test.setTimeout(60_000);
     await page.goto("/pricing", GOTO_OPTS);
 
@@ -297,9 +286,9 @@ test.describe("Pricing Page - CTAs", () => {
       page.getByRole("heading", { name: /still not sure/i })
     ).toBeVisible(VISIBLE_OPTS);
 
-    const startFreeBtn = page.getByRole("link", { name: /start free/i });
-    await expect(startFreeBtn).toBeVisible(VISIBLE_OPTS);
-    await expect(startFreeBtn).toHaveAttribute("href", "/sign-up");
+    // Bottom CTA replaced "Start Free" with the Day Pass purchase button (2026-04-27).
+    const dayPassBtn = page.getByRole("button", { name: /get day pass.*\$15/i });
+    await expect(dayPassBtn).toBeVisible(VISIBLE_OPTS);
   });
 
   test("navigation header links work", async ({ page }) => {
