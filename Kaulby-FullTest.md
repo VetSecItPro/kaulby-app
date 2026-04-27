@@ -7,28 +7,41 @@
 
 ## RESUME-READY STATUS (read this first if continuing after compaction)
 
-**Last update:** 2026-04-26 — turn 8 (Domains P/Q/R/V/S/T/U complete; honest deferrals for J/L/O)
+**Last update:** 2026-04-27 — turn 9 (Domains J/L/O closed; PR #307)
 
-**Test driver:** `scripts/sandbox-e2e-test.py`
-**Run command:** `/tmp/sandbox-test-venv/bin/python3 scripts/sandbox-e2e-test.py`
-**Last e2e run:** 296/296 passed (S/T/U added; 2 observations flagged, no bugs)
-**Last unit run:** 1349/1349 passed (PR #305 — 27 new units for billing)
+**Test drivers (3 harnesses):**
+- Webhook e2e: `scripts/sandbox-e2e-test.py` — 296/296 (19 domains)
+- Vitest API/lib units: `pnpm exec vitest run` — 1349/1349 + 36 from PR #307
+- Playwright UI: `pnpm exec playwright test e2e/billing-domain-o.spec.ts`
 
-**Domains complete (e2e):** A, B, C, D, E, F, G, H, I, K, M, N, P, Q, R, S, T, U, V (19 of 22)
-**Domains honestly deferred (3 of 22):**
-- J (workspace lifecycle, 10) — needs Clerk auth + UI session, not webhook-driven.
-  Programmatic coverage exists in src/__tests__/api/{workspace,workspace-invite}.test.ts
-- L (GDPR / account deletion, 8) — 30-day cron-driven flow; would require
-  triggering Inngest cron + waiting / time-warp. Code path covered by
-  src/__tests__/inngest/inngest-account-deletion.test.ts
-- O (UI / Dashboard, 12) — Playwright e2e suite, separate runner. Not part
-  of the sandbox webhook driver scope.
+**Domains complete (22 of 22):** A B C D E F G H I J K L M N O P Q R S T U V
 
-**Coverage summary:**
-- 296 sandbox e2e assertions across 19 domains
-- 1349 unit tests (lib/) including 27 new ones from PR #305
-- 10 production bugs found + fixed during this comprehensive test pass
-- 4 defense-in-depth observations flagged for future hardening (#7 #10 #12 #13)
+**Coverage summary by harness:**
+- Sandbox webhook e2e: 296 assertions across 19 domains
+- Vitest unit + API integration: 1349 lib units + 36 new from PR #307 covering
+  Domain J workspace ownership/membership/role-changes (workspace-invite,
+  workspace-members, workspace) and Domain L GDPR deletion request flow
+  (user-request-deletion + cross-ref to inngest-account-deletion)
+- Playwright UI: 12-scenario coverage matrix (3 runnable, 9 deferred-with-
+  rationale pointing to backend tests for the underlying state)
+
+**Discoveries from J/L/O batch:**
+- FullTest.md said L7 "30-day grace period" — actual code constant is
+  DELETION_DELAY_DAYS=7. Doc was wrong, test now matches code.
+- L5 "activity_logs entry on account_deleted" — currently NOT emitted from
+  the inngest deletion function. New observability gap (#14).
+- Domain J8/J9 "workspace deletion + email" — there's no DELETE on
+  /api/workspace; workspace deletion is a side-effect of user account
+  deletion (cascade in L's transaction).
+
+**Open observations (5 total, none production-blocking):**
+- #7 transactional email logging (welcome/sub/refund) not in email_events
+- #10 past_due silently degrades tier without firing payment_failed email
+- #12 webhook accepts past currentPeriodEnd without validation
+- #13 shared customerId returns 500 (DB unique violation, would cause Polar retry storm)
+- #14 inngest account-deletion does not log activity_logs row
+
+**Production bugs fixed this session: 10** (all PRs merged to main)
 
 **Open invariant note:** Bug #11 fix uses tier-rank table {free:0,solo:1,
 scale:2,growth:3} in two places (subscription.active + subscription.updated).
