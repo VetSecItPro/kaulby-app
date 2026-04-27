@@ -29,6 +29,32 @@ export const dynamic = "force-dynamic";
 // Maximum number of founding members who lock in price forever
 const FOUNDING_MEMBER_LIMIT = 1000;
 
+// Defense-in-depth: reject billing-period dates that are absurdly in the past.
+// Polar should never send these, but a malformed/replayed event could carry a
+// stale period that would (a) freeze the user at an expired tier or (b) cause
+// downstream cron logic that compares "now" vs currentPeriodEnd to misfire.
+// 30 days is a safe floor: legitimate prorated period boundaries can be a few
+// days in the past during downgrade processing, but never weeks.
+const PERIOD_END_PAST_GUARD_DAYS = 30;
+function parsePeriodEnd(raw: string | undefined, context: string): Date | undefined {
+  if (!raw) return undefined;
+  const parsed = new Date(raw);
+  if (isNaN(parsed.getTime())) {
+    logger.warn("Polar webhook: invalid currentPeriodEnd, ignoring date", { raw, context });
+    return undefined;
+  }
+  const cutoff = Date.now() - PERIOD_END_PAST_GUARD_DAYS * 24 * 60 * 60 * 1000;
+  if (parsed.getTime() < cutoff) {
+    logger.warn("Polar webhook: currentPeriodEnd >30d in past, ignoring", {
+      raw,
+      cutoffIso: new Date(cutoff).toISOString(),
+      context,
+    });
+    return undefined;
+  }
+  return parsed;
+}
+
 // Polar webhook event types
 interface PolarWebhookEvent {
   type: string;
@@ -256,15 +282,43 @@ export async function POST(request: NextRequest) {
           break;
         }
 
-        // Regular subscription checkout - store the customer ID
+        // Regular subscription checkout - store the customer ID.
+        //
+        // Defense for shared-customerId edge case: if another user row already
+        // claims this polarCustomerId (rare, but possible when a single Polar
+        // customer record is reused across accounts - e.g., support reassign,
+        // duplicate signup with same email-on-Polar), the UNIQUE index on
+        // polarCustomerId throws 23505. Returning 500 here would make Polar
+        // retry the webhook indefinitely. Instead: log + 200 so the queue
+        // drains; surface to ops via the structured log.
         if (customerId) {
-          await db
-            .update(users)
-            .set({
-              polarCustomerId: customerId,
-              updatedAt: new Date(),
-            })
-            .where(eq(users.id, userId));
+          try {
+            await db
+              .update(users)
+              .set({
+                polarCustomerId: customerId,
+                updatedAt: new Date(),
+              })
+              .where(eq(users.id, userId));
+          } catch (err: unknown) {
+            const errMsg = err instanceof Error ? err.message : String(err);
+            const pgCode = (err as { code?: string; cause?: { code?: string } })?.code
+              ?? (err as { cause?: { code?: string } })?.cause?.code;
+            const isUniqueViolation =
+              pgCode === "23505" ||
+              errMsg.includes("unique") ||
+              errMsg.includes("duplicate key");
+            if (isUniqueViolation) {
+              logger.error("Polar checkout: customerId collision (already claimed by another user). Skipping update; needs ops triage.", {
+                userId,
+                customerId,
+                errMsg,
+              });
+              // Continue processing - we still want to track the checkout below.
+            } else {
+              throw err;
+            }
+          }
         }
 
         // Get plan from product ID
@@ -291,7 +345,10 @@ export async function POST(request: NextRequest) {
         const subscriptionId = eventData.id as string;
         const productId = eventData.productId as string;
         const currentPeriodStart = eventData.currentPeriodStart as string | undefined;
-        const currentPeriodEnd = eventData.currentPeriodEnd as string | undefined;
+        const currentPeriodEndDate = parsePeriodEnd(
+          eventData.currentPeriodEnd as string | undefined,
+          `${event.type}:${subscriptionId}`,
+        );
 
         const plan = getPlanFromProductId(productId);
         const subscriptionStatus = mapPlanToSubscriptionStatus(plan);
@@ -364,7 +421,7 @@ export async function POST(request: NextRequest) {
                 polarSubscriptionId: subscriptionId,
                 subscriptionStatus: subscriptionStatus,
                 currentPeriodStart: currentPeriodStart ? new Date(currentPeriodStart) : undefined,
-                currentPeriodEnd: currentPeriodEnd ? new Date(currentPeriodEnd) : undefined,
+                currentPeriodEnd: currentPeriodEndDate,
                 ...(grantsTrial && trialEndsAt && trialTier
                   ? { trialEndsAt, trialTier }
                   : {}),
@@ -404,7 +461,7 @@ export async function POST(request: NextRequest) {
               polarSubscriptionId: subscriptionId,
               subscriptionStatus: subscriptionStatus,
               currentPeriodStart: currentPeriodStart ? new Date(currentPeriodStart) : undefined,
-              currentPeriodEnd: currentPeriodEnd ? new Date(currentPeriodEnd) : undefined,
+              currentPeriodEnd: currentPeriodEndDate,
               ...(grantsTrial && trialEndsAt && trialTier
                 ? { trialEndsAt, trialTier }
                 : {}),
@@ -466,7 +523,10 @@ export async function POST(request: NextRequest) {
         const customerId = eventData.customerId as string;
         const productId = eventData.productId as string;
         const currentPeriodStart = eventData.currentPeriodStart as string | undefined;
-        const currentPeriodEnd = eventData.currentPeriodEnd as string | undefined;
+        const currentPeriodEndDate = parsePeriodEnd(
+          eventData.currentPeriodEnd as string | undefined,
+          `subscription.updated:${customerId}`,
+        );
         const status = eventData.status as string;
 
         const plan = getPlanFromProductId(productId);
@@ -490,7 +550,7 @@ export async function POST(request: NextRequest) {
           .set({
             subscriptionStatus: effectiveStatus,
             currentPeriodStart: currentPeriodStart ? new Date(currentPeriodStart) : undefined,
-            currentPeriodEnd: currentPeriodEnd ? new Date(currentPeriodEnd) : undefined,
+            currentPeriodEnd: currentPeriodEndDate,
             updatedAt: new Date(),
           })
           .where(eq(users.polarCustomerId, customerId));
@@ -599,12 +659,16 @@ export async function POST(request: NextRequest) {
         // The user paid for the full period - don't strip access immediately
         const canceledCustomerId = eventData.customerId as string;
         const canceledPeriodEnd = eventData.currentPeriodEnd as string | undefined;
+        const canceledPeriodEndDate = parsePeriodEnd(
+          canceledPeriodEnd,
+          `subscription.canceled:${canceledCustomerId}`,
+        );
 
         await db
           .update(users)
           .set({
             // Keep current tier until period end; Polar will send subscription.revoked when it actually expires
-            currentPeriodEnd: canceledPeriodEnd ? new Date(canceledPeriodEnd) : undefined,
+            currentPeriodEnd: canceledPeriodEndDate,
             updatedAt: new Date(),
           })
           .where(eq(users.polarCustomerId, canceledCustomerId));
