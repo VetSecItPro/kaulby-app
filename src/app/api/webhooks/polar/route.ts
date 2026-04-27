@@ -306,6 +306,31 @@ export async function POST(request: NextRequest) {
           break;
         }
 
+        // FIX #11 (stale subscription.active): If the user is already on a higher
+        // tier with a DIFFERENT subscription_id, this event is most likely a
+        // late/replayed event from an older subscription that's since been
+        // superseded by an upgrade. Apply only when (a) user is on free, OR
+        // (b) the incoming sub_id matches the user's current sub_id (renewal
+        // refresh), OR (c) the new tier rank is >= current tier rank (upgrade).
+        // Otherwise: stale event, ignore the body, log it.
+        const TIER_RANK_ACTIVE: Record<string, number> = { free: 0, solo: 1, scale: 2, growth: 3 };
+        const currentRank = TIER_RANK_ACTIVE[user.subscriptionStatus ?? "free"] ?? 0;
+        const incomingRank = TIER_RANK_ACTIVE[subscriptionStatus] ?? 0;
+        const isStaleDowngrade =
+          user.polarSubscriptionId &&
+          user.polarSubscriptionId !== subscriptionId &&
+          incomingRank < currentRank;
+        if (isStaleDowngrade) {
+          logger.warn("Ignoring stale subscription.active event for older sub", {
+            userId: user.id,
+            currentSubId: user.polarSubscriptionId,
+            incomingSubId: subscriptionId,
+            currentTier: user.subscriptionStatus,
+            incomingTier: subscriptionStatus,
+          });
+          break;
+        }
+
         // Reverse trial: every new paid signup gets 14 days of Growth-tier
         // features regardless of which tier they bought. Only granted on the
         // FIRST paid subscription (skip if user already had a trial OR is
@@ -739,11 +764,20 @@ export async function POST(request: NextRequest) {
         // what plan they had refunded (not the now-free state).
         const userBeforeRefund = await db.query.users.findFirst({
           where: eq(users.polarCustomerId, customerId),
-          columns: { id: true, email: true, name: true, subscriptionStatus: true },
+          columns: { id: true, email: true, name: true, subscriptionStatus: true, polarSubscriptionId: true },
         });
 
-        // If this is a subscription refund, cancel the subscription
-        if (subscriptionId) {
+        // FIX #9 (seat-addon refund clobbers main tier): order.refunded for a
+        // seat addon arrives with a subscriptionId that does NOT match the
+        // user's main polarSubscriptionId. Only reset the user's tier when the
+        // refund is for the MAIN subscription. Otherwise (seat addon, day pass,
+        // or other side-purchase refund) leave the main tier alone.
+        const isMainSubscriptionRefund =
+          !!subscriptionId &&
+          !!userBeforeRefund?.polarSubscriptionId &&
+          subscriptionId === userBeforeRefund.polarSubscriptionId;
+
+        if (isMainSubscriptionRefund) {
           await db
             .update(users)
             .set({
@@ -752,6 +786,15 @@ export async function POST(request: NextRequest) {
               updatedAt: new Date(),
             })
             .where(eq(users.polarCustomerId, customerId));
+        } else if (subscriptionId) {
+          // Side-purchase refund (seat addon, day pass, etc.) — log and skip
+          // the main-tier reset. The seat-limit decrement (if applicable) is
+          // handled by the subsequent subscription.revoked event.
+          logger.info("order.refunded for non-main subscription — main tier preserved", {
+            customerId,
+            refundedSubId: subscriptionId,
+            currentMainSubId: userBeforeRefund?.polarSubscriptionId,
+          });
         }
 
         const user = await db.query.users.findFirst({
@@ -769,16 +812,22 @@ export async function POST(request: NextRequest) {
           });
 
           // K7: Refund confirmation email - non-blocking
-          const refundedPlan = userBeforeRefund?.subscriptionStatus ?? "Subscription";
-          const refundedPlanCap = refundedPlan.charAt(0).toUpperCase() + refundedPlan.slice(1);
-          if (user.email) {
-            sendRefundEmail({
-              email: user.email,
-              name: user.name || undefined,
-              plan: refundedPlanCap,
-            }).catch((err) =>
-              logger.error("Refund email failed", { userId: user.id, error: err instanceof Error ? err.message : String(err) }),
-            );
+          // Only fire the "your tier was refunded" email when we actually
+          // refunded the main subscription (FIX #9). For side-purchase refunds
+          // (seat addons, day passes) we skip — the user still has their tier
+          // and the misleading email would confuse them.
+          if (isMainSubscriptionRefund) {
+            const refundedPlan = userBeforeRefund?.subscriptionStatus ?? "Subscription";
+            const refundedPlanCap = refundedPlan.charAt(0).toUpperCase() + refundedPlan.slice(1);
+            if (user.email) {
+              sendRefundEmail({
+                email: user.email,
+                name: user.name || undefined,
+                plan: refundedPlanCap,
+              }).catch((err) =>
+                logger.error("Refund email failed", { userId: user.id, error: err instanceof Error ? err.message : String(err) }),
+              );
+            }
           }
         }
         break;
