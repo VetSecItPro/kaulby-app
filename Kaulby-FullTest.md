@@ -7,13 +7,17 @@
 
 ## RESUME-READY STATUS (read this first if continuing after compaction)
 
-**Last update:** 2026-04-26 — turn 5 (post-compaction continuation)
+**Last update:** 2026-04-26 — turn 6 (re-added C/D/E + /test-ship unit pass)
 
 **Test driver:** `scripts/sandbox-e2e-test.py`
 **Run command:** `/tmp/sandbox-test-venv/bin/python3 scripts/sandbox-e2e-test.py`
-**Last run:** 118/118 passed (F+G+H added; zero new bugs)
+**Last e2e run:** 166/166 passed (C/D/E re-added; zero new bugs)
+**Last unit run:** 1349/1349 passed (PR #305 — 27 new units for billing)
 
-**Domains complete:** A, B, C, D, E, F, G, H (8 of 22)
+**Domains complete (e2e):** A, B, C, D, E, F, G, H (8 of 22)
+**Domains with unit-level lock-in (PR #305):** A-H pure logic covered:
+6 lifecycle email funcs, KAULBY_PRORATION_BEHAVIOR (compile + runtime),
+isTeamSeatProduct, getTeamSeatProductId, getPolarServer
 **Domains pending:** I, J, K, L, M, N, O, P, Q, R, S, T, U, V (14 of 22)
 **UI-deferred:** O (12 scenarios needing playwright)
 
@@ -25,6 +29,7 @@
 - #302 6 missing lifecycle emails (upgrade/downgrade/cancel/revoke/refund/day-pass)
 - #303 No-proration policy: KAULBY_PRORATION_BEHAVIOR='next_period' enforced from code
 - #304 Cascade-cancel orphan seat addons on subscription.updated tier downgrade
+- #305 Unit coverage for lifecycle emails + proration policy (test-only, 27 new units)
 - #295/etc earlier PRs in earlier session
 
 **Open low-priority finding:** #7 transactional email observability gap
