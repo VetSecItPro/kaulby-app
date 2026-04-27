@@ -588,7 +588,164 @@ def domain_b_first_subscribe():
            failures == 0,
            f"got {failures} delivery failures (would indicate Resend send broke)")
     expect("B11b OBSERVABILITY GAP: transactional emails not logged anywhere on success", True,
-           "FLAG — no email_events row for transactional sends; CS cannot query 'did user X get welcome?' without Resend dashboard")
+           "FLAG - no email_events row for transactional sends; CS cannot query 'did user X get welcome?' without Resend dashboard")
+
+
+# --- Domain C: Tier upgrades ----------------------------------------------
+
+def _send_subscription_updated(uid: str, customer_id: str, sub_id: str, new_product_key: str, status: str = "active"):
+    """Helper: drive subscription.updated to switch user's tier."""
+    return post_event("subscription.updated", {
+        "id": sub_id,
+        "customerId": customer_id,
+        "productId": PRODUCTS[new_product_key],
+        "status": status,
+        "currentPeriodStart": "2026-04-01T00:00:00Z",
+        "currentPeriodEnd": "2099-01-01T00:00:00Z",
+        "metadata": {"userId": uid},
+    })
+
+def domain_c_tier_upgrades():
+    print("\n[C] Tier upgrades")
+    upgrade_paths = [
+        ("C1 Solo Monthly -> Scale Monthly", "solo_monthly", "scale_monthly", "scale"),
+        ("C2 Solo Monthly -> Growth Monthly", "solo_monthly", "growth_monthly", "growth"),
+        ("C3 Scale Monthly -> Growth Monthly", "scale_monthly", "growth_monthly", "growth"),
+        ("C4 Solo Monthly -> Solo Annual",   "solo_monthly", "solo_annual",   "solo"),
+        ("C5 Scale Monthly -> Scale Annual", "scale_monthly", "scale_annual", "scale"),
+        ("C6 Growth Monthly -> Growth Annual","growth_monthly","growth_annual","growth"),
+        ("C7 Solo Annual -> Scale Annual",   "solo_annual", "scale_annual",   "scale"),
+    ]
+    for label, from_key, to_key, expected_status in upgrade_paths:
+        uid = f"sandbox_test_c_{uuid.uuid4().hex[:6]}"
+        create_test_user(uid, f"{uid}@test.example")
+        cust = _subscribe(uid, from_key)
+        before = db_user_full(uid)
+        was_founding = bool(before and before["is_founding_member"])
+        sub_id = before["polar_subscription_id"] if before else f"sandbox-e2e-sub-{uid}"
+        code, _ = _send_subscription_updated(uid, cust, sub_id, to_key)
+        expect(f"{label} -> 200 OK", code == 200, f"got {code}")
+        after = db_user_full(uid)
+        expect(f"{label} -> tier={expected_status}",
+               after and after["subscription_status"] == expected_status,
+               f"got {after['subscription_status'] if after else None}")
+        if was_founding:
+            expect(f"{label} -> founding preserved", after and after["is_founding_member"] is True)
+        expect(f"{label} -> period_end updated", after and after["current_period_end"] is not None)
+
+
+# --- Domain D: Tier downgrades --------------------------------------------
+
+def domain_d_tier_downgrades():
+    print("\n[D] Tier downgrades")
+    downgrade_paths = [
+        ("D1 Growth -> Scale", "growth_monthly", "scale_monthly", "scale"),
+        ("D2 Growth -> Solo",  "growth_monthly", "solo_monthly",  "solo"),
+        ("D3 Scale -> Solo",   "scale_monthly",  "solo_monthly",  "solo"),
+        ("D4 Annual -> Monthly (Scale)", "scale_annual", "scale_monthly", "scale"),
+    ]
+    for label, from_key, to_key, expected_status in downgrade_paths:
+        uid = f"sandbox_test_d_{uuid.uuid4().hex[:6]}"
+        create_test_user(uid, f"{uid}@test.example")
+        cust = _subscribe(uid, from_key)
+        before = db_user_full(uid)
+        was_founding = bool(before and before["is_founding_member"])
+        sub_id = before["polar_subscription_id"] if before else f"sandbox-e2e-sub-{uid}"
+        code, _ = _send_subscription_updated(uid, cust, sub_id, to_key)
+        expect(f"{label} -> 200 OK", code == 200, f"got {code}")
+        after = db_user_full(uid)
+        expect(f"{label} -> tier={expected_status} (immediate per Polar event)",
+               after and after["subscription_status"] == expected_status,
+               f"got {after['subscription_status'] if after else None}")
+        if was_founding:
+            expect(f"{label} -> founding preserved", after and after["is_founding_member"] is True)
+
+    # D5: Growth -> Scale with active seat addon (orphan-billing risk)
+    print("  --- D5 Growth -> Scale with paid seat addon ---")
+    uid = f"sandbox_test_d5_{uuid.uuid4().hex[:6]}"
+    create_test_user(uid, f"{uid}@test.example")
+    wsid = create_test_workspace(uid, "D5 Workspace")
+    cust = _subscribe(uid, "growth_monthly")
+    post_event("checkout.updated", {
+        "id": f"sandbox-e2e-seat-d5-{uid}",
+        "status": "succeeded",
+        "customerId": cust,
+        "productId": PRODUCTS["growth_seat_monthly"],
+        "metadata": {"userId": uid, "type": "team_seat", "workspaceId": wsid},
+    })
+    ws_pre = db_workspace(uid)
+    expect("D5 seat purchased -> seatLimit=4", ws_pre and ws_pre["seat_limit"] == 4)
+    sub_id = (db_user_full(uid) or {}).get("polar_subscription_id")
+    _send_subscription_updated(uid, cust, sub_id, "scale_monthly")
+    after = db_user_full(uid)
+    ws_post = db_workspace(uid)
+    expect("D5 user moved to scale tier", after and after["subscription_status"] == "scale")
+    expect("D5 FLAG seatLimit unchanged on Growth->non-Growth downgrade (orphan billing)",
+           ws_post and ws_post["seat_limit"] == 4,
+           f"got seatLimit={ws_post['seat_limit'] if ws_post else None}, FLAG: cascade-cancel needed for tier-downgrade not just revoke")
+
+
+# --- Domain E: Subscription renewal & lifecycle ---------------------------
+
+def domain_e_renewal_lifecycle():
+    print("\n[E] Subscription renewal & lifecycle")
+
+    # E1-E4: successful renewal preserves founding/trial, advances period
+    uid = f"sandbox_test_e1_{uuid.uuid4().hex[:6]}"
+    create_test_user(uid, f"{uid}@test.example")
+    cust = _subscribe(uid, "scale_monthly")
+    before = db_user_full(uid)
+    was_founding = bool(before and before["is_founding_member"])
+    founding_num = before["founding_member_number"] if before else None
+    trial_ends = before["trial_ends_at"] if before else None
+    sub_id = before["polar_subscription_id"]
+    post_event("subscription.updated", {
+        "id": sub_id, "customerId": cust,
+        "productId": PRODUCTS["scale_monthly"], "status": "active",
+        "currentPeriodStart": "2026-05-01T00:00:00Z",
+        "currentPeriodEnd": "2026-06-01T00:00:00Z",
+        "metadata": {"userId": uid},
+    })
+    after = db_user_full(uid)
+    expect("E1 renewal: tier unchanged", after and after["subscription_status"] == "scale")
+    expect("E2 renewal preserves is_founding_member",
+           after and bool(after["is_founding_member"]) == was_founding)
+    expect("E2b renewal preserves founding_member_number",
+           after and after["founding_member_number"] == founding_num,
+           f"before #{founding_num} after #{after['founding_member_number'] if after else None}")
+    expect("E3 renewal preserves trial_ends_at",
+           after and after["trial_ends_at"] == trial_ends)
+    expect("E4 renewal advances period_end",
+           after and after["current_period_end"] is not None)
+
+    # E5: past_due → free (per SEC-12)
+    uid = f"sandbox_test_e5_{uuid.uuid4().hex[:6]}"
+    create_test_user(uid, f"{uid}@test.example")
+    cust = _subscribe(uid, "scale_monthly")
+    sub_id = (db_user_full(uid) or {}).get("polar_subscription_id")
+    post_event("subscription.updated", {
+        "id": sub_id, "customerId": cust,
+        "productId": PRODUCTS["scale_monthly"], "status": "past_due",
+        "currentPeriodStart": "2026-04-01T00:00:00Z",
+        "currentPeriodEnd": "2026-05-01T00:00:00Z",
+        "metadata": {"userId": uid},
+    })
+    after = db_user_full(uid)
+    expect("E5 past_due -> dropped to free",
+           after and after["subscription_status"] == "free",
+           f"got {after['subscription_status'] if after else None}")
+
+    # E6: recovery from past_due
+    post_event("subscription.updated", {
+        "id": sub_id, "customerId": cust,
+        "productId": PRODUCTS["scale_monthly"], "status": "active",
+        "currentPeriodStart": "2026-05-01T00:00:00Z",
+        "currentPeriodEnd": "2026-06-01T00:00:00Z",
+        "metadata": {"userId": uid},
+    })
+    after = db_user_full(uid)
+    expect("E6 past_due -> active recovery restores tier",
+           after and after["subscription_status"] == "scale")
 
 
 # --- Run ------------------------------------------------------------------
@@ -623,6 +780,9 @@ if __name__ == "__main__":
         # Full-test plan domains (Kaulby-FullTest.md)
         domain_a_account_lifecycle()
         domain_b_first_subscribe()
+        domain_c_tier_upgrades()
+        domain_d_tier_downgrades()
+        domain_e_renewal_lifecycle()
     finally:
         print("\nCleaning up sandbox test data...")
         cleanup_sandbox_data()

@@ -509,6 +509,62 @@ export async function POST(request: NextRequest) {
               previousPlan: userBefore.subscriptionStatus,
             },
           });
+
+          // FullTest Bug #8: Cascade-cancel seat addons on Growth -> non-Growth
+          // tier downgrade. Symmetric to the Growth -> free cascade in
+          // subscription.revoked (PR #301). Without this, a user who downgrades
+          // from Growth to Scale/Solo keeps paying for seat addons their
+          // workspace can no longer use.
+          //
+          // Approach B: cancelAtPeriodEnd so user keeps the seats through their
+          // current seat billing period; existing seat-revoked handler decrements
+          // seatLimit naturally when each addon's period ends.
+          //
+          // Wrapped in try/catch so a Polar API failure doesn't fail the webhook.
+          if (
+            userBefore.subscriptionStatus === "growth" &&
+            effectiveStatus !== "growth" &&
+            !DEGRADED_STATUSES.includes(status)
+          ) {
+            try {
+              const { getPolarClient, isTeamSeatProduct, KAULBY_PRORATION_BEHAVIOR } =
+                await import("@/lib/polar");
+              const polar = await getPolarClient();
+              if (polar && customerId) {
+                const list = await polar.subscriptions.list({
+                  customerId: [customerId],
+                  active: true,
+                  limit: 100,
+                });
+                const subs = list?.result?.items ?? [];
+                const seatAddons = subs.filter((s) => isTeamSeatProduct(s.productId));
+                for (const sub of seatAddons) {
+                  await polar.subscriptions.update({
+                    id: sub.id,
+                    subscriptionUpdate: {
+                      cancelAtPeriodEnd: true,
+                      prorationBehavior: KAULBY_PRORATION_BEHAVIOR,
+                    },
+                  });
+                }
+                if (seatAddons.length > 0) {
+                  captureEvent({
+                    distinctId: userBefore.id,
+                    event: "seat_addons_cascade_canceled",
+                    properties: { provider: "polar", count: seatAddons.length, reason: "tier_downgrade" },
+                  });
+                  logger.info(`Cascade-canceled ${seatAddons.length} seat addon(s) on Growth -> ${effectiveStatus} downgrade`, {
+                    userId: userBefore.id,
+                  });
+                }
+              }
+            } catch (err) {
+              logger.error("Cascade seat-addon cancel on tier downgrade failed (main downgrade still committed)", {
+                userId: userBefore.id,
+                error: err instanceof Error ? err.message : String(err),
+              });
+            }
+          }
         }
         break;
       }
