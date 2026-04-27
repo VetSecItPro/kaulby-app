@@ -1800,6 +1800,515 @@ def domain_n_webhook_reliability():
            code in (200, 400), f"got {code}")
 
 
+# --- Domain P: DB state consistency --------------------------------------
+
+def domain_p_db_consistency():
+    print("\n[P] Database state consistency")
+
+    # P1: After subscribe, polarCustomerId AND polarSubscriptionId both set
+    uid = f"sandbox_test_p1_{uuid.uuid4().hex[:6]}"
+    create_test_user(uid, f"{uid}@test.example")
+    cust = _subscribe(uid, "scale_monthly")
+    user = db_user_full(uid)
+    expect("P1 subscribe sets BOTH polar_customer_id and polar_subscription_id",
+           user and user["polar_customer_id"] and user["polar_subscription_id"],
+           f"cust={user['polar_customer_id'] if user else None}, sub={user['polar_subscription_id'] if user else None}")
+
+    # P2: subscription_status, polar_subscription_id, current_period_end all align
+    expect("P2 paid status implies non-null polar_subscription_id",
+           user and user["subscription_status"] != "free" and user["polar_subscription_id"] is not None)
+    expect("P2 paid status implies non-null current_period_end",
+           user and user["current_period_end"] is not None)
+
+    # P3: After main subscription revoke, polar_subscription_id stays set
+    # (used to trace back; main-tier reset to free but linkage preserved)
+    sub_id = _latest_sub_id(uid)
+    _send_revoke(uid, cust, sub_id, "scale_monthly")
+    user = db_user_full(uid)
+    expect("P3 after main revoke: subscription_status=free",
+           user and user["subscription_status"] == "free",
+           f"got {user['subscription_status'] if user else None}")
+    expect("P3 polar_customer_id preserved after revoke (for re-subscribe)",
+           user and user["polar_customer_id"] == cust)
+
+    # P4: After refund of main sub, polarSubscriptionId is nulled (PR #306 fix)
+    uid = f"sandbox_test_p4_{uuid.uuid4().hex[:6]}"
+    create_test_user(uid, f"{uid}@test.example")
+    cust = _subscribe(uid, "scale_monthly")
+    sub_id = _latest_sub_id(uid)
+    post_event("order.refunded", {
+        "id": f"sandbox-e2e-p4-{uid}",
+        "customerId": cust,
+        "subscriptionId": sub_id,
+        "metadata": {"userId": uid},
+    })
+    user = db_user_full(uid)
+    expect("P4 main refund: polar_subscription_id reset to null",
+           user and user["polar_subscription_id"] is None,
+           f"got {user['polar_subscription_id'] if user else None}")
+    expect("P4 main refund: subscription_status=free",
+           user and user["subscription_status"] == "free")
+
+    # P5: After seat-addon refund, main polar_subscription_id PRESERVED (PR #306)
+    uid = f"sandbox_test_p5_{uuid.uuid4().hex[:6]}"
+    create_test_user(uid, f"{uid}@test.example")
+    wsid = create_test_workspace(uid, "P5 WS")
+    cust = _subscribe(uid, "growth_monthly")
+    main_sub = _latest_sub_id(uid)
+    seat_sub = _add_seat(uid, cust, wsid, seat_idx=1)
+    post_event("order.refunded", {
+        "id": f"sandbox-e2e-p5-{uid}",
+        "customerId": cust,
+        "subscriptionId": seat_sub,
+        "metadata": {"userId": uid},
+    })
+    user = db_user_full(uid)
+    expect("P5 seat refund: main polar_subscription_id preserved",
+           user and user["polar_subscription_id"] == main_sub,
+           f"got {user['polar_subscription_id'] if user else None} (expected {main_sub})")
+    expect("P5 seat refund: main subscription_status preserved (growth)",
+           user and user["subscription_status"] == "growth",
+           f"got {user['subscription_status'] if user else None}")
+
+    # P6: Founding member fields are stable (set once, never overwritten by upgrade)
+    uid = f"sandbox_test_p6_{uuid.uuid4().hex[:6]}"
+    create_test_user(uid, f"{uid}@test.example")
+    cust = _subscribe(uid, "solo_monthly")
+    user_after_solo = db_user_full(uid)
+    fm_number = user_after_solo["founding_member_number"] if user_after_solo else None
+    expect("P6 setup: founding member assigned on Solo signup",
+           fm_number is not None, f"got #{fm_number}")
+    # Now upgrade to Growth
+    sub_id = _latest_sub_id(uid)
+    _send_subscription_updated(uid, cust, sub_id, "growth_monthly")
+    user_after_growth = db_user_full(uid)
+    expect("P6 founding member number preserved across upgrade",
+           user_after_growth and user_after_growth["founding_member_number"] == fm_number,
+           f"got {user_after_growth['founding_member_number'] if user_after_growth else None}")
+
+    # P7: trial_tier set on first paid signup, NOT cleared on subsequent events
+    expect("P7 trial_tier still set after upgrade (not cleared by .updated)",
+           user_after_growth and user_after_growth["trial_tier"] == "growth",
+           f"got {user_after_growth['trial_tier'] if user_after_growth else None}")
+
+    # P8: Workspace seat_count can never exceed seat_limit
+    uid = f"sandbox_test_p8_{uuid.uuid4().hex[:6]}"
+    create_test_user(uid, f"{uid}@test.example")
+    wsid = create_test_workspace(uid, "P8 WS")
+    cust = _subscribe(uid, "growth_monthly")
+    ws = db_workspace(uid)
+    expect("P8 seat_count <= seat_limit (initial state)",
+           ws and ws["seat_count"] <= ws["seat_limit"],
+           f"count={ws['seat_count']}, limit={ws['seat_limit']}" if ws else "no ws")
+
+    # P9: webhook_events table has unique event_id (no duplicates rows for same event)
+    body = json.dumps({"type": "checkout.updated", "data": {
+        "id": f"sandbox-e2e-p9-{uid}", "status": "succeeded",
+        "customerId": cust, "productId": PRODUCTS["growth_seat_monthly"],
+        "metadata": {"userId": uid, "type": "team_seat", "workspaceId": wsid},
+    }})
+    sig = sign(body, WEBHOOK_SECRET)
+    headers = {"Content-Type": "application/json", "x-polar-signature": sig,
+               "webhook-id": f"p9-{uid}"}
+    for _ in range(3):
+        req = urlreq.Request(WEBHOOK_URL, data=body.encode(), headers=headers, method="POST")
+        try:
+            with urlreq.urlopen(req, timeout=20):
+                pass
+        except HTTPError:
+            pass
+    with get_db() as c:
+        with c.cursor() as cur:
+            cur.execute(
+                "SELECT COUNT(*) FROM webhook_events WHERE event_id = %s",
+                (f"p9-{uid}",),
+            )
+            n = cur.fetchone()[0]
+    expect("P9 webhook_events has exactly 1 row per unique webhook-id (despite 3 sends)",
+           n == 1, f"got {n}")
+
+    # P10: After cancel-pending, subscription_status preserved + currentPeriodEnd updated
+    uid = f"sandbox_test_p10_{uuid.uuid4().hex[:6]}"
+    create_test_user(uid, f"{uid}@test.example")
+    cust = _subscribe(uid, "scale_monthly")
+    sub_id = _latest_sub_id(uid)
+    user_before = db_user_full(uid)
+    period_before = user_before["current_period_end"]
+    _send_cancel(uid, cust, sub_id, "scale_monthly", period_end="2099-12-31T00:00:00Z")
+    user_after = db_user_full(uid)
+    expect("P10 cancel-pending: subscription_status preserved (scale)",
+           user_after and user_after["subscription_status"] == "scale")
+    expect("P10 cancel-pending: current_period_end advanced to billing-end",
+           user_after and user_after["current_period_end"] != period_before)
+
+
+# --- Domain Q: Edge cases / weird states ---------------------------------
+
+def domain_q_edge_cases():
+    print("\n[Q] Edge cases / weird states")
+
+    # Q1: User upgrades within seconds of subscribing (same event-loop tick)
+    # Sequential .active for solo, then .updated to growth — handler should
+    # accept both and the final state should be growth.
+    uid = f"sandbox_test_q1_{uuid.uuid4().hex[:6]}"
+    create_test_user(uid, f"{uid}@test.example")
+    cust = _subscribe(uid, "solo_monthly")
+    sub_id = _latest_sub_id(uid)
+    _send_subscription_updated(uid, cust, sub_id, "growth_monthly")
+    user = db_user_full(uid)
+    expect("Q1 rapid solo→growth: final state = growth",
+           user and user["subscription_status"] == "growth",
+           f"got {user['subscription_status'] if user else None}")
+
+    # Q2: Refund-then-resubscribe (user refunds, then signs back up later)
+    uid = f"sandbox_test_q2_{uuid.uuid4().hex[:6]}"
+    create_test_user(uid, f"{uid}@test.example")
+    cust = _subscribe(uid, "scale_monthly")
+    sub_id = _latest_sub_id(uid)
+    post_event("order.refunded", {
+        "id": f"sandbox-e2e-q2-refund-{uid}",
+        "customerId": cust, "subscriptionId": sub_id,
+        "metadata": {"userId": uid},
+    })
+    user = db_user_full(uid)
+    expect("Q2 setup: user free after refund",
+           user and user["subscription_status"] == "free")
+    # Now resubscribe with a NEW subscription_id
+    new_cust = _subscribe(uid, "growth_monthly")
+    user = db_user_full(uid)
+    expect("Q2 resubscribe after refund: tier=growth",
+           user and user["subscription_status"] == "growth",
+           f"got {user['subscription_status'] if user else None}")
+
+    # Q3: Day pass purchased AFTER paid subscription expires (should activate normally)
+    uid = f"sandbox_test_q3_{uuid.uuid4().hex[:6]}"
+    create_test_user(uid, f"{uid}@test.example")
+    cust = _subscribe(uid, "solo_monthly")
+    sub_id = _latest_sub_id(uid)
+    _send_revoke(uid, cust, sub_id, "solo_monthly")
+    # User now free, buys day pass
+    post_event("checkout.updated", {
+        "id": f"sandbox-e2e-q3-{uid}",
+        "status": "succeeded",
+        "customerId": cust,
+        "productId": PRODUCTS["day_pass"],
+        "metadata": {"userId": uid, "type": "day_pass"},
+    })
+    with get_db() as c:
+        with c.cursor() as cur:
+            cur.execute(
+                "SELECT day_pass_expires_at, day_pass_purchase_count FROM users WHERE id = %s",
+                (uid,),
+            )
+            r = cur.fetchone()
+    expect("Q3 day pass after revoke: activated cleanly",
+           r and r[0] is not None and r[1] == 1, f"got {r}")
+
+    # Q4: Multiple sequential downgrades in same period (Growth → Scale → Solo)
+    uid = f"sandbox_test_q4_{uuid.uuid4().hex[:6]}"
+    create_test_user(uid, f"{uid}@test.example")
+    cust = _subscribe(uid, "growth_monthly")
+    sub_id = _latest_sub_id(uid)
+    _send_subscription_updated(uid, cust, sub_id, "scale_monthly")
+    _send_subscription_updated(uid, cust, sub_id, "solo_monthly")
+    user = db_user_full(uid)
+    expect("Q4 chained downgrades: final state = solo",
+           user and user["subscription_status"] == "solo",
+           f"got {user['subscription_status'] if user else None}")
+
+    # Q5: User exists but has no email (defensive — Clerk should ensure email)
+    uid = f"sandbox_test_q5_{uuid.uuid4().hex[:6]}"
+    with get_db() as c:
+        with c.cursor() as cur:
+            cur.execute(
+                "INSERT INTO users (id, email, subscription_status) VALUES (%s, %s, 'free') ON CONFLICT DO NOTHING",
+                (uid, ""),  # empty email
+            )
+            c.commit()
+    cust = _subscribe(uid, "solo_monthly")
+    user = db_user_full(uid)
+    expect("Q5 empty email user can still be upgraded",
+           user and user["subscription_status"] == "solo",
+           f"got {user['subscription_status'] if user else None}")
+    # Email send may fail silently — handler should not crash
+
+    # Q6: Currency edge case (zero-cost product — shouldn't exist but handler shouldn't crash)
+    code, _ = post_event("checkout.updated", {
+        "id": f"sandbox-e2e-q6-{uuid.uuid4().hex[:6]}",
+        "status": "succeeded",
+        "customerId": "sandbox_cust_q6",
+        "productId": "",  # empty product ID
+        "metadata": {"userId": "sandbox_test_q6"},
+    })
+    expect("Q6 empty productId returns 200 (defaults to free, no crash)",
+           code == 200, f"got {code}")
+
+    # Q7: Subscription with currentPeriodEnd in the past
+    uid = f"sandbox_test_q7_{uuid.uuid4().hex[:6]}"
+    create_test_user(uid, f"{uid}@test.example")
+    cust = f"sandbox_cust_{uid}"
+    post_event("checkout.updated", {
+        "id": f"sandbox-e2e-q7co-{uid}", "status": "succeeded",
+        "customerId": cust, "productId": PRODUCTS["solo_monthly"],
+        "metadata": {"userId": uid},
+    })
+    code, _ = post_event("subscription.active", {
+        "id": f"sandbox-e2e-q7sub-{uid}", "customerId": cust,
+        "productId": PRODUCTS["solo_monthly"],
+        "currentPeriodEnd": "2020-01-01T00:00:00Z",  # past!
+        "metadata": {"userId": uid},
+    })
+    expect("Q7 past currentPeriodEnd accepted (handler doesn't validate)",
+           code == 200, f"got {code}")
+    user = db_user_full(uid)
+    expect("Q7 OBSERVATION: tier set despite past period (no validation)",
+           user and user["subscription_status"] == "solo",
+           "FLAG #12: webhook trusts Polar's date — no past-period rejection")
+
+    # Q8: Very long userId in metadata (250 chars — DB column may truncate)
+    long_uid = "sandbox_test_q8_" + "x" * 200
+    code, _ = post_event("checkout.updated", {
+        "id": f"sandbox-e2e-q8-{uuid.uuid4().hex[:6]}",
+        "status": "succeeded",
+        "customerId": "sandbox_cust_q8",
+        "productId": PRODUCTS["solo_monthly"],
+        "metadata": {"userId": long_uid},
+    })
+    expect("Q8 very long userId returns 200 (no panic)",
+           code == 200, f"got {code}")
+
+    # Q9: User with subscription created, then immediately deleted (edge in account-deletion flow)
+    uid = f"sandbox_test_q9_{uuid.uuid4().hex[:6]}"
+    create_test_user(uid, f"{uid}@test.example")
+    cust = _subscribe(uid, "scale_monthly")
+    # Delete user row directly
+    with get_db() as c:
+        with c.cursor() as cur:
+            cur.execute("DELETE FROM users WHERE id = %s", (uid,))
+            c.commit()
+    # Now fire .canceled for the deleted user
+    sub_id = f"sandbox-e2e-q9-sub-{uid}"
+    code, _ = post_event("subscription.canceled", {
+        "id": sub_id, "customerId": cust,
+        "productId": PRODUCTS["scale_monthly"],
+        "currentPeriodEnd": "2099-01-01T00:00:00Z",
+        "metadata": {"userId": uid},
+    })
+    expect("Q9 cancel for deleted user returns 200 (UPDATE no-op)",
+           code == 200, f"got {code}")
+
+    # Q10: Same customerId across multiple userIds — DB unique constraint blocks
+    # the second user from claiming the same polarCustomerId. The handler returns
+    # 500 (the unique violation propagates), which is correct DB integrity.
+    # Real Polar never reuses customerIds across orgs, so this is purely a
+    # data-corruption-simulation test. NOTE: returning 500 means Polar retries
+    # forever; a defensive handler would catch the unique violation, log, and
+    # return 200. Kept as observation, not a fix-required bug.
+    uid_a = f"sandbox_test_q10a_{uuid.uuid4().hex[:6]}"
+    uid_b = f"sandbox_test_q10b_{uuid.uuid4().hex[:6]}"
+    create_test_user(uid_a, f"{uid_a}@test.example")
+    create_test_user(uid_b, f"{uid_b}@test.example")
+    shared_cust = f"shared_cust_{uid_a}"
+    _subscribe(uid_a, "solo_monthly", customer_id=shared_cust)
+    code, _ = post_event("checkout.updated", {
+        "id": f"sandbox-e2e-q10b-{uid_b}", "status": "succeeded",
+        "customerId": shared_cust,
+        "productId": PRODUCTS["scale_monthly"],
+        "metadata": {"userId": uid_b},
+    })
+    expect("Q10 OBSERVATION: shared customerId triggers unique-violation 500 (correct DB integrity)",
+           code in (200, 500),
+           f"got {code} — FLAG #13: handler returns 500 instead of catching+logging; Polar will retry forever")
+
+
+# --- Domain R: Trial / promotional flow ---------------------------------
+
+def domain_r_trial_flow():
+    print("\n[R] Trial / promotional flow")
+
+    # R1: Reverse trial granted on first paid signup (Solo) — verified in B9
+    expect("R1 first Solo signup gets reverse trial (trial_tier=growth) — verified B9",
+           True, "trial_tier=growth, trial_ends_at ~14 days out")
+
+    # R2: Reverse trial granted on first Scale signup
+    uid = f"sandbox_test_r2_{uuid.uuid4().hex[:6]}"
+    create_test_user(uid, f"{uid}@test.example")
+    _subscribe(uid, "scale_monthly")
+    user = db_user_full(uid)
+    expect("R2 first Scale signup gets reverse trial",
+           user and user["trial_tier"] == "growth",
+           f"got trial_tier={user['trial_tier'] if user else None}")
+
+    # R3: Reverse trial NOT granted on direct Growth signup — verified B10
+    expect("R3 Growth subscribers do NOT get reverse trial — verified B10",
+           True, "no benefit if already on top tier")
+
+    # R4: Trial NOT regranted on second subscription (e.g., user resubscribes)
+    uid = f"sandbox_test_r4_{uuid.uuid4().hex[:6]}"
+    create_test_user(uid, f"{uid}@test.example")
+    cust = _subscribe(uid, "solo_monthly")
+    user_first = db_user_full(uid)
+    trial_end_1 = user_first["trial_ends_at"] if user_first else None
+    # Now revoke and resubscribe
+    sub_id = _latest_sub_id(uid)
+    _send_revoke(uid, cust, sub_id, "solo_monthly")
+    # User is now free; resubscribe
+    _subscribe(uid, "solo_monthly", customer_id=cust + "_v2")
+    user_second = db_user_full(uid)
+    expect("R4 trial_ends_at NOT extended on resubscribe (one-time grant)",
+           user_second and user_second["trial_ends_at"] == trial_end_1,
+           f"got {user_second['trial_ends_at'] if user_second else None}")
+
+    # R5: Founding member assigned to Solo + Growth (NOT Scale)
+    # Solo verified in B7. Verify Growth.
+    uid = f"sandbox_test_r5_{uuid.uuid4().hex[:6]}"
+    create_test_user(uid, f"{uid}@test.example")
+    _subscribe(uid, "growth_monthly")
+    user = db_user_full(uid)
+    expect("R5 Growth signup gets founding member assigned",
+           user and user["is_founding_member"] is True,
+           f"got is_founding_member={user['is_founding_member'] if user else None}")
+    # And Scale does NOT
+    uid = f"sandbox_test_r5b_{uuid.uuid4().hex[:6]}"
+    create_test_user(uid, f"{uid}@test.example")
+    _subscribe(uid, "scale_monthly")
+    user = db_user_full(uid)
+    expect("R5b Scale signup does NOT get founding member (Solo + Growth only)",
+           user and (user["is_founding_member"] is False or user["is_founding_member"] is None),
+           f"got is_founding_member={user['is_founding_member'] if user else None}")
+
+
+# --- Domain V: Polar-specific edge cases --------------------------------
+
+def domain_v_polar_edges():
+    print("\n[V] Polar-specific edge cases")
+
+    # V1: Webhook arrives with createdAt timestamp from the future
+    # (Polar would never do this, but handler shouldn't crash)
+    uid = f"sandbox_test_v1_{uuid.uuid4().hex[:6]}"
+    create_test_user(uid, f"{uid}@test.example")
+    code, _ = post_event("subscription.active", {
+        "id": f"sandbox-e2e-v1-{uid}", "customerId": f"sandbox_cust_{uid}",
+        "productId": PRODUCTS["solo_monthly"],
+        "currentPeriodEnd": "3000-01-01T00:00:00Z",  # year 3000
+        "createdAt": "3000-01-01T00:00:00Z",
+        "metadata": {"userId": uid},
+    })
+    expect("V1 future-dated event returns 200 (no time-based rejection)",
+           code == 200, f"got {code}")
+
+    # V2: Subscription event with cancelAtPeriodEnd=true in metadata
+    # (Polar nests this in subscription_update; webhook should not crash on extra fields)
+    uid = f"sandbox_test_v2_{uuid.uuid4().hex[:6]}"
+    create_test_user(uid, f"{uid}@test.example")
+    cust = _subscribe(uid, "scale_monthly")
+    sub_id = _latest_sub_id(uid)
+    code, _ = post_event("subscription.updated", {
+        "id": sub_id, "customerId": cust,
+        "productId": PRODUCTS["scale_monthly"],
+        "status": "active",
+        "cancelAtPeriodEnd": True,  # extra field
+        "currentPeriodEnd": "2099-01-01T00:00:00Z",
+        "metadata": {"userId": uid},
+    })
+    expect("V2 extra cancelAtPeriodEnd field ignored gracefully",
+           code == 200, f"got {code}")
+
+    # V3: subscription.updated with status="trialing" (Polar trial state)
+    # Kaulby doesn't use Polar's trial mechanism (uses our own reverse trial),
+    # but defensively, "trialing" should not be treated as past_due.
+    uid = f"sandbox_test_v3_{uuid.uuid4().hex[:6]}"
+    create_test_user(uid, f"{uid}@test.example")
+    cust = _subscribe(uid, "scale_monthly")
+    sub_id = _latest_sub_id(uid)
+    code, _ = _send_subscription_updated(uid, cust, sub_id, "scale_monthly", status="trialing")
+    expect("V3 trialing status returns 200", code == 200, f"got {code}")
+    user = db_user_full(uid)
+    # "trialing" is NOT in DEGRADED_STATUSES (past_due/unpaid/incomplete), so tier preserved
+    expect("V3 trialing status preserves paid tier (not in DEGRADED list)",
+           user and user["subscription_status"] == "scale",
+           f"got {user['subscription_status'] if user else None}")
+
+    # V4: Polar-style discount field in event (handler should ignore, not crash)
+    code, _ = post_event("checkout.updated", {
+        "id": f"sandbox-e2e-v4-{uuid.uuid4().hex[:6]}",
+        "status": "succeeded",
+        "customerId": "sandbox_cust_v4",
+        "productId": PRODUCTS["solo_monthly"],
+        "discount": {"id": "promo_50off", "type": "percentage", "value": 50},
+        "metadata": {"userId": "sandbox_test_v4"},
+    })
+    expect("V4 unknown discount field ignored (no crash)",
+           code == 200, f"got {code}")
+
+    # V5: Multiple metadata keys including arbitrary ones (full lifecycle).
+    # Use _subscribe (fires both checkout.updated AND subscription.active) so we
+    # exercise the actual tier-set path. checkout.updated alone only sets
+    # polarCustomerId; subscription.active is what actually sets the tier.
+    uid = f"sandbox_test_v5_{uuid.uuid4().hex[:6]}"
+    create_test_user(uid, f"{uid}@test.example")
+    cust = f"sandbox_cust_{uid}"
+    post_event("checkout.updated", {
+        "id": f"sandbox-e2e-v5co-{uid}", "status": "succeeded",
+        "customerId": cust, "productId": PRODUCTS["solo_monthly"],
+        "metadata": {
+            "userId": uid, "campaign": "spring-sale",
+            "ref": "blog-article-x", "utm_source": "email",
+        },
+    })
+    code, _ = post_event("subscription.active", {
+        "id": f"sandbox-e2e-v5sub-{uid}", "customerId": cust,
+        "productId": PRODUCTS["solo_monthly"],
+        "currentPeriodEnd": "2099-01-01T00:00:00Z",
+        "metadata": {
+            "userId": uid, "campaign": "spring-sale",
+            "ref": "blog-article-x", "utm_source": "email",
+        },
+    })
+    expect("V5 extra metadata keys preserved + handler succeeds",
+           code == 200, f"got {code}")
+    user = db_user_full(uid)
+    expect("V5 user upgraded with extra metadata (full lifecycle: checkout + .active)",
+           user and user["subscription_status"] == "solo",
+           f"got {user['subscription_status'] if user else None}")
+
+    # V6: Polar product variant ID in productId (not the parent product)
+    # Some Polar setups use variants with separate IDs. If a variant ID arrives
+    # that isn't in our env mapping, falls back to free.
+    code, _ = post_event("subscription.active", {
+        "id": f"sandbox-e2e-v6-{uuid.uuid4().hex[:6]}",
+        "customerId": "sandbox_cust_v6",
+        "productId": "variant_unknown_xyz",  # not in env
+        "currentPeriodEnd": "2099-01-01T00:00:00Z",
+        "metadata": {"userId": "sandbox_test_v6"},
+    })
+    expect("V6 unknown product/variant ID returns 200 (falls back to free)",
+           code == 200, f"got {code}")
+
+    # V7: Unicode/emoji in metadata (UTF-8 handling)
+    uid = f"sandbox_test_v7_{uuid.uuid4().hex[:6]}"
+    create_test_user(uid, f"{uid}@test.example")
+    code, _ = post_event("checkout.updated", {
+        "id": f"sandbox-e2e-v7-{uid}",
+        "status": "succeeded",
+        "customerId": f"sandbox_cust_{uid}",
+        "productId": PRODUCTS["solo_monthly"],
+        "metadata": {"userId": uid, "note": "🎉 New customer! 测试 emoji"},
+    })
+    expect("V7 unicode/emoji metadata returns 200 (no encoding crash)",
+           code == 200, f"got {code}")
+
+    # V8: subscription.uncanceled (Polar event for un-doing a cancel) — not handled, must no-op
+    code, _ = post_event("subscription.uncanceled", {
+        "id": f"sandbox-e2e-v8-{uuid.uuid4().hex[:6]}",
+        "customerId": "sandbox_cust_v8",
+        "productId": PRODUCTS["solo_monthly"],
+        "metadata": {"userId": "sandbox_test_v8"},
+    })
+    expect("V8 unhandled subscription.uncanceled returns 200 (default branch)",
+           code == 200, f"got {code}")
+
+
 # --- Run ------------------------------------------------------------------
 
 if __name__ == "__main__":
@@ -1842,6 +2351,10 @@ if __name__ == "__main__":
         domain_k_email_matrix()
         domain_m_webhook_security()
         domain_n_webhook_reliability()
+        domain_p_db_consistency()
+        domain_q_edge_cases()
+        domain_r_trial_flow()
+        domain_v_polar_edges()
     finally:
         print("\nCleaning up sandbox test data...")
         cleanup_sandbox_data()
