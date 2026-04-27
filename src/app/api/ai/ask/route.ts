@@ -151,7 +151,7 @@ You can do EVERYTHING the user can do in the dashboard:
 - **Audiences**: Create groups, add/remove monitors to organize them
 - **Bookmarks**: Bookmark results with notes, organize into collections
 - **Saved Searches**: Save and manage search queries for quick access
-- **Webhooks**: Create, list, and delete webhook integrations (Team plan)
+- **Webhooks**: Create, list, and delete webhook integrations (Growth plan)
 - **Notifications**: View and mark notifications as read
 - **Reports**: Create shareable report links, export results as CSV
 - **Integrations**: Check status of Slack, Discord, HubSpot, Teams connections

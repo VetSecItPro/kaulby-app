@@ -106,9 +106,10 @@ export default function PrivacyPage() {
             the Service. Monitored results are retained according to your subscription plan:
           </p>
           <ul className="list-disc list-inside text-muted-foreground mt-4 space-y-2">
-            <li>Free plan: 7 days</li>
-            <li>Pro plan: 30 days</li>
-            <li>Team plan: 365 days</li>
+            <li>Free plan: 3 days</li>
+            <li>Solo plan: 90 days</li>
+            <li>Scale plan: 180 days</li>
+            <li>Growth plan: 365 days</li>
           </ul>
           <p className="text-muted-foreground leading-relaxed mt-4">
             You may request deletion of your account and data at any time.

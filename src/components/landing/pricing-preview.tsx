@@ -35,35 +35,50 @@ const tiers: PricingTier[] = [
     href: "/sign-up",
   },
   {
-    name: "Pro",
-    price: "$29",
+    name: "Solo",
+    price: "$39",
     period: "/month",
     features: [
       "10 monitors",
       "9 platforms",
-      "10 keywords per monitor",
-      "4hr refresh cycle",
+      "Unlimited keywords",
+      "6hr refresh cycle",
       "Full AI analysis + lead scoring",
       "Email alerts + Slack",
     ],
-    cta: "Start Pro Trial",
-    href: "/sign-up",
+    cta: "Start Solo Trial",
+    href: "/sign-up?plan=solo",
+  },
+  {
+    name: "Scale",
+    price: "$79",
+    period: "/month",
+    features: [
+      "20 monitors",
+      "12 platforms (+ G2, Yelp, Amazon)",
+      "Unlimited keywords",
+      "4hr refresh cycle",
+      "All Solo features",
+      "180-day history",
+    ],
+    cta: "Start Scale Trial",
+    href: "/sign-up?plan=scale",
     highlighted: true,
   },
   {
-    name: "Team",
-    price: "$99",
+    name: "Growth",
+    price: "$149",
     period: "/month",
     features: [
       "30 monitors",
       "All 16 platforms",
-      "20 keywords per monitor",
       "2hr refresh cycle",
       "Comprehensive AI + API access",
       "Team workspaces + webhooks",
+      "3 team seats included",
     ],
-    cta: "Contact Us",
-    href: "/pricing",
+    cta: "Start Growth Trial",
+    href: "/sign-up?plan=growth",
   },
 ];
 
@@ -86,7 +101,7 @@ export function PricingPreview() {
           </p>
         </AnimatedSection>
 
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {tiers.map((tier, index) => (
             <AnimatedSection key={tier.name} delay={index * 0.1}>
               <Card

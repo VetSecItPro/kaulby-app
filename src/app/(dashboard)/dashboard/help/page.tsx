@@ -56,11 +56,11 @@ const faqs = [
   },
   {
     question: "Why is some AI analysis locked or blurred?",
-    answer: "Free users get AI analysis on their first result only. This lets you see the value before upgrading. Pro and Team plans include unlimited AI analysis on all results, plus enhanced insights like pain point detection and category classification.",
+    answer: "Free users get AI analysis on their first result only. This lets you see the value before upgrading. Pro and Growth plans include unlimited AI analysis on all results, plus enhanced insights like pain point detection and category classification.",
   },
   {
     question: "How do I get notified about new mentions?",
-    answer: "Go to Settings → Notifications. You can enable daily email digests (sent at 9 AM your timezone), or connect Slack/Discord for instant notifications (Pro+). Team plans also support custom webhooks for integrations.",
+    answer: "Go to Settings → Notifications. You can enable daily email digests (sent at 9 AM your timezone), or connect Slack/Discord for instant notifications (Pro+). Growth plans also support custom webhooks for integrations.",
   },
   {
     question: "What happens to my data if I downgrade or cancel?",
@@ -68,7 +68,7 @@ const faqs = [
   },
   {
     question: "Can multiple people on my team access Kaulby?",
-    answer: "Team plan includes 3 seats with shared access to all monitors and results. Additional members are $20/user/month. Each member can set their own notification preferences while sharing the same monitoring data.",
+    answer: "Growth plan includes 3 seats with shared access to all monitors and results. Additional members are $20/user/month. Each member can set their own notification preferences while sharing the same monitoring data.",
   },
 ];
 
@@ -310,7 +310,7 @@ export default function HelpPage() {
 
             <div className="p-4 rounded-lg bg-muted/50">
               <p className="text-xs text-muted-foreground">
-                <strong>Plan limits:</strong> Free: 1 monitor, 3 keywords · Pro: 10 monitors, 10 keywords each, 9 platforms · Team: 30 monitors, 20 keywords each, all 16 platforms
+                <strong>Plan limits:</strong> Free: 1 monitor, 3 keywords · Solo: 10 monitors, unlimited keywords, 9 platforms · Scale: 20 monitors, unlimited keywords, 12 platforms · Growth: 30 monitors, unlimited keywords, all 16 platforms
               </p>
             </div>
           </CardContent>
@@ -634,7 +634,7 @@ export default function HelpPage() {
 
             <div className="p-4 rounded-lg bg-muted/50">
               <p className="text-sm text-muted-foreground">
-                <strong>Platform availability:</strong> Free users can monitor Reddit only. Pro plans include 9 platforms. Team plans include all 16 platforms.
+                <strong>Platform availability:</strong> Free users can monitor Reddit only. Pro plans include 9 platforms. Growth plans include all 16 platforms.
               </p>
             </div>
           </CardContent>
@@ -1353,10 +1353,10 @@ export default function HelpPage() {
             <div className="space-y-3">
               <h4 className="font-medium">What&apos;s Included</h4>
               <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-2">
-                <li>Up to 10 monitors during your 24-hour window</li>
-                <li>Access to 9 Pro platforms</li>
+                <li>Up to 20 monitors during your 24-hour window</li>
+                <li>Access to 12 platforms (Scale-level: Reddit, HN, Indie Hackers, Product Hunt, Google Reviews, YouTube, GitHub, Trustpilot, X, G2, Yelp, Amazon Reviews)</li>
                 <li>Unlimited AI analysis</li>
-                <li>10 keywords per monitor</li>
+                <li>Unlimited keywords per monitor</li>
                 <li>CSV export</li>
               </ul>
             </div>
@@ -1429,13 +1429,13 @@ export default function HelpPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              The Team plan allows multiple people to access your Kaulby account. All team members share monitors, results, and settings - perfect for marketing, product, and support teams working together.
+              The Growth plan allows multiple people to access your Kaulby account. All team members share monitors, results, and settings - perfect for marketing, product, and support teams working together.
             </p>
 
             <div className="space-y-3">
               <h4 className="font-medium">Creating a Workspace</h4>
               <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground ml-2">
-                <li>Upgrade to the Team plan (or start a trial)</li>
+                <li>Upgrade to the Growth plan (or start a trial)</li>
                 <li>Go to <strong>Settings</strong> → <strong>Team</strong></li>
                 <li>Your workspace is automatically created</li>
                 <li>Start inviting team members</li>
@@ -1474,7 +1474,7 @@ export default function HelpPage() {
 
             <div className="p-4 rounded-lg bg-muted/50">
               <p className="text-sm text-muted-foreground">
-                <strong>Seats:</strong> Team plan includes 3 seats. Additional members are $20/user/month. Remove members anytime from the Team settings.
+                <strong>Seats:</strong> Growth plan includes 3 seats. Additional members are $20/user/month. Remove members anytime from the Team settings.
               </p>
             </div>
           </CardContent>
@@ -1631,7 +1631,7 @@ export default function HelpPage() {
               <div className="p-4 rounded-lg border">
                 <h4 className="font-medium mb-2">API key not working</h4>
                 <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• <strong>Plan check:</strong> API access requires the Team plan</li>
+                  <li>• <strong>Plan check:</strong> API access requires the Growth plan</li>
                   <li>• <strong>Header format:</strong> Use <code className="px-1 py-0.5 bg-muted rounded text-xs">Authorization: Bearer kaulby_live_xxx</code></li>
                   <li>• <strong>Key status:</strong> Verify the key hasn&apos;t been revoked in Settings</li>
                   <li>• <strong>Rate limits:</strong> Check if you&apos;ve hit the daily limit (10,000 requests)</li>
@@ -1689,9 +1689,9 @@ export default function HelpPage() {
               <div className="p-4 rounded-lg border">
                 <h4 className="font-medium mb-2">Can&apos;t access certain platforms</h4>
                 <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• <strong>Plan restrictions:</strong> Free users only have Reddit access - Pro has 9 platforms, Team has all 17</li>
-                  <li>• <strong>Grayed out:</strong> Platforms showing as locked require Pro or Team plan depending on the platform</li>
-                  <li>• <strong>Day Pass:</strong> Need temporary access? Buy a 24-hour Day Pass for $9</li>
+                  <li>• <strong>Plan restrictions:</strong> Free users only have Reddit access - Solo has 9 platforms, Scale has 12, Growth has all 16</li>
+                  <li>• <strong>Grayed out:</strong> Platforms showing as locked require a higher tier (Solo, Scale, or Growth depending on the platform)</li>
+                  <li>• <strong>Day Pass:</strong> Need temporary access? Buy a 24-hour Day Pass for $15 (gives Scale-level access)</li>
                 </ul>
               </div>
             </div>
