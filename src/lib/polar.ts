@@ -2,8 +2,9 @@ import { logger } from "@/lib/logger";
 import { PLANS, type PlanKey, type BillingInterval } from "@/lib/plans";
 export type { BillingInterval } from "@/lib/plans";
 
-// Polar SDK - dynamically imported to prevent build errors when not installed
+// Polar SDK - dynamically imported to prevent build errors when not installed.
 // Install with: pnpm add @polar-sh/sdk
+// POLAR_ENV switches between sandbox + production backends; see runbook.
 type PolarRequestOptions = {
   headers?: Record<string, string>;
 };
