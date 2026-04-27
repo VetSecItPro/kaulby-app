@@ -145,6 +145,31 @@ export const scheduledAccountDeletion = inngest.createFunction(
       });
     }
 
+    // Step 7.5: Emit a structured audit log entry BEFORE deletion runs.
+    //
+    // We deliberately do NOT write a row to activity_logs here, even though
+    // there's a clear audit-trail gap on paper: activity_logs.userId and
+    // activity_logs.workspaceId both cascade-delete on user/workspace removal
+    // (correct GDPR behavior). Any DB row we wrote would vanish in the same
+    // transaction that's about to run. Instead, we emit a structured logger
+    // line with an explicit [AUDIT] tag - logger output goes to an external
+    // sink (Sentry / log aggregator) that persists past user deletion, which
+    // is what an audit trail actually needs.
+    await step.run("audit-log-deletion", async () => {
+      logger.info("[AUDIT] account_deletion_executed", {
+        action: "account_deletion_executed",
+        userId,
+        email,
+        polarSubscriptionId: userBeforeDeletion.polarSubscriptionId ?? null,
+        polarCustomerId: userBeforeDeletion.polarCustomerId ?? null,
+        deletionRequestedAt: userBeforeDeletion.deletionRequestedAt
+          ? new Date(userBeforeDeletion.deletionRequestedAt as string | number | Date).toISOString()
+          : null,
+        executedAt: new Date().toISOString(),
+        compliance: { gdpr: "art_17", ccpa: "1798_105" },
+      });
+    });
+
     // Step 8: Delete all user data from database (FIX-111: uses transaction for atomicity)
     await step.run("delete-user-data", async () => {
       await deleteAllUserData(userId);
