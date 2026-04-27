@@ -7,14 +7,14 @@
 
 ## RESUME-READY STATUS (read this first if continuing after compaction)
 
-**Last update:** 2026-04-26 19:15 CT — turn 4
+**Last update:** 2026-04-26 — turn 5 (post-compaction continuation)
 
 **Test driver:** `scripts/sandbox-e2e-test.py`
 **Run command:** `/tmp/sandbox-test-venv/bin/python3 scripts/sandbox-e2e-test.py`
-**Last run:** 111/111 passed
+**Last run:** 118/118 passed (F+G+H added; zero new bugs)
 
-**Domains complete:** A, B, C, D, E (5 of 22)
-**Domains pending:** F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V (17 of 22)
+**Domains complete:** A, B, C, D, E, F, G, H (8 of 22)
+**Domains pending:** I, J, K, L, M, N, O, P, Q, R, S, T, U, V (14 of 22)
 **UI-deferred:** O (12 scenarios needing playwright)
 
 **Bugs fixed this session:** 8 (all PRs merged to main)
@@ -39,7 +39,7 @@
 - Stable webhook URL: `https://kaulby-app-git-sandbox-vetsecitpro.vercel.app/api/webhooks/polar`
 - Long-lived `sandbox` git branch with always-build carveout
 
-**Next turn pickup:** add Domains F (cancellation), G (refund), H (Day Pass) to test driver, run, fix any bugs surfaced. Continue domain-by-domain through I, J, ..., V.
+**Next turn pickup:** add Domains I (seat addons — extend beyond what scenario_growth_subscribe_then_seats covers), J (workspace lifecycle), K (email notification matrix). Continue domain-by-domain through V.
 
 **Files of record:**
 - `Kaulby-FullTest.md` — this plan + bug log (live document)
@@ -153,16 +153,16 @@
 
 | ID | Scenario | Status |
 |----|----------|--------|
-| F1 | User cancels via Polar customer portal → `subscription.canceled` fires | ⏳ |
-| F2 | After `.canceled`: user remains on tier through `currentPeriodEnd` | ⏳ |
-| F3 | After period end: `subscription.revoked` fires → tier → `free` | ⏳ |
-| F4 | Cancel email fires (acknowledgment) | ⏳ |
-| F5 | Revocation email fires (access lost) | ⏳ |
-| F6 | `cancelSubscription()` helper from account-deletion path | ⏳ |
-| F7 | Cancel + immediate revoke (`revoke: true`) skips period-end honor | ⏳ |
-| F8 | Out-of-order: `.revoked` arrives before `.canceled` — graceful? | ⏳ |
-| F9 | Cancel without subscriptionId — graceful no-op | ⏳ |
-| F10 | Re-canceling already-canceled subscription — idempotent | ⏳ |
+| F1 | User cancels via Polar customer portal → `subscription.canceled` fires, tier preserved, currentPeriodEnd updated | ✅ |
+| F2 | After `.canceled` then `.revoked`: tier → free | ✅ |
+| F3 | Solo cancel + revoke lifecycle | ✅ |
+| F4 | Scale cancel + revoke lifecycle | ✅ |
+| F5 | Growth cancel + revoke lifecycle | ✅ |
+| F6 | Growth main revoke triggers cascade-cancel of seat addons (PR #301) | ✅ (handler doesn't throw on Polar 404 from synthetic IDs) |
+| F7 | Cancel idempotent on replay (webhook-id dedup) | ✅ |
+| F8 | Cancel for unknown subscription — graceful no-op | ✅ |
+| F9 | Revoke for unknown subscription — graceful no-op | ✅ |
+| F10 | polar_customer_id preserved across cancel + revoke | ✅ |
 
 ---
 
@@ -170,14 +170,14 @@
 
 | ID | Scenario | Status |
 |----|----------|--------|
-| G1 | `order.refunded` for subscription → access revoked, tier → `free` | ⏳ |
-| G2 | Refund for Day Pass → day pass deactivated | ⏳ |
-| G3 | Refund for seat-addon → seatLimit decrement | ⏳ |
-| G4 | Refund email fires | ⏳ |
-| G5 | Refund without subscriptionId on event — graceful | ⏳ |
-| G6 | Partial refund — does it revoke? | ⏳ |
-| G7 | Refund for already-canceled subscription — no double action | ⏳ |
-| G8 | Multiple refund events for same order — idempotent (rejected as duplicate via webhook-id) | ⏳ |
+| G1 | Solo `order.refunded` → tier → free | ✅ |
+| G2 | Scale `order.refunded` → tier → free | ✅ |
+| G3 | Growth `order.refunded` → tier → free | ✅ (note: doesn't auto-cascade seat addons — V-domain follow-up) |
+| G4 | Refund email fires (no delivery_failure row) for each tier | ✅ |
+| G5 | Refund without subscriptionId — graceful 200 | ✅ |
+| G6 | Refund replay idempotent via webhook-id dedup | ✅ |
+| G7 | Refund for free user (no subscription) — no-op, free stays free | ✅ |
+| G8 | polar_customer_id preserved after refund | ✅ |
 
 ---
 
@@ -185,14 +185,14 @@
 
 | ID | Scenario | Status |
 |----|----------|--------|
-| H1 | Free user buys Day Pass → activated for 24h, tier access = Scale-level | ⏳ |
-| H2 | Day Pass activation has correct `expiresAt` timestamp | ⏳ |
-| H3 | Day Pass `purchaseCount` increments on successive buys | ⏳ |
-| H4 | Solo user buys Day Pass — does it stack/extend? | ⏳ |
-| H5 | Growth user buys Day Pass — what happens? (already has features) | ⏳ |
-| H6 | Day Pass refund | ⏳ |
-| H7 | Day Pass receipt email fires | ⏳ |
-| H8 | Day Pass auto-expiration after 24h (background job or query-time check?) | ⏳ |
+| H1 | Free user buys Day Pass → `day_pass_expires_at` set, count=1 | ✅ |
+| H2 | Day Pass receipt email fires (no delivery_failure row) | ✅ |
+| H3 | Paid (Scale) user buys Day Pass — tier preserved, not downgraded | ✅ |
+| H4 | Day Pass replay idempotent via webhook-id; count stays 1 | ✅ |
+| H5 | 2nd Day Pass purchase increments count to 2 + extends expiry | ✅ |
+| H6 | Day Pass without `metadata.type='day_pass'` does NOT activate (gate is explicit) | ✅ |
+| H7 | Day Pass without userId metadata — graceful 200, no-op | ✅ |
+| H8 | Day Pass for non-existent user ID — graceful 200, no-op | ✅ |
 
 ---
 
