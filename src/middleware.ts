@@ -75,6 +75,7 @@ async function getClerkHandler() {
       "/api/polar(.*)", // Polar checkout routes (auth handled in route)
       "/api/v1(.*)", // API v1 routes use API key auth, not Clerk
       "/api/track(.*)", // Email tracking pixels/clicks (public by design)
+      "/api/founding-members/count", // Founding-member counter shown on pricing/landing pages
       "/invite(.*)", // Public invite acceptance page
       "/banned", // Banned user page
       "/~offline", // PWA offline fallback page
