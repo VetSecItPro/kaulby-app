@@ -1681,3 +1681,210 @@ function getDeletionConfirmedEmailHtml(name: string): string {
   `;
   return getEmailWrapper(content);
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// Lifecycle emails — upgrade / downgrade / cancel / revoke / refund / day pass
+// Added to close FullTest Domain K bugs: every monetary state change should
+// produce a customer-visible confirmation, both for trust and support trail.
+// All wrapped at call site in Promise.all().catch(...) per SEC-INTEG-013 so
+// Resend failure cannot fail a webhook.
+// ─────────────────────────────────────────────────────────────────────────
+
+export async function sendSubscriptionUpgradedEmail(params: {
+  email: string;
+  name?: string;
+  fromPlan: string;
+  toPlan: string;
+}) {
+  await getResend().emails.send({
+    from: FROM_EMAIL,
+    to: params.email,
+    subject: `Your Kaulby plan was upgraded to ${params.toPlan}`,
+    html: getSubscriptionUpgradedEmailHtml(params.name || "there", params.fromPlan, params.toPlan),
+  });
+}
+
+export async function sendSubscriptionDowngradedEmail(params: {
+  email: string;
+  name?: string;
+  fromPlan: string;
+  toPlan: string;
+}) {
+  await getResend().emails.send({
+    from: FROM_EMAIL,
+    to: params.email,
+    subject: `Your Kaulby plan was changed to ${params.toPlan}`,
+    html: getSubscriptionDowngradedEmailHtml(params.name || "there", params.fromPlan, params.toPlan),
+  });
+}
+
+export async function sendSubscriptionCanceledEmail(params: {
+  email: string;
+  name?: string;
+  plan: string;
+  periodEnd?: Date | string;
+}) {
+  const endStr = params.periodEnd
+    ? new Date(params.periodEnd).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
+    : "the end of your billing period";
+  await getResend().emails.send({
+    from: FROM_EMAIL,
+    to: params.email,
+    subject: "Your Kaulby cancellation is confirmed",
+    html: getSubscriptionCanceledEmailHtml(params.name || "there", params.plan, endStr),
+  });
+}
+
+export async function sendSubscriptionRevokedEmail(params: {
+  email: string;
+  name?: string;
+  plan: string;
+}) {
+  await getResend().emails.send({
+    from: FROM_EMAIL,
+    to: params.email,
+    subject: "Your Kaulby subscription has ended",
+    html: getSubscriptionRevokedEmailHtml(params.name || "there", params.plan),
+  });
+}
+
+export async function sendRefundEmail(params: {
+  email: string;
+  name?: string;
+  plan: string;
+}) {
+  await getResend().emails.send({
+    from: FROM_EMAIL,
+    to: params.email,
+    subject: "Your Kaulby refund has been processed",
+    html: getRefundEmailHtml(params.name || "there", params.plan),
+  });
+}
+
+export async function sendDayPassReceiptEmail(params: {
+  email: string;
+  name?: string;
+  expiresAt: Date | string;
+}) {
+  const expStr = new Date(params.expiresAt).toLocaleString("en-US", {
+    year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short",
+  });
+  await getResend().emails.send({
+    from: FROM_EMAIL,
+    to: params.email,
+    subject: "Your Kaulby Day Pass is active",
+    html: getDayPassReceiptEmailHtml(params.name || "there", expStr),
+  });
+}
+
+// ─────────────────────── HTML templates ────────────────────────────────
+
+function getSubscriptionUpgradedEmailHtml(name: string, fromPlan: string, toPlan: string): string {
+  const content = `
+    <tr><td style="padding: 40px 32px 24px; text-align: center;">
+      <h1 style="margin: 0 0 8px; font-size: 26px; font-weight: 700; color: ${COLORS.text};">Plan upgraded to ${escapeHtml(toPlan)}</h1>
+      <p style="margin: 0; font-size: 15px; color: ${COLORS.textMuted};">Welcome to your new plan, ${escapeHtml(name)}.</p>
+    </td></tr>
+    <tr><td style="padding: 0 32px 24px;">
+      <p style="margin: 0; font-size: 14px; line-height: 1.7; color: ${COLORS.textMuted};">
+        Your account moved from <strong style="color: ${COLORS.text};">${escapeHtml(fromPlan)}</strong> to
+        <strong style="color: ${COLORS.text};">${escapeHtml(toPlan)}</strong>. The change is effective immediately and your next bill reflects the new rate.
+      </p>
+    </td></tr>
+    <tr><td style="padding: 0 32px 40px;" align="center">
+      <a href="${APP_URL}/dashboard" style="display: inline-block; padding: 12px 32px; background: ${COLORS.text}; color: ${COLORS.bg}; text-decoration: none; font-weight: 500; font-size: 14px; border-radius: 50px;">Open dashboard</a>
+    </td></tr>
+  `;
+  return getEmailWrapper(content);
+}
+
+function getSubscriptionDowngradedEmailHtml(name: string, fromPlan: string, toPlan: string): string {
+  const content = `
+    <tr><td style="padding: 40px 32px 24px; text-align: center;">
+      <h1 style="margin: 0 0 8px; font-size: 26px; font-weight: 700; color: ${COLORS.text};">Plan changed to ${escapeHtml(toPlan)}</h1>
+      <p style="margin: 0; font-size: 15px; color: ${COLORS.textMuted};">Hi ${escapeHtml(name)} - your plan was changed.</p>
+    </td></tr>
+    <tr><td style="padding: 0 32px 24px;">
+      <p style="margin: 0; font-size: 14px; line-height: 1.7; color: ${COLORS.textMuted};">
+        Your account moved from <strong style="color: ${COLORS.text};">${escapeHtml(fromPlan)}</strong> to
+        <strong style="color: ${COLORS.text};">${escapeHtml(toPlan)}</strong>. Your next bill reflects the new rate. Some features may no longer be available - review your dashboard for details.
+      </p>
+    </td></tr>
+    <tr><td style="padding: 0 32px 40px;" align="center">
+      <a href="${APP_URL}/dashboard" style="display: inline-block; padding: 12px 32px; background: ${COLORS.text}; color: ${COLORS.bg}; text-decoration: none; font-weight: 500; font-size: 14px; border-radius: 50px;">Open dashboard</a>
+    </td></tr>
+  `;
+  return getEmailWrapper(content);
+}
+
+function getSubscriptionCanceledEmailHtml(name: string, plan: string, periodEnd: string): string {
+  const content = `
+    <tr><td style="padding: 40px 32px 24px; text-align: center;">
+      <h1 style="margin: 0 0 8px; font-size: 26px; font-weight: 700; color: ${COLORS.text};">Cancellation confirmed</h1>
+      <p style="margin: 0; font-size: 15px; color: ${COLORS.textMuted};">Sorry to see you go, ${escapeHtml(name)}.</p>
+    </td></tr>
+    <tr><td style="padding: 0 32px 24px;">
+      <p style="margin: 0 0 12px; font-size: 14px; line-height: 1.7; color: ${COLORS.textMuted};">
+        Your <strong style="color: ${COLORS.text};">${escapeHtml(plan)}</strong> subscription was canceled. You'll keep full access until <strong style="color: ${COLORS.text};">${escapeHtml(periodEnd)}</strong>, after which your account moves to the free tier.
+      </p>
+      <p style="margin: 0; font-size: 14px; line-height: 1.7; color: ${COLORS.textMuted};">
+        Changed your mind? You can resubscribe any time before then to restore your plan.
+      </p>
+    </td></tr>
+    <tr><td style="padding: 0 32px 40px;" align="center">
+      <a href="${APP_URL}/pricing" style="display: inline-block; padding: 12px 32px; border: 1px solid ${COLORS.cardBorder}; color: ${COLORS.text}; text-decoration: none; font-weight: 500; font-size: 14px; border-radius: 50px;">Resubscribe</a>
+    </td></tr>
+  `;
+  return getEmailWrapper(content);
+}
+
+function getSubscriptionRevokedEmailHtml(name: string, plan: string): string {
+  const content = `
+    <tr><td style="padding: 40px 32px 24px; text-align: center;">
+      <h1 style="margin: 0 0 8px; font-size: 26px; font-weight: 700; color: ${COLORS.text};">Your subscription has ended</h1>
+      <p style="margin: 0; font-size: 15px; color: ${COLORS.textMuted};">Hi ${escapeHtml(name)} - your billing period closed.</p>
+    </td></tr>
+    <tr><td style="padding: 0 32px 24px;">
+      <p style="margin: 0; font-size: 14px; line-height: 1.7; color: ${COLORS.textMuted};">
+        Your <strong style="color: ${COLORS.text};">${escapeHtml(plan)}</strong> subscription has ended and your account is now on the free tier. Your data is preserved per the free-tier retention policy. Resubscribe any time to restore full features.
+      </p>
+    </td></tr>
+    <tr><td style="padding: 0 32px 40px;" align="center">
+      <a href="${APP_URL}/pricing" style="display: inline-block; padding: 12px 32px; background: ${COLORS.text}; color: ${COLORS.bg}; text-decoration: none; font-weight: 500; font-size: 14px; border-radius: 50px;">Reactivate</a>
+    </td></tr>
+  `;
+  return getEmailWrapper(content);
+}
+
+function getRefundEmailHtml(name: string, plan: string): string {
+  const content = `
+    <tr><td style="padding: 40px 32px 24px; text-align: center;">
+      <h1 style="margin: 0 0 8px; font-size: 26px; font-weight: 700; color: ${COLORS.text};">Refund processed</h1>
+      <p style="margin: 0; font-size: 15px; color: ${COLORS.textMuted};">Hi ${escapeHtml(name)} - your refund is on its way.</p>
+    </td></tr>
+    <tr><td style="padding: 0 32px 40px;">
+      <p style="margin: 0; font-size: 14px; line-height: 1.7; color: ${COLORS.textMuted};">
+        Your refund for <strong style="color: ${COLORS.text};">${escapeHtml(plan)}</strong> has been processed. It typically takes 5-10 business days to appear on your statement, depending on your bank. Your account access has been adjusted accordingly. Questions? Reply to this email.
+      </p>
+    </td></tr>
+  `;
+  return getEmailWrapper(content);
+}
+
+function getDayPassReceiptEmailHtml(name: string, expiresAt: string): string {
+  const content = `
+    <tr><td style="padding: 40px 32px 24px; text-align: center;">
+      <h1 style="margin: 0 0 8px; font-size: 26px; font-weight: 700; color: ${COLORS.text};">Day Pass active</h1>
+      <p style="margin: 0; font-size: 15px; color: ${COLORS.textMuted};">Hi ${escapeHtml(name)} - your Day Pass is live for the next 24 hours.</p>
+    </td></tr>
+    <tr><td style="padding: 0 32px 24px;">
+      <p style="margin: 0; font-size: 14px; line-height: 1.7; color: ${COLORS.textMuted};">
+        Your Day Pass gives you Scale-tier features (full platform access, AI analysis, alerts) until <strong style="color: ${COLORS.text};">${escapeHtml(expiresAt)}</strong>. Make the most of it.
+      </p>
+    </td></tr>
+    <tr><td style="padding: 0 32px 40px;" align="center">
+      <a href="${APP_URL}/dashboard" style="display: inline-block; padding: 12px 32px; background: ${COLORS.text}; color: ${COLORS.bg}; text-decoration: none; font-weight: 500; font-size: 14px; border-radius: 50px;">Open dashboard</a>
+    </td></tr>
+  `;
+  return getEmailWrapper(content);
+}

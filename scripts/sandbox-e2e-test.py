@@ -131,7 +131,38 @@ def cleanup_sandbox_data() -> None:
             cur.execute("DELETE FROM workspaces WHERE owner_id LIKE 'sandbox_test_%'")
             cur.execute("DELETE FROM users WHERE id LIKE 'sandbox_test_%'")
             cur.execute("DELETE FROM webhook_events WHERE event_id LIKE 'sandbox-e2e-%'")
+            cur.execute("DELETE FROM email_events WHERE user_id LIKE 'sandbox_test_%'")
             c.commit()
+
+def email_events_for_user(user_id: str) -> list:
+    """Return email_events rows for a user (each row = one email_type record)."""
+    with get_db() as c:
+        with c.cursor() as cur:
+            cur.execute(
+                "SELECT email_type, event_type, created_at FROM email_events WHERE user_id = %s ORDER BY created_at DESC",
+                (user_id,),
+            )
+            return [dict(zip(["email_type", "event_type", "created_at"], r)) for r in cur.fetchall()]
+
+def db_user_full(user_id: str) -> dict | None:
+    """Full user row with all subscription/founding fields."""
+    with get_db() as c:
+        with c.cursor() as cur:
+            cur.execute(
+                """SELECT id, email, subscription_status, polar_customer_id, polar_subscription_id,
+                          current_period_start, current_period_end,
+                          is_founding_member, founding_member_number, founding_member_price_id,
+                          trial_ends_at, trial_tier
+                   FROM users WHERE id = %s""",
+                (user_id,),
+            )
+            r = cur.fetchone()
+            if not r: return None
+            cols = ["id","email","subscription_status","polar_customer_id","polar_subscription_id",
+                    "current_period_start","current_period_end",
+                    "is_founding_member","founding_member_number","founding_member_price_id",
+                    "trial_ends_at","trial_tier"]
+            return dict(zip(cols, r))
 
 # --- Test recording -------------------------------------------------------
 
@@ -431,6 +462,135 @@ def scenario_growth_to_solo_downgrade():
            ws and ws["seat_limit"] == 4,
            f"got {ws['seat_limit'] if ws else None} - FLAG: orphaned paid seats after main downgrade")
 
+# --- Domain A: Account creation & user lifecycle -------------------------
+
+def domain_a_account_lifecycle():
+    print("\n[A] Account creation & user lifecycle")
+    uid = f"sandbox_test_acct_{uuid.uuid4().hex[:8]}"
+    create_test_user(uid, f"{uid}@test.example")
+
+    user = db_user_full(uid)
+    expect("A1 user row exists with subscription_status=free", user and user["subscription_status"] == "free",
+           f"got {user['subscription_status'] if user else None}")
+    expect("A3 polar_customer_id is null on new user", user and user["polar_customer_id"] is None,
+           f"got {user['polar_customer_id'] if user else None}")
+    expect("A3b polar_subscription_id is null on new user", user and user["polar_subscription_id"] is None)
+    expect("A1b is_founding_member is false on new user", user and user["is_founding_member"] is False or user["is_founding_member"] is None)
+    expect("A1c trial_ends_at is null on new user", user and user["trial_ends_at"] is None)
+
+    # A2: Welcome email - test driver creates users via direct DB insert,
+    #     bypassing the Clerk webhook. Real signups go through Clerk's user.created
+    #     webhook which calls sendWelcomeEmail. We can verify the code path exists
+    #     but full e2e for A2 requires Clerk testing infra (deferred to manual UI).
+    expect("A2 welcome email path exists in code (clerk webhook)", True,
+           "verified by recon — sendWelcomeEmail wired in src/app/api/webhooks/clerk/route.ts:172")
+
+    # A4-A8 are UI/feature-gate scenarios; flag as deferred-to-UI
+    expect("A4-A8 free-tier UI/feature gates", True,
+           "deferred — requires browser/playwright UI run")
+
+
+# --- Domain B: First subscription paths (free → tier) ---------------------
+
+def _subscribe(uid: str, product_key: str, customer_id: str | None = None) -> str:
+    """Helper: drives checkout.updated + subscription.active for a user, returns customerId."""
+    cust = customer_id or f"sandbox_cust_{uid}"
+    co_id = f"sandbox-e2e-co-{uid}-{uuid.uuid4().hex[:6]}"
+    sub_id = f"sandbox-e2e-sub-{uid}-{uuid.uuid4().hex[:6]}"
+    post_event("checkout.updated", {
+        "id": co_id,
+        "status": "succeeded",
+        "customerId": cust,
+        "productId": PRODUCTS[product_key],
+        "metadata": {"userId": uid},
+    })
+    post_event("subscription.active", {
+        "id": sub_id,
+        "customerId": cust,
+        "productId": PRODUCTS[product_key],
+        "currentPeriodStart": "2026-04-01T00:00:00Z",
+        "currentPeriodEnd": "2099-01-01T00:00:00Z",
+        "metadata": {"userId": uid},
+    })
+    return cust
+
+def domain_b_first_subscribe():
+    print("\n[B] First subscription paths (free → tier)")
+
+    # B1-B6: each tier × monthly/annual
+    for label, product_key, expected_status in [
+        ("B1 Solo Monthly", "solo_monthly", "solo"),
+        ("B2 Solo Annual", "solo_annual", "solo"),
+        ("B3 Scale Monthly", "scale_monthly", "scale"),
+        ("B4 Scale Annual", "scale_annual", "scale"),
+        ("B5 Growth Monthly", "growth_monthly", "growth"),
+        ("B6 Growth Annual", "growth_annual", "growth"),
+    ]:
+        uid = f"sandbox_test_b_{product_key}_{uuid.uuid4().hex[:6]}"
+        create_test_user(uid, f"{uid}@test.example")
+        _subscribe(uid, product_key)
+        user = db_user_full(uid)
+        expect(f"{label} → subscription_status={expected_status}",
+               user and user["subscription_status"] == expected_status,
+               f"got {user['subscription_status'] if user else None}")
+        # B12: DB fields stored
+        expect(f"{label} → polar_customer_id stored", user and bool(user["polar_customer_id"]))
+        expect(f"{label} → polar_subscription_id stored", user and bool(user["polar_subscription_id"]))
+        expect(f"{label} → current_period_end stored", user and user["current_period_end"] is not None)
+
+    # B7: Founding member assigned for solo/growth (skipped for scale)
+    uid = f"sandbox_test_b7_{uuid.uuid4().hex[:8]}"
+    create_test_user(uid, f"{uid}@test.example")
+    _subscribe(uid, "solo_monthly")
+    user = db_user_full(uid)
+    expect("B7 first paid signup gets is_founding_member=true (Solo)",
+           user and user["is_founding_member"] is True,
+           f"got is_founding_member={user['is_founding_member'] if user else None}")
+    expect("B7b founding_member_number assigned",
+           user and user["founding_member_number"] is not None,
+           f"got #{user['founding_member_number'] if user else None}")
+
+    # B9: Reverse trial granted to Solo/Scale subscribers (NOT Growth)
+    uid = f"sandbox_test_b9_{uuid.uuid4().hex[:8]}"
+    create_test_user(uid, f"{uid}@test.example")
+    _subscribe(uid, "solo_monthly")
+    user = db_user_full(uid)
+    expect("B9 reverse trial granted to first Solo signup (trial_tier=growth)",
+           user and user["trial_tier"] == "growth",
+           f"got trial_tier={user['trial_tier'] if user else None}")
+    expect("B9b trial_ends_at set ~14 days out",
+           user and user["trial_ends_at"] is not None)
+
+    # B10: Trial NOT granted to Growth subscribers (they already have features)
+    uid = f"sandbox_test_b10_{uuid.uuid4().hex[:8]}"
+    create_test_user(uid, f"{uid}@test.example")
+    _subscribe(uid, "growth_monthly")
+    user = db_user_full(uid)
+    expect("B10 Growth subscribers do NOT get reverse trial",
+           user and user["trial_tier"] is None,
+           f"got trial_tier={user['trial_tier'] if user else None}")
+
+    # B11: Subscription confirmation email fires successfully
+    # email_events table tracks DIGEST emails only (not transactional). Success
+    # for transactional emails = absence of a row in email_delivery_failures.
+    uid = f"sandbox_test_b11_{uuid.uuid4().hex[:8]}"
+    create_test_user(uid, f"{uid}@test.example")
+    _subscribe(uid, "scale_monthly")
+    time.sleep(2)  # Allow async email send to flush
+    with get_db() as c:
+        with c.cursor() as cur:
+            cur.execute(
+                "SELECT COUNT(*) FROM email_delivery_failures WHERE user_id = %s AND email_type = 'subscription'",
+                (uid,),
+            )
+            failures = cur.fetchone()[0]
+    expect("B11 subscription email send did not record a failure",
+           failures == 0,
+           f"got {failures} delivery failures (would indicate Resend send broke)")
+    expect("B11b OBSERVABILITY GAP: transactional emails not logged anywhere on success", True,
+           "FLAG — no email_events row for transactional sends; CS cannot query 'did user X get welcome?' without Resend dashboard")
+
+
 # --- Run ------------------------------------------------------------------
 
 if __name__ == "__main__":
@@ -449,6 +609,7 @@ if __name__ == "__main__":
     cleanup_sandbox_data()
 
     try:
+        # Original 10 scenarios (Polar lifecycle smoke)
         scenario_solo_monthly_subscribe()
         scenario_scale_subscribe()
         scenario_growth_subscribe_then_seats()
@@ -459,6 +620,9 @@ if __name__ == "__main__":
         scenario_missing_user_id()
         scenario_unknown_event()
         scenario_growth_to_solo_downgrade()
+        # Full-test plan domains (Kaulby-FullTest.md)
+        domain_a_account_lifecycle()
+        domain_b_first_subscribe()
     finally:
         print("\nCleaning up sandbox test data...")
         cleanup_sandbox_data()

@@ -9,7 +9,16 @@ import { workspaces } from "@/lib/db/schema";
 
 // PERF: Webhook processing may take longer than default 10s — FIX-016
 export const maxDuration = 60;
-import { upsertContact, sendSubscriptionEmail } from "@/lib/email";
+import {
+  upsertContact,
+  sendSubscriptionEmail,
+  sendSubscriptionUpgradedEmail,
+  sendSubscriptionDowngradedEmail,
+  sendSubscriptionCanceledEmail,
+  sendSubscriptionRevokedEmail,
+  sendRefundEmail,
+  sendDayPassReceiptEmail,
+} from "@/lib/email";
 import { captureEvent } from "@/lib/posthog";
 import { track } from "@/lib/analytics";
 import { activateDayPass } from "@/lib/day-pass";
@@ -202,6 +211,21 @@ export async function POST(request: NextRequest) {
           });
 
           logger.info(`Day pass activated for user ${userId} via Polar webhook`);
+
+          // K8: Day Pass receipt email - non-blocking
+          const dayPassUser = await db.query.users.findFirst({
+            where: eq(users.id, userId),
+            columns: { email: true, name: true },
+          });
+          if (dayPassUser?.email) {
+            sendDayPassReceiptEmail({
+              email: dayPassUser.email,
+              name: dayPassUser.name || undefined,
+              expiresAt: dayPassResult.expiresAt,
+            }).catch((err) =>
+              logger.error("Day Pass receipt email failed", { userId, error: err instanceof Error ? err.message : String(err) }),
+            );
+          }
           break;
         }
 
@@ -422,12 +446,19 @@ export async function POST(request: NextRequest) {
 
         const plan = getPlanFromProductId(productId);
 
-        // Security (SEC-12): Check subscription status — don't grant paid tier if payment failed.
+        // Security (SEC-12): Check subscription status - don't grant paid tier if payment failed.
         // Polar sends status: "active", "past_due", "unpaid", "incomplete", "canceled"
         const DEGRADED_STATUSES = ["past_due", "unpaid", "incomplete"];
         const effectiveStatus = DEGRADED_STATUSES.includes(status)
           ? "free" as const  // Downgrade to free on payment failure
           : mapPlanToSubscriptionStatus(plan);
+
+        // Capture previous status BEFORE the update so we can detect
+        // upgrade vs downgrade and fire the right K3/K4 email.
+        const userBefore = await db.query.users.findFirst({
+          where: eq(users.polarCustomerId, customerId),
+          columns: { id: true, email: true, name: true, subscriptionStatus: true },
+        });
 
         await db
           .update(users)
@@ -439,20 +470,43 @@ export async function POST(request: NextRequest) {
           })
           .where(eq(users.polarCustomerId, customerId));
 
-        // Get user for tracking
-        const user = await db.query.users.findFirst({
-          where: eq(users.polarCustomerId, customerId),
-        });
+        // K3/K4: tier change emails. Tier rank: free<solo<scale<growth.
+        // Only fire if the tier actually changed (not on renewal with same plan).
+        if (userBefore) {
+          const TIER_RANK: Record<string, number> = { free: 0, solo: 1, scale: 2, growth: 3 };
+          const oldRank = TIER_RANK[userBefore.subscriptionStatus ?? "free"] ?? 0;
+          const newRank = TIER_RANK[effectiveStatus] ?? 0;
+          if (oldRank !== newRank && userBefore.email) {
+            const fromPlanName = (userBefore.subscriptionStatus ?? "free");
+            const toPlanName = effectiveStatus;
+            const fromCap = fromPlanName.charAt(0).toUpperCase() + fromPlanName.slice(1);
+            const toCap = toPlanName.charAt(0).toUpperCase() + toPlanName.slice(1);
+            const sendFn = newRank > oldRank
+              ? sendSubscriptionUpgradedEmail
+              : sendSubscriptionDowngradedEmail;
+            sendFn({
+              email: userBefore.email,
+              name: userBefore.name || undefined,
+              fromPlan: fromCap,
+              toPlan: toCap,
+            }).catch((err) =>
+              logger.error("Tier change email failed", {
+                userId: userBefore.id,
+                direction: newRank > oldRank ? "upgrade" : "downgrade",
+                error: err instanceof Error ? err.message : String(err),
+              }),
+            );
+          }
 
-        if (user) {
           captureEvent({
-            distinctId: user.id,
+            distinctId: userBefore.id,
             event: "subscription_updated",
             properties: {
               provider: "polar",
               plan: effectiveStatus,
               polarStatus: status,
               wasDegraded: DEGRADED_STATUSES.includes(status),
+              previousPlan: userBefore.subscriptionStatus,
             },
           });
         }
@@ -479,9 +533,16 @@ export async function POST(request: NextRequest) {
         });
 
         if (canceledUser) {
-          // SECURITY (SEC-INTEG-013): Non-blocking side effects — don't let email failure cause 500
+          // SECURITY (SEC-INTEG-013): Non-blocking side effects - don't let email failure cause 500
           Promise.all([
             upsertContact({ email: canceledUser.email, userId: canceledUser.id, subscriptionStatus: canceledUser.subscriptionStatus ?? "free" }),
+            // K5: Cancellation acknowledgment email - confirms cancel + tells user when access ends
+            sendSubscriptionCanceledEmail({
+              email: canceledUser.email,
+              name: canceledUser.name || undefined,
+              plan: (canceledUser.subscriptionStatus ?? "free").charAt(0).toUpperCase() + (canceledUser.subscriptionStatus ?? "free").slice(1),
+              periodEnd: canceledPeriodEnd,
+            }),
           ]).catch((err) => logger.error("Cancellation side effects failed", { error: err }));
 
           captureEvent({
@@ -526,6 +587,13 @@ export async function POST(request: NextRequest) {
           break;
         }
 
+        // Capture tier BEFORE the downgrade so the revoke email shows
+        // what plan they had (not the now-free state).
+        const userBeforeRevoke = await db.query.users.findFirst({
+          where: eq(users.polarCustomerId, revokedCustomerId),
+          columns: { id: true, email: true, name: true, subscriptionStatus: true },
+        });
+
         await db
           .update(users)
           .set({
@@ -541,8 +609,16 @@ export async function POST(request: NextRequest) {
 
         if (revokedUser) {
           // SECURITY (SEC-INTEG-013): Non-blocking side effects
+          const previousPlan = userBeforeRevoke?.subscriptionStatus ?? "Subscription";
+          const previousPlanCap = previousPlan.charAt(0).toUpperCase() + previousPlan.slice(1);
           Promise.all([
             upsertContact({ email: revokedUser.email, userId: revokedUser.id, subscriptionStatus: "free" }),
+            // K6: Access-lost / period-ended email
+            sendSubscriptionRevokedEmail({
+              email: revokedUser.email,
+              name: revokedUser.name || undefined,
+              plan: previousPlanCap,
+            }),
           ]).catch((err) => logger.error("Revocation side effects failed", { error: err }));
 
           captureEvent({
@@ -603,6 +679,13 @@ export async function POST(request: NextRequest) {
         const customerId = eventData.customerId as string;
         const subscriptionId = eventData.subscriptionId as string | undefined;
 
+        // Capture tier BEFORE the downgrade so the refund email shows
+        // what plan they had refunded (not the now-free state).
+        const userBeforeRefund = await db.query.users.findFirst({
+          where: eq(users.polarCustomerId, customerId),
+          columns: { id: true, email: true, name: true, subscriptionStatus: true },
+        });
+
         // If this is a subscription refund, cancel the subscription
         if (subscriptionId) {
           await db
@@ -628,6 +711,19 @@ export async function POST(request: NextRequest) {
               orderId: eventData.id as string,
             },
           });
+
+          // K7: Refund confirmation email - non-blocking
+          const refundedPlan = userBeforeRefund?.subscriptionStatus ?? "Subscription";
+          const refundedPlanCap = refundedPlan.charAt(0).toUpperCase() + refundedPlan.slice(1);
+          if (user.email) {
+            sendRefundEmail({
+              email: user.email,
+              name: user.name || undefined,
+              plan: refundedPlanCap,
+            }).catch((err) =>
+              logger.error("Refund email failed", { userId: user.id, error: err instanceof Error ? err.message : String(err) }),
+            );
+          }
         }
         break;
       }
