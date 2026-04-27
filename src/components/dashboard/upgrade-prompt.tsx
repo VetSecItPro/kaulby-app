@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Zap, Lock, ArrowRight, Check, Sparkles, Clock, Eye, Users } from "lucide-react";
+import { Zap, Lock, ArrowRight, Check, Wand2, Clock, Eye, Users } from "lucide-react";
 import { PLANS, PlanKey } from "@/lib/plans";
 import type { UpgradePrompt } from "@/lib/limits";
 import Link from "next/link";
@@ -138,7 +138,7 @@ export function ConversionUpgradeModal({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader className="space-y-3">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-primary to-purple-600 shadow-lg shadow-primary/25">
-            <Sparkles className="h-7 w-7 text-white" />
+            <Wand2 className="h-7 w-7 text-white" />
           </div>
           <DialogTitle className="text-center text-xl">{prompt.title}</DialogTitle>
           <DialogDescription className="text-center text-base">
@@ -359,7 +359,7 @@ export function BlurredAiAnalysis({ aiSummary, sentiment, painPointCategory }: B
       <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-background/90 via-background/50 to-transparent rounded-lg">
         <div className="text-center px-4">
           <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-primary to-purple-600 mb-2 shadow-lg shadow-primary/25">
-            <Sparkles className="h-5 w-5 text-white" />
+            <Wand2 className="h-5 w-5 text-white" />
           </div>
           <p className="text-sm font-medium mb-1">AI Analysis Ready</p>
           <p className="text-xs text-muted-foreground mb-3">
@@ -491,7 +491,7 @@ interface InlineUpgradeCtaProps {
 export function InlineUpgradeCta({ message, ctaText = "Upgrade" }: InlineUpgradeCtaProps) {
   return (
     <div className="flex items-center gap-2 p-2 rounded-md bg-primary/5 border border-primary/10">
-      <Sparkles className="h-4 w-4 text-primary shrink-0" />
+      <Wand2 className="h-4 w-4 text-primary shrink-0" />
       <span className="text-xs text-muted-foreground flex-1">{message}</span>
       <Button size="sm" variant="ghost" asChild className="h-6 px-2 text-xs text-primary hover:text-primary">
         <Link href="/pricing">

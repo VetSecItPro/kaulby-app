@@ -17,7 +17,7 @@ import {
   Users,
   ArrowRight,
   ExternalLink,
-  Sparkles,
+  Wand2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -175,7 +175,7 @@ function ProgressSidebar({
     <div className="w-64 border-l flex flex-col shrink-0 bg-muted/20">
       <div className="p-4 border-b">
         <div className="flex items-center gap-2 mb-1">
-          <Sparkles className="h-4 w-4 text-violet-500" />
+          <Wand2 className="h-4 w-4 text-violet-500" />
           <h2 className="text-sm font-semibold">Setup Progress</h2>
         </div>
         <p className="text-xs text-muted-foreground">

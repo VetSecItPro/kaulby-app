@@ -249,7 +249,7 @@ export async function GET(request: NextRequest) {
         .where(whereCondition)
         .groupBy(engagementCaseExpr),
 
-      // 6. Community extraction — limited fetch (Option B: JS aggregation on smaller dataset)
+      // 6. Community extraction - limited fetch (Option B: JS aggregation on smaller dataset)
       db.query.results.findMany({
         where: whereCondition,
         limit: 500,
@@ -285,7 +285,7 @@ export async function GET(request: NextRequest) {
       }))
       .sort((a, b) => b.count - a.count);
 
-    // Format engagement buckets — ensure all buckets are present in order
+    // Format engagement buckets - ensure all buckets are present in order
     const engagementMap = new Map(
       engagementRows.map((r) => [r.bucket, Number(r.count)])
     );

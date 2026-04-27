@@ -121,7 +121,7 @@ export async function POST(req: Request) {
     }
   }
 
-  // Verify conversation belongs to authenticated user — prevents IDOR attacks
+  // Verify conversation belongs to authenticated user - prevents IDOR attacks
   const conversation = await db.query.chatConversations.findFirst({
     where: and(
       eq(chatConversations.id, conversationId),
@@ -142,7 +142,7 @@ export async function POST(req: Request) {
     toolsUsed?: unknown;
   }[];
 
-  // Insert messages — content is stored as-is (rendered with escaping on the client via React's JSX which auto-escapes)
+  // Insert messages - content is stored as-is (rendered with escaping on the client via React's JSX which auto-escapes)
   const inserted = await db
     .insert(chatMessages)
     .values(

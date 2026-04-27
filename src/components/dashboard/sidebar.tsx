@@ -18,7 +18,7 @@ import {
   Users,
   BarChart3,
   Lightbulb,
-  Sparkles,
+  Wand2,
   Bookmark,
   LogOut,
 } from "lucide-react";
@@ -67,7 +67,7 @@ const sidebarLinks = [
   {
     title: "Ask Kaulby AI",
     href: "/dashboard/ask",
-    icon: Sparkles,
+    icon: Wand2,
   },
   {
     title: "Settings",

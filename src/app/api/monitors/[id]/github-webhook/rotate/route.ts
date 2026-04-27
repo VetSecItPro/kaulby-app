@@ -2,7 +2,7 @@
  * POST /api/monitors/[id]/github-webhook/rotate
  *
  * Generates a fresh GitHub webhook secret for the monitor and stores it.
- * Returns the new secret in the response body — this is the ONLY time the
+ * Returns the new secret in the response body - this is the ONLY time the
  * caller will see it. After a rotation, the previous secret is invalidated
  * immediately; the user must update their GitHub webhook config with the
  * new value within GitHub's 10-second retry window.

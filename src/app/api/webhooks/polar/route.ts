@@ -7,7 +7,7 @@ import { eq, and, sql } from "drizzle-orm";
 import { getPlanFromProductId, getPolarClient, isTeamSeatProduct, PolarPlanKey } from "@/lib/polar";
 import { workspaces } from "@/lib/db/schema";
 
-// PERF: Webhook processing may take longer than default 10s — FIX-016
+// PERF: Webhook processing may take longer than default 10s - FIX-016
 export const maxDuration = 60;
 import {
   upsertContact,
@@ -201,7 +201,7 @@ export async function POST(request: NextRequest) {
             },
           });
 
-          // Task 1.4: typed revenue event — day pass grants pro-tier access,
+          // Task 1.4: typed revenue event - day pass grants pro-tier access,
           // so we attribute it to the pro tier with a day_pass interval so
           // LTV/conversion dashboards can distinguish one-time vs recurring.
           track("payment.succeeded", {
@@ -334,7 +334,7 @@ export async function POST(request: NextRequest) {
         // Reverse trial: every new paid signup gets 14 days of Growth-tier
         // features regardless of which tier they bought. Only granted on the
         // FIRST paid subscription (skip if user already had a trial OR is
-        // already on Growth — they wouldn't benefit).
+        // already on Growth - they wouldn't benefit).
         const isFirstPaidSubscription = !user.trialEndsAt && user.subscriptionStatus === "free";
         const grantsTrial = isFirstPaidSubscription && plan !== "growth" && plan !== "free";
         const trialEndsAt = grantsTrial
@@ -350,12 +350,12 @@ export async function POST(request: NextRequest) {
           // Security (SEC-11): Use advisory lock to prevent race condition on founding member assignment.
           // Without the lock, two concurrent webhooks could both read the same COUNT and assign
           // the same foundingMemberNumber.
-          // CRITICAL: db (neon-http) doesn't support transactions — only single
+          // CRITICAL: db (neon-http) doesn't support transactions - only single
           // statements over HTTP. Use pooledDb (neon-serverless WebSocket) for
           // anything wrapped in db.transaction(). Skipping this caused every
           // Solo/Growth subscription.active webhook to 500 silently in prod.
           const result = await pooledDb.transaction(async (tx) => {
-            // Advisory lock scoped to this transaction — released automatically on commit
+            // Advisory lock scoped to this transaction - released automatically on commit
             await tx.execute(sql`SELECT pg_advisory_xact_lock(${sql.raw("hashtext('founding-member')")})`);
 
             return tx
@@ -413,7 +413,7 @@ export async function POST(request: NextRequest) {
             .where(eq(users.id, user.id));
         }
 
-        // SECURITY (SEC-INTEG-013): Non-blocking side effects — don't let email failure cause 500
+        // SECURITY (SEC-INTEG-013): Non-blocking side effects - don't let email failure cause 500
         Promise.all([
           upsertContact({ email: user.email, userId: user.id, subscriptionStatus: subscriptionStatus }),
           sendSubscriptionEmail({ email: user.email, name: user.name || undefined, plan: plan.charAt(0).toUpperCase() + plan.slice(1) })
@@ -447,7 +447,7 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        // Task 1.4: typed revenue event — only paid tiers. Interval defaults
+        // Task 1.4: typed revenue event - only paid tiers. Interval defaults
         // to monthly; Polar product IDs don't reliably tell us annual vs
         // monthly here, so annual detection is left to Task 1.4b once we wire
         // product metadata. Skipping on "free" keeps the funnel clean.
@@ -596,7 +596,7 @@ export async function POST(request: NextRequest) {
 
       case "subscription.canceled": {
         // SECURITY (SEC-LOGIC-007): Honor remaining billing period on voluntary cancellation
-        // The user paid for the full period — don't strip access immediately
+        // The user paid for the full period - don't strip access immediately
         const canceledCustomerId = eventData.customerId as string;
         const canceledPeriodEnd = eventData.currentPeriodEnd as string | undefined;
 
@@ -636,7 +636,7 @@ export async function POST(request: NextRequest) {
       }
 
       case "subscription.revoked": {
-        // Subscription actually expired or was revoked — now downgrade to free
+        // Subscription actually expired or was revoked - now downgrade to free
         const revokedCustomerId = eventData.customerId as string;
         const revokedProductId = eventData.productId as string | undefined;
 
@@ -787,10 +787,10 @@ export async function POST(request: NextRequest) {
             })
             .where(eq(users.polarCustomerId, customerId));
         } else if (subscriptionId) {
-          // Side-purchase refund (seat addon, day pass, etc.) — log and skip
+          // Side-purchase refund (seat addon, day pass, etc.) - log and skip
           // the main-tier reset. The seat-limit decrement (if applicable) is
           // handled by the subsequent subscription.revoked event.
-          logger.info("order.refunded for non-main subscription — main tier preserved", {
+          logger.info("order.refunded for non-main subscription - main tier preserved", {
             customerId,
             refundedSubId: subscriptionId,
             currentMainSubId: userBeforeRefund?.polarSubscriptionId,
@@ -814,7 +814,7 @@ export async function POST(request: NextRequest) {
           // K7: Refund confirmation email - non-blocking
           // Only fire the "your tier was refunded" email when we actually
           // refunded the main subscription (FIX #9). For side-purchase refunds
-          // (seat addons, day passes) we skip — the user still has their tier
+          // (seat addons, day passes) we skip - the user still has their tier
           // and the misleading email would confuse them.
           if (isMainSubscriptionRefund) {
             const refundedPlan = userBeforeRefund?.subscriptionStatus ?? "Subscription";

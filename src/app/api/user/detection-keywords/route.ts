@@ -31,7 +31,7 @@ export async function GET() {
     return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: { "Retry-After": String(rateLimit.retryAfter ?? 60) } });
   }
 
-  // Check plan — Pro+ only
+  // Check plan - Pro+ only
   const plan = await getUserPlan(userId);
   const limits = getPlanLimits(plan);
   if (!limits.aiFeatures.unlimitedAiAnalysis) {

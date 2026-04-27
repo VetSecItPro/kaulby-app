@@ -64,7 +64,7 @@ export async function POST(
       );
     }
 
-    // Check rate limiting (uses lastManualScanAt from pre-claim read — safe
+    // Check rate limiting (uses lastManualScanAt from pre-claim read - safe
     // because manual-scan cooldown is not affected by in-flight scans).
     const cooldownCheck = await canTriggerManualScan(userId, monitor.lastManualScanAt);
 
@@ -106,7 +106,7 @@ export async function POST(
     }
 
     // Trigger the on-demand scan via Inngest only AFTER successfully
-    // claiming the scan slot — guarantees 1 dispatch per claim.
+    // claiming the scan slot - guarantees 1 dispatch per claim.
     await inngest.send({
       name: "monitor/scan-now",
       data: {

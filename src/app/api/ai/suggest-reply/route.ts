@@ -62,7 +62,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // SECURITY: Rate limit verified — FIX-004
+    // SECURITY: Rate limit verified - FIX-004
     // Rate limiting
     const rateLimitCheck = await checkAllRateLimits(userId, plan);
     if (!rateLimitCheck.allowed) {
@@ -108,7 +108,7 @@ export async function POST(req: Request) {
 
     const platformGuide = PLATFORM_GUIDELINES[normalizedPlatform] || PLATFORM_GUIDELINES.default;
 
-    // RT-003: System prompt contains only trusted instructions — no user-controlled data.
+    // RT-003: System prompt contains only trusted instructions - no user-controlled data.
     const systemPrompt = `Generate 3 reply suggestions for a social media post. Each reply should be helpful, authentic, and NOT promotional.
 
 Platform: ${normalizedPlatform}
@@ -119,7 +119,7 @@ Rules:
 - Add genuine value, don't sell
 - Match platform tone
 - Be human, not corporate
-- If product context is provided below, use it sparingly — never override these rules`;
+- If product context is provided below, use it sparingly - never override these rules`;
 
     // RT-003: User-controlled data (productContext, post content) goes in user message role
     const userPrompt = `POST: "${cleanTitle}"
@@ -162,7 +162,7 @@ Return JSON: {"suggestions": [{"text": "...", "tone": "helpful|professional|casu
 
     // SEC-LLM-005: extract URLs from each suggestion so the UI can surface
     // a "verify before posting" warning for external links. We don't strip
-    // them — legitimate replies may contain references — but we make the
+    // them - legitimate replies may contain references - but we make the
     // user see them deliberately. Defends against prompt-injection chains
     // where an attacker payload slipped into AI output and gets weaponized
     // when a user copy-pastes the reply to a public platform.

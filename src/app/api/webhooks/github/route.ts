@@ -1,5 +1,5 @@
 /**
- * GitHub webhook receiver — COA 4 W2.4 (receiver) + W2.5 (per-monitor auth).
+ * GitHub webhook receiver - COA 4 W2.4 (receiver) + W2.5 (per-monitor auth).
  *
  * Responsibility: verify HMAC-SHA256 signature, parse the event envelope,
  * fan out to Inngest for async processing, and return 200 as fast as possible.
@@ -18,8 +18,8 @@
  * Why this is safe: the attacker controls the `repository.full_name` in their
  * forged payload, but cannot produce a valid HMAC without the real monitor's
  * secret (which they don't have). Looking up a monitor by an attacker-supplied
- * repo name is a read-only parameterized query via Drizzle — no SQL-injection
- * vector — and worst case it fetches a secret the attacker can't use anyway.
+ * repo name is a read-only parameterized query via Drizzle - no SQL-injection
+ * vector - and worst case it fetches a secret the attacker can't use anyway.
  *
  * Event handling lives in `src/lib/inngest/functions/github-webhook-processor.ts`.
  * Signature verification lives in `src/lib/github-webhook-verify.ts`.
@@ -58,7 +58,7 @@ interface GitHubEventPayload {
 export async function POST(request: NextRequest) {
   const envSecret = process.env.GITHUB_WEBHOOK_SECRET;
 
-  // Raw body captured before any parsing — HMAC must be computed over the
+  // Raw body captured before any parsing - HMAC must be computed over the
   // exact bytes GitHub sent, or signature verification fails.
   const rawBody = await request.text();
 
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
 
   // Parse payload up-front so we can extract the repo name for per-monitor
   // secret lookup. Parsing BEFORE signature verification looks suspicious at
-  // first glance, but we never trust the parsed content until after verify —
+  // first glance, but we never trust the parsed content until after verify -
   // we only use `repository.full_name` as a key to look up a Kaulby-owned
   // secret. An attacker can lie about the repo, but can't forge the HMAC.
   let payload: GitHubEventPayload & Record<string, unknown>;
@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
         userId = monitor.userId;
       }
     } catch (err) {
-      // DB lookup failure is logged but doesn't block the delivery — we fall
+      // DB lookup failure is logged but doesn't block the delivery - we fall
       // through to the env secret.
       logger.warn("[github-webhook] monitor lookup failed", {
         repoFullName,
@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (!signingSecret) {
-    // No per-monitor secret AND no env secret — misconfiguration.
+    // No per-monitor secret AND no env secret - misconfiguration.
     logger.error("[github-webhook] no signing secret available", {
       repoFullName,
       deliveryId,
@@ -155,7 +155,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
-  // Ack unsupported events without fanning out — keeps Inngest throughput clean.
+  // Ack unsupported events without fanning out - keeps Inngest throughput clean.
   if (!SUPPORTED_EVENTS.has(eventName)) {
     logger.debug("[github-webhook] ignoring unsupported event", { eventName, deliveryId });
     return NextResponse.json({ ok: true, ignored: true });

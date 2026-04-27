@@ -5,7 +5,7 @@
  * claimed vs. the 1000-slot cap. Used by the pricing + sign-up pages to
  * render a live "X/1000 spots remaining" banner that disappears at 1000.
  *
- * No auth — the count is marketing copy, not sensitive.
+ * No auth - the count is marketing copy, not sensitive.
  *
  * Cached at the edge for 60 seconds: the count only changes on a paid
  * signup (low QPS) and slight staleness on the banner is fine. Prevents
@@ -51,7 +51,7 @@ export async function GET() {
     logger.error("Error fetching founding-members count:", {
       error: error instanceof Error ? error.message : String(error),
     });
-    // Fail open — return a "plausible" default so the banner doesn't
+    // Fail open - return a "plausible" default so the banner doesn't
     // block page render on a DB hiccup. Shows the banner as still-available.
     return NextResponse.json(
       { claimed: 0, remaining: FOUNDING_MEMBER_LIMIT, total: FOUNDING_MEMBER_LIMIT, exhausted: false },

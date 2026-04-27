@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import {
   MessageSquare,
   ThumbsUp,
-  Sparkles,
+  Wand2,
   ArrowRight,
   Zap,
   X
@@ -86,7 +86,7 @@ export function SampleResultsPreview({ className }: SampleResultsPreviewProps) {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" />
+            <Wand2 className="h-5 w-5 text-primary" />
             Example Results Preview
           </h3>
           <p className="text-sm text-muted-foreground">
@@ -179,7 +179,7 @@ function SampleResultCard({ result }: SampleResultCardProps) {
           {/* AI Analysis */}
           <div className="rounded-lg bg-muted/50 p-3 space-y-2">
             <div className="flex items-center gap-2">
-              <Sparkles className="h-3 w-3 text-primary" />
+              <Wand2 className="h-3 w-3 text-primary" />
               <span className="text-xs font-medium text-primary">AI Analysis</span>
             </div>
             <p className="text-xs text-muted-foreground">{result.aiSummary}</p>

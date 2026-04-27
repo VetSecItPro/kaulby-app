@@ -10,10 +10,10 @@ import { logger } from "@/lib/logger";
 // Force dynamic rendering
 export const dynamic = "force-dynamic";
 
-// PERF: Extended timeout — FIX-212
+// PERF: Extended timeout - FIX-212
 export const maxDuration = 60;
 
-// PERF: Safety limit on export — FIX-205
+// PERF: Safety limit on export - FIX-205
 const BATCH_SIZE = 500;
 const MAX_ROWS = 10000;
 

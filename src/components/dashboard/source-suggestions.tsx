@@ -4,7 +4,7 @@ import { memo, useMemo, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Lightbulb, Plus, Sparkles, ChevronRight, ChevronUp } from "lucide-react";
+import { Lightbulb, Plus, Wand2, ChevronRight, ChevronUp } from "lucide-react";
 import { getPlatformDisplayName, getPlatformBadgeColor, platforms, type Platform } from "@/lib/platform-utils";
 import { cn } from "@/lib/utils";
 
@@ -209,7 +209,7 @@ const SuggestionCard = memo(function SuggestionCard({
             </Badge>
             {suggestion.potentialValue === "high" && (
               <Badge variant="default" className="bg-primary/20 text-primary text-[10px]">
-                <Sparkles className="h-2.5 w-2.5 mr-0.5" />
+                <Wand2 className="h-2.5 w-2.5 mr-0.5" />
                 Recommended
               </Badge>
             )}
@@ -280,7 +280,7 @@ export const SourceSuggestions = memo(function SourceSuggestions({
     return (
       <Card className={className}>
         <CardContent className="py-8 text-center">
-          <Sparkles className="h-8 w-8 mx-auto mb-2 text-primary" />
+          <Wand2 className="h-8 w-8 mx-auto mb-2 text-primary" />
           <p className="font-medium">You&apos;re monitoring all platforms!</p>
           <p className="text-sm text-muted-foreground">
             Great coverage across all available sources.

@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import {
   Compass,
   TrendingUp,
-  Sparkles,
+  Wand2,
   Search,
   Plus,
   ArrowRight,
@@ -467,7 +467,7 @@ export function DiscoverView({
             onClick={() => setSelectedTab("keywords")}
             className="gap-1"
           >
-            <Sparkles className="h-4 w-4" />
+            <Wand2 className="h-4 w-4" />
             Keywords
           </Button>
         </div>
@@ -561,7 +561,7 @@ export function DiscoverView({
           <div className="space-y-6">
             <div>
               <h2 className="text-lg font-semibold flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-amber-500" />
+                <Wand2 className="h-5 w-5 text-amber-500" />
                 Suggested Keywords
               </h2>
               <p className="text-sm text-muted-foreground">

@@ -26,7 +26,7 @@ import {
   HelpCircle,
   TrendingUp,
   TrendingDown,
-  Sparkles,
+  Wand2,
   ArrowRight,
   CheckCircle2,
   ShieldAlert,
@@ -509,7 +509,7 @@ function DemoSidebar({ activeView, onViewChange }: { activeView: DemoView; onVie
 
           {/* Extra nav items (non-interactive) */}
           {[
-            { icon: Sparkles, label: "Ask Kaulby AI" },
+            { icon: Wand2, label: "Ask Kaulby AI" },
             { icon: Bookmark, label: "Bookmarks" },
             { icon: Settings, label: "Settings" },
           ].map((item) => (
@@ -539,7 +539,7 @@ function DemoSidebar({ activeView, onViewChange }: { activeView: DemoView; onVie
       <div className="border-t px-4 py-3">
         <Link href="/sign-up">
           <Button className="w-full gap-2" size="sm">
-            <Sparkles className="h-4 w-4" />
+            <Wand2 className="h-4 w-4" />
             Start Free
           </Button>
         </Link>
@@ -567,7 +567,7 @@ function DemoMobileHeader({ activeView, onViewChange }: { activeView: DemoView; 
         </div>
         <Link href="/sign-up">
           <Button size="sm" variant="outline" className="gap-1 text-xs h-7">
-            <Sparkles className="h-3 w-3" />
+            <Wand2 className="h-3 w-3" />
             Sign Up
           </Button>
         </Link>

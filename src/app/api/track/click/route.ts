@@ -6,7 +6,7 @@ import { checkIpRateLimit, getClientIp } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
-  // Public endpoint — no authenticated user, so rate-limit by client IP.
+  // Public endpoint - no authenticated user, so rate-limit by client IP.
   // "read" tier (200/min) is generous enough for legitimate email link clicks
   // while blocking scrapers that follow tracking URLs at high rates.
   const ip = getClientIp(request);

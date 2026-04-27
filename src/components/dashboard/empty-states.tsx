@@ -11,7 +11,7 @@ import {
   BarChart3,
   Users,
   Webhook,
-  Sparkles,
+  Wand2,
   ArrowRight,
   PlusCircle,
 } from "lucide-react";
@@ -43,7 +43,7 @@ function MonitorIllustration() {
         </div>
         {/* Floating element */}
         <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-primary/40 flex items-center justify-center animate-[float_4s_ease-in-out_infinite]">
-          <Sparkles className="w-3 h-3 text-primary" aria-hidden="true" />
+          <Wand2 className="w-3 h-3 text-primary" aria-hidden="true" />
         </div>
       </div>
     </IllustrationWrapper>
@@ -139,7 +139,7 @@ function InsightsIllustration() {
       <div className="relative w-full h-full">
         <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/20 to-amber-500/20 animate-[pulse_4s_ease-in-out_infinite]" />
         <div className="absolute inset-0 flex items-center justify-center">
-          <Sparkles className="w-12 h-12 text-primary" aria-hidden="true" />
+          <Wand2 className="w-12 h-12 text-primary" aria-hidden="true" />
         </div>
         {/* Floating sparkles */}
         {[
@@ -152,7 +152,7 @@ function InsightsIllustration() {
             className="absolute animate-[sparkleFloat_2s_ease-in-out_infinite]"
             style={{ top: "20%", left: s.left, animationDelay: s.delay }}
           >
-            <Sparkles className="w-3 h-3 text-amber-400" />
+            <Wand2 className="w-3 h-3 text-amber-400" />
           </div>
         ))}
       </div>

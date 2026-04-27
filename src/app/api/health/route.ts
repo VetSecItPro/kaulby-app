@@ -1,5 +1,5 @@
 /**
- * Health check endpoint — pings all critical external services.
+ * Health check endpoint - pings all critical external services.
  * Used for monitoring uptime and diagnosing service degradation.
  *
  * GET /api/health

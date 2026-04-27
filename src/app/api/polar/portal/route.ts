@@ -50,7 +50,7 @@ export async function POST() {
     }
 
     // Create Polar customer session
-    // Portal session creation — no debug logging in production
+    // Portal session creation - no debug logging in production
     const session = await polar.customerSessions.create({
       customerId: user.polarCustomerId,
     });
@@ -60,7 +60,7 @@ export async function POST() {
     });
   } catch (error) {
     logger.error("Polar portal error:", { error: error instanceof Error ? error.message : String(error) });
-    // SECURITY: Sanitized error logging — FIX-001
+    // SECURITY: Sanitized error logging - FIX-001
     if (error instanceof Error) {
       logger.error("Portal session creation failed:", { error_message: error.message });
     }

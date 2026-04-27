@@ -4,7 +4,7 @@ import { memo, useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Menu, BarChart3, Lightbulb, Sparkles, Users, HelpCircle, CreditCard, ShieldCheck, LogOut } from "lucide-react";
+import { Menu, BarChart3, Lightbulb, Wand2, Users, HelpCircle, CreditCard, ShieldCheck, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -25,7 +25,7 @@ const menuItems = [
   { title: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
   { title: "Insights", href: "/dashboard/insights", icon: Lightbulb },
   // Discover page hidden for MVP - repurposing as "Market Pulse" in V2
-  { title: "Ask Kaulby AI", href: "/dashboard/ask", icon: Sparkles },
+  { title: "Ask Kaulby AI", href: "/dashboard/ask", icon: Wand2 },
   { title: "Audiences", href: "/dashboard/audiences", icon: Users },
   { title: "Help", href: "/dashboard/help", icon: HelpCircle },
 ];
