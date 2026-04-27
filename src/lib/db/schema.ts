@@ -11,6 +11,7 @@ import {
   index,
   uniqueIndex,
   primaryKey,
+  foreignKey,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 
@@ -141,8 +142,9 @@ export const activityActionEnum = pgEnum("activity_action", [
 export const workspaces = pgTable("workspaces", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
-  // DB: FK constraint to users.id exists at DB level (SET NULL on delete) — declared via db:push
-  // Cannot use inline .references() here due to circular dependency with users.workspaceId
+  // FK to users.id declared via foreignKey() in the callback below — inline
+  // .references() can't be used because users.workspaceId references workspaces.id,
+  // creating a circular dependency at table-definition time.
   ownerId: text("owner_id"), // Clerk user ID of workspace owner
   seatLimit: integer("seat_limit").default(3).notNull(),
   seatCount: integer("seat_count").default(1).notNull(), // Current number of members
@@ -150,6 +152,13 @@ export const workspaces = pgTable("workspaces", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
   index("workspaces_owner_id_idx").on(table.ownerId),
+  foreignKey({
+    columns: [table.ownerId],
+    foreignColumns: [users.id],
+    name: "workspaces_owner_id_users_id_fk",
+  })
+    .onDelete("cascade")
+    .onUpdate("cascade"),
 ]);
 
 // Activity logs - audit trail for workspace actions
@@ -160,7 +169,7 @@ export const activityLogs = pgTable("activity_logs", {
     .references(() => workspaces.id, { onDelete: "cascade" }),
   userId: text("user_id")
     .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
+    .references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
   action: activityActionEnum("action").notNull(),
   // Target entity info (what was affected)
   targetType: text("target_type"), // "monitor", "member", "webhook", etc.
@@ -264,7 +273,7 @@ export const audiences = pgTable("audiences", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: text("user_id")
     .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
+    .references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
   // Workspace ID for team ownership - allows transfer when members leave
   workspaceId: uuid("workspace_id").references(() => workspaces.id, { onDelete: "set null" }),
   name: text("name").notNull(),
@@ -314,7 +323,7 @@ export const monitors = pgTable("monitors", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: text("user_id")
     .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
+    .references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
   // Workspace ID for team ownership - allows transfer when members leave
   workspaceId: uuid("workspace_id").references(() => workspaces.id, { onDelete: "set null" }),
   audienceId: uuid("audience_id").references(() => audiences.id, { onDelete: "set null" }),
@@ -503,7 +512,7 @@ export const results = pgTable("results", {
 // AI Logs - for cost tracking
 export const aiLogs = pgTable("ai_logs", {
   id: uuid("id").primaryKey().defaultRandom(),
-  userId: text("user_id").references(() => users.id, { onDelete: "set null" }),
+  userId: text("user_id").references(() => users.id, { onDelete: "set null", onUpdate: "cascade" }),
   model: text("model").notNull(),
   promptTokens: integer("prompt_tokens"),
   completionTokens: integer("completion_tokens"),
@@ -595,7 +604,7 @@ export const usage = pgTable("usage", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: text("user_id")
     .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
+    .references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
   periodStart: timestamp("period_start").notNull(),
   periodEnd: timestamp("period_end").notNull(),
   resultsCount: integer("results_count").default(0).notNull(),
@@ -618,7 +627,7 @@ export const webhooks = pgTable("webhooks", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: text("user_id")
     .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
+    .references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
   name: text("name").notNull(),
   url: text("url").notNull(),
   secret: text("secret"), // For HMAC signature verification
@@ -663,7 +672,7 @@ export const apiKeys = pgTable("api_keys", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: text("user_id")
     .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
+    .references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
   name: text("name").notNull(), // User-friendly name (e.g., "Production API Key")
   keyPrefix: text("key_prefix").notNull(), // First 8 chars for identification (e.g., "kaulby_a")
   keyHash: text("key_hash").notNull(), // SHA-256 hash of the full key
@@ -727,7 +736,7 @@ export const savedSearches = pgTable("saved_searches", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: text("user_id")
     .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
+    .references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
   name: text("name").notNull(),
   query: text("query").notNull(), // The boolean search query string
   filters: jsonb("filters").$type<{
@@ -748,7 +757,7 @@ export const emailEvents = pgTable("email_events", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: text("user_id")
     .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
+    .references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
   emailType: text("email_type").notNull(), // 'daily_digest' | 'weekly_digest' | 'monthly_digest' | 'alert' | 'report'
   emailId: text("email_id").notNull(), // Unique ID for the sent email (for deduplication)
   eventType: text("event_type").notNull(), // 'sent' | 'opened' | 'clicked'
@@ -773,7 +782,7 @@ export const emailEvents = pgTable("email_events", {
 // User feedback - bug reports, feature requests, support tickets
 export const feedback = pgTable("feedback", {
   id: uuid("id").primaryKey().defaultRandom(),
-  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
   userEmail: text("user_email"),
   userName: text("user_name"),
   category: text("category").notNull(), // "bug" | "feature" | "technical" | "billing" | "other"
@@ -792,7 +801,7 @@ export const feedback = pgTable("feedback", {
 // Notifications - in-app notification center
 export const notifications = pgTable("notifications", {
   id: uuid("id").primaryKey().defaultRandom(),
-  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
   title: text("title").notNull(),
   message: text("message").notNull(),
   type: text("type").notNull(), // "alert" | "crisis" | "system"
@@ -977,7 +986,7 @@ export const userDetectionKeywords = pgTable("user_detection_keywords", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: text("user_id")
     .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
+    .references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
   category: text("category").notNull(), // "pain_point" | "solution_request" | "advice_request" | "money_talk" | "hot_discussion"
   keywords: text("keywords").array().notNull(), // User's custom keywords for this category
   isActive: boolean("is_active").default(true).notNull(),
@@ -1001,7 +1010,7 @@ export const bookmarkCollections = pgTable("bookmark_collections", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: text("user_id")
     .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
+    .references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
   name: text("name").notNull(),
   color: text("color"), // Hex color for UI
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -1015,7 +1024,7 @@ export const bookmarks = pgTable("bookmarks", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: text("user_id")
     .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
+    .references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
   resultId: uuid("result_id")
     .notNull()
     .references(() => results.id, { onDelete: "cascade" }),
@@ -1068,7 +1077,7 @@ export const webhookEvents = pgTable("webhook_events", {
 // Shared Reports - public shareable report links for stakeholders
 export const sharedReports = pgTable("shared_reports", {
   id: uuid("id").primaryKey().defaultRandom(),
-  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
   monitorId: uuid("monitor_id").references(() => monitors.id, { onDelete: "cascade" }),
   shareToken: text("share_token").notNull().unique(), // Random token for public URL
   title: text("title").notNull(),
@@ -1099,7 +1108,7 @@ export const sharedReportsRelations = relations(sharedReports, ({ one }) => ({
 // Email delivery failure tracking — no silent failures
 export const emailDeliveryFailures = pgTable("email_delivery_failures", {
   id: uuid("id").primaryKey().defaultRandom(),
-  userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
+  userId: text("user_id").references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
   emailType: text("email_type").notNull(), // 'alert' | 'digest' | 'report' | 'onboarding' | 'budget' | 'subscription'
   recipient: text("recipient").notNull(),
   subject: text("subject"),
@@ -1118,7 +1127,7 @@ export const emailDeliveryFailures = pgTable("email_delivery_failures", {
 // AI Visibility Checks - track brand mentions in AI/LLM responses (Team tier)
 export const aiVisibilityChecks = pgTable("ai_visibility_checks", {
   id: uuid("id").primaryKey().defaultRandom(),
-  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
   monitorId: uuid("monitor_id").references(() => monitors.id, { onDelete: "cascade" }),
   brandName: text("brand_name").notNull(),
   model: text("model").notNull(),
@@ -1151,7 +1160,7 @@ export const aiVisibilityChecksRelations = relations(aiVisibilityChecks, ({ one 
 // Chat Conversations - persistent AI chat history
 export const chatConversations = pgTable("chat_conversations", {
   id: uuid("id").primaryKey().defaultRandom(),
-  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
   title: text("title").notNull().default("New conversation"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -1258,7 +1267,7 @@ export type NewMonitorResult = typeof monitorResults.$inferInsert;
 // in one click instead of re-applying 3-5 filter chips per visit.
 export const savedViews = pgTable("saved_views", {
   id: uuid("id").primaryKey().defaultRandom(),
-  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
   name: text("name").notNull(),
   filters: jsonb("filters").notNull().$type<{
     categoryFilter?: string | null;
