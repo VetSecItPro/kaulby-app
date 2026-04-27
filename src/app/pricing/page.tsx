@@ -58,30 +58,12 @@ interface Plan {
   trialDays: number;
 }
 
-// Plans ordered in ascending price - Free / Solo / Scale / Growth.
+// Plans ordered in ascending price - Solo / Scale / Growth.
+// Free tier removed 2026-04-27 (Apify costs); Day Pass ($15/24h) is now the
+// try-before-buy entry point and renders in its own card on this page.
 // Each tier's features list emphasizes what makes THAT tier different from the one before,
 // not an exhaustive feature dump. The comparison table below handles the exhaustive view.
 const plans: Plan[] = [
-  {
-    name: "Free",
-    key: "free",
-    description: "Try Kaulby with a single monitor",
-    useCase: "Kick the tires before committing",
-    monthlyPrice: 0,
-    annualPrice: 0,
-    trialDays: 0,
-    features: [
-      { text: "1 monitor" },
-      { text: "Reddit only" },
-      { text: "3 keywords" },
-      { text: "24-hour refresh" },
-      { text: "3-day history" },
-      { text: "Last 3 results visible" },
-    ],
-    cta: "Get Started Free",
-    href: "/sign-up",
-    popular: false,
-  },
   {
     name: "Solo",
     key: "solo",
@@ -153,26 +135,26 @@ const plans: Plan[] = [
 // (3) how does it reach me? (4) can my team use it?
 const featureComparison = [
   // MONITORING SCOPE
-  { feature: "Active monitors", free: "1", solo: "10", scale: "20", growth: "30" },
-  { feature: "Keywords per monitor", free: "3", solo: "Unlimited", scale: "Unlimited", growth: "Unlimited" },
-  { feature: "Platforms", free: "Reddit", solo: "9", scale: "12", growth: "All 16" },
-  { feature: "Refresh cadence", free: "24 hr", solo: "6 hr", scale: "4 hr", growth: "2 hr" },
-  { feature: "Real-time channels", free: "-", solo: "Reddit", scale: "Reddit", growth: "Reddit + GitHub" },
-  { feature: "Result history", free: "3 days", solo: "90 days", scale: "90 days", growth: "1 year" },
+  { feature: "Active monitors", solo: "10", scale: "20", growth: "30" },
+  { feature: "Keywords per monitor", solo: "Unlimited", scale: "Unlimited", growth: "Unlimited" },
+  { feature: "Platforms", solo: "9", scale: "12", growth: "All 16" },
+  { feature: "Refresh cadence", solo: "6 hr", scale: "4 hr", growth: "2 hr" },
+  { feature: "Real-time channels", solo: "Reddit", scale: "Reddit", growth: "Reddit + GitHub" },
+  { feature: "Result history", solo: "90 days", scale: "90 days", growth: "1 year" },
   // AI INTELLIGENCE
-  { feature: "Sentiment + pain-point detection", free: "Sentiment only", solo: true, scale: true, growth: true },
-  { feature: "Ask Kaulby (AI chat)", free: false, solo: true, scale: true, growth: true },
-  { feature: "Comprehensive AI analyst reports", free: false, solo: false, scale: false, growth: true },
-  { feature: "Email digest", free: "-", solo: "Daily", scale: "Daily", growth: "Twice daily" },
+  { feature: "Sentiment + pain-point detection", solo: true, scale: true, growth: true },
+  { feature: "Ask Kaulby (AI chat)", solo: true, scale: true, growth: true },
+  { feature: "Comprehensive AI analyst reports", solo: false, scale: false, growth: true },
+  { feature: "Email digest", solo: "Daily", scale: "Daily", growth: "Twice daily" },
   // DELIVERY & INTEGRATIONS
-  { feature: "Email + Slack/Discord alerts", free: false, solo: true, scale: true, growth: true },
-  { feature: "CSV export", free: false, solo: true, scale: true, growth: true },
-  { feature: "Custom webhooks", free: false, solo: false, scale: false, growth: true },
-  { feature: "REST API access", free: false, solo: false, scale: false, growth: true },
+  { feature: "Email + Slack/Discord alerts", solo: true, scale: true, growth: true },
+  { feature: "CSV export", solo: true, scale: true, growth: true },
+  { feature: "Custom webhooks", solo: false, scale: false, growth: true },
+  { feature: "REST API access", solo: false, scale: false, growth: true },
   // TEAM
-  { feature: "Seats included", free: "1", solo: "1", scale: "1", growth: "3" },
-  { feature: "Additional seats", free: "-", solo: "-", scale: "-", growth: "+$20/mo each" },
-  { feature: "Shared workspace + roles", free: false, solo: false, scale: false, growth: true },
+  { feature: "Seats included", solo: "1", scale: "1", growth: "3" },
+  { feature: "Additional seats", solo: "-", scale: "-", growth: "+$20/mo each" },
+  { feature: "Shared workspace + roles", solo: false, scale: false, growth: true },
 ];
 
 export default function PricingPage() {
@@ -310,7 +292,7 @@ export default function PricingPage() {
               Simple, transparent pricing
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Start free and upgrade when you need advanced monitoring and full AI insights.
+              Try a Day Pass for 24 hours, or pick a plan when you&apos;re ready. 14-day money-back guarantee on all monthly plans.
             </p>
             <div className="mt-4 flex justify-center">
               <FoundingMembersBanner variant="hero" />
@@ -324,7 +306,7 @@ export default function PricingPage() {
               </div>
               <div className="flex items-center gap-2">
                 <CreditCard className="h-4 w-4 text-green-500" />
-                <span>No credit card for free tier</span>
+                <span>Day Pass: $15 for 24h, no subscription</span>
               </div>
               <div className="flex items-center gap-2">
                 <RefreshCw className="h-4 w-4 text-green-500" />
@@ -366,7 +348,7 @@ export default function PricingPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 max-w-7xl mx-auto">
             {plans.map((plan) => (
               <Card
                 key={plan.name}
@@ -394,22 +376,18 @@ export default function PricingPage() {
                       <span className="text-4xl font-bold">{getDisplayPrice(plan)}</span>
                       <span className="text-muted-foreground">/mo</span>
                     </div>
-                    {plan.monthlyPrice > 0 ? (
-                      <div className="mt-1 space-y-0.5">
-                        <p className="text-sm text-muted-foreground">
-                          {billingInterval === "annual"
-                            ? `Billed annually ($${plan.annualPrice}/year)`
-                            : `Billed monthly`}
-                        </p>
-                        {billingInterval === "annual" && (
-                          <Badge variant="secondary" className="bg-green-500/10 text-green-500 text-[10px]">
-                            Save ${plan.monthlyPrice * 12 - plan.annualPrice}/yr
-                          </Badge>
-                        )}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground mt-1">Free forever</p>
-                    )}
+                    <div className="mt-1 space-y-0.5">
+                      <p className="text-sm text-muted-foreground">
+                        {billingInterval === "annual"
+                          ? `Billed annually ($${plan.annualPrice}/year)`
+                          : `Billed monthly`}
+                      </p>
+                      {billingInterval === "annual" && (
+                        <Badge variant="secondary" className="bg-green-500/10 text-green-500 text-[10px]">
+                          Save ${plan.monthlyPrice * 12 - plan.annualPrice}/yr
+                        </Badge>
+                      )}
+                    </div>
                     {plan.trialDays > 0 && (
                       <p className="text-sm text-primary mt-1">{plan.trialDays}-day free trial</p>
                     )}
@@ -440,36 +418,18 @@ export default function PricingPage() {
                         {plan.cta}
                       </Button>
                     </Link>
+                  ) : currentPlan === plan.key ? (
+                    <Button className="w-full" variant="outline" disabled>
+                      Current Plan
+                    </Button>
                   ) : (
-                    currentPlan === plan.key ? (
-                      plan.key === "free" ? (
-                        <Link href="/dashboard" className="w-full">
-                          <Button className="w-full" variant="outline">
-                            Continue with Free
-                            <ArrowRight className="h-4 w-4 ml-2" />
-                          </Button>
-                        </Link>
-                      ) : (
-                        <Button className="w-full" variant="outline" disabled>
-                          Current Plan
-                        </Button>
-                      )
-                    ) : plan.key === "free" ? (
-                      <Link href="/dashboard" className="w-full">
-                        <Button className="w-full" variant="outline">
-                          Continue with Free
-                          <ArrowRight className="h-4 w-4 ml-2" />
-                        </Button>
-                      </Link>
-                    ) : (
-                      <Button
-                        className="w-full"
-                        variant={plan.popular ? "default" : "outline"}
-                        onClick={() => handleUpgrade(plan.key as "scale" | "solo" | "growth", plan.name)}
-                      >
-                        {plan.cta}
-                      </Button>
-                    )
+                    <Button
+                      className="w-full"
+                      variant={plan.popular ? "default" : "outline"}
+                      onClick={() => handleUpgrade(plan.key as "scale" | "solo" | "growth", plan.name)}
+                    >
+                      {plan.cta}
+                    </Button>
                   )}
                 </CardFooter>
               </Card>
@@ -556,7 +516,6 @@ export default function PricingPage() {
                   <TableHeader>
                     <TableRow className="bg-muted/50">
                       <TableHead className="w-[240px]">Feature</TableHead>
-                      <TableHead className="text-center">Free</TableHead>
                       <TableHead className="text-center">Solo</TableHead>
                       <TableHead className="text-center bg-primary/5">
                         <div className="flex items-center justify-center gap-1">
@@ -582,7 +541,6 @@ export default function PricingPage() {
                       return (
                         <TableRow key={row.feature}>
                           <TableCell className="font-medium">{row.feature}</TableCell>
-                          <TableCell className="text-center">{renderCell(row.free)}</TableCell>
                           <TableCell className="text-center">{renderCell(row.solo)}</TableCell>
                           <TableCell className="text-center bg-primary/5">{renderCell(row.scale)}</TableCell>
                           <TableCell className="text-center">{renderCell(row.growth)}</TableCell>
@@ -600,14 +558,14 @@ export default function PricingPage() {
 
           {/* FAQ Schema for SEO/AEO */}
           <FAQSchema faqs={[
-            { question: "Is there really a free plan?", answer: "Yes! The Free plan is free forever. You can monitor 1 keyword on Reddit with basic AI analysis and daily refresh." },
-            { question: "How does the 14-day free trial work?", answer: "All paid plans include a 14-day free trial with full access to all features. You won't be charged until the trial ends. Cancel anytime during the trial." },
+            { question: "How can I try Kaulby before subscribing?", answer: "We offer a Day Pass: $15 for 24 hours of full Scale-tier access (10 monitors, 12 platforms, full AI analysis). No subscription required. Perfect for one-off research or kicking the tires before committing to a monthly plan." },
+            { question: "How does the 14-day money-back guarantee work?", answer: "All monthly paid plans come with a 14-day money-back guarantee. If you're not satisfied within the first 14 days of your initial payment, contact support@kaulbyapp.com for a full refund. No questions asked." },
             { question: "Can I cancel anytime?", answer: "Yes, you can cancel your subscription at any time from your account settings. You'll continue to have access until the end of your current billing period." },
             { question: "What platforms does Kaulby monitor?", answer: "Kaulby monitors 16 platforms: Reddit, Hacker News, Indie Hackers, Product Hunt, Google Reviews, YouTube, GitHub, Trustpilot, X (Twitter), Dev.to, Hashnode, App Store, Play Store, G2, Yelp, and Amazon Reviews." },
             { question: "How is Kaulby different from Brand24?", answer: "Kaulby focuses on community monitoring with AI-powered pain point detection and sentiment analysis across 16 platforms, starting at $39/mo. Brand24 starts at $99/mo and focuses on broader social media monitoring." },
-            { question: "What replaced GummySearch?", answer: "Kaulby is the best GummySearch alternative. It covers Reddit plus 16 additional platforms, includes AI-powered analysis, and offers a free tier. Visit kaulbyapp.com/gummysearch for migration details." },
+            { question: "What replaced GummySearch?", answer: "Kaulby is the best GummySearch alternative. It covers Reddit plus 15 additional platforms with AI-powered analysis. Visit kaulbyapp.com/gummysearch for migration details." },
             { question: "What is the Day Pass?", answer: "The Day Pass gives you full Scale-level access for 24 hours with a one-time $15 payment. Perfect for quick research without committing to a subscription." },
-            { question: "How often are results refreshed?", answer: "Free plans refresh once per day. Scale refreshes every 4 hours. Growth refreshes every 2 hours with twice-daily email digests." },
+            { question: "How often are results refreshed?", answer: "Solo refreshes every 6 hours. Scale every 4 hours. Growth every 2 hours, with twice-daily email digests." },
             { question: "Is my data secure?", answer: "Yes. We use industry-standard encryption, are GDPR compliant, and you can export or delete your data at any time." },
             { question: "What is the Founding Members program?", answer: "The first 1,000 paid subscribers become Founding Members and lock in their current price forever, even when prices increase." },
             { question: "What happens when I hit my monitor or keyword limit?", answer: "Your existing monitors keep working normally. You won't be able to create new monitors or add more keywords until you upgrade. We'll prompt you to upgrade when you reach your limit." },
@@ -622,19 +580,20 @@ export default function PricingPage() {
             {/* A11Y: Keyboard navigation instructions - FIX-322 */}
             <p className="sr-only">Use arrow keys to navigate questions. Press Enter or Space to expand.</p>
             <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="free-plan">
-                <AccordionTrigger>Is there really a free plan?</AccordionTrigger>
+              <AccordionItem value="day-pass-trial">
+                <AccordionTrigger>How can I try Kaulby before subscribing?</AccordionTrigger>
                 <AccordionContent>
-                  Yes! The Free plan is free forever. You can monitor 1 keyword on Reddit with basic
-                  AI analysis and daily refresh. It&apos;s perfect for trying out Kaulby before upgrading.
+                  Grab a Day Pass: $15 for 24 hours of full Scale-tier access (10 monitors, 12 platforms,
+                  full AI analysis). No subscription, no auto-renewal. It&apos;s the fastest way to see if Kaulby
+                  fits your workflow before picking a monthly plan.
                 </AccordionContent>
               </AccordionItem>
-              <AccordionItem value="trial">
-                <AccordionTrigger>How does the 14-day free trial work?</AccordionTrigger>
+              <AccordionItem value="money-back-trial">
+                <AccordionTrigger>What about a free trial on the monthly plans?</AccordionTrigger>
                 <AccordionContent>
-                  All paid plans include a 14-day free trial with full access to all features.
-                  You&apos;ll enter payment details at checkout, but you won&apos;t be charged until the trial ends.
-                  Cancel anytime during the trial and you won&apos;t be billed.
+                  All monthly plans come with a 14-day money-back guarantee instead of a free trial. You pay
+                  upfront, get full access immediately, and if you&apos;re not satisfied within the first 14 days,
+                  email support@kaulbyapp.com for a full refund. No questions asked.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="cancel">
@@ -664,16 +623,16 @@ export default function PricingPage() {
                 <AccordionContent>
                   We monitor 16 platforms total: Reddit, Hacker News, Indie Hackers, Product Hunt,
                   Google Reviews, YouTube, GitHub, Trustpilot, X (Twitter), Dev.to, Hashnode, App Store, Play Store,
-                  G2, Yelp, and Amazon Reviews. The Free plan includes Reddit only.
-                  Pro includes 9 core platforms (Reddit, HN, Indie Hackers, Product Hunt, Google Reviews, YouTube, GitHub, Trustpilot, X).
-                  Team includes all 16 platforms.
+                  G2, Yelp, and Amazon Reviews. Solo includes 9 core platforms.
+                  Scale adds G2, Yelp, and Amazon Reviews (12 total). Growth includes all 16.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="refresh">
                 <AccordionTrigger>How often are results refreshed?</AccordionTrigger>
                 <AccordionContent>
-                  Free plans refresh once per day. Scale refreshes every 4 hours (6x faster).
-                  Growth refreshes every 2 hours (12x faster than free) with twice-daily email digests.
+                  Solo refreshes every 6 hours. Scale every 4 hours. Growth every 2 hours,
+                  with twice-daily email digests. All paid tiers also include real-time Reddit
+                  alerts (Growth adds real-time GitHub).
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="day-pass">
@@ -732,16 +691,19 @@ export default function PricingPage() {
               <CardContent className="p-8">
                 <h3 className="text-2xl font-bold mb-2">Still not sure?</h3>
                 <p className="text-muted-foreground mb-6">
-                  Start with our free tier - no credit card required. Monitor 1 keyword on Reddit
-                  and see the AI analysis in action. Upgrade whenever you&apos;re ready.
+                  Try a Day Pass for $15 - full Scale-tier access for 24 hours, no subscription.
+                  See the AI analysis on real conversations before you commit.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                  <Link href="/sign-up">
-                    <Button size="lg" className="gap-2">
-                      Start Free
-                      <ArrowRight className="h-4 w-4" />
-                    </Button>
-                  </Link>
+                  <Button
+                    size="lg"
+                    className="gap-2"
+                    onClick={handleDayPassPurchase}
+                    disabled={isPurchasingDayPass}
+                  >
+                    {isPurchasingDayPass ? "Loading..." : "Get Day Pass - $15"}
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
                   <Link href="/gummysearch">
                     <Button size="lg" variant="outline">
                       Coming from GummySearch?

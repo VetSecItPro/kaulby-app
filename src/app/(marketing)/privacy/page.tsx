@@ -106,7 +106,7 @@ export default function PrivacyPage() {
             the Service. Monitored results are retained according to your subscription plan:
           </p>
           <ul className="list-disc list-inside text-muted-foreground mt-4 space-y-2">
-            <li>Free plan: 3 days</li>
+            <li>Day Pass: 24 hours (results retained for the duration of the pass)</li>
             <li>Solo plan: 90 days</li>
             <li>Scale plan: 180 days</li>
             <li>Growth plan: 365 days</li>

@@ -143,6 +143,17 @@ export function shouldSkipMonitor(
     });
   };
 
+  // Free tier is no longer offered (2026-04-27). Apify scan costs scale
+  // linearly per active monitor, so we hard-skip free-tier scans here. New
+  // signups land on /pricing and must pick a paid tier or Day Pass; existing
+  // free users keep their account+data but their monitors stop scanning until
+  // they subscribe. Reuses the platform_not_in_plan telemetry reason - the
+  // semantics match (free tier has zero platforms now).
+  if (plan === "free") {
+    emitSkip("platform_not_in_plan");
+    return true;
+  }
+
   if (!canAccessPlatformWithPlan(plan, platform)) {
     emitSkip("platform_not_in_plan");
     return true;

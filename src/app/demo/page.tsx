@@ -537,10 +537,10 @@ function DemoSidebar({ activeView, onViewChange }: { activeView: DemoView; onVie
 
       {/* CTA */}
       <div className="border-t px-4 py-3">
-        <Link href="/sign-up">
+        <Link href="/pricing">
           <Button className="w-full gap-2" size="sm">
             <Wand2 className="h-4 w-4" />
-            Start Free
+            Get Started
           </Button>
         </Link>
       </div>

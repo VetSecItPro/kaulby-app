@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   description: "Compare Kaulby to popular social listening tools like GummySearch, Brand24, Mention, Hootsuite, and more. See why startups choose Kaulby for community monitoring.",
   openGraph: {
     title: "Kaulby Alternatives - Compare Social Listening Tools",
-    description: "Compare Kaulby to popular social listening tools. 16 platforms, AI-powered insights, free tier available.",
+    description: "Compare Kaulby to popular social listening tools. 16 platforms, AI-powered insights, $15 Day Pass to try first.",
     url: "https://kaulbyapp.com/alternatives",
   },
   alternates: {
@@ -38,7 +38,7 @@ const alternatives = [
     slug: "brand24",
     name: "Brand24",
     tagline: "Media Monitoring Tool",
-    description: "Brand24 starts at $79/mo. Kaulby Solo starts at $39/mo with a free tier and 9 platforms.",
+    description: "Brand24 starts at $79/mo. Kaulby Solo starts at $39/mo with a $15 Day Pass and 9 platforms.",
     pricing: "$79+/mo",
   },
   {
@@ -101,7 +101,7 @@ const alternatives = [
     slug: "f5bot",
     name: "F5Bot",
     tagline: "Free Reddit Alerts",
-    description: "F5Bot is free but basic (email only). Kaulby free tier includes dashboard and AI.",
+    description: "F5Bot is free but email-only. Kaulby starts at $39/mo with a $15 Day Pass to try the dashboard + AI.",
     pricing: "Free",
   },
 ];
@@ -109,7 +109,7 @@ const alternatives = [
 const faqs = [
   {
     question: "What is the best social listening tool for startups?",
-    answer: "Kaulby is purpose-built for startups with a free tier, affordable Solo plan at $39/mo, and focus on communities where startup customers discuss products (Reddit, Hacker News, Product Hunt). Enterprise tools like Brandwatch and Sprout Social are overkill for most startups.",
+    answer: "Kaulby is purpose-built for startups with a $15 Day Pass for try-before-buy, an affordable Solo plan at $39/mo, and focus on communities where startup customers discuss products (Reddit, Hacker News, Product Hunt). Enterprise tools like Brandwatch and Sprout Social are overkill for most startups.",
   },
   {
     question: "What is the best GummySearch alternative?",
@@ -117,11 +117,11 @@ const faqs = [
   },
   {
     question: "How does Kaulby compare to Brand24 and Mention?",
-    answer: "Kaulby focuses on community platforms (Reddit, HN, reviews) while Brand24 and Mention focus on traditional social media. Kaulby is more affordable ($0-79/mo vs $41-999/mo) and includes AI pain point detection that competitors lack.",
+    answer: "Kaulby focuses on community platforms (Reddit, HN, reviews) while Brand24 and Mention focus on traditional social media. Kaulby is more affordable ($39-149/mo vs $41-999/mo, plus a $15 Day Pass) and includes AI pain point detection that competitors lack.",
   },
   {
     question: "Is there a free social listening tool?",
-    answer: "Kaulby offers a free forever tier with 1 Reddit monitor, AI sentiment analysis, and dashboard access. F5Bot is also free but only provides basic email alerts without a dashboard or AI features.",
+    answer: "Kaulby has a $15 Day Pass (24-hour Scale-tier access, no subscription) as the lowest-friction way to try a full social listening tool with dashboard + AI. F5Bot is the only fully-free option but only provides basic email alerts - no dashboard, no AI, no historical search.",
   },
 ];
 
@@ -129,7 +129,7 @@ const kaulbyAdvantages = [
   "16 platforms (Reddit, HN, Indie Hackers, GitHub, Dev.to, reviews, and more)",
   "AI sentiment analysis on all tiers",
   "Pain point detection and conversation categorization",
-  "Free forever tier available",
+  "$15 Day Pass to try before subscribing",
   "Team collaboration features",
   "Startup-friendly pricing",
 ];
@@ -257,7 +257,7 @@ export default function AlternativesPage() {
           </p>
           <Link href="/sign-up">
             <Button size="lg" variant="secondary" className="gap-2">
-              Start Free Trial
+              Get Started
               <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>

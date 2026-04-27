@@ -127,7 +127,7 @@ export default function GummySearchMigrationPage() {
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link href="/sign-up">
               <Button size="lg" className="gap-2">
-                Start Free - No Credit Card <ArrowRight className="h-4 w-4" />
+                Try Day Pass - $15/24h <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
             <Link href="/pricing">

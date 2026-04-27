@@ -90,33 +90,33 @@ interface PlanDefinition {
 //   that can't be replicated by stacking Solos.
 // Annual: 20% off across all tiers ($374 / $758 / $1,430).
 export const PLANS: Record<"free" | "solo" | "scale" | "growth", PlanDefinition> = {
+  // "Free" is no longer offered as of 2026-04-27 — Apify scan costs scale
+  // linearly per active monitor and made the tier unviable. The key remains
+  // in code as the default state for users who haven't subscribed yet (or
+  // whose subscription has lapsed). Limits are zeroed so dashboards render an
+  // "upgrade required" state and shouldSkipMonitor() in monitor-helpers.ts
+  // hard-skips all scans for plan==="free". Day Pass ($15/24hr) is the new
+  // try-before-buy entry point.
   free: {
     name: "Free",
-    description: "Try Kaulby with a single monitor",
+    description: "No active subscription",
     price: 0,
     annualPrice: 0,
     priceId: null,
     annualPriceId: null,
     trialDays: 0,
-    features: [
-      "1 monitor",
-      "3 keywords",
-      "Reddit only",
-      "24-hour refresh",
-      "3-day history",
-      "See last 3 results",
-    ],
+    features: [],
     limits: {
-      monitors: 1,
-      keywordsPerMonitor: 3,
-      sourcesPerMonitor: 2,
-      resultsHistoryDays: 3,
-      resultsVisible: 3,
+      monitors: 0,
+      keywordsPerMonitor: 0,
+      sourcesPerMonitor: 0,
+      resultsHistoryDays: 0,
+      resultsVisible: 0,
       refreshDelayHours: 24,
-      platforms: ["reddit"],
+      platforms: [],
       digestFrequencies: [],
       aiFeatures: {
-        sentiment: true,
+        sentiment: false,
         painPointCategories: false,
         askFeature: false,
         unlimitedAiAnalysis: false,
