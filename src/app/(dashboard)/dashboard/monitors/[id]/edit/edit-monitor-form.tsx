@@ -436,8 +436,8 @@ export function EditMonitorForm({ monitorId, limits, userPlan }: EditMonitorForm
                 {isTeamUser
                   ? "All 16 platforms available. Different platforms need different inputs."
                   : isPaidUser
-                    ? "9 Pro platforms available. Upgrade to Team for all 17."
-                    : "Upgrade to Pro for 9 platforms or Team for all 17."}
+                    ? "9 platforms on Solo. Upgrade to Scale for 12 (+ G2, Yelp, Amazon) or Growth for all 16."
+                    : "Upgrade to Solo for 9 platforms, Scale for 12, or Growth for all 16."}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">

@@ -109,7 +109,7 @@ const alternatives = [
 const faqs = [
   {
     question: "What is the best social listening tool for startups?",
-    answer: "Kaulby is purpose-built for startups with a free tier, affordable Pro plan at $29/mo, and focus on communities where startup customers discuss products (Reddit, Hacker News, Product Hunt). Enterprise tools like Brandwatch and Sprout Social are overkill for most startups.",
+    answer: "Kaulby is purpose-built for startups with a free tier, affordable Solo plan at $39/mo, and focus on communities where startup customers discuss products (Reddit, Hacker News, Product Hunt). Enterprise tools like Brandwatch and Sprout Social are overkill for most startups.",
   },
   {
     question: "What is the best GummySearch alternative?",

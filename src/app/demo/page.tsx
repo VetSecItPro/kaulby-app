@@ -297,7 +297,7 @@ const DEMO_RECOMMENDATIONS = [
     actions: [
       "Add interactive pricing comparison table",
       "Show feature differences visually",
-      "Add 'recommended' badge to Pro tier",
+      "Add 'recommended' badge to Scale tier",
     ],
   },
   {

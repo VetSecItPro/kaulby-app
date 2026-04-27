@@ -252,7 +252,7 @@ const toolPages: Record<string, {
       },
       {
         name: "Choose your platforms",
-        text: "Select which platforms to monitor (Pro tier unlocks all 16 platforms).",
+        text: "Select which platforms to monitor (Solo unlocks 9, Scale 12, Growth all 16).",
       },
       {
         name: "Configure notifications",
@@ -337,7 +337,7 @@ const toolPages: Record<string, {
       },
       {
         question: "Can I track multiple brands or products?",
-        answer: "Yes, you can create separate monitors for different brands, products, or even executives. Pro tier includes 10 monitors and Team tier includes 30 monitors. Each monitor can track multiple keywords with Boolean operators for precise matching.",
+        answer: "Yes, you can create separate monitors for different brands, products, or even executives. Solo includes 10 monitors, Scale includes 20, and Growth includes 30. Each monitor can track unlimited keywords (paid tiers) with Boolean operators for precise matching.",
       },
       {
         question: "How is this different from Google Alerts?",
@@ -440,7 +440,7 @@ const toolPages: Record<string, {
       },
       {
         question: "Can I compare my brand against multiple competitors?",
-        answer: "Yes, Kaulby's Share of Voice feature shows your mention volume compared to competitors over time. You can track up to 30 competitors on the Team plan. The analytics dashboard shows sentiment comparison, feature request trends, and pain point categories across all competitors.",
+        answer: "Yes, Kaulby's Share of Voice feature shows your mention volume compared to competitors over time. You can track up to 30 competitors on the Growth plan. The analytics dashboard shows sentiment comparison, feature request trends, and pain point categories across all competitors.",
       },
       {
         question: "How do I find competitor customers who might switch?",

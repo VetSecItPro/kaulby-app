@@ -58,8 +58,9 @@ export default function TermsPage() {
           </p>
           <ul className="list-disc list-inside text-muted-foreground mt-4 space-y-2">
             <li>Free plan: Limited monitors and results</li>
-            <li>Pro plan: Extended limits and AI features</li>
-            <li>Team plan: Expanded limits with priority support</li>
+            <li>Solo plan: Extended limits and AI features for individual operators</li>
+            <li>Scale plan: Expanded limits with review-site coverage (G2, Yelp, Amazon)</li>
+            <li>Growth plan: Maximum limits with team workspaces, API access, and priority support</li>
           </ul>
         </section>
 

@@ -36,7 +36,7 @@ export async function GET() {
   const limits = getPlanLimits(plan);
   if (!limits.aiFeatures.unlimitedAiAnalysis) {
     return NextResponse.json(
-      { error: "Custom detection keywords require a Pro or Team plan" },
+      { error: "Custom detection keywords require a Solo, Scale, or Growth plan" },
       { status: 403 }
     );
   }
@@ -99,7 +99,7 @@ export async function PUT(request: NextRequest) {
   const limits = getPlanLimits(plan);
   if (!limits.aiFeatures.unlimitedAiAnalysis) {
     return NextResponse.json(
-      { error: "Custom detection keywords require a Pro or Team plan" },
+      { error: "Custom detection keywords require a Solo, Scale, or Growth plan" },
       { status: 403 }
     );
   }
@@ -175,7 +175,7 @@ export async function POST() {
   const limits = getPlanLimits(plan);
   if (!limits.aiFeatures.unlimitedAiAnalysis) {
     return NextResponse.json(
-      { error: "Custom detection keywords require a Pro or Team plan" },
+      { error: "Custom detection keywords require a Solo, Scale, or Growth plan" },
       { status: 403 }
     );
   }

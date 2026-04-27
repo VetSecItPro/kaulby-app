@@ -24,12 +24,12 @@ export async function GET() {
       return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfter ?? 60) } });
     }
 
-    // Check if user has Team plan (with email fallback for Clerk ID mismatch)
+    // Check if user has Growth plan (with email fallback for Clerk ID mismatch)
     const user = await findUserWithFallback(userId);
 
     if (!user || user.subscriptionStatus !== "growth") {
       return NextResponse.json(
-        { error: "API access requires Team plan" },
+        { error: "API access requires Growth plan" },
         { status: 403 }
       );
     }
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
     const user = await findUserWithFallback(userId);
     if (!user || user.subscriptionStatus !== "growth") {
       return NextResponse.json(
-        { error: "API access requires Team plan" },
+        { error: "API access requires Growth plan" },
         { status: 403 }
       );
     }
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
 
     if (!result) {
       return NextResponse.json(
-        { error: "Failed to create API key. Either you've reached the limit (5 keys) or you need a Team plan." },
+        { error: "Failed to create API key. Either you've reached the limit (5 keys) or you need a Growth plan." },
         { status: 403 }
       );
     }

@@ -198,7 +198,7 @@ export default function GummySearchMigrationPage() {
               <CardContent className="text-sm text-muted-foreground">
                 Your customers discuss products on Google Reviews, Trustpilot, G2,
                 Hacker News, YouTube, and X. GummySearch only sees Reddit.
-                Kaulby sees all 17.
+                Kaulby sees all 16.
               </CardContent>
             </Card>
             <Card>
