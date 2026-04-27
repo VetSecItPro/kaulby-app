@@ -38,7 +38,7 @@ const alternatives = [
     slug: "brand24",
     name: "Brand24",
     tagline: "Media Monitoring Tool",
-    description: "Brand24 starts at $79/mo. Kaulby offers similar features at $29/mo with a free tier.",
+    description: "Brand24 starts at $79/mo. Kaulby Solo starts at $39/mo with a free tier and 9 platforms.",
     pricing: "$79+/mo",
   },
   {
@@ -66,7 +66,7 @@ const alternatives = [
     slug: "sproutsocial",
     name: "Sprout Social",
     tagline: "Social Media Management",
-    description: "Sprout Social costs $249+/user/mo. Kaulby Team is $79/mo for up to 5 users.",
+    description: "Sprout Social costs $249+/user/mo. Kaulby Growth is $149/mo with 3 included team seats (+$20/mo per extra).",
     pricing: "$249+/user/mo",
   },
   {

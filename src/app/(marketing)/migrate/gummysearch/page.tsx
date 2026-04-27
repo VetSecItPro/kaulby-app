@@ -54,9 +54,9 @@ const comparisonRows = [
     kaulbyWins: true,
   },
   {
-    feature: "Pricing (Pro tier)",
+    feature: "Entry pricing (paid)",
     gummysearch: "$29/mo",
-    kaulby: "$29/mo (same price, more platforms and features)",
+    kaulby: "$39/mo (Solo) — 9 platforms, unlimited keywords, AI Q&A",
     kaulbyWins: true,
   },
   {
@@ -218,7 +218,7 @@ export default function GummySearchMigrationPage() {
                 <CardTitle className="text-base">Same price, more value</CardTitle>
               </CardHeader>
               <CardContent className="text-sm text-muted-foreground">
-                Both tools are $29/mo for Pro. But Kaulby includes 16 platforms,
+                GummySearch was $29/mo for Pro. Kaulby Solo is $39/mo and includes 9 platforms,
                 lead scoring, team workspaces, API access, scheduled reports, and
                 webhook integrations - all included.
               </CardContent>
@@ -290,7 +290,7 @@ export default function GummySearchMigrationPage() {
                 name: "Is Kaulby more expensive than GummySearch?",
                 acceptedAnswer: {
                   "@type": "Answer",
-                  text: "No. Both tools have a Pro plan at $29/month. Kaulby includes more platforms, deeper AI analysis, and additional features like API access and team workspaces at the same price.",
+                  text: "Kaulby's entry paid tier (Solo) is $39/month vs GummySearch's $29/month — but Kaulby includes 9 platforms (vs Reddit-only), deeper AI analysis, and unlimited keywords. The Scale tier ($79) adds review platforms; Growth ($149) adds team workspaces and the public API.",
                 },
               },
               {

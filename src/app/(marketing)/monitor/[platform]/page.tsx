@@ -86,8 +86,10 @@ export default async function PlatformPage({
     platform.tier === "free"
       ? "Free"
       : platform.tier === "solo"
-        ? "Pro"
-        : "Team";
+        ? "Solo"
+        : platform.tier === "scale"
+          ? "Scale"
+          : "Growth";
 
   const tierColor =
     platform.tier === "free"

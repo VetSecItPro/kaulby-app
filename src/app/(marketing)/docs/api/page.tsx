@@ -72,7 +72,7 @@ X-API-Key: kaulby_live_xxxxxxxxxxxx`}</pre>
             </thead>
             <tbody>
               <tr>
-                <td className="py-2">Team</td>
+                <td className="py-2">Growth</td>
                 <td className="py-2">10,000 requests/day</td>
                 <td className="py-2">Midnight UTC</td>
               </tr>

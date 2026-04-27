@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 /**
  * POST /api/polar/day-pass
- * Create a Polar checkout session for Day Pass purchase ($10 one-time)
+ * Create a Polar checkout session for Day Pass purchase ($15 one-time, 24h Scale-level access)
  */
 export async function POST() {
   try {

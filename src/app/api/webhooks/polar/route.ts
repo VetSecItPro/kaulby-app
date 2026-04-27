@@ -416,7 +416,7 @@ export async function POST(request: NextRequest) {
         // SECURITY (SEC-INTEG-013): Non-blocking side effects — don't let email failure cause 500
         Promise.all([
           upsertContact({ email: user.email, userId: user.id, subscriptionStatus: subscriptionStatus }),
-          sendSubscriptionEmail({ email: user.email, name: user.name || undefined, plan: plan === "growth" ? "Team" : plan.charAt(0).toUpperCase() + plan.slice(1) })
+          sendSubscriptionEmail({ email: user.email, name: user.name || undefined, plan: plan.charAt(0).toUpperCase() + plan.slice(1) })
             .catch(async (err) => {
               logger.error("Subscription email failed", { error: err, userId: user.id });
               const { pooledDb } = await import("@/lib/db");
