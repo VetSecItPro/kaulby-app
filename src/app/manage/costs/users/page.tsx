@@ -117,9 +117,11 @@ function formatDate(date: Date | null) {
 function getPlanBadge(plan: string) {
   switch (plan) {
     case "growth":
-      return <Badge className="bg-amber-500 text-white">Enterprise</Badge>;
+      return <Badge className="bg-amber-500 text-white">Growth</Badge>;
+    case "scale":
+      return <Badge className="bg-purple-500 text-white">Scale</Badge>;
     case "solo":
-      return <Badge className="bg-primary text-primary-foreground">Pro</Badge>;
+      return <Badge className="bg-primary text-primary-foreground">Solo</Badge>;
     default:
       return <Badge variant="secondary">Free</Badge>;
   }

@@ -271,9 +271,11 @@ function getTrendColor(change: number) {
 function getPlanBadge(plan: string | null) {
   switch (plan) {
     case "growth":
-      return <Badge className="bg-amber-500 text-white">Team</Badge>;
+      return <Badge className="bg-amber-500 text-white">Growth</Badge>;
+    case "scale":
+      return <Badge className="bg-purple-500 text-white">Scale</Badge>;
     case "solo":
-      return <Badge className="bg-primary text-primary-foreground">Pro</Badge>;
+      return <Badge className="bg-primary text-primary-foreground">Solo</Badge>;
     default:
       return <Badge variant="secondary">Free</Badge>;
   }
