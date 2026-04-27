@@ -73,7 +73,9 @@ test.describe("Pricing Page - Plan Cards", () => {
     await page.goto("/pricing", GOTO_OPTS);
 
     await expect(page.getByText("Day Pass", { exact: true }).first()).toBeVisible(VISIBLE_OPTS);
-    await expect(page.getByText("$15")).toBeVisible(VISIBLE_OPTS);   // Was $10, now $15
+    // "$15" appears in multiple places after free-tier removal (Day Pass card, FAQ,
+    // trust signal, bottom CTA), so scope to .first() to avoid strict-mode violation.
+    await expect(page.getByText("$15").first()).toBeVisible(VISIBLE_OPTS);
     await expect(page.getByText("One-Time", { exact: true })).toBeVisible(VISIBLE_OPTS);
   });
 
@@ -273,7 +275,8 @@ test.describe("Pricing Page - CTAs", () => {
     test.setTimeout(60_000);
     await page.goto("/pricing", GOTO_OPTS);
 
-    await expect(page.getByText(/14-day money-back guarantee/i)).toBeVisible(VISIBLE_OPTS);
+    // Money-back guarantee phrase appears in trust signal + FAQ, scope to first().
+    await expect(page.getByText(/14-day money-back guarantee/i).first()).toBeVisible(VISIBLE_OPTS);
     await expect(page.getByText(/day pass: \$15 for 24h/i)).toBeVisible(VISIBLE_OPTS);
     await expect(page.getByText(/cancel anytime/i).first()).toBeVisible(VISIBLE_OPTS);
   });
