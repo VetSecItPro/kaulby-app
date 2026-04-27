@@ -88,3 +88,6 @@ ARCHITECTURE.md
 eval-last-report.json
 .qatest-reports/
 .launch-reports/
+
+.visual-review/
+.playwright-mcp/

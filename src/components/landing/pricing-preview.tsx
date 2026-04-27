@@ -21,18 +21,18 @@ interface PricingTier {
 
 const tiers: PricingTier[] = [
   {
-    name: "Free",
-    price: "$0",
-    period: "/month",
+    name: "Day Pass",
+    price: "$15",
+    period: "/24 hours",
     features: [
-      "1 monitor",
-      "Reddit only",
-      "3 keywords per monitor",
-      "24hr refresh cycle",
-      "Basic sentiment analysis",
+      "Try Scale-tier features for 24h",
+      "10 Scale monitors",
+      "12 platforms",
+      "Full AI analysis",
+      "No subscription required",
     ],
-    cta: "Start Free",
-    href: "/sign-up",
+    cta: "Get Day Pass",
+    href: "/sign-up?plan=daypass",
   },
   {
     name: "Solo",
@@ -96,8 +96,8 @@ export function PricingPreview() {
             </h2>
           </TextReveal>
           <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
-            Start free. Upgrade when you need more platforms, monitors, and AI
-            depth.
+            Try a Day Pass for 24h, or pick a plan when you&apos;re ready.
+            Cancel anytime, 14-day money-back guarantee on monthly plans.
           </p>
         </AnimatedSection>
 
