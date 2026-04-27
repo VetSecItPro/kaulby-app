@@ -7,21 +7,34 @@
 
 ## RESUME-READY STATUS (read this first if continuing after compaction)
 
-**Last update:** 2026-04-26 — turn 6 (re-added C/D/E + /test-ship unit pass)
+**Last update:** 2026-04-26 — turn 8 (Domains P/Q/R/V/S/T/U complete; honest deferrals for J/L/O)
 
 **Test driver:** `scripts/sandbox-e2e-test.py`
 **Run command:** `/tmp/sandbox-test-venv/bin/python3 scripts/sandbox-e2e-test.py`
-**Last e2e run:** 166/166 passed (C/D/E re-added; zero new bugs)
+**Last e2e run:** 296/296 passed (S/T/U added; 2 observations flagged, no bugs)
 **Last unit run:** 1349/1349 passed (PR #305 — 27 new units for billing)
 
-**Domains complete (e2e):** A, B, C, D, E, F, G, H (8 of 22)
-**Domains with unit-level lock-in (PR #305):** A-H pure logic covered:
-6 lifecycle email funcs, KAULBY_PRORATION_BEHAVIOR (compile + runtime),
-isTeamSeatProduct, getTeamSeatProductId, getPolarServer
-**Domains pending:** I, J, K, L, M, N, O, P, Q, R, S, T, U, V (14 of 22)
-**UI-deferred:** O (12 scenarios needing playwright)
+**Domains complete (e2e):** A, B, C, D, E, F, G, H, I, K, M, N, P, Q, R, S, T, U, V (19 of 22)
+**Domains honestly deferred (3 of 22):**
+- J (workspace lifecycle, 10) — needs Clerk auth + UI session, not webhook-driven.
+  Programmatic coverage exists in src/__tests__/api/{workspace,workspace-invite}.test.ts
+- L (GDPR / account deletion, 8) — 30-day cron-driven flow; would require
+  triggering Inngest cron + waiting / time-warp. Code path covered by
+  src/__tests__/inngest/inngest-account-deletion.test.ts
+- O (UI / Dashboard, 12) — Playwright e2e suite, separate runner. Not part
+  of the sandbox webhook driver scope.
 
-**Bugs fixed this session:** 8 (all PRs merged to main)
+**Coverage summary:**
+- 296 sandbox e2e assertions across 19 domains
+- 1349 unit tests (lib/) including 27 new ones from PR #305
+- 10 production bugs found + fixed during this comprehensive test pass
+- 4 defense-in-depth observations flagged for future hardening (#7 #10 #12 #13)
+
+**Open invariant note:** Bug #11 fix uses tier-rank table {free:0,solo:1,
+scale:2,growth:3} in two places (subscription.active + subscription.updated).
+If a new tier is introduced between Solo and Scale, both must be updated.
+
+**Bugs fixed this session:** 10 (all PRs merged to main)
 - #298 Webhook duplicate-detect (Drizzle/Neon error wrap) + sandbox always-build
 - #299 Solo/Growth subscription.active 500 (HTTP driver can't transact) — CRITICAL
 - #300 Webhook idempotency keyed on subscription.id not event.id — CRITICAL
@@ -30,6 +43,7 @@ isTeamSeatProduct, getTeamSeatProductId, getPolarServer
 - #303 No-proration policy: KAULBY_PRORATION_BEHAVIOR='next_period' enforced from code
 - #304 Cascade-cancel orphan seat addons on subscription.updated tier downgrade
 - #305 Unit coverage for lifecycle emails + proration policy (test-only, 27 new units)
+- #306 Bug #9 (seat refund clobbers main tier) + Bug #11 (stale .active downgrades)
 - #295/etc earlier PRs in earlier session
 
 **Open low-priority finding:** #7 transactional email observability gap
@@ -44,7 +58,11 @@ isTeamSeatProduct, getTeamSeatProductId, getPolarServer
 - Stable webhook URL: `https://kaulby-app-git-sandbox-vetsecitpro.vercel.app/api/webhooks/polar`
 - Long-lived `sandbox` git branch with always-build carveout
 
-**Next turn pickup:** add Domains I (seat addons — extend beyond what scenario_growth_subscribe_then_seats covers), J (workspace lifecycle), K (email notification matrix). Continue domain-by-domain through V.
+**Next turn pickup:** sandbox e2e fully exercised. Remaining work is non-webhook:
+write Playwright suite for Domain O, integration tests for Domain J workspace
+ownership transfer + member lifecycle, and time-warp test for Domain L's
+30-day deletion cron. None blocks billing functionality — they're feature-area
+coverage gaps, not billing-state correctness gaps.
 
 **Files of record:**
 - `Kaulby-FullTest.md` — this plan + bug log (live document)
