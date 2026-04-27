@@ -321,8 +321,9 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
   };
 
   const getUpgradePlanName = () => {
-    if (userPlan === "free") return "Pro";
-    if (userPlan === "solo") return "Team";
+    if (userPlan === "free") return "Solo";
+    if (userPlan === "solo") return "Scale";
+    if (userPlan === "scale") return "Growth";
     return null;
   };
 
@@ -363,7 +364,7 @@ export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
               <div className="flex items-center gap-1">
                 <Lock className="h-3 w-3 text-muted-foreground" />
                 <Badge variant="outline" className="text-[10px] px-1 py-0">
-                  {platform.tier === "growth" ? "Team" : "Pro"}
+                  {platform.tier === "growth" ? "Growth" : platform.tier === "scale" ? "Scale" : "Solo"}
                 </Badge>
               </div>
             )}

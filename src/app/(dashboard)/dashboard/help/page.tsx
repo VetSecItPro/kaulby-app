@@ -524,7 +524,7 @@ export default function HelpPage() {
               <div className="p-4 rounded-lg border space-y-2">
                 <div className="flex items-center justify-between">
                   <Badge variant="outline">Hacker News</Badge>
-                  <Badge className="bg-primary/10 text-primary border-primary/20">Pro</Badge>
+                  <Badge className="bg-primary/10 text-primary border-primary/20">Solo</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
                   Tech-savvy audience of developers, founders, and investors. Ideal for SaaS, dev tools, and startups. Conversations are high-quality and influential.
@@ -534,7 +534,7 @@ export default function HelpPage() {
               <div className="p-4 rounded-lg border space-y-2">
                 <div className="flex items-center justify-between">
                   <Badge variant="outline">Product Hunt</Badge>
-                  <Badge className="bg-primary/10 text-primary border-primary/20">Pro</Badge>
+                  <Badge className="bg-primary/10 text-primary border-primary/20">Solo</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
                   Where new products launch and get discovered. Perfect for tracking competitor launches, finding early adopters, and understanding product positioning.
@@ -544,7 +544,7 @@ export default function HelpPage() {
               <div className="p-4 rounded-lg border space-y-2">
                 <div className="flex items-center justify-between">
                   <Badge variant="outline">Google Reviews</Badge>
-                  <Badge className="bg-primary/10 text-primary border-primary/20">Pro</Badge>
+                  <Badge className="bg-primary/10 text-primary border-primary/20">Solo</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
                   Critical for local businesses and B2B services. Monitor what customers say about your Google Business listing and respond to feedback.
@@ -554,7 +554,7 @@ export default function HelpPage() {
               <div className="p-4 rounded-lg border space-y-2">
                 <div className="flex items-center justify-between">
                   <Badge variant="outline">Trustpilot</Badge>
-                  <Badge className="bg-primary/10 text-primary border-primary/20">Pro</Badge>
+                  <Badge className="bg-primary/10 text-primary border-primary/20">Solo</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
                   Major consumer review platform. Essential for e-commerce and service businesses. Shoppers frequently check Trustpilot before purchasing.
@@ -564,7 +564,7 @@ export default function HelpPage() {
               <div className="p-4 rounded-lg border space-y-2">
                 <div className="flex items-center justify-between">
                   <Badge variant="outline">App Store</Badge>
-                  <Badge className="bg-primary/10 text-primary border-primary/20">Pro</Badge>
+                  <Badge className="bg-primary/10 text-primary border-primary/20">Solo</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
                   iOS app reviews directly from Apple&apos;s App Store. Track user sentiment, feature requests, and bugs reported by your mobile users.
@@ -574,7 +574,7 @@ export default function HelpPage() {
               <div className="p-4 rounded-lg border space-y-2">
                 <div className="flex items-center justify-between">
                   <Badge variant="outline">Play Store</Badge>
-                  <Badge className="bg-primary/10 text-primary border-primary/20">Pro</Badge>
+                  <Badge className="bg-primary/10 text-primary border-primary/20">Solo</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
                   Android app reviews from Google Play. Often has different feedback than iOS - important to monitor both if you have a mobile app.
@@ -584,7 +584,7 @@ export default function HelpPage() {
               <div className="p-4 rounded-lg border space-y-2">
                 <div className="flex items-center justify-between">
                   <Badge variant="outline">Quora</Badge>
-                  <Badge className="bg-primary/10 text-primary border-primary/20">Pro</Badge>
+                  <Badge className="bg-primary/10 text-primary border-primary/20">Solo</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
                   Q&A platform where people seek recommendations. Great for finding users actively looking for solutions - high-intent leads.
@@ -594,7 +594,7 @@ export default function HelpPage() {
               <div className="p-4 rounded-lg border space-y-2">
                 <div className="flex items-center justify-between">
                   <Badge variant="outline">YouTube</Badge>
-                  <Badge className="bg-primary/10 text-primary border-primary/20">Pro</Badge>
+                  <Badge className="bg-primary/10 text-primary border-primary/20">Solo</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
                   Video comments and discussions. Great for consumer products, tech reviews, and brand mentions in video content.
@@ -604,7 +604,7 @@ export default function HelpPage() {
               <div className="p-4 rounded-lg border space-y-2">
                 <div className="flex items-center justify-between">
                   <Badge variant="outline">G2</Badge>
-                  <Badge className="bg-primary/10 text-primary border-primary/20">Pro</Badge>
+                  <Badge className="bg-primary/10 text-primary border-primary/20">Solo</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
                   B2B software reviews and ratings. Essential for SaaS companies to track customer feedback and competitive positioning.
@@ -614,7 +614,7 @@ export default function HelpPage() {
               <div className="p-4 rounded-lg border space-y-2">
                 <div className="flex items-center justify-between">
                   <Badge variant="outline">Yelp</Badge>
-                  <Badge className="bg-primary/10 text-primary border-primary/20">Pro</Badge>
+                  <Badge className="bg-primary/10 text-primary border-primary/20">Solo</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
                   Local business reviews. Critical for restaurants, retail, and service businesses to monitor customer experiences.
@@ -624,7 +624,7 @@ export default function HelpPage() {
               <div className="p-4 rounded-lg border space-y-2">
                 <div className="flex items-center justify-between">
                   <Badge variant="outline">Amazon Reviews</Badge>
-                  <Badge className="bg-primary/10 text-primary border-primary/20">Pro</Badge>
+                  <Badge className="bg-primary/10 text-primary border-primary/20">Solo</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
                   Product reviews on Amazon. Essential for e-commerce brands to track customer sentiment and product feedback.

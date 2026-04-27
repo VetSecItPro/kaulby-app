@@ -230,7 +230,7 @@ const toolPages: Record<string, {
       },
       {
         question: "Can I really start for free?",
-        answer: "Yes, Kaulby has a free forever tier that includes 1 monitor on Reddit. It's not a trial - you can use it indefinitely. When you need more monitors, more platforms, or faster refresh rates, you can upgrade to Pro ($29/mo) or Team ($79/mo).",
+        answer: "Yes, Kaulby has a free forever tier that includes 1 monitor on Reddit. It's not a trial - you can use it indefinitely. When you need more monitors, more platforms, or faster refresh rates, you can upgrade to Solo ($39/mo), Scale ($79/mo), or Growth ($149/mo).",
       },
       {
         question: "What platforms does Kaulby monitor?",
@@ -762,7 +762,7 @@ export default async function ToolPage({
             <CardContent className="p-8 text-center">
               <h3 className="text-2xl font-bold mb-2">Start Free, Upgrade When Ready</h3>
               <p className="text-muted-foreground mb-6">
-                Free tier includes 1 monitor on Reddit. Pro starts at $29/month for full access to all 16 platforms.
+                Free tier includes 1 monitor on Reddit. Solo starts at $39/month with 9 platforms; Growth ($149/mo) unlocks all 16.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link href="/sign-up">

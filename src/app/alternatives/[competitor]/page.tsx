@@ -86,7 +86,7 @@ const competitorData: Record<string, {
       },
       {
         question: "How does Kaulby's pricing compare to Mention?",
-        answer: "Mention starts at $41/month with limited features. Kaulby offers a free forever tier with 1 Reddit monitor, Pro at $29/month with 10 monitors across all 16 platforms, and Team at $79/month with 30 monitors and team collaboration. For startups, Kaulby provides better value with more platforms and AI features at a lower price point.",
+        answer: "Mention starts at $41/month with limited features. Kaulby offers a free forever tier with 1 Reddit monitor, Solo at $39/month with 10 monitors across all 16 platforms, and Growth at $149/month with 30 monitors and team collaboration. For startups, Kaulby provides better value with more platforms and AI features at a lower price point.",
       },
       {
         question: "Can I monitor Reddit better with Kaulby vs Mention?",
@@ -141,11 +141,11 @@ const competitorData: Record<string, {
     faqs: [
       {
         question: "Why choose Kaulby over Brand24?",
-        answer: "Kaulby is purpose-built for startup and developer communities while Brand24 is a general media monitoring tool. Kaulby monitors 16 platforms including Reddit, Hacker News, and Product Hunt with deep AI analysis. Brand24 starts at $79/month; Kaulby has a free tier and Pro at $29/month. If you need Reddit/community monitoring, Kaulby is the better choice.",
+        answer: "Kaulby is purpose-built for startup and developer communities while Brand24 is a general media monitoring tool. Kaulby monitors 16 platforms including Reddit, Hacker News, and Product Hunt with deep AI analysis. Brand24 starts at $79/month; Kaulby has a free tier and Solo at $39/month. If you need Reddit/community monitoring, Kaulby is the better choice.",
       },
       {
         question: "How does Brand24's pricing compare to Kaulby?",
-        answer: "Brand24 starts at $79/month for their Individual plan. Kaulby offers: Free tier (1 Reddit monitor forever), Pro at $29/month (10 monitors, 16 platforms), and Team at $79/month (30 monitors, team features). For the same price as Brand24's entry plan, you get Kaulby's full Team tier with more features.",
+        answer: "Brand24 starts at $79/month for their Individual plan. Kaulby offers: Free tier (1 Reddit monitor forever), Solo at $39/month (10 monitors, 16 platforms), and Growth at $149/month (30 monitors, team features). For the same price as Brand24's entry plan, you get Kaulby's Scale tier ($79) with more features.",
       },
       {
         question: "Does Kaulby have sentiment analysis like Brand24?",
@@ -200,11 +200,11 @@ const competitorData: Record<string, {
     faqs: [
       {
         question: "Is Kaulby a good Brandwatch alternative for startups?",
-        answer: "Absolutely. Brandwatch is built for enterprises with $1000+/month pricing and requires sales calls to get started. Kaulby is built for startups: free tier available, self-serve signup, Pro at $29/month. You get AI-powered community monitoring without the enterprise complexity or cost.",
+        answer: "Absolutely. Brandwatch is built for enterprises with $1000+/month pricing and requires sales calls to get started. Kaulby is built for startups: free tier available, self-serve signup, Solo at $39/month. You get AI-powered community monitoring without the enterprise complexity or cost.",
       },
       {
         question: "How much cheaper is Kaulby than Brandwatch?",
-        answer: "Brandwatch typically costs $1000-3000+/month with annual contracts. Kaulby offers: Free tier (forever), Pro at $29/month, Team at $79/month. That's 10-30x cheaper while still providing comprehensive community monitoring with AI features.",
+        answer: "Brandwatch typically costs $1000-3000+/month with annual contracts. Kaulby offers: Free tier (forever), Solo at $39/month, Growth at $149/month. That's 10-30x cheaper while still providing comprehensive community monitoring with AI features.",
       },
       {
         question: "Does Kaulby have the same AI features as Brandwatch?",
@@ -265,7 +265,7 @@ const competitorData: Record<string, {
       },
       {
         question: "Is Kaulby cheaper than Hootsuite?",
-        answer: "Yes. Hootsuite starts at $99/month for their Professional plan. Kaulby offers a free tier, Pro at $29/month, and Team at $79/month. However, they serve different purposes - Hootsuite for posting, Kaulby for monitoring.",
+        answer: "Yes. Hootsuite starts at $99/month for their Professional plan. Kaulby offers a free tier, Solo at $39/month, and Growth at $149/month. However, they serve different purposes - Hootsuite for posting, Kaulby for monitoring.",
       },
       {
         question: "Can Kaulby replace Hootsuite completely?",
@@ -318,7 +318,7 @@ const competitorData: Record<string, {
       },
       {
         question: "How much does Sprout Social cost vs Kaulby?",
-        answer: "Sprout Social starts at $249/month per user. Kaulby offers: Free tier (1 monitor), Pro at $29/month (10 monitors), Team at $79/month (30 monitors, 3 users). For a team of 3, Sprout Social costs $747/month; Kaulby Team costs $79/month.",
+        answer: "Sprout Social starts at $249/month per user. Kaulby offers: Free tier (1 monitor), Solo at $39/month (10 monitors), Growth at $149/month (30 monitors, 3 users). For a team of 3, Sprout Social costs $747/month; Kaulby Growth costs $149/month.",
       },
       {
         question: "Does Kaulby have sentiment analysis like Sprout Social?",
@@ -326,7 +326,7 @@ const competitorData: Record<string, {
       },
       {
         question: "Can startups afford Sprout Social?",
-        answer: "Most startups cannot justify $249+/month per user for social media tools. Kaulby was built for startups: free tier to start, $29/month for Pro with full features. You get community monitoring at 1/8th the price.",
+        answer: "Most startups cannot justify $249+/month per user for social media tools. Kaulby was built for startups: free tier to start, $39/month for Solo with full features. You get community monitoring at 1/8th the price.",
       },
       {
         question: "Should I use Kaulby with Sprout Social?",
@@ -376,7 +376,7 @@ const competitorData: Record<string, {
       },
       {
         question: "Does Awario have a free tier like Kaulby?",
-        answer: "No, Awario starts at $29/month. Kaulby offers a free forever tier with 1 Reddit monitor, making it easier to try before committing. Both have Pro tiers at $29/month, but Kaulby's free tier lets you validate the tool first.",
+        answer: "No, Awario starts at $29/month. Kaulby offers a free forever tier with 1 Reddit monitor, making it easier to try before committing. Both have entry-level paid tiers around $30-40/month, but Kaulby's free tier lets you validate the tool first.",
       },
       {
         question: "Which has better Reddit monitoring - Awario or Kaulby?",
@@ -438,7 +438,7 @@ const competitorData: Record<string, {
       },
       {
         question: "Which is cheaper - Syften or Kaulby?",
-        answer: "Syften starts at $19.95/month with no free tier. Kaulby has a free forever tier and Pro at $29/month. If you only need 1 monitor, Kaulby Free beats Syften's paid tier. For multiple monitors, Syften is $10/month cheaper but lacks AI features.",
+        answer: "Syften starts at $19.95/month with no free tier. Kaulby has a free forever tier and Solo at $39/month. If you only need 1 monitor, Kaulby Free beats Syften's paid tier. For multiple monitors, Syften is $10/month cheaper but lacks AI features.",
       },
       {
         question: "Can Kaulby monitor the same platforms as Syften?",
@@ -688,7 +688,7 @@ const competitorData: Record<string, {
       { name: "Add your F5Bot keywords", text: "Set up the same keyword monitors in Kaulby." },
       { name: "Explore the dashboard", text: "See the visual interface F5Bot doesn't have." },
       { name: "Try AI features", text: "See sentiment analysis and categorization in action." },
-      { name: "Decide what you need", text: "Keep F5Bot for basic alerts, or upgrade to Kaulby Pro." },
+      { name: "Decide what you need", text: "Keep F5Bot for basic alerts, or upgrade to Kaulby Solo." },
     ],
     relatedTools: ["reddit-monitoring", "social-listening-for-startups"],
   },

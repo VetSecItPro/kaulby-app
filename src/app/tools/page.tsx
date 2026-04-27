@@ -98,7 +98,7 @@ const faqs = [
   },
   {
     question: "Can I use Kaulby for free?",
-    answer: "Yes, Kaulby offers a free forever tier with 1 Reddit monitor, AI sentiment analysis, and dashboard access. No credit card required. Upgrade to Pro ($29/mo) for more monitors and platform coverage.",
+    answer: "Yes, Kaulby offers a free forever tier with 1 Reddit monitor, AI sentiment analysis, and dashboard access. No credit card required. Upgrade to Solo ($39/mo) for 10 monitors and 9 platforms, Scale ($79/mo) for 12 platforms and review sites, or Growth ($149/mo) for all 16 platforms and team features.",
   },
 ];
 

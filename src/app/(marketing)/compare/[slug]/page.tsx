@@ -227,12 +227,16 @@ export default async function ComparePage({
                     <Badge variant="outline">Free tier</Badge>
                   </div>
                   <div className="flex items-baseline gap-2">
-                    <span className="text-2xl font-bold">$29</span>
-                    <span className="text-muted-foreground">/mo for Pro</span>
+                    <span className="text-2xl font-bold">$39</span>
+                    <span className="text-muted-foreground">/mo for Solo</span>
                   </div>
                   <div className="flex items-baseline gap-2">
-                    <span className="text-2xl font-bold">$99</span>
-                    <span className="text-muted-foreground">/mo for Team</span>
+                    <span className="text-2xl font-bold">$79</span>
+                    <span className="text-muted-foreground">/mo for Scale</span>
+                  </div>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-bold">$149</span>
+                    <span className="text-muted-foreground">/mo for Growth</span>
                   </div>
                   <ul className="space-y-2 pt-4 border-t">
                     <li className="flex items-center gap-2 text-sm">
