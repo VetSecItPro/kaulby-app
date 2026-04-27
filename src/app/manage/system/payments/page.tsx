@@ -111,9 +111,10 @@ async function getPaymentsData() {
 
   const totalUsers = totalUsersCount[0]?.count || 0;
   const freeUsers = subMap["free"] || 0;
-  const proUsers = subMap["solo"] || 0;
-  const teamUsers = subMap["growth"] || 0;
-  const paidUsers = proUsers + teamUsers;
+  const soloUsers = subMap["solo"] || 0;
+  const scaleUsers = subMap["scale"] || 0;
+  const growthUsers = subMap["growth"] || 0;
+  const paidUsers = soloUsers + scaleUsers + growthUsers;
   const churnRate = totalUsers > 0
     ? ((totalUsers - paidUsers - freeUsers) / totalUsers) * 100
     : 0;
@@ -170,8 +171,9 @@ async function getPaymentsData() {
     mrr,
     arr,
     freeUsers,
-    proUsers,
-    teamUsers,
+    soloUsers,
+    scaleUsers,
+    growthUsers,
     paidUsers,
     totalUsers,
     churnRate,
@@ -297,22 +299,32 @@ export default async function PaymentsPage() {
               </TableRow>
               <TableRow>
                 <TableCell>
-                  <Badge className="bg-primary">Pro</Badge>
+                  <Badge className="bg-primary">Solo</Badge>
                 </TableCell>
-                <TableCell className="text-right">{data.proUsers}</TableCell>
+                <TableCell className="text-right">{data.soloUsers}</TableCell>
                 <TableCell className="text-right">${PLANS.solo.price}/mo</TableCell>
                 <TableCell className="text-right">
-                  {data.totalUsers > 0 ? ((data.proUsers / data.totalUsers) * 100).toFixed(1) : 0}%
+                  {data.totalUsers > 0 ? ((data.soloUsers / data.totalUsers) * 100).toFixed(1) : 0}%
                 </TableCell>
               </TableRow>
               <TableRow>
                 <TableCell>
-                  <Badge className="bg-amber-500">Team</Badge>
+                  <Badge className="bg-purple-500">Scale</Badge>
                 </TableCell>
-                <TableCell className="text-right">{data.teamUsers}</TableCell>
+                <TableCell className="text-right">{data.scaleUsers}</TableCell>
+                <TableCell className="text-right">${PLANS.scale.price}/mo</TableCell>
+                <TableCell className="text-right">
+                  {data.totalUsers > 0 ? ((data.scaleUsers / data.totalUsers) * 100).toFixed(1) : 0}%
+                </TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell>
+                  <Badge className="bg-amber-500">Growth</Badge>
+                </TableCell>
+                <TableCell className="text-right">{data.growthUsers}</TableCell>
                 <TableCell className="text-right">${PLANS.growth.price}/mo</TableCell>
                 <TableCell className="text-right">
-                  {data.totalUsers > 0 ? ((data.teamUsers / data.totalUsers) * 100).toFixed(1) : 0}%
+                  {data.totalUsers > 0 ? ((data.growthUsers / data.totalUsers) * 100).toFixed(1) : 0}%
                 </TableCell>
               </TableRow>
             </TableBody>
