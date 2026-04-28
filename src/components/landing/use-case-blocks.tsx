@@ -31,7 +31,7 @@ const useCases: UseCase[] = [
     icon: AlertTriangle,
     title: "Find Customer Pain Points Before You Build",
     description:
-      "See what users are actually complaining about across Reddit, reviews, and communities. Kaulby clusters recurring complaints by category - pricing concerns, support needs, negative experiences, feature requests - so you know exactly what to fix.",
+      "See what users complain about across Reddit, reviews, and communities. Kaulby clusters recurring complaints by category - pricing, support, feature requests - so you know what to fix.",
     highlight: "Stop guessing what customers want. Read what they're already saying.",
     accentFrom: "from-indigo-500/20",
     accentTo: "to-indigo-600/5",
@@ -64,7 +64,7 @@ const useCases: UseCase[] = [
     icon: Globe,
     title: "Monitor Your Brand Across 16 Platforms",
     description:
-      "Reddit, Hacker News, Google Reviews, Trustpilot, G2, YouTube, X, and 10 more - all in one dashboard. Get alerted when your brand is mentioned, whether it's praise, a complaint, or a question that needs a response.",
+      "Reddit, Hacker News, Google Reviews, Trustpilot, G2, YouTube, X, and 10 more - all in one dashboard. Alerts on every mention: praise, complaints, and questions that need a response.",
     highlight: "One dashboard. Every conversation that matters.",
     accentFrom: "from-violet-500/20",
     accentTo: "to-violet-600/5",
@@ -75,7 +75,7 @@ const useCases: UseCase[] = [
     icon: MessageSquare,
     title: "Validate Positioning Using Real Market Language",
     description:
-      "Stop writing copy based on assumptions. See the exact words your potential customers use to describe their problems. Use their language in your marketing, landing pages, and sales outreach.",
+      "Stop writing copy on assumptions. See the exact words your customers use to describe their problems. Use their language in your marketing, landing pages, and sales outreach.",
     highlight:
       "Your customers already wrote your copy. You just need to find it.",
     accentFrom: "from-emerald-500/20",

@@ -292,7 +292,7 @@ export default function PricingPage() {
               Simple, transparent pricing
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Try a Day Pass for 24 hours, or pick a plan when you&apos;re ready. 14-day money-back guarantee on all monthly plans.
+              Try a Day Pass for 24 hours, or pick a plan. 14-day money-back guarantee on monthly.
             </p>
             <div className="mt-4 flex justify-center">
               <FoundingMembersBanner variant="hero" />
@@ -564,7 +564,6 @@ export default function PricingPage() {
             { question: "What platforms does Kaulby monitor?", answer: "Kaulby monitors 16 platforms: Reddit, Hacker News, Indie Hackers, Product Hunt, Google Reviews, YouTube, GitHub, Trustpilot, X (Twitter), Dev.to, Hashnode, App Store, Play Store, G2, Yelp, and Amazon Reviews." },
             { question: "How is Kaulby different from Brand24?", answer: "Kaulby focuses on community monitoring with AI-powered pain point detection and sentiment analysis across 16 platforms, starting at $39/mo. Brand24 starts at $99/mo and focuses on broader social media monitoring." },
             { question: "What replaced GummySearch?", answer: "Kaulby is the best GummySearch alternative. It covers Reddit plus 15 additional platforms with AI-powered analysis. Visit kaulbyapp.com/gummysearch for migration details." },
-            { question: "What is the Day Pass?", answer: "The Day Pass gives you full Scale-level access for 24 hours with a one-time $15 payment. Perfect for quick research without committing to a subscription." },
             { question: "How often are results refreshed?", answer: "Solo refreshes every 6 hours. Scale every 4 hours. Growth every 2 hours, with twice-daily email digests." },
             { question: "Is my data secure?", answer: "Yes. We use industry-standard encryption, are GDPR compliant, and you can export or delete your data at any time." },
             { question: "What is the Founding Members program?", answer: "The first 1,000 paid subscribers become Founding Members and lock in their current price forever, even when prices increase." },
@@ -606,16 +605,15 @@ export default function PricingPage() {
               <AccordionItem value="switch-plans">
                 <AccordionTrigger>Can I switch between plans?</AccordionTrigger>
                 <AccordionContent>
-                  Absolutely! You can upgrade or downgrade your plan at any time. When upgrading,
-                  you&apos;ll be charged the prorated difference. When downgrading, the change takes effect
-                  at your next billing cycle.
+                  Yes. Tier changes (up or down) take effect at the start of your next billing period.
+                  You keep your current tier through the period you already paid for, no proration.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="annual">
                 <AccordionTrigger>How does annual billing work?</AccordionTrigger>
                 <AccordionContent>
-                  Annual billing saves you 2 months compared to monthly billing. You pay once per year
-                  at a discounted rate: $290/year for Pro ($24/mo equivalent) or $990/year for Team ($82/mo equivalent).
+                  Annual saves you ~20% versus monthly: Solo $374/yr ($31/mo equivalent),
+                  Scale $758/yr ($63/mo), Growth $1,430/yr ($119/mo).
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="platforms">
@@ -635,14 +633,6 @@ export default function PricingPage() {
                   alerts (Growth adds real-time GitHub).
                 </AccordionContent>
               </AccordionItem>
-              <AccordionItem value="day-pass">
-                <AccordionTrigger>What is the Day Pass?</AccordionTrigger>
-                <AccordionContent>
-                  The Day Pass gives you full Scale-level access for 24 hours with a one-time $15 payment.
-                  Perfect for when you need to quickly check all platforms or do intensive research
-                  without committing to a subscription. You can purchase multiple Day Passes whenever needed.
-                </AccordionContent>
-              </AccordionItem>
               <AccordionItem value="money-back">
                 <AccordionTrigger>What is the money-back guarantee?</AccordionTrigger>
                 <AccordionContent>
@@ -654,17 +644,15 @@ export default function PricingPage() {
               <AccordionItem value="founding-member">
                 <AccordionTrigger>What is the Founding Members program?</AccordionTrigger>
                 <AccordionContent>
-                  The first 1,000 paid subscribers become Founding Members and lock in their current
-                  price forever, even when we raise prices in the future. This is our way of thanking early
-                  supporters who believe in Kaulby.
+                  The first 1,000 paid subscribers on Solo and Growth lock in their
+                  current price forever, even when we raise prices later.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="data-security">
                 <AccordionTrigger>Is my data secure?</AccordionTrigger>
                 <AccordionContent>
-                  Yes. We use industry-standard encryption for all data in transit and at rest.
-                  Your monitoring data is stored securely and never shared with third parties.
-                  We&apos;re GDPR compliant and you can export or delete your data at any time.
+                  Yes. Industry-standard encryption in transit and at rest, GDPR compliant,
+                  and you can export or delete your data at any time.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="limits">
@@ -691,8 +679,7 @@ export default function PricingPage() {
               <CardContent className="p-8">
                 <h3 className="text-2xl font-bold mb-2">Still not sure?</h3>
                 <p className="text-muted-foreground mb-6">
-                  Try a Day Pass for $15 - full Scale-tier access for 24 hours, no subscription.
-                  See the AI analysis on real conversations before you commit.
+                  Try a Day Pass for $15. Full Scale-tier access for 24 hours, no subscription.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <Button
