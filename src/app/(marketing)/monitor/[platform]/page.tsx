@@ -158,7 +158,7 @@ export default async function PlatformPage({
             </Link>
           </div>
           <p className="text-sm text-muted-foreground mt-4">
-            Free tier available. No credit card required.
+            $15 Day Pass to try. No subscription required.
           </p>
         </div>
       </section>

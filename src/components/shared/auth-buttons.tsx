@@ -67,7 +67,7 @@ export async function HeroCTA() {
     <>
       <Link href="/sign-up">
         <Button size="lg" className="gap-2">
-          Start Monitoring Free <ArrowRight className="h-4 w-4" />
+          Start Monitoring <ArrowRight className="h-4 w-4" />
         </Button>
       </Link>
       <Link href="#how-it-works">
@@ -96,7 +96,7 @@ export async function AuthCTA() {
   return (
     <Link href="/sign-up">
       <Button size="lg" variant="secondary" className="gap-2">
-        Start Your Free Monitor <ArrowRight className="h-4 w-4" />
+        Start Monitoring <ArrowRight className="h-4 w-4" />
       </Button>
     </Link>
   );

@@ -16,7 +16,7 @@ export async function generateMetadata({
   };
 
   const descriptions: Record<string, string> = {
-    "reddit-monitoring": "Monitor Reddit for brand mentions, competitor insights, and customer feedback. AI-powered sentiment analysis and real-time alerts. Free tier available.",
+    "reddit-monitoring": "Monitor Reddit for brand mentions, competitor insights, and customer feedback. AI-powered sentiment analysis and real-time alerts. $15 Day Pass to try first.",
     "social-listening-for-startups": "Affordable social listening for startups. Monitor 16 platforms including Reddit, Hacker News, and review sites. Start free, no credit card required.",
     "brand-monitoring": "Track every mention of your brand across Reddit, reviews, and communities. AI-powered sentiment analysis and instant alerts. Free to start.",
     "competitor-monitoring": "Monitor competitor mentions and customer sentiment. Track what customers say about alternatives. Find opportunities with AI-powered insights.",
@@ -31,7 +31,7 @@ export async function generateMetadata({
 
   return {
     title: titles[slug] || "Social Listening Tool | Kaulby",
-    description: descriptions[slug] || "Monitor brand mentions across 16 platforms with AI-powered insights. Free tier available.",
+    description: descriptions[slug] || "Monitor brand mentions across 16 platforms with AI-powered insights. $15 Day Pass to try first.",
     keywords: keywords[slug] || ["social listening", "brand monitoring"],
     openGraph: {
       title: titles[slug] || "Social Listening Tool | Kaulby",

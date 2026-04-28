@@ -314,7 +314,7 @@ export default function GummySearchPage() {
           </p>
           <Link href="/sign-up?ref=gummysearch">
             <Button size="lg" variant="secondary" className="gap-2 text-lg px-8">
-              Start Free Migration
+              Get Started Migration
               <ArrowRight className="h-5 w-5" />
             </Button>
           </Link>
