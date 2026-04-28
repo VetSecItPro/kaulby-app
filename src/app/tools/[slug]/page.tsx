@@ -218,7 +218,7 @@ const toolPages: Record<string, {
       },
     ],
     platforms: ["reddit", "hackernews", "producthunt", "googlereviews", "trustpilot", "appstore", "playstore", "youtube", "g2", "yelp", "amazonreviews"],
-    ctaText: "Start Free Social Listening",
+    ctaText: "Get Started Social Listening",
     faqs: [
       {
         question: "What is social listening and why do startups need it?",
@@ -347,7 +347,7 @@ const toolPages: Record<string, {
     howToSteps: [
       {
         name: "Sign up for Kaulby",
-        text: "Create your account in under a minute. Free tier available.",
+        text: "Create your account in under a minute. $15 Day Pass to try first.",
       },
       {
         name: "Add your brand keywords",
@@ -550,7 +550,7 @@ export default async function ToolPage({
     features: defaultTool.features,
     useCases: defaultTool.useCases,
     platforms: ["reddit", "hackernews", "producthunt"],
-    ctaText: "Start Monitoring Free",
+    ctaText: "Start Monitoring",
     faqs: defaultTool.faqs,
     howToSteps: defaultTool.howToSteps,
     relatedAlternatives: ["brand24", "mention"],
@@ -760,14 +760,14 @@ export default async function ToolPage({
         <div className="container mx-auto max-w-3xl">
           <Card className="border-2 border-primary/20 bg-primary/5">
             <CardContent className="p-8 text-center">
-              <h3 className="text-2xl font-bold mb-2">Start Free, Upgrade When Ready</h3>
+              <h3 className="text-2xl font-bold mb-2">Get Started, Upgrade When Ready</h3>
               <p className="text-muted-foreground mb-6">
                 Free tier includes 1 monitor on Reddit. Solo starts at $39/month with 9 platforms; Growth ($149/mo) unlocks all 16.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link href="/sign-up">
                   <Button size="lg" className="gap-2">
-                    Start Free
+                    Get Started
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>

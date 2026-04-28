@@ -65,7 +65,7 @@ const tools = [
     name: "Social Listening for Startups",
     description: "Affordable social listening built for startups. Monitor communities where your customers discuss products and find leads.",
     icon: Search,
-    features: ["Free tier available", "Startup-friendly pricing", "Community focus", "AI-powered insights"],
+    features: ["$15 Day Pass available", "Startup-friendly pricing", "Community focus", "AI-powered insights"],
   },
 ];
 
@@ -133,7 +133,7 @@ export default function ToolsPage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/sign-up">
               <Button size="lg" className="gap-2">
-                Start Free
+                Get Started
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
@@ -222,7 +222,7 @@ export default function ToolsPage() {
             Start Monitoring Today
           </h2>
           <p className="text-xl opacity-90 mb-8">
-            Free tier available. No credit card required.
+            $15 Day Pass to try. No subscription required.
           </p>
           <Link href="/sign-up">
             <Button size="lg" variant="secondary" className="gap-2">

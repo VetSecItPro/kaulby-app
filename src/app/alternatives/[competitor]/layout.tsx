@@ -28,7 +28,7 @@ const competitorMeta: Record<string, { name: string; description: string }> = {
   },
   syften: {
     name: "Syften",
-    description: "Looking for a Syften alternative? Kaulby offers AI sentiment analysis, pain point detection, and 16 platforms vs Syften's limited coverage. Free tier available.",
+    description: "Looking for a Syften alternative? Kaulby offers AI sentiment analysis, pain point detection, and 16 platforms vs Syften's limited coverage. $15 Day Pass to try first.",
   },
   gummysearch: {
     name: "GummySearch",

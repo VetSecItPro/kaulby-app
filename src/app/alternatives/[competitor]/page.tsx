@@ -1029,7 +1029,7 @@ export default async function AlternativePage({
           </p>
           <Link href={`/sign-up?ref=vs-${slug}`}>
             <Button size="lg" variant="secondary" className="gap-2 text-lg px-8">
-              Start Free Trial
+              Get Started Trial
               <ArrowRight className="h-5 w-5" />
             </Button>
           </Link>

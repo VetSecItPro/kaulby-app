@@ -147,7 +147,7 @@ export default async function SubredditsIndexPage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/sign-up?ref=subreddits">
               <Button size="lg" className="gap-2 text-lg px-8">
-                Start Monitoring Free
+                Start Monitoring
                 <ArrowRight className="h-5 w-5" />
               </Button>
             </Link>
