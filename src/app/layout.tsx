@@ -3,7 +3,6 @@ import localFont from "next/font/local";
 import { Instrument_Serif } from "next/font/google";
 import { Toaster } from "@/components/ui/toaster";
 import { ResilientClerkProvider } from "@/components/shared/clerk-provider";
-import { CookieConsent } from "@/components/shared/cookie-consent";
 import { PostHogProvider } from "@/components/shared/posthog-provider";
 // PWA: Service worker registration handled by @serwist/next (auto-register)
 import { PWAInstallPrompt } from "@/components/shared/pwa-install-prompt";
@@ -120,7 +119,10 @@ export default function RootLayout({
               {children}
             </div>
             <Toaster />
-            <CookieConsent />
+            {/* CookieConsent moved to (dashboard)/layout.tsx so marketing
+                pages stay free of overlay banners. PostHog only initializes
+                after consent inside the dashboard, so marketing visitors are
+                untracked - which is also the more privacy-friendly default. */}
             <PWAInstallPrompt />
           </PostHogProvider>
         </ResilientClerkProvider>

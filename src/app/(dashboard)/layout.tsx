@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { DashboardClientWrapper } from "@/components/dashboard/dashboard-client-wrapper";
 import { ResponsiveDashboardLayout } from "@/components/dashboard/responsive-dashboard-layout";
 import { RoutePreloader } from "@/components/dashboard/route-preloader";
+import { CookieConsent } from "@/components/shared/cookie-consent";
 // PWA: Service worker registration handled by @serwist/next (auto-register)
 import { db } from "@/lib/db";
 import { monitors, users } from "@/lib/db/schema";
@@ -104,6 +105,9 @@ export default async function DashboardLayout({
       <DashboardClientWrapper isNewUser={isNewUser} userName={userName} userPlan={userPlan}>
         {children}
       </DashboardClientWrapper>
+      {/* Consent banner only shows in the dashboard, not on marketing pages.
+          PostHog initializes here once consent is granted. */}
+      <CookieConsent />
     </ResponsiveDashboardLayout>
   );
 }
