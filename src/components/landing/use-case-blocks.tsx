@@ -14,6 +14,15 @@ import {
   AnimatedSection,
   TextReveal,
 } from "@/components/shared/home-animations-lazy";
+import {
+  PainPointsClusterMock,
+  CompetitorTrackerMock,
+  BuyingSignalsMock,
+  BrandDashboardMock,
+  VoiceOfCustomerMock,
+} from "./use-case-mocks";
+
+type MockComponent = () => React.JSX.Element;
 
 interface UseCase {
   icon: LucideIcon;
@@ -24,6 +33,7 @@ interface UseCase {
   accentTo: string;
   iconBg: string;
   borderAccent: string;
+  mock: MockComponent;
 }
 
 const useCases: UseCase[] = [
@@ -37,6 +47,7 @@ const useCases: UseCase[] = [
     accentTo: "to-indigo-600/5",
     iconBg: "bg-indigo-500/15 text-indigo-400",
     borderAccent: "border-indigo-500/20",
+    mock: PainPointsClusterMock,
   },
   {
     icon: Target,
@@ -48,6 +59,7 @@ const useCases: UseCase[] = [
     accentTo: "to-teal-600/5",
     iconBg: "bg-teal-500/15 text-teal-400",
     borderAccent: "border-teal-500/20",
+    mock: CompetitorTrackerMock,
   },
   {
     icon: Zap,
@@ -59,6 +71,7 @@ const useCases: UseCase[] = [
     accentTo: "to-cyan-600/5",
     iconBg: "bg-cyan-500/15 text-cyan-400",
     borderAccent: "border-cyan-500/20",
+    mock: BuyingSignalsMock,
   },
   {
     icon: Globe,
@@ -70,6 +83,7 @@ const useCases: UseCase[] = [
     accentTo: "to-violet-600/5",
     iconBg: "bg-violet-500/15 text-violet-400",
     borderAccent: "border-violet-500/20",
+    mock: BrandDashboardMock,
   },
   {
     icon: MessageSquare,
@@ -82,6 +96,7 @@ const useCases: UseCase[] = [
     accentTo: "to-emerald-600/5",
     iconBg: "bg-emerald-500/15 text-emerald-400",
     borderAccent: "border-emerald-500/20",
+    mock: VoiceOfCustomerMock,
   },
 ];
 
@@ -93,6 +108,7 @@ function UseCaseCard({
   index: number;
 }) {
   const Icon = useCase.icon;
+  const Mock = useCase.mock;
   const isReversed = index % 2 === 1;
 
   return (
@@ -131,58 +147,36 @@ function UseCaseCard({
           </div>
         </div>
 
-        {/* Visual accent card */}
+        {/* Mock UI panel — replaces the prior decorative-only card. Each use
+            case now renders a use-case-specific mock (cluster of pain points,
+            competitor feed, buying-signal list, brand dashboard, customer
+            quotes) populated with realistic seed data. The gradient + corner
+            glow are kept as the chrome around the mock. */}
         <div className={cn(isReversed && "md:[direction:ltr]")}>
           <Card
             className={cn(
-              "relative overflow-hidden border p-8 sm:p-10",
+              "relative overflow-hidden border p-4 sm:p-6",
               useCase.borderAccent
             )}
           >
             {/* Gradient background */}
             <div
               className={cn(
-                "absolute inset-0 bg-gradient-to-br opacity-60",
+                "absolute inset-0 bg-gradient-to-br opacity-60 pointer-events-none",
                 useCase.accentFrom,
                 useCase.accentTo
               )}
             />
 
-            {/* Decorative elements */}
-            <div className="relative flex flex-col items-center justify-center min-h-[180px] sm:min-h-[220px] gap-6">
-              <div
-                className={cn(
-                  "flex items-center justify-center w-20 h-20 rounded-2xl",
-                  useCase.iconBg
-                )}
-              >
-                <Icon className="h-10 w-10" />
-              </div>
-              <div className="text-center space-y-2">
-                <p className="text-sm font-semibold text-foreground/90">
-                  {useCase.title.split(" ").slice(0, 3).join(" ")}
-                </p>
-                <div className="flex items-center justify-center gap-1.5">
-                  {[...Array(3)].map((_, i) => (
-                    <div
-                      key={i}
-                      className={cn(
-                        "h-1.5 rounded-full",
-                        i === 0 && "w-8",
-                        i === 1 && "w-12",
-                        i === 2 && "w-6",
-                        useCase.iconBg.replace("text-", "bg-").split(" ")[0]
-                      )}
-                    />
-                  ))}
-                </div>
-              </div>
+            {/* Mock UI */}
+            <div className="relative">
+              <Mock />
             </div>
 
             {/* Corner glow */}
             <div
               className={cn(
-                "absolute -bottom-8 -right-8 w-32 h-32 rounded-full blur-3xl opacity-30",
+                "absolute -bottom-8 -right-8 w-32 h-32 rounded-full blur-3xl opacity-30 pointer-events-none",
                 useCase.iconBg.replace("text-", "bg-").split(" ")[0]
               )}
             />
