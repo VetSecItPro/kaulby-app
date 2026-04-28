@@ -67,7 +67,7 @@ const plans: Plan[] = [
   {
     name: "Solo",
     key: "solo",
-    description: "For one operator watching their brand",
+    description: "Watch your brand and competitors across 9 platforms",
     useCase: "Solo founders, makers, independents",
     monthlyPrice: 39,
     annualPrice: 374,
@@ -88,7 +88,7 @@ const plans: Plan[] = [
   {
     name: "Scale",
     key: "scale",
-    description: "For the operator who outgrew Solo",
+    description: "Adds review sites where buyers research before they buy",
     useCase: "Growing brands, small agencies, review-heavy categories",
     monthlyPrice: 79,
     annualPrice: 758,
@@ -109,7 +109,7 @@ const plans: Plan[] = [
   {
     name: "Growth",
     key: "growth",
-    description: "For teams operationalizing brand intelligence",
+    description: "Team workspace, API access, and analyst-grade reports",
     useCase: "Agencies, multi-brand teams, dev-tool companies",
     monthlyPrice: 149,
     annualPrice: 1430,
@@ -451,9 +451,8 @@ export default function PricingPage() {
                     <span className="text-amber-600 dark:text-amber-400">/24hr</span>
                   </div>
                   <p className="text-sm text-amber-700/80 dark:text-amber-300/80 mt-1">
-                    One-time payment
+                    One-time, no subscription
                   </p>
-                  <p className="text-sm text-amber-600 dark:text-amber-400 mt-1">No subscription needed</p>
                 </div>
                 <ul className="space-y-3">
                   <li className="flex items-center gap-2">
@@ -471,10 +470,6 @@ export default function PricingPage() {
                   <li className="flex items-center gap-2">
                     <Check className="h-4 w-4 text-amber-600 shrink-0" />
                     <span className="text-sm">Full AI analysis</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-amber-600 shrink-0" />
-                    <span className="text-sm">24-hour access</span>
                   </li>
                 </ul>
               </CardContent>

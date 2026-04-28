@@ -159,13 +159,14 @@ export default function AlternativesPage() {
             Kaulby vs Other Social Listening Tools
           </h1>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            See how Kaulby compares to popular alternatives. Purpose-built for monitoring
-            communities where your customers actually discuss products.
+            Most social listening tools track Twitter and news. Kaulby tracks the
+            communities where buyers research, complain, and recommend - Reddit, Hacker News,
+            Indie Hackers, and 13 more.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/sign-up">
+            <Link href="/pricing">
               <Button size="lg" className="gap-2">
-                Try Kaulby Free
+                Try Day Pass - $15/24h
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
