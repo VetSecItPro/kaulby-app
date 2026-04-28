@@ -94,9 +94,9 @@ export default function HomePage() {
             </h1>
 
             <p className="text-base md:text-lg lg:text-xl text-muted-foreground mb-8 md:mb-10 max-w-2xl mx-auto animate-fade-up px-2" style={{ animationDelay: "0.2s" }}>
-              Meet Kaulby. Your AI analyst watching 16 platforms for the conversations that matter.
+              Your AI analyst watching 16 platforms for the conversations that matter.
               <br className="hidden md:block" />
-              <span className="font-medium text-foreground">Sentiment, pain points, buying signals. Written up by your AI, not buried in a feed.</span>
+              <span className="font-medium text-foreground">Sentiment, pain points, buying signals, written up. Not buried in a feed.</span>
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center animate-fade-up px-4 sm:px-0" style={{ animationDelay: "0.3s" }}>
@@ -150,7 +150,7 @@ export default function HomePage() {
                 <StepCard
                   number={2}
                   title="AI Scans and Analyzes"
-                  description="Kaulby scans 16 platforms every 2-4 hours, scoring sentiment, pain points, and buying intent automatically."
+                  description="Kaulby scans 16 platforms every 2-4 hours, scoring sentiment, pain points, and buying intent."
                 />
               </AnimatedStepCard>
               <AnimatedStepCard delay={0.3}>
@@ -179,7 +179,7 @@ export default function HomePage() {
               </TextReveal>
               <TextReveal delay={0.2}>
                 <p className="text-sm md:text-base text-muted-foreground max-w-2xl mx-auto px-4">
-                  From mentions feed to AI-powered insights - explore how Kaulby turns raw conversations into business intelligence.
+                  From mentions to insights. Click each tab.
                 </p>
               </TextReveal>
             </div>
@@ -273,7 +273,7 @@ export default function HomePage() {
                   Your customers are already talking.
                 </h2>
                 <p className="text-sm text-white/80 mb-4 max-w-md">
-                  Find the pain points, competitor gaps, and buying signals hiding in public conversations. Set up your first monitor in 30 seconds.
+                  Find the pain points, competitor gaps, and buying signals. First monitor in 30 seconds.
                 </p>
                 <AuthCTA />
               </div>
@@ -288,7 +288,7 @@ export default function HomePage() {
                     <div>
                       <h3 className="text-lg font-semibold text-white">Install the App</h3>
                       <p className="text-sm text-white/70">
-                        Add to home screen for the best experience
+                        Add to home screen
                       </p>
                     </div>
                     <div className="flex flex-wrap items-center gap-3">
