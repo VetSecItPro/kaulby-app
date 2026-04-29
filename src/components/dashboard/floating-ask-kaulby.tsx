@@ -60,6 +60,24 @@ export function FloatingAskKaulby() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // Programmatic open from elsewhere in the app. Other components dispatch
+  // a CustomEvent("ask-kaulby:open", { detail: { question: "..." } }) when
+  // they want to trigger the panel with a pre-filled prompt. Used by
+  // /dashboard/results "Find similar" — dispatches a question with the
+  // source post title. Decoupled so any component can fire it without
+  // importing this widget.
+  useEffect(() => {
+    function onProgrammaticOpen(e: Event) {
+      const detail = (e as CustomEvent<{ question?: string }>).detail;
+      if (detail?.question) {
+        setInput(detail.question);
+      }
+      setOpen(true);
+    }
+    window.addEventListener("ask-kaulby:open", onProgrammaticOpen as EventListener);
+    return () => window.removeEventListener("ask-kaulby:open", onProgrammaticOpen as EventListener);
+  }, []);
+
   // Focus input when sheet opens
   useEffect(() => {
     if (open && inputRef.current) {
