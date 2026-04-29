@@ -31,8 +31,8 @@ test.describe("Marketing Pages", () => {
 
     // Check plan cards exist by looking for plan names with their descriptions
     // (Free tier retired 2026-04-27 — page now shows 3 paid tiers + Day Pass.)
-    await expect(page.getByText("For one operator watching their brand")).toBeVisible();
-    await expect(page.getByText("For teams operationalizing brand intelligence")).toBeVisible();
+    await expect(page.getByText("Watch your brand and competitors across 9 platforms")).toBeVisible();
+    await expect(page.getByText("Team workspace, API access, and analyst-grade reports")).toBeVisible();
 
     // Check pricing amounts are visible
     await expect(page.getByText("$39")).toBeVisible();
