@@ -1258,10 +1258,10 @@ export default function DemoPage() {
           <div className="border-t px-6 py-3 text-center">
             <p className="text-xs text-muted-foreground">
               This is a demo with sample data.{" "}
-              <Link href="/sign-up" className="text-primary hover:underline">
-                Sign up free
+              <Link href="/pricing" className="text-primary hover:underline">
+                Pick a plan
               </Link>{" "}
-              to start monitoring your brand.
+              to start monitoring your brand, or grab a $15 Day Pass to try it for 24 hours.
             </p>
           </div>
         </div>

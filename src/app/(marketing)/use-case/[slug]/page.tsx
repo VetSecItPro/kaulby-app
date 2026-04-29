@@ -111,7 +111,7 @@ export default async function UseCasePage({
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href={`/sign-up?ref=usecase-${slug}`}>
               <Button size="lg" className="gap-2 text-lg px-8">
-                Get Started Free
+                Get Started
                 <ArrowRight className="h-5 w-5" />
               </Button>
             </Link>
@@ -246,7 +246,7 @@ export default async function UseCasePage({
           </p>
           <Link href={`/sign-up?ref=usecase-${slug}`}>
             <Button size="lg" variant="secondary" className="gap-2 text-lg px-8">
-              Get Started Free
+              Get Started
               <ArrowRight className="h-5 w-5" />
             </Button>
           </Link>
