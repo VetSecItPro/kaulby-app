@@ -20,6 +20,7 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "backfill:ai-analyzed": "npx tsx scripts/backfill-ai-analyzed.ts",
+    "seed:dev-fixture": "export $(grep '^DATABASE_URL' .env.local | xargs) && tsx scripts/seed-dev-fixture.ts",
     "eval:ai": "KAULBY_RUN_AI_EVAL=1 tsx src/__tests__/ai/eval-runner.ts",
     "eval:ai:baseline": "KAULBY_RUN_AI_EVAL=1 tsx src/__tests__/ai/eval-runner.ts --write-baseline",
     "eval:shootout": "KAULBY_RUN_AI_EVAL=1 tsx scripts/eval-shootout.ts",
