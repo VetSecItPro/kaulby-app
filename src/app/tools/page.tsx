@@ -94,11 +94,11 @@ const faqs = [
   },
   {
     question: "How is Kaulby different from other social listening tools?",
-    answer: "Kaulby focuses on community platforms where real product discussions happen, not just Twitter mentions. It includes AI-powered pain point detection, conversation categorization (Solution Requests, Money Talk, etc.), and a free tier for startups.",
+    answer: "Kaulby focuses on community platforms where real product discussions happen, not just Twitter mentions. It includes AI-powered pain point detection and conversation categorization (Solution Requests, Money Talk, etc.) at startup-friendly pricing.",
   },
   {
-    question: "Can I use Kaulby for free?",
-    answer: "Yes, Kaulby offers a free forever tier with 1 Reddit monitor, AI sentiment analysis, and dashboard access. No credit card required. Upgrade to Solo ($39/mo) for 10 monitors and 9 platforms, Scale ($79/mo) for 12 platforms and review sites, or Growth ($149/mo) for all 16 platforms and team features.",
+    question: "How much does Kaulby cost?",
+    answer: "Three monthly plans plus a $15 Day Pass. Solo $39/mo (10 monitors, 9 platforms, full AI). Scale $79/mo (20 monitors, 12 platforms including G2/Yelp/Amazon Reviews). Growth $149/mo (30 monitors, all 16 platforms, team workspace, API access). Day Pass is one-time $15 for 24 hours of Scale-tier access — no subscription.",
   },
 ];
 

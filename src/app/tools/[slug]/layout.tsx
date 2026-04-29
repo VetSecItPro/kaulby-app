@@ -17,8 +17,8 @@ export async function generateMetadata({
 
   const descriptions: Record<string, string> = {
     "reddit-monitoring": "Monitor Reddit for brand mentions, competitor insights, and customer feedback. AI-powered sentiment analysis and real-time alerts. $15 Day Pass to try first.",
-    "social-listening-for-startups": "Affordable social listening for startups. Monitor 16 platforms including Reddit, Hacker News, and review sites. Start free, no credit card required.",
-    "brand-monitoring": "Track every mention of your brand across Reddit, reviews, and communities. AI-powered sentiment analysis and instant alerts. Free to start.",
+    "social-listening-for-startups": "Affordable social listening for startups. Monitor 16 platforms including Reddit, Hacker News, and review sites. From $39/mo or grab a $15 Day Pass.",
+    "brand-monitoring": "Track every mention of your brand across Reddit, reviews, and communities. AI-powered sentiment analysis and instant alerts. From $39/mo.",
     "competitor-monitoring": "Monitor competitor mentions and customer sentiment. Track what customers say about alternatives. Find opportunities with AI-powered insights.",
   };
 

@@ -4,11 +4,11 @@ import type { Metadata } from "next";
 const competitorMeta: Record<string, { name: string; description: string }> = {
   mention: {
     name: "Mention",
-    description: "Looking for a Mention alternative? Kaulby offers better Reddit coverage, AI sentiment analysis, pain point detection, and a free tier. Compare features and pricing.",
+    description: "Looking for a Mention alternative? Kaulby offers better Reddit coverage, AI sentiment analysis, pain point detection, and a $15 Day Pass to try first. Compare features and pricing.",
   },
   brand24: {
     name: "Brand24",
-    description: "Compare Kaulby vs Brand24 for community monitoring. Kaulby offers 16 platforms, AI-powered insights, and startup-friendly pricing starting at $0.",
+    description: "Compare Kaulby vs Brand24 for community monitoring. Kaulby offers 16 platforms, AI-powered insights, and startup-friendly pricing from $39/mo or a $15 Day Pass.",
   },
   brandwatch: {
     name: "Brandwatch",
@@ -20,11 +20,11 @@ const competitorMeta: Record<string, { name: string; description: string }> = {
   },
   sproutsocial: {
     name: "Sprout Social",
-    description: "Looking for a Sprout Social alternative? Kaulby offers dedicated community monitoring with 16 platforms, AI analysis, and pricing that starts at $0.",
+    description: "Looking for a Sprout Social alternative? Kaulby offers dedicated community monitoring with 16 platforms, AI analysis, and pricing that starts at $39/mo (or a $15 Day Pass).",
   },
   awario: {
     name: "Awario",
-    description: "Compare Kaulby vs Awario for social listening. Kaulby offers better Reddit coverage, developer platform monitoring, and a generous free tier.",
+    description: "Compare Kaulby vs Awario for social listening. Kaulby offers better Reddit coverage, developer platform monitoring, and a $15 Day Pass to try first.",
   },
   syften: {
     name: "Syften",
@@ -32,19 +32,19 @@ const competitorMeta: Record<string, { name: string; description: string }> = {
   },
   gummysearch: {
     name: "GummySearch",
-    description: "GummySearch is shutting down. Kaulby offers everything GummySearch had plus 11 more platforms, better AI, and active development. Migrate free today.",
+    description: "GummySearch is shutting down. Kaulby offers everything GummySearch had plus 11 more platforms, better AI, and active development. Migrate today.",
   },
   redreach: {
     name: "RedReach",
-    description: "Compare Kaulby vs RedReach for Reddit marketing. Kaulby monitors 16 platforms, offers AI reply suggestions, and includes a free tier. No Reddit-only limitation.",
+    description: "Compare Kaulby vs RedReach for Reddit marketing. Kaulby monitors 16 platforms, offers AI reply suggestions, and starts at $39/mo. No Reddit-only limitation.",
   },
   subredditsignals: {
     name: "Subreddit Signals",
-    description: "Looking for a Subreddit Signals alternative? Kaulby offers AI sentiment analysis, multi-platform monitoring, and pain point detection. Free tier included.",
+    description: "Looking for a Subreddit Signals alternative? Kaulby offers AI sentiment analysis, multi-platform monitoring, and pain point detection. $15 Day Pass available.",
   },
   f5bot: {
     name: "F5Bot",
-    description: "Need more than F5Bot's basic alerts? Kaulby offers a dashboard, AI analysis, sentiment tracking, and 16 platforms. Free tier matches F5Bot's price.",
+    description: "Need more than F5Bot's basic alerts? Kaulby offers a dashboard, AI analysis, sentiment tracking, and 16 platforms. $15 Day Pass to try a full social listening tool.",
   },
 };
 
@@ -57,7 +57,7 @@ export async function generateMetadata({ params }: LayoutProps): Promise<Metadat
   const { competitor } = await params;
   const meta = competitorMeta[competitor] || {
     name: competitor.charAt(0).toUpperCase() + competitor.slice(1),
-    description: `Compare Kaulby vs ${competitor} for community monitoring. Kaulby offers 16 platforms, AI-powered insights, and a free tier.`,
+    description: `Compare Kaulby vs ${competitor} for community monitoring. Kaulby offers 16 platforms, AI-powered insights, and a $15 Day Pass to try first.`,
   };
 
   return {
