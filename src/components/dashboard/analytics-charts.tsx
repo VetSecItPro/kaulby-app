@@ -30,10 +30,13 @@ import {
   HelpCircle,
   Loader2,
   Lock,
+  Wand2,
+  RefreshCw,
 } from "lucide-react";
 import { ShareOfVoice } from "./share-of-voice";
 import { ReportGenerator } from "./report-generator";
 import { EmptyState } from "./empty-states";
+import { toast } from "sonner";
 
 interface AnalyticsData {
   volumeOverTime: { date: string; count: number }[];
@@ -440,9 +443,12 @@ export function AnalyticsCharts({ subscriptionStatus = "free" }: AnalyticsCharts
 
       {/* Sentiment Over Time Chart */}
       <Card>
-        <CardHeader>
-          <CardTitle>Sentiment Trends</CardTitle>
-          <CardDescription>Sentiment breakdown over time</CardDescription>
+        <CardHeader className="flex flex-row items-start justify-between gap-3">
+          <div>
+            <CardTitle>Sentiment Trends</CardTitle>
+            <CardDescription>Sentiment breakdown over time</CardDescription>
+          </div>
+          <TrendExplainer />
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
@@ -547,6 +553,95 @@ export function AnalyticsCharts({ subscriptionStatus = "free" }: AnalyticsCharts
           </CardContent>
         </Card>
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Trend Explainer
+// ---------------------------------------------------------------------------
+
+// Compact "Explain this trend" affordance. Calls /api/ai/explain-trend, which
+// pulls daily sentiment counts + sample posts and asks the model what changed
+// and why. Renders inline so the explanation lives next to the chart it
+// describes — closes the gap from the AI integration audit (#133) where
+// analyze_sentiment_trends had no UI surface.
+
+interface TrendExplanation {
+  explanation: string;
+  changePoint: string | null;
+  drivers: Array<{ label: string; examples: string[] }>;
+}
+
+function TrendExplainer() {
+  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState<TrendExplanation | null>(null);
+  const [open, setOpen] = useState(false);
+
+  async function generate() {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/ai/explain-trend", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dateRange: "30d" }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `Request failed (${res.status})`);
+      }
+      const json = (await res.json()) as TrendExplanation;
+      setData(json);
+      setOpen(true);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not generate explanation");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-end gap-2 max-w-md">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={data && !loading ? () => setOpen((v) => !v) : generate}
+        disabled={loading}
+        className="gap-1.5 shrink-0"
+      >
+        {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
+        {loading ? "Analyzing..." : data ? (open ? "Hide explanation" : "Show explanation") : "Explain this trend"}
+      </Button>
+      {data && open && (
+        <div className="rounded-lg border bg-muted/30 p-3 w-full text-left">
+          <p className="text-sm leading-relaxed">{data.explanation}</p>
+          {data.changePoint && (
+            <p className="text-[11px] text-muted-foreground mt-2">
+              Biggest day-over-day shift: {data.changePoint}
+            </p>
+          )}
+          {data.drivers.length > 0 && (
+            <div className="mt-3 space-y-1.5">
+              <p className="text-[11px] font-medium text-muted-foreground">Likely drivers</p>
+              {data.drivers.map((d, i) => (
+                <div key={i} className="flex items-start gap-2">
+                  <span className="text-[10px] font-mono bg-background px-1.5 py-0.5 rounded shrink-0 mt-0.5">
+                    {i + 1}
+                  </span>
+                  <span className="text-xs">{d.label}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          <button
+            onClick={generate}
+            className="text-[11px] text-muted-foreground hover:text-foreground mt-3 inline-flex items-center gap-1"
+          >
+            <RefreshCw className="h-3 w-3" />
+            Regenerate
+          </button>
+        </div>
+      )}
     </div>
   );
 }
