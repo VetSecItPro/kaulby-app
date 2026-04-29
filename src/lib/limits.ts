@@ -170,7 +170,7 @@ export async function canCreateMonitor(userId: string): Promise<LimitCheckResult
       allowed: false,
       current: currentCount,
       limit: limits.monitors,
-      message: `You've reached your limit of ${limits.monitors} monitor${limits.monitors === 1 ? "" : "s"}. Upgrade to Pro for more.`,
+      message: `You've reached your limit of ${limits.monitors} monitor${limits.monitors === 1 ? "" : "s"}. Upgrade your plan to add more.`,
     };
   }
 
@@ -313,7 +313,7 @@ export async function canViewAiAnalysis(
   return {
     canView: false,
     isBlurred: true,
-    message: "Upgrade to Pro to unlock AI analysis on all results",
+    message: "Upgrade to Solo to unlock AI analysis on all results",
   };
 }
 
@@ -340,9 +340,9 @@ export async function getRefreshDelay(userId: string): Promise<{
   if (plan === "growth") {
     message = `Results refresh every ${limits.refreshDelayHours} hours.`;
   } else if (plan === "solo") {
-    message = `Results refresh every ${limits.refreshDelayHours} hours. Upgrade to Team for 2-hour refresh.`;
+    message = `Results refresh every ${limits.refreshDelayHours} hours. Upgrade to Growth for 2-hour refresh.`;
   } else if (plan === "scale") {
-    message = `Results refresh every ${limits.refreshDelayHours} hours. Upgrade to Team for 2-hour refresh.`;
+    message = `Results refresh every ${limits.refreshDelayHours} hours. Upgrade to Growth for 2-hour refresh.`;
   } else {
     message = `Results refresh every ${limits.refreshDelayHours} hours. Upgrade to Starter for 3-hour refresh.`;
   }
@@ -402,7 +402,7 @@ export async function filterResultsForDisplay<T extends { id: string }>(
     hiddenCount,
     showUpgradePrompt: hiddenCount > 0,
     upgradeMessage: hiddenCount > 0
-      ? `${hiddenCount} more results waiting. Upgrade to Pro to see all.`
+      ? `${hiddenCount} more results waiting. Upgrade your plan to see all.`
       : "",
   };
 }

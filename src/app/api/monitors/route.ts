@@ -248,7 +248,7 @@ export async function POST(request: Request) {
         const currentCount = result?.count || 0;
         if (currentCount >= planLimits.monitors) {
           throw new Error(
-            `MONITOR_LIMIT:You've reached your limit of ${planLimits.monitors} monitor${planLimits.monitors === 1 ? "" : "s"}. Upgrade to Pro for more.`
+            `MONITOR_LIMIT:You've reached your limit of ${planLimits.monitors} monitor${planLimits.monitors === 1 ? "" : "s"}. Upgrade your plan to add more.`
           );
         }
       }

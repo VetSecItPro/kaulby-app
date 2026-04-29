@@ -1766,7 +1766,7 @@ export default function HelpPage() {
               <div className="p-3 rounded-lg border">
                 <p className="font-medium text-sm mb-1">AI analysis locked?</p>
                 <p className="text-xs text-muted-foreground">
-                  Free users get analysis on first result only. Upgrade to Pro or Team for unlimited AI insights
+                  Free users get analysis on first result only. Upgrade your plan for unlimited AI insights
                 </p>
               </div>
               <div className="p-3 rounded-lg border">

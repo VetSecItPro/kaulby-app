@@ -583,7 +583,7 @@ export function ResponsiveSettings({
                 <Badge variant="outline" className="text-xs">Team</Badge>
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Upgrade to Team to receive automated weekly or monthly PDF reports
+                Upgrade to Growth to receive automated weekly or monthly PDF reports
               </p>
             </div>
           )}

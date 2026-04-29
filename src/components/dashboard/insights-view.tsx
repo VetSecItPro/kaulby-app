@@ -859,7 +859,7 @@ export function InsightsView() {
                   <Link href="/pricing">
                     <Button className="bg-amber-500 hover:bg-amber-600 text-black">
                       <Zap className="h-4 w-4 mr-2" />
-                      Upgrade to Pro
+                      Upgrade your plan
                     </Button>
                   </Link>
                 </div>
@@ -1003,14 +1003,14 @@ function TrendingTopicsContent({
             <div className="flex-1 text-center md:text-left">
               <h3 className="text-lg font-semibold mb-2">See Pain Points Across All 16 Platforms</h3>
               <p className="text-muted-foreground mb-4">
-                You&apos;re only seeing Reddit right now. Upgrade to Pro to discover
+                You&apos;re only seeing Reddit right now. Upgrade to Solo to discover
                 pain points, competitor gaps, and buying signals across Hacker News,
                 Product Hunt, Google Reviews, Trustpilot, and 12 more platforms.
               </p>
               <Link href="/pricing">
                 <Button className="bg-amber-500 hover:bg-amber-600 text-black">
                   <Zap className="h-4 w-4 mr-2" />
-                  Upgrade to Pro
+                  Upgrade your plan
                 </Button>
               </Link>
             </div>
