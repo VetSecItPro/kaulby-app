@@ -15,6 +15,7 @@ import { getUserPlan, getRefreshDelay } from "@/lib/limits";
 import { getPlanLimits } from "@/lib/plans";
 import { HiddenResultsBanner, RefreshDelayBanner, BlurredAiAnalysis } from "@/components/dashboard/upgrade-prompt";
 import { ScanButton } from "@/components/dashboard/scan-button";
+import { MonitorSummaryCard } from "@/components/dashboard/monitor-summary-card";
 import { getEffectiveUserId, isLocalDev } from "@/lib/dev-auth";
 import { ResultsFilters } from "@/components/dashboard/results-filters";
 import { ALL_PLATFORMS, type Platform } from "@/lib/plans";
@@ -179,6 +180,11 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
           </Link>
         </div>
       </div>
+
+      {/* AI summary card — top-of-page brief, generated on demand to avoid
+          burning tokens on every page load. Shows up before stats so users
+          see the narrative first, the numbers second. */}
+      <MonitorSummaryCard monitorId={monitor.id} monitorName={monitor.name} />
 
       {/* Stats */}
       <div className="grid gap-4 md:grid-cols-3">
