@@ -117,7 +117,7 @@ describe("GET /api/user/detection-keywords", () => {
     const res = await GET();
     expect(res.status).toBe(403);
     const json = await res.json();
-    expect(json.error).toContain("Pro or Team plan");
+    expect(json.error).toMatch(/Solo, Scale, or Growth/);
   });
 
   it("returns default keywords when user has none", async () => {
@@ -202,7 +202,7 @@ describe("PUT /api/user/detection-keywords", () => {
     const res = await PUT(makeRequest("PUT", { category: "pain_point", keywords: ["test"] }));
     expect(res.status).toBe(403);
     const json = await res.json();
-    expect(json.error).toContain("Pro or Team plan");
+    expect(json.error).toMatch(/Solo, Scale, or Growth/);
   });
 
   it("returns 400 for invalid category", async () => {
@@ -325,7 +325,7 @@ describe("POST /api/user/detection-keywords", () => {
     const res = await POST();
     expect(res.status).toBe(403);
     const json = await res.json();
-    expect(json.error).toContain("Pro or Team plan");
+    expect(json.error).toMatch(/Solo, Scale, or Growth/);
   });
 
   it("returns existing count when already seeded", async () => {

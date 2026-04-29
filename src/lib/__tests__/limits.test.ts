@@ -40,25 +40,21 @@ describe("limits", () => {
   // checkKeywordsLimit (synchronous, no DB)
   // =========================================================================
   describe("checkKeywordsLimit", () => {
-    it("allows keywords within free plan limit (3)", () => {
-      const result = checkKeywordsLimit(["foo", "bar"], "free");
-      expect(result.allowed).toBe(true);
-      expect(result.current).toBe(2);
-      expect(result.limit).toBe(3);
-    });
-
-    it("allows exactly at the free plan limit", () => {
-      const result = checkKeywordsLimit(["a", "b", "c"], "free");
-      expect(result.allowed).toBe(true);
-      expect(result.current).toBe(3);
-    });
-
-    it("rejects keywords exceeding free plan limit", () => {
-      const result = checkKeywordsLimit(["a", "b", "c", "d"], "free");
+    // Free tier was retired 2026-04-27 (#316). It now represents "no active
+    // subscription" with all limits zeroed — keywords cap is 0, so any
+    // keyword should fail. Empty array is the only allowed input.
+    it("rejects any keyword on free (no active subscription)", () => {
+      const result = checkKeywordsLimit(["foo"], "free");
       expect(result.allowed).toBe(false);
-      expect(result.current).toBe(4);
-      expect(result.limit).toBe(3);
-      expect(result.message).toContain("Maximum 3");
+      expect(result.current).toBe(1);
+      expect(result.limit).toBe(0);
+    });
+
+    it("allows empty array on free (zero is the limit)", () => {
+      const result = checkKeywordsLimit([], "free");
+      expect(result.allowed).toBe(true);
+      expect(result.current).toBe(0);
+      expect(result.limit).toBe(0);
     });
 
     it("allows unlimited keywords on solo plan", () => {
@@ -83,8 +79,8 @@ describe("limits", () => {
       expect(result.limit).toBe(-1);
     });
 
-    it("handles empty keywords array", () => {
-      const result = checkKeywordsLimit([], "free");
+    it("handles empty keywords array on solo", () => {
+      const result = checkKeywordsLimit([], "solo");
       expect(result.allowed).toBe(true);
       expect(result.current).toBe(0);
     });
@@ -94,27 +90,38 @@ describe("limits", () => {
   // canAccessPlatformWithPlan (synchronous, no DB)
   // =========================================================================
   describe("canAccessPlatformWithPlan", () => {
-    it("allows reddit on free plan", () => {
-      expect(canAccessPlatformWithPlan("free", "reddit")).toBe(true);
-    });
-
-    it("denies hackernews on free plan", () => {
+    // Free tier retired (#316). Free has 0 platforms, so EVERY platform
+    // access check should return false on free.
+    it("denies all platforms on free (no active subscription)", () => {
+      expect(canAccessPlatformWithPlan("free", "reddit")).toBe(false);
       expect(canAccessPlatformWithPlan("free", "hackernews")).toBe(false);
     });
 
-    it("allows hackernews on pro plan", () => {
+    it("allows reddit on solo plan (entry paid tier)", () => {
+      expect(canAccessPlatformWithPlan("solo", "reddit")).toBe(true);
+    });
+
+    it("allows hackernews on solo plan", () => {
       expect(canAccessPlatformWithPlan("solo", "hackernews")).toBe(true);
     });
 
-    it("denies devto on pro plan (team-only)", () => {
+    it("denies devto on solo plan (growth-only)", () => {
       expect(canAccessPlatformWithPlan("solo", "devto")).toBe(false);
     });
 
-    it("allows devto on team plan", () => {
+    it("allows g2 on scale plan (review-site additions)", () => {
+      expect(canAccessPlatformWithPlan("scale", "g2")).toBe(true);
+    });
+
+    it("denies devto on scale plan (still growth-only)", () => {
+      expect(canAccessPlatformWithPlan("scale", "devto")).toBe(false);
+    });
+
+    it("allows devto on growth plan", () => {
       expect(canAccessPlatformWithPlan("growth", "devto")).toBe(true);
     });
 
-    it("allows all 16 platforms on team plan", () => {
+    it("allows all 16 platforms on growth plan", () => {
       const allPlatforms: Platform[] = [
         "reddit", "hackernews", "indiehackers", "producthunt",
         "googlereviews", "youtube", "github", "trustpilot", "x",
@@ -126,9 +133,9 @@ describe("limits", () => {
       }
     });
 
-    it("free plan only has reddit", () => {
+    it("free plan has zero platforms", () => {
       const limits = getPlanLimits("free");
-      expect(limits.platforms).toEqual(["reddit"]);
+      expect(limits.platforms).toEqual([]);
     });
   });
 
@@ -175,12 +182,17 @@ describe("limits", () => {
   // Monitor limits per plan
   // =========================================================================
   describe("plan monitor limits", () => {
-    it("free plan allows 1 monitor", () => {
-      expect(getPlanLimits("free").monitors).toBe(1);
+    // Free tier retired — represents "no active subscription" with 0 monitors.
+    it("free plan allows 0 monitors (no active subscription)", () => {
+      expect(getPlanLimits("free").monitors).toBe(0);
     });
 
     it("solo plan allows 10 monitors", () => {
       expect(getPlanLimits("solo").monitors).toBe(10);
+    });
+
+    it("scale plan allows 20 monitors", () => {
+      expect(getPlanLimits("scale").monitors).toBe(20);
     });
 
     it("growth plan allows 30 monitors", () => {

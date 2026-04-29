@@ -35,6 +35,7 @@ import { cn } from "@/lib/utils";
 import { TestimonialStrip } from "@/components/landing/testimonials";
 import { toast } from "sonner";
 import type { BillingInterval } from "@/lib/plans";
+import { TIER_DESCRIPTIONS, TIER_USE_CASES, TIER_PRICES_MONTHLY, TIER_PRICES_ANNUAL } from "@/lib/marketing/tier-copy";
 import { FAQSchema } from "@/lib/seo/structured-data";
 import { track as trackClient } from "@/lib/analytics-client";
 import { FoundingMembersBanner } from "@/components/founding-members-banner";
@@ -67,10 +68,10 @@ const plans: Plan[] = [
   {
     name: "Solo",
     key: "solo",
-    description: "Watch your brand and competitors across 9 platforms",
-    useCase: "Solo founders, makers, independents",
-    monthlyPrice: 39,
-    annualPrice: 374,
+    description: TIER_DESCRIPTIONS.solo,
+    useCase: TIER_USE_CASES.solo,
+    monthlyPrice: TIER_PRICES_MONTHLY.solo,
+    annualPrice: TIER_PRICES_ANNUAL.solo,
     trialDays: 14,
     features: [
       { text: "10 monitors" },
@@ -88,10 +89,10 @@ const plans: Plan[] = [
   {
     name: "Scale",
     key: "scale",
-    description: "Adds review sites where buyers research before they buy",
-    useCase: "Growing brands, small agencies, review-heavy categories",
-    monthlyPrice: 79,
-    annualPrice: 758,
+    description: TIER_DESCRIPTIONS.scale,
+    useCase: TIER_USE_CASES.scale,
+    monthlyPrice: TIER_PRICES_MONTHLY.scale,
+    annualPrice: TIER_PRICES_ANNUAL.scale,
     trialDays: 14,
     features: [
       { text: "20 monitors" },
@@ -109,10 +110,10 @@ const plans: Plan[] = [
   {
     name: "Growth",
     key: "growth",
-    description: "Team workspace, API access, and analyst-grade reports",
-    useCase: "Agencies, multi-brand teams, dev-tool companies",
-    monthlyPrice: 149,
-    annualPrice: 1430,
+    description: TIER_DESCRIPTIONS.growth,
+    useCase: TIER_USE_CASES.growth,
+    monthlyPrice: TIER_PRICES_MONTHLY.growth,
+    annualPrice: TIER_PRICES_ANNUAL.growth,
     trialDays: 14,
     features: [
       { text: "30 monitors" },

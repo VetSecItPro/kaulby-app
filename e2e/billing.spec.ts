@@ -1,9 +1,14 @@
 import { test, expect } from "@playwright/test";
+import { TIER_DESCRIPTIONS } from "../src/lib/marketing/tier-copy";
 
 /**
  * Pricing & Billing E2E Tests
  * Tests the public pricing page including plan cards, feature comparison,
  * billing toggle, FAQ, and CTA buttons.
+ *
+ * Tier description strings imported from src/lib/marketing/tier-copy so a
+ * copy rewrite in one place updates both the rendered page AND these
+ * assertions. See PR #333/#334 for the bug this prevents.
  *
  * These tests do NOT require auth -- the pricing page is public.
  * The billing toggle and checkout modals are client-side components.
@@ -44,12 +49,11 @@ test.describe("Pricing Page - Plan Cards", () => {
     await page.goto("/pricing", GOTO_OPTS);
 
     // Free tier retired 2026-04-27 (Apify costs); page now shows 3 paid tiers + Day Pass.
-    // Solo plan (was Pro)
-    await expect(page.getByText("Watch your brand and competitors across 9 platforms")).toBeVisible(VISIBLE_OPTS);
-    // Scale plan (mid tier)
-    await expect(page.getByText("Adds review sites where buyers research before they buy")).toBeVisible(VISIBLE_OPTS);
-    // Growth plan (was Team)
-    await expect(page.getByText("Team workspace, API access, and analyst-grade reports")).toBeVisible(VISIBLE_OPTS);
+    // Strings come from src/lib/marketing/tier-copy so they always match what
+    // the page actually renders.
+    await expect(page.getByText(TIER_DESCRIPTIONS.solo)).toBeVisible(VISIBLE_OPTS);
+    await expect(page.getByText(TIER_DESCRIPTIONS.scale)).toBeVisible(VISIBLE_OPTS);
+    await expect(page.getByText(TIER_DESCRIPTIONS.growth)).toBeVisible(VISIBLE_OPTS);
   });
 
   test("displays correct monthly prices", async ({ page }) => {

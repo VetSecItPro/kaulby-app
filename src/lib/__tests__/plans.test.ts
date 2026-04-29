@@ -38,12 +38,12 @@ describe("plans", () => {
   });
 
   describe("getPlanLimits", () => {
-    it("returns free plan limits", () => {
+    it("returns free plan limits (zeroed — no active subscription, post-#316)", () => {
       const limits = getPlanLimits("free");
-      expect(limits.monitors).toBe(1);
-      expect(limits.keywordsPerMonitor).toBe(3);
-      expect(limits.resultsVisible).toBe(3);
-      expect(limits.refreshDelayHours).toBe(24);
+      expect(limits.monitors).toBe(0);
+      expect(limits.keywordsPerMonitor).toBe(0);
+      expect(limits.resultsVisible).toBe(0);
+      expect(limits.refreshDelayHours).toBe(24); // kept as documented timing for any legacy comparisons
     });
 
     it("returns solo plan limits", () => {
@@ -72,9 +72,9 @@ describe("plans", () => {
   });
 
   describe("platform access", () => {
-    it("free plan only allows reddit", () => {
+    it("free plan has zero platforms (post-#316 — no active subscription state)", () => {
       const limits = getPlanLimits("free");
-      expect(limits.platforms).toEqual(["reddit"]);
+      expect(limits.platforms).toEqual([]);
     });
 
     it("solo plan allows 8 platforms (X moved to Growth-only 2026-04-23)", () => {
@@ -105,9 +105,9 @@ describe("plans", () => {
   });
 
   describe("AI features", () => {
-    it("free plan has limited AI", () => {
+    it("free plan has no AI features (post-#316 — no active subscription)", () => {
       const limits = getPlanLimits("free");
-      expect(limits.aiFeatures.sentiment).toBe(true);
+      expect(limits.aiFeatures.sentiment).toBe(false);
       expect(limits.aiFeatures.unlimitedAiAnalysis).toBe(false);
       expect(limits.aiFeatures.askFeature).toBe(false);
       expect(limits.aiFeatures.comprehensiveAnalysis).toBe(false);

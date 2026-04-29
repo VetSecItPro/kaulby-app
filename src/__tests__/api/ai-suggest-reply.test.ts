@@ -83,13 +83,14 @@ describe("POST /api/ai/suggest-reply", () => {
     expect(res.status).toBe(401);
   });
 
-  it("returns 403 when user is not pro or team", async () => {
+  it("returns 403 when user is on free (no active subscription)", async () => {
     mockAuth.mockResolvedValue({ userId: "user_1" });
     mockGetUserPlan.mockResolvedValue("free");
     const res = await POST(makeRequest("POST", "/api/ai/suggest-reply", validBody));
     expect(res.status).toBe(403);
     const json = await res.json();
-    expect(json.error).toContain("Pro");
+    // Plan gate now allows solo/scale/growth (Pro/Team retired in #311).
+    expect(json.error).toMatch(/Solo|Scale|Growth/);
   });
 
   it("returns 429 when rate limited", async () => {
