@@ -34,6 +34,7 @@ import {
   Star,
   Snowflake,
   Moon,
+  Wand2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -44,6 +45,7 @@ import {
 } from "@/app/(dashboard)/dashboard/results/actions";
 import { getPlatformBadgeColor, getPlatformDisplayName } from "@/lib/platform-utils";
 import { ExportDialog } from "./export-dialog";
+import { SuggestReplyDrawer } from "./suggest-reply-drawer";
 import { BlurredAiAnalysis } from "./upgrade-prompt";
 import { LeadScoreBadge } from "./lead-score-badge";
 import { SourceAuthorityBadge } from "./source-authority-badge";
@@ -124,6 +126,7 @@ export const ResultCard = memo(function ResultCard({
   const [isSaved, setIsSaved] = useState(result.isSaved);
   const [isHidden, setIsHidden] = useState(result.isHidden);
   const [isViewed, setIsViewed] = useState(result.isViewed);
+  const [suggestReplyOpen, setSuggestReplyOpen] = useState(false);
 
   // Calculate lead score if not provided but we have enough data
   const { leadScore, leadScoreFactors } = (() => {
@@ -320,6 +323,11 @@ export const ResultCard = memo(function ResultCard({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setSuggestReplyOpen(true)}>
+                  <Wand2 className="h-4 w-4 mr-2" />
+                  Suggest reply
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleToggleSaved}>
                   {isSaved ? (
                     <>
@@ -380,6 +388,18 @@ export const ResultCard = memo(function ResultCard({
         </CardContent>
       )}
       </Card>
+      <SuggestReplyDrawer
+        open={suggestReplyOpen}
+        onOpenChange={setSuggestReplyOpen}
+        result={{
+          id: result.id,
+          title: result.title,
+          content: result.content,
+          platform: result.platform,
+          sourceUrl: result.sourceUrl,
+          conversationCategory: result.conversationCategory,
+        }}
+      />
     </div>
   );
 });
