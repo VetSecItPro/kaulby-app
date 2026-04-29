@@ -98,7 +98,7 @@ export const blogArticles: BlogArticle[] = [
 
 <h2>Getting Started</h2>
 
-<p><a href="/tools/reddit-monitoring">Kaulby's Reddit monitoring</a> is designed to make this entire process automatic. It continuously scans Reddit for your keywords, uses AI to categorize and score each mention, and sends you alerts when something needs attention. The free tier lets you start with one monitor on Reddit, so you can see the value before committing to a paid plan.</p>
+<p><a href="/tools/reddit-monitoring">Kaulby's Reddit monitoring</a> is designed to make this entire process automatic. It continuously scans Reddit for your keywords, uses AI to categorize and score each mention, and sends you alerts when something needs attention. Try a $15 Day Pass for 24 hours to see the value before committing to a monthly plan.</p>
 
 <blockquote><p>The companies that win are not the ones with the biggest marketing budgets. They are the ones that listen most carefully to what their customers are actually saying. And right now, your customers are saying a lot on Reddit.</p></blockquote>
 
@@ -462,7 +462,7 @@ export const blogArticles: BlogArticle[] = [
 
 <blockquote><p>The best Reddit marketing does not feel like marketing at all. It feels like a knowledgeable community member sharing their expertise. The product mention is secondary to the value provided.</p></blockquote>
 
-<p>Ready to find potential customers in Reddit discussions? <a href="/sign-up">Start with Kaulby's free tier</a> to monitor Reddit for solution requests and competitor frustration. You will be surprised how many people are looking for exactly what you offer. Check our <a href="/pricing">pricing page</a> for details on Pro features like lead scoring and AI categorization.</p>`,
+<p>Ready to find potential customers in Reddit discussions? <a href="/pricing">Try Kaulby's $15 Day Pass</a> or pick a Solo plan to monitor Reddit for solution requests and competitor frustration. You will be surprised how many people are looking for exactly what you offer. Lead scoring and AI categorization are included on every paid tier.</p>`,
   },
   {
     slug: "monitoring-hacker-news-what-every-saas-founder-should-know",
@@ -587,7 +587,7 @@ export const blogArticles: BlogArticle[] = [
 
 <p>If you are a SaaS founder, Hacker News monitoring should be part of your core market intelligence strategy. The conversations happening there influence your technical audience, your investor prospects, and your competitive positioning.</p>
 
-<p><a href="/sign-up">Start with Kaulby's free tier</a> to monitor Reddit, then upgrade to Pro to add Hacker News and six other platforms. You will get AI-powered sentiment analysis, automatic categorization, and alerts that ensure you never miss an important HN discussion about your product or your market.</p>
+<p><a href="/pricing">Pick a Solo plan ($39/mo) or grab a $15 Day Pass</a> to monitor Reddit, Hacker News, and seven other platforms. You will get AI-powered sentiment analysis, automatic categorization, and alerts that ensure you never miss an important HN discussion about your product or your market.</p>
 
 <blockquote><p>The SaaS founders who win are the ones who know what their market is saying, before their competitors do. Hacker News is where the most influential conversations in tech happen. Make sure you are listening.</p></blockquote>
 
@@ -1915,9 +1915,9 @@ export const blogArticles: BlogArticle[] = [
 <h2>Platform Availability by Plan</h2>
 <p>The new platforms are available based on your subscription tier:</p>
 <ul>
-<li><strong>Free plan:</strong> Reddit monitoring (great for getting started)</li>
-<li><strong>Pro plan:</strong> 9 platforms including YouTube, Trustpilot, and X (Twitter)</li>
-<li><strong>Team plan:</strong> All 16 platforms including Yelp and Amazon Reviews</li>
+<li><strong>Solo plan ($39/mo):</strong> 9 platforms including Reddit, Hacker News, YouTube, Trustpilot, and X (Twitter)</li>
+<li><strong>Scale plan ($79/mo):</strong> 12 platforms (adds G2, Yelp, and Amazon Reviews)</li>
+<li><strong>Growth plan ($149/mo):</strong> All 16 platforms (adds Dev.to, Hashnode, App Store, Play Store)</li>
 </ul>
 <p>Check the <a href="/pricing">pricing page</a> for full details on what each plan includes.</p>
 
@@ -2047,9 +2047,9 @@ export const blogArticles: BlogArticle[] = [
 <li><strong>Step 3:</strong> Configure delivery channels (email, webhook URL, or both)</li>
 <li><strong>Step 4:</strong> Set optional filters (sentiment, engagement threshold, platform)</li>
 </ul>
-<p>Instant alerts and email digests are available on Pro and Team plans. Free plan users can explore the <a href="/tools/brand-monitoring">brand monitoring</a> features and upgrade when they're ready for full alert capabilities. Visit the <a href="/pricing">pricing page</a> to compare plans.</p>
+<p>Instant alerts and email digests are available on every paid tier (Solo, Scale, Growth). Visit the <a href="/pricing">pricing page</a> to compare plans, or grab a $15 Day Pass to try it for 24 hours.</p>
 
-<blockquote><strong>Never miss an important mention again.</strong> <a href="/sign-up">Start your free Kaulby account</a> and configure smart alerts that keep you informed without the noise. Your community is talking 24/7. Now your alert system can keep up.</blockquote>`,
+<blockquote><strong>Never miss an important mention again.</strong> <a href="/pricing">Pick a Kaulby plan</a> and configure smart alerts that keep you informed without the noise. Your community is talking 24/7. Now your alert system can keep up.</blockquote>`,
   },
 ];
 
