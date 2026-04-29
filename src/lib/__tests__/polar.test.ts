@@ -70,11 +70,10 @@ describe("polar", () => {
       expect(POLAR_PLANS.scale.price).toBeLessThan(POLAR_PLANS.growth.price);
     });
 
-    it("free plan has most restrictions", () => {
+    it("free plan is fully zeroed (no active subscription, post-#316)", () => {
       const free = POLAR_PLANS.free;
-      expect(free.limits.monitors).toBe(1);
-      expect(free.limits.platforms).toHaveLength(1);
-      expect(free.limits.platforms).toContain("reddit");
+      expect(free.limits.monitors).toBe(0);
+      expect(free.limits.platforms).toHaveLength(0);
     });
 
     it("growth plan has highest monitor limit + comprehensive AI", () => {
@@ -159,11 +158,11 @@ describe("polar", () => {
   });
 
   describe("plan limits", () => {
-    it("free plan is tightly restricted", () => {
+    it("free plan is fully zeroed (no active subscription, post-#316)", () => {
       const { limits } = POLAR_PLANS.free;
-      expect(limits.monitors).toBe(1);
-      expect(limits.keywordsPerMonitor).toBe(3);
-      expect(limits.resultsVisible).toBe(3);
+      expect(limits.monitors).toBe(0);
+      expect(limits.keywordsPerMonitor).toBe(0);
+      expect(limits.resultsVisible).toBe(0);
       expect(limits.aiFeatures.unlimitedAiAnalysis).toBe(false);
       expect(limits.alerts.email).toBe(false);
       expect(limits.exports.csv).toBe(false);
@@ -198,8 +197,8 @@ describe("polar", () => {
   });
 
   describe("platform availability", () => {
-    it("free has reddit only", () => {
-      expect(POLAR_PLANS.free.limits.platforms).toEqual(["reddit"]);
+    it("free has zero platforms (post-#316 — no active subscription)", () => {
+      expect(POLAR_PLANS.free.limits.platforms).toEqual([]);
     });
 
     it("solo has 8 platforms (X moved to Growth-only 2026-04-23)", () => {

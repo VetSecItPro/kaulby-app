@@ -79,13 +79,13 @@ describe("GET /api/api-keys", () => {
     expect(res.status).toBe(429);
   });
 
-  it("returns 403 when user is not on Team plan", async () => {
+  it("returns 403 when user is not on Growth plan", async () => {
     mockAuth.mockResolvedValue({ userId: "user_1" });
     mockFindUserWithFallback.mockResolvedValue({ id: "user_1", subscriptionStatus: "solo" });
     const res = await GET();
     expect(res.status).toBe(403);
     const json = await res.json();
-    expect(json.error).toContain("Team plan");
+    expect(json.error).toContain("Growth plan");
   });
 
   it("returns 403 when user not found", async () => {
@@ -128,13 +128,13 @@ describe("POST /api/api-keys", () => {
     expect(json.error).toContain("Name is required");
   });
 
-  it("returns 403 when user is not team", async () => {
+  it("returns 403 when user is not on Growth tier", async () => {
     mockAuth.mockResolvedValue({ userId: "user_1" });
     mockFindUserWithFallback.mockResolvedValue({ id: "user_1", subscriptionStatus: "solo" });
     const res = await POST(makeRequest("POST", "/api/api-keys", { name: "Test Key" }));
     expect(res.status).toBe(403);
     const json = await res.json();
-    expect(json.error).toContain("Team plan");
+    expect(json.error).toContain("Growth plan");
   });
 
   it("returns 403 when createApiKey returns null (limit reached)", async () => {

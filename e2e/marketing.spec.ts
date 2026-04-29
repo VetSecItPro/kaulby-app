@@ -1,8 +1,13 @@
 import { test, expect } from "@playwright/test";
+import { TIER_DESCRIPTIONS } from "../src/lib/marketing/tier-copy";
 
 /**
  * Marketing Pages E2E Tests
- * Tests public-facing pages for accessibility and basic functionality
+ * Tests public-facing pages for accessibility and basic functionality.
+ *
+ * Tier copy imported from src/lib/marketing/tier-copy so a rewrite of
+ * tier descriptions in pricing/page.tsx automatically updates these
+ * assertions too. Prevents the silent CI drift surfaced in PR #333.
  */
 
 test.describe("Marketing Pages", () => {
@@ -31,10 +36,12 @@ test.describe("Marketing Pages", () => {
 
     // Check plan cards exist by looking for plan names with their descriptions
     // (Free tier retired 2026-04-27 — page now shows 3 paid tiers + Day Pass.)
-    await expect(page.getByText("Watch your brand and competitors across 9 platforms")).toBeVisible();
-    await expect(page.getByText("Team workspace, API access, and analyst-grade reports")).toBeVisible();
+    // Tier descriptions imported from src/lib/marketing/tier-copy so they
+    // can never drift from what's rendered.
+    await expect(page.getByText(TIER_DESCRIPTIONS.solo)).toBeVisible();
+    await expect(page.getByText(TIER_DESCRIPTIONS.growth)).toBeVisible();
 
-    // Check pricing amounts are visible
+    // Check pricing amounts are visible (boundary number assertions)
     await expect(page.getByText("$39")).toBeVisible();
     await expect(page.getByText("$149")).toBeVisible();
   });

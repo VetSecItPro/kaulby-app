@@ -46,7 +46,8 @@ test.describe("Domain O — UI / Dashboard", () => {
     // file's coverage claim isn't a lie.
     await expect(page.getByRole("heading", { name: /pricing/i }).first())
       .toBeVisible({ timeout: 15_000 });
-    const tierNames = ["Free", "Solo", "Scale", "Growth"];
+    // Free tier retired 2026-04-27 (Apify costs); only paid tiers + Day Pass remain.
+    const tierNames = ["Solo", "Scale", "Growth"];
     for (const name of tierNames) {
       await expect(page.getByText(name, { exact: false }).first())
         .toBeVisible({ timeout: 10_000 });
@@ -57,7 +58,8 @@ test.describe("Domain O — UI / Dashboard", () => {
   test("O2 pricing CTAs are present and link out (cross-ref billing.spec.ts)", async ({ page }) => {
     await page.goto("/pricing", PRICING_GOTO);
     // At minimum, a "Get started" or "Subscribe" CTA exists per tier
-    const ctas = page.getByRole("link", { name: /get started|start free|subscribe|try/i });
+    // "start free" removed from regex — Free tier retired so no CTA matches it anymore.
+    const ctas = page.getByRole("link", { name: /get started|subscribe|try|start solo|start scale|start growth/i });
     expect(await ctas.count()).toBeGreaterThanOrEqual(3);
   });
 

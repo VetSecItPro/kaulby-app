@@ -87,7 +87,7 @@ describe("GET /api/user/detection-keywords", () => {
     const res = await GET();
     expect(res.status).toBe(403);
     const json = await res.json();
-    expect(json.error).toContain("Pro or Team plan");
+    expect(json.error).toMatch(/Solo, Scale, or Growth/);
   });
 
   it("returns default keywords when user has none", async () => {
