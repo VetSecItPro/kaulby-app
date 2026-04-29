@@ -23,6 +23,8 @@ import {
   Minus,
   ArrowUpDown,
   X,
+  Wand2,
+  Sparkles,
 } from "lucide-react";
 import {
   Dialog,
@@ -80,6 +82,40 @@ export function BookmarksView({ results, collections, bookmarkMap }: BookmarksVi
   const [sentimentFilter, setSentimentFilter] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
 
+  // AI clustering state. Lazy — only fires when user clicks the button.
+  const [clusters, setClusters] = useState<
+    Array<{ label: string; description: string; resultIds: string[] }>
+  >([]);
+  const [clusterFilter, setClusterFilter] = useState<string | null>(null);
+  const [clusterLoading, setClusterLoading] = useState(false);
+
+  async function generateClusters() {
+    setClusterLoading(true);
+    try {
+      const res = await fetch("/api/ai/cluster-bookmarks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `Request failed (${res.status})`);
+      }
+      const data = (await res.json()) as {
+        clusters: Array<{ label: string; description: string; resultIds: string[] }>;
+        totalBookmarks: number;
+      };
+      if (data.clusters.length === 0) {
+        toast.info("Need at least 4 bookmarks before clustering becomes useful.");
+      }
+      setClusters(data.clusters);
+      setClusterFilter(null); // Clear active cluster filter on regenerate
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not cluster bookmarks");
+    } finally {
+      setClusterLoading(false);
+    }
+  }
+
   // Get unique platforms from results
   const availablePlatforms = useMemo(() => {
     const platforms = new Set(results.map((r) => r.platform));
@@ -128,7 +164,7 @@ export function BookmarksView({ results, collections, bookmarkMap }: BookmarksVi
     }
   };
 
-  // Filter results by collection, platform, sentiment, then sort
+  // Filter results by collection, platform, sentiment, AI cluster, then sort
   const filteredResults = useMemo(() => {
     let filtered = selectedCollection
       ? results.filter((r) => bookmarkMap[r.id]?.collectionId === selectedCollection)
@@ -140,6 +176,12 @@ export function BookmarksView({ results, collections, bookmarkMap }: BookmarksVi
     if (sentimentFilter) {
       filtered = filtered.filter((r) => r.sentiment === sentimentFilter);
     }
+    if (clusterFilter) {
+      const clusterIds = new Set(
+        clusters.find((c) => c.label === clusterFilter)?.resultIds ?? []
+      );
+      filtered = filtered.filter((r) => clusterIds.has(r.id));
+    }
 
     // Sort
     return [...filtered].sort((a, b) => {
@@ -147,7 +189,7 @@ export function BookmarksView({ results, collections, bookmarkMap }: BookmarksVi
       const dateB = new Date(b.createdAt).getTime();
       return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
     });
-  }, [results, selectedCollection, bookmarkMap, platformFilter, sentimentFilter, sortOrder]);
+  }, [results, selectedCollection, bookmarkMap, platformFilter, sentimentFilter, sortOrder, clusterFilter, clusters]);
 
   return (
     <div className="space-y-6">
@@ -220,6 +262,71 @@ export function BookmarksView({ results, collections, bookmarkMap }: BookmarksVi
 
         {/* Main content: Results */}
         <div className="flex-1 space-y-3">
+          {/* AI cluster panel — appears once user runs clustering. Each pill
+              filters the bookmark list to that cluster. */}
+          {results.length >= 4 && (
+            <div className="rounded-lg border bg-muted/20 p-3 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 text-sm">
+                  <Sparkles className="h-3.5 w-3.5 text-primary" />
+                  <span className="font-medium">Group by intent</span>
+                  <span className="text-xs text-muted-foreground">
+                    {clusters.length > 0
+                      ? `${clusters.length} clusters`
+                      : "AI groups your saved leads into themes"}
+                  </span>
+                </div>
+                <Button
+                  variant={clusters.length > 0 ? "ghost" : "default"}
+                  size="sm"
+                  onClick={generateClusters}
+                  disabled={clusterLoading}
+                  className="gap-1.5 h-7 text-xs"
+                >
+                  {clusterLoading ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Wand2 className="h-3 w-3" />
+                  )}
+                  {clusters.length > 0 ? "Regenerate" : "Cluster"}
+                </Button>
+              </div>
+              {clusters.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    onClick={() => setClusterFilter(null)}
+                    className={`rounded-full px-3 py-1 text-xs font-medium border transition-colors ${
+                      clusterFilter === null
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background border-border hover:border-foreground/30"
+                    }`}
+                  >
+                    All ({results.length})
+                  </button>
+                  {clusters.map((c) => (
+                    <button
+                      key={c.label}
+                      onClick={() => setClusterFilter(clusterFilter === c.label ? null : c.label)}
+                      title={c.description}
+                      className={`rounded-full px-3 py-1 text-xs font-medium border transition-colors ${
+                        clusterFilter === c.label
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background border-border hover:border-foreground/30"
+                      }`}
+                    >
+                      {c.label} ({c.resultIds.length})
+                    </button>
+                  ))}
+                </div>
+              )}
+              {clusterFilter && (
+                <p className="text-xs text-muted-foreground italic">
+                  {clusters.find((c) => c.label === clusterFilter)?.description}
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Filters row */}
           <div className="flex items-center justify-between gap-3">
             <span className="text-sm text-muted-foreground shrink-0">
