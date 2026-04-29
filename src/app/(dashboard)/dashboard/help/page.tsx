@@ -40,11 +40,11 @@ import { SupportForm } from "@/components/dashboard/help/support-form";
 const faqs = [
   {
     question: "How long until I see my first results?",
-    answer: "New monitors typically find results within 2-24 hours depending on your plan. Free plans scan every 24 hours, Pro every 4 hours, and Team every 2 hours. If your keywords are very specific or niche, it may take longer to find matching conversations.",
+    answer: "New monitors typically find results within 2-24 hours depending on your plan. Solo plans scan every 6 hours, Scale every 4 hours, and Growth every 2 hours. If your keywords are very specific or niche, it may take longer to find matching conversations.",
   },
   {
     question: "Why am I not seeing any results?",
-    answer: "Several things to check: (1) Your keywords might be too specific - try broader terms. (2) The topic might have low discussion volume online. (3) Free users only have Reddit access - upgrade for more platforms. (4) New monitors need time for the first scan to complete.",
+    answer: "Several things to check: (1) Your keywords might be too specific - try broader terms. (2) The topic might have low discussion volume online. (3) Solo users get 9 platforms, Scale gets 12 (adds review sites), Growth gets all 16. (4) New monitors need time for the first scan to complete.",
   },
   {
     question: "What's the difference between platforms that need a URL vs. keyword-based?",
@@ -56,11 +56,11 @@ const faqs = [
   },
   {
     question: "Why is some AI analysis locked or blurred?",
-    answer: "Free users get AI analysis on their first result only. This lets you see the value before upgrading. Pro and Growth plans include unlimited AI analysis on all results, plus enhanced insights like pain point detection and category classification.",
+    answer: "All paid tiers include unlimited AI analysis on all results, plus enhanced insights like pain point detection and category classification.",
   },
   {
     question: "How do I get notified about new mentions?",
-    answer: "Go to Settings → Notifications. You can enable daily email digests (sent at 9 AM your timezone), or connect Slack/Discord for instant notifications (Pro+). Growth plans also support custom webhooks for integrations.",
+    answer: "Go to Settings → Notifications. You can enable daily email digests (sent at 9 AM your timezone), or connect Slack/Discord for instant notifications (Solo+). Growth plans also support custom webhooks for integrations.",
   },
   {
     question: "What happens to my data if I downgrade or cancel?",
@@ -303,7 +303,7 @@ export default function HelpPage() {
                 <li>Enter a descriptive <strong>Monitor Name</strong> (e.g., &quot;Brand Mentions&quot;, &quot;Competitor X Feedback&quot;)</li>
                 <li>Enter your <strong>Company/Brand Name</strong> - this is the primary search term</li>
                 <li>Optionally add <strong>Additional Keywords</strong> to narrow results (e.g., &quot;pricing&quot;, &quot;support&quot;)</li>
-                <li>Select which <strong>Platforms</strong> to monitor (Reddit on Free; 9 platforms on Pro; all 16 platforms on Team)</li>
+                <li>Select which <strong>Platforms</strong> to monitor (9 platforms on Solo; 12 on Scale (adds G2/Yelp/Amazon); all 16 on Growth)</li>
                 <li>Click <strong>Create Monitor</strong></li>
               </ol>
             </div>
@@ -634,7 +634,7 @@ export default function HelpPage() {
 
             <div className="p-4 rounded-lg bg-muted/50">
               <p className="text-sm text-muted-foreground">
-                <strong>Platform availability:</strong> Free users can monitor Reddit only. Pro plans include 9 platforms. Growth plans include all 16 platforms.
+                <strong>Platform availability:</strong> Solo plans include 9 platforms. Scale adds G2, Yelp, and Amazon Reviews (12 total). Growth includes all 16.
               </p>
             </div>
           </CardContent>
@@ -848,7 +848,7 @@ export default function HelpPage() {
 
             <div className="p-4 rounded-lg bg-muted/50">
               <p className="text-sm text-muted-foreground">
-                <strong>AI access:</strong> Free users see AI analysis on the first result only. Pro and Team users get unlimited AI analysis on all results.
+                <strong>AI access:</strong> All paid tiers get unlimited AI analysis on all results.
               </p>
             </div>
           </CardContent>
@@ -886,7 +886,7 @@ export default function HelpPage() {
               <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-2">
                 <li><strong>Save:</strong> Bookmark important results to review later or share with your team</li>
                 <li><strong>Hide:</strong> Remove irrelevant results from your feed (they&apos;re still stored)</li>
-                <li><strong>Export:</strong> Download results as CSV for analysis in Excel or Google Sheets (Pro/Team)</li>
+                <li><strong>Export:</strong> Download results as CSV for analysis in Excel or Google Sheets (Solo/Scale/Growth)</li>
               </ul>
             </div>
           </CardContent>
@@ -1017,7 +1017,7 @@ export default function HelpPage() {
             <CardTitle className="text-lg flex items-center gap-2">
               <MessageSquare className="h-5 w-5" />
               Slack & Discord Integration
-              <Badge variant="secondary" className="ml-2">Pro</Badge>
+              <Badge variant="secondary" className="ml-2">Solo</Badge>
             </CardTitle>
             <CardDescription>
               Get instant notifications in your team&apos;s chat
@@ -1075,7 +1075,7 @@ export default function HelpPage() {
             <CardTitle className="text-lg flex items-center gap-2">
               <Webhook className="h-5 w-5" />
               Webhooks
-              <Badge variant="secondary" className="ml-2">Team</Badge>
+              <Badge variant="secondary" className="ml-2">Growth</Badge>
             </CardTitle>
             <CardDescription>
               Send data to your own systems for custom integrations
@@ -1139,7 +1139,7 @@ export default function HelpPage() {
           <div>
             <h2 className="text-2xl font-bold flex items-center gap-2">
               API Access
-              <Badge variant="secondary">Team Plan</Badge>
+              <Badge variant="secondary">Growth Plan</Badge>
             </h2>
             <p className="text-muted-foreground">Build custom integrations with the Kaulby API</p>
           </div>
@@ -1249,55 +1249,58 @@ export default function HelpPage() {
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
+              {/* Comparison table rewritten 2026-04-28 - was showing stale Free/Pro/Team
+                  layout with $29/$99 pricing. Now reflects current Solo/Scale/Growth
+                  tiers with prices and limits matching src/lib/plans.ts. */}
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b">
                     <th className="text-left py-3 pr-4 font-medium">Feature</th>
-                    <th className="text-center py-3 px-4 font-medium">Free</th>
-                    <th className="text-center py-3 px-4 font-medium bg-primary/5">Pro</th>
-                    <th className="text-center py-3 px-4 font-medium">Team</th>
+                    <th className="text-center py-3 px-4 font-medium">Solo</th>
+                    <th className="text-center py-3 px-4 font-medium bg-primary/5">Scale</th>
+                    <th className="text-center py-3 px-4 font-medium">Growth</th>
                   </tr>
                 </thead>
                 <tbody className="text-muted-foreground">
                   <tr className="border-b">
                     <td className="py-3 pr-4">Monitors</td>
-                    <td className="text-center py-3 px-4">1</td>
-                    <td className="text-center py-3 px-4 bg-primary/5">10</td>
+                    <td className="text-center py-3 px-4">10</td>
+                    <td className="text-center py-3 px-4 bg-primary/5">20</td>
                     <td className="text-center py-3 px-4">30</td>
                   </tr>
                   <tr className="border-b">
                     <td className="py-3 pr-4">Keywords per monitor</td>
-                    <td className="text-center py-3 px-4">3</td>
-                    <td className="text-center py-3 px-4 bg-primary/5">20</td>
-                    <td className="text-center py-3 px-4">35</td>
+                    <td className="text-center py-3 px-4">Unlimited</td>
+                    <td className="text-center py-3 px-4 bg-primary/5">Unlimited</td>
+                    <td className="text-center py-3 px-4">Unlimited</td>
                   </tr>
                   <tr className="border-b">
                     <td className="py-3 pr-4">Platforms</td>
-                    <td className="text-center py-3 px-4">Reddit only</td>
-                    <td className="text-center py-3 px-4 bg-primary/5">All 16</td>
+                    <td className="text-center py-3 px-4">9</td>
+                    <td className="text-center py-3 px-4 bg-primary/5">12</td>
                     <td className="text-center py-3 px-4">All 16</td>
                   </tr>
                   <tr className="border-b">
                     <td className="py-3 pr-4">History retention</td>
-                    <td className="text-center py-3 px-4">3 days</td>
+                    <td className="text-center py-3 px-4">90 days</td>
                     <td className="text-center py-3 px-4 bg-primary/5">90 days</td>
                     <td className="text-center py-3 px-4">1 year</td>
                   </tr>
                   <tr className="border-b">
                     <td className="py-3 pr-4">Refresh cycle</td>
-                    <td className="text-center py-3 px-4">24 hours</td>
+                    <td className="text-center py-3 px-4">6 hours</td>
                     <td className="text-center py-3 px-4 bg-primary/5">4 hours</td>
                     <td className="text-center py-3 px-4">2 hours</td>
                   </tr>
                   <tr className="border-b">
                     <td className="py-3 pr-4">AI analysis</td>
-                    <td className="text-center py-3 px-4">First result only</td>
+                    <td className="text-center py-3 px-4">Unlimited</td>
                     <td className="text-center py-3 px-4 bg-primary/5">Unlimited</td>
                     <td className="text-center py-3 px-4">Unlimited</td>
                   </tr>
                   <tr className="border-b">
-                    <td className="py-3 pr-4">Slack/Discord</td>
-                    <td className="text-center py-3 px-4">-</td>
+                    <td className="py-3 pr-4">Slack/Discord alerts</td>
+                    <td className="text-center py-3 px-4">✓</td>
                     <td className="text-center py-3 px-4 bg-primary/5">✓</td>
                     <td className="text-center py-3 px-4">✓</td>
                   </tr>
@@ -1314,16 +1317,16 @@ export default function HelpPage() {
                     <td className="text-center py-3 px-4">✓</td>
                   </tr>
                   <tr className="border-b">
-                    <td className="py-3 pr-4">Team members</td>
-                    <td className="text-center py-3 px-4">-</td>
-                    <td className="text-center py-3 px-4 bg-primary/5">-</td>
-                    <td className="text-center py-3 px-4">5 included</td>
+                    <td className="py-3 pr-4">Team seats</td>
+                    <td className="text-center py-3 px-4">1</td>
+                    <td className="text-center py-3 px-4 bg-primary/5">1</td>
+                    <td className="text-center py-3 px-4">3 (+$20/mo extra)</td>
                   </tr>
                   <tr>
                     <td className="py-3 pr-4 font-medium text-foreground">Price</td>
-                    <td className="text-center py-3 px-4 font-medium text-foreground">$0</td>
-                    <td className="text-center py-3 px-4 font-medium text-foreground bg-primary/5">$29/mo</td>
-                    <td className="text-center py-3 px-4 font-medium text-foreground">$99/mo</td>
+                    <td className="text-center py-3 px-4 font-medium text-foreground">$39/mo</td>
+                    <td className="text-center py-3 px-4 font-medium text-foreground bg-primary/5">$79/mo</td>
+                    <td className="text-center py-3 px-4 font-medium text-foreground">$149/mo</td>
                   </tr>
                 </tbody>
               </table>
@@ -1413,7 +1416,7 @@ export default function HelpPage() {
           <div>
             <h2 className="text-2xl font-bold flex items-center gap-2">
               Team Management
-              <Badge variant="secondary">Team Plan</Badge>
+              <Badge variant="secondary">Growth Plan</Badge>
             </h2>
             <p className="text-muted-foreground">Collaborate with your team on monitoring</p>
           </div>
@@ -1533,7 +1536,7 @@ export default function HelpPage() {
               <h4 className="font-medium">Export Options</h4>
               <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-2">
                 <li><strong>Full Export (JSON):</strong> Complete data including monitors, results, settings, and AI analysis</li>
-                <li><strong>Results Only (CSV):</strong> Spreadsheet-friendly format for analysis in Excel or Google Sheets (Pro/Team)</li>
+                <li><strong>Results Only (CSV):</strong> Spreadsheet-friendly format for analysis in Excel or Google Sheets (Solo/Scale/Growth)</li>
               </ul>
             </div>
 
