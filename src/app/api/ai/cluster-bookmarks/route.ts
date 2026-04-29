@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { results, bookmarks } from "@/lib/db/schema";
-import { eq, inArray, and } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { getEffectiveUserId } from "@/lib/dev-auth";
 import { getUserPlan } from "@/lib/limits";
 import { jsonCompletion, MODELS, flushAI } from "@/lib/ai/openrouter";
@@ -20,22 +20,86 @@ interface ClusterResponse {
   totalBookmarks: number;
 }
 
+type BookmarkRow = {
+  id: string;
+  title: string | null;
+  platform: string;
+  sentiment: string | null;
+  conversationCategory: string | null;
+  leadScore: number | null;
+};
+
+// Bucket key → human-friendly default label/description.
+// Used both as the pre-bucket assignment target AND as the fallback
+// when the labeler call fails or returns garbage.
+const BUCKET_DEFAULTS: Record<string, { label: string; description: string }> = {
+  high_intent: {
+    label: "High-intent buyers",
+    description: "Lead score >= 75 — actively in-market and worth replying first.",
+  },
+  solution_seekers: {
+    label: "Solution seekers",
+    description: "People asking for recommendations or alternatives.",
+  },
+  pain_points: {
+    label: "Pain points",
+    description: "Frustrations and complaints — your wedge for outreach.",
+  },
+  money_talk: {
+    label: "Pricing & ROI",
+    description: "Budget questions, pricing pushback, and ROI conversations.",
+  },
+  hot_discussion: {
+    label: "Hot threads",
+    description: "High-engagement discussions worth a thoughtful reply.",
+  },
+  general: {
+    label: "Everything else",
+    description: "Saved posts that don't fit a single sales workflow.",
+  },
+};
+
+// Priority order: each bookmark lands in the FIRST bucket it qualifies for.
+// high_intent wins regardless of category because lead score outranks topic.
+const BUCKET_PRIORITY = [
+  "high_intent",
+  "solution_seekers",
+  "pain_points",
+  "money_talk",
+  "hot_discussion",
+  "general",
+] as const;
+
+function bucketFor(row: BookmarkRow): (typeof BUCKET_PRIORITY)[number] {
+  if ((row.leadScore ?? 0) >= 75) return "high_intent";
+  if (row.conversationCategory === "solution_request") return "solution_seekers";
+  if (row.conversationCategory === "pain_point" || row.sentiment === "negative") return "pain_points";
+  if (row.conversationCategory === "money_talk") return "money_talk";
+  if (row.conversationCategory === "hot_discussion") return "hot_discussion";
+  return "general";
+}
+
 /**
  * POST /api/ai/cluster-bookmarks
  *
- * Body: (none)
+ * Returns 3-5 themed clusters of the user's saved bookmarks. Powers the
+ * "Cluster by intent" toggle on /dashboard/bookmarks (originally #139).
  *
- * Pulls the user's saved bookmarks (max 100), asks the model to group them
- * into 3-5 themed clusters (high-intent buyers, pain-point complainers,
- * competitor comparisons, feature requests, etc.), returns mapping of
- * cluster label → result IDs.
+ * Two-stage strategy (#143):
+ *   1. Pre-bucket every bookmark by metadata (sentiment / leadScore /
+ *      conversationCategory). Zero LLM time. Deterministic. Handles 100
+ *      items as fast as 5.
+ *   2. Ask the model ONLY for a {label, description} per non-empty bucket,
+ *      with up to 3 sample titles for context. Output is ~5 short strings
+ *      (~250 tokens) instead of re-emitting every resultId.
  *
- * Powers the "Cluster by intent" toggle on /dashboard/bookmarks. Was the
- * #139 P2 from the AI integration audit.
+ * Old version sent the model up to 100 indexed lines and asked it to
+ * group + label + return ID lists in one shot. Output token count scaled
+ * with bookmark count, and Gemini Flash's implicit reasoning blew the
+ * latency to 21s+ even for tiny inputs. This version is bookmark-count
+ * insensitive: ~1-2s regardless of cap.
  */
 export async function POST(req: Request) {
-  // Suppress unused-var warning while keeping the signature consistent with
-  // the other AI routes (req body is reserved for future filter params).
   void req;
 
   try {
@@ -73,27 +137,19 @@ export async function POST(req: Request) {
       );
     }
 
-    // Pull the user's bookmarks. Joining results-by-bookmark is more
-    // accurate than the legacy `results.isSaved` flag (which the bookmarks
-    // page uses) because the bookmarks table is the actual source of truth.
-    // Limit 100 to bound model input.
     const userBookmarks = await db
-      .select({
-        resultId: bookmarks.resultId,
-      })
+      .select({ resultId: bookmarks.resultId })
       .from(bookmarks)
       .where(eq(bookmarks.userId, userId))
       .limit(100);
 
     if (userBookmarks.length < 4) {
-      return NextResponse.json({
-        clusters: [],
-        totalBookmarks: userBookmarks.length,
-      });
+      return NextResponse.json({ clusters: [], totalBookmarks: userBookmarks.length });
     }
+
     const resultIds = userBookmarks.map((b) => b.resultId);
 
-    const bookmarkedResults = await db
+    const bookmarkedResults: BookmarkRow[] = await db
       .select({
         id: results.id,
         title: results.title,
@@ -105,67 +161,108 @@ export async function POST(req: Request) {
       .from(results)
       .where(inArray(results.id, resultIds));
 
-    // Compact representation for the model. One line per bookmark, indexed
-    // by ID so the model can return clusters as ID lists without re-emitting
-    // the full text.
-    const indexed = bookmarkedResults
-      .map((r) => `${r.id} | [${r.sentiment ?? "?"}, ${r.conversationCategory ?? "?"}, score ${r.leadScore ?? "—"}, ${r.platform}] ${sanitizeInput(r.title, 160)}`)
-      .join("\n");
+    // Stage 1: deterministic pre-bucket.
+    const buckets = new Map<string, BookmarkRow[]>();
+    for (const row of bookmarkedResults) {
+      const key = bucketFor(row);
+      const list = buckets.get(key) ?? [];
+      list.push(row);
+      buckets.set(key, list);
+    }
 
-    const systemPrompt = `You are a sales-ops analyst. Group the user's saved posts into 3-5 themed clusters that match real workflows: high-intent buyers (lead score ≥75 or "looking for" / "alternative to" intent), pain-point complainers, competitor comparisons, feature requests, positive testimonials. Each cluster needs:
-- a short label (2-4 words)
-- a one-sentence description of what binds these together
-- the resultIds that belong (use the IDs as given; do not invent new ones)
+    // Drop tiny buckets (< 2). If the result is < 2 buckets, merge the
+    // dropped items back into "general" so we never starve the UI.
+    const dropped: BookmarkRow[] = [];
+    for (const [key, rows] of buckets.entries()) {
+      if (rows.length < 2 && key !== "general") {
+        dropped.push(...rows);
+        buckets.delete(key);
+      }
+    }
+    if (dropped.length > 0) {
+      const general = buckets.get("general") ?? [];
+      buckets.set("general", [...general, ...dropped]);
+      if ((buckets.get("general")?.length ?? 0) < 2) buckets.delete("general");
+    }
 
-Every saved post should belong to exactly one cluster. Don't create more than 5 clusters; merge small ones. Don't return clusters with fewer than 2 results.
+    // Order buckets by priority and trim to 5.
+    const orderedKeys = BUCKET_PRIORITY.filter((k) => buckets.has(k)).slice(0, 5);
+    if (orderedKeys.length === 0) {
+      return NextResponse.json({ clusters: [], totalBookmarks: bookmarkedResults.length });
+    }
 
-Return JSON: {"clusters": [{"label":"...", "description":"...", "resultIds":["..."]}]}`;
+    // Stage 2: AI labels each bucket given 3 sample titles. Output is tiny.
+    let labels: Record<string, { label: string; description: string }> = {};
 
-    const userPrompt = `BOOKMARKS (id | metadata | title):\n${indexed}`;
+    try {
+      const samples = orderedKeys.map((key) => {
+        const rows = buckets.get(key) ?? [];
+        const titles = rows
+          .slice(0, 3)
+          .map((r) => sanitizeInput(r.title ?? "(no title)", 120))
+          .map((t) => `  - ${t}`)
+          .join("\n");
+        return `[${key}] (${rows.length} posts)\n${titles}`;
+      }).join("\n\n");
 
-    const result = await jsonCompletion<ClusterResponse>({
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      model: MODELS.primary,
-    });
+      const systemPrompt = `You label sales-ops bucket groups. The buckets are pre-sorted by metadata. For each bucket key, return a short label (2-4 words) and a one-sentence description (max 120 chars) that reflects the sample titles.
 
-    await flushAI();
+Return JSON: {"labels": {"<bucket_key>": {"label":"...", "description":"..."}}}
 
-    await logAiCall({
-      userId,
-      model: result.meta.model,
-      promptTokens: result.meta.promptTokens,
-      completionTokens: result.meta.completionTokens,
-      costUsd: result.meta.cost,
-      latencyMs: result.meta.latencyMs,
-      analysisType: "cluster-bookmarks",
-    });
+Use the bucket keys exactly as given. Don't invent new keys.`;
 
-    // Validate IDs against what we actually pulled — model can hallucinate.
-    const knownIds = new Set(bookmarkedResults.map((r) => r.id));
-    const rawClusters = Array.isArray(result.data.clusters) ? result.data.clusters : [];
-    const safe: ClusterResponse = {
-      clusters: rawClusters
-        .slice(0, 5)
-        .map((c) => ({
-          label: typeof c?.label === "string" ? c.label.slice(0, 40) : "",
-          description: typeof c?.description === "string" ? c.description.slice(0, 240) : "",
-          resultIds: Array.isArray(c?.resultIds)
-            ? c.resultIds.filter((id) => typeof id === "string" && knownIds.has(id))
-            : [],
-        }))
-        .filter((c) => c.label && c.resultIds.length >= 2),
+      const userPrompt = `Buckets to label:\n\n${samples}`;
+
+      const result = await jsonCompletion<{ labels: Record<string, { label: string; description: string }> }>({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        model: MODELS.primary,
+      });
+
+      await flushAI();
+      await logAiCall({
+        userId,
+        model: result.meta.model,
+        promptTokens: result.meta.promptTokens,
+        completionTokens: result.meta.completionTokens,
+        costUsd: result.meta.cost,
+        latencyMs: result.meta.latencyMs,
+        analysisType: "cluster-bookmarks",
+      });
+
+      labels = result.data?.labels ?? {};
+    } catch (err) {
+      // Labeler is best-effort. Fall back to defaults so the user still
+      // gets useful clusters even if the model 500s or times out.
+      logger.warn("[cluster-bookmarks] labeler failed; using defaults", {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+
+    const clusters = orderedKeys.map((key) => {
+      const aiLabel = labels[key];
+      const fallback = BUCKET_DEFAULTS[key];
+      const label = (typeof aiLabel?.label === "string" && aiLabel.label.trim()
+        ? aiLabel.label.trim().slice(0, 40)
+        : fallback.label);
+      const description = (typeof aiLabel?.description === "string" && aiLabel.description.trim()
+        ? aiLabel.description.trim().slice(0, 240)
+        : fallback.description);
+      return {
+        label,
+        description,
+        resultIds: (buckets.get(key) ?? []).map((r) => r.id),
+      };
+    }).filter((c) => c.resultIds.length >= 2);
+
+    return NextResponse.json({
+      clusters,
       totalBookmarks: bookmarkedResults.length,
-    };
-
-    return NextResponse.json(safe);
+    } satisfies ClusterResponse);
   } catch (error) {
     logger.error("Cluster bookmarks error:", { error: error instanceof Error ? error.message : String(error) });
-    return NextResponse.json(
-      { error: "Failed to cluster bookmarks" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to cluster bookmarks" }, { status: 500 });
   }
 }
