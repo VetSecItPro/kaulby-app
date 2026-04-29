@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { DashboardClientWrapper } from "@/components/dashboard/dashboard-client-wrapper";
 import { ResponsiveDashboardLayout } from "@/components/dashboard/responsive-dashboard-layout";
 import { RoutePreloader } from "@/components/dashboard/route-preloader";
+import { FloatingAskKaulby } from "@/components/dashboard/floating-ask-kaulby";
 // PWA: Service worker registration handled by @serwist/next (auto-register)
 import { db } from "@/lib/db";
 import { monitors, users } from "@/lib/db/schema";
@@ -104,6 +105,9 @@ export default async function DashboardLayout({
       <DashboardClientWrapper isNewUser={isNewUser} userName={userName} userPlan={userPlan}>
         {children}
       </DashboardClientWrapper>
+      {/* Floating Ask Kaulby — available on every dashboard page via FAB
+          (lower-right) or Cmd+K. Slideover chat with page-aware context. */}
+      <FloatingAskKaulby />
     </ResponsiveDashboardLayout>
   );
 }
