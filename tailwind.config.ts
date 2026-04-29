@@ -1,6 +1,10 @@
 // A11Y: Tailwind v3+ includes focus-visible utilities by default — FIX-310
 // PERF: Consider reducing barrel imports from @/components/ui — FIX-218
 import type { Config } from "tailwindcss";
+// Use ESM import for the animate plugin. The previous `require("tailwindcss-animate")`
+// crashed on Node 25 + tsx because the config is loaded as ESM and CommonJS
+// require is not available, taking down the dev server on every CSS compile.
+import tailwindcssAnimate from "tailwindcss-animate";
 
 const config: Config = {
     darkMode: ["class"],
@@ -130,6 +134,6 @@ const config: Config = {
   		}
   	}
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [tailwindcssAnimate],
 };
 export default config;
