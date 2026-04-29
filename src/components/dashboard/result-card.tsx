@@ -35,6 +35,7 @@ import {
   Snowflake,
   Moon,
   Wand2,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -326,6 +327,24 @@ export const ResultCard = memo(function ResultCard({
                 <DropdownMenuItem onClick={() => setSuggestReplyOpen(true)}>
                   <Wand2 className="h-4 w-4 mr-2" />
                   Suggest reply
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    // Find similar dispatches a CustomEvent the floating
+                    // Ask Kaulby widget listens for. Avoids cross-coupling
+                    // between this card and the widget. Pre-fills a question
+                    // grounded in this post's title + platform.
+                    window.dispatchEvent(
+                      new CustomEvent("ask-kaulby:open", {
+                        detail: {
+                          question: `Find me posts similar to this one (same intent, recent, ranked by lead score): "${result.title}" — was on ${result.platform}.`,
+                        },
+                      }),
+                    );
+                  }}
+                >
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Find similar
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleToggleSaved}>
