@@ -53,11 +53,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Check Pro access
+    // Plan gate: paid tiers only. Was originally "solo" + "growth" (Scale
+    // missing) with stale "Pro subscription" copy. Scale must be included
+    // since it's between Solo and Growth in the current pricing.
     const plan = await getUserPlan(userId);
-    if (plan !== "solo" && plan !== "growth") {
+    if (plan !== "solo" && plan !== "scale" && plan !== "growth") {
       return NextResponse.json(
-        { error: "This feature requires a Pro subscription" },
+        { error: "Suggest Reply requires a Solo, Scale, or Growth plan" },
         { status: 403 }
       );
     }
