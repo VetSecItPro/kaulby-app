@@ -45,11 +45,11 @@ test.describe("Pricing Page - Plan Cards", () => {
 
     // Free tier retired 2026-04-27 (Apify costs); page now shows 3 paid tiers + Day Pass.
     // Solo plan (was Pro)
-    await expect(page.getByText("For one operator watching their brand")).toBeVisible(VISIBLE_OPTS);
+    await expect(page.getByText("Watch your brand and competitors across 9 platforms")).toBeVisible(VISIBLE_OPTS);
     // Scale plan (mid tier)
-    await expect(page.getByText("For the operator who outgrew Solo")).toBeVisible(VISIBLE_OPTS);
+    await expect(page.getByText("Adds review sites where buyers research before they buy")).toBeVisible(VISIBLE_OPTS);
     // Growth plan (was Team)
-    await expect(page.getByText("For teams operationalizing brand intelligence")).toBeVisible(VISIBLE_OPTS);
+    await expect(page.getByText("Team workspace, API access, and analyst-grade reports")).toBeVisible(VISIBLE_OPTS);
   });
 
   test("displays correct monthly prices", async ({ page }) => {
