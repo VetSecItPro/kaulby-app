@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Check, Download, Trash2, Database, Clock, FileJson, FileSpreadsheet, Settings2, ShieldAlert, Loader2, Mail, FileText, RotateCcw } from "lucide-react";
+import { PLANS, type PlanKey } from "@/lib/plans";
 import { useOnboarding } from "@/components/dashboard/onboarding-provider";
 import { useRouter } from "next/navigation";
 import { Switch } from "@/components/ui/switch";
@@ -583,7 +584,7 @@ export function ResponsiveSettings({
                 <Badge variant="outline" className="text-xs">Team</Badge>
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Upgrade to Team to receive automated weekly or monthly PDF reports
+                Upgrade to Growth to receive automated weekly or monthly PDF reports
               </p>
             </div>
           )}
@@ -673,34 +674,50 @@ export function ResponsiveSettings({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Monitors</p>
-              <p className="text-2xl font-bold">{dataStats.monitors}<span className="text-sm font-normal text-muted-foreground">
-                {" "}/ {subscriptionStatus === "free" ? "1" : subscriptionStatus === "solo" ? "10" : "30"}
-              </span></p>
-              <div className="h-2 rounded-full bg-muted overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-primary transition-all"
-                  style={{
-                    width: `${Math.min(100, (dataStats.monitors / (subscriptionStatus === "free" ? 1 : subscriptionStatus === "solo" ? 10 : 30)) * 100)}%`,
-                  }}
-                />
+          {/* Read tier limits from PLANS instead of hardcoded ternaries.
+              Pre-2026-04-28 the ternaries drifted: Solo refresh shown as 4h
+              (actual 6h), Scale tier missing entirely so it inherited Growth
+              values, and platform count "17" did not match any real tier. */}
+          {(() => {
+            const planKey = (PLANS[subscriptionStatus as PlanKey] ? subscriptionStatus : "free") as PlanKey;
+            const planLimits = PLANS[planKey].limits;
+            const monitorCap = planLimits.monitors;
+            const platformCount = planLimits.platforms.length;
+            const refreshHours = planLimits.refreshDelayHours;
+            return (
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">Monitors</p>
+                  <p className="text-2xl font-bold">
+                    {dataStats.monitors}
+                    <span className="text-sm font-normal text-muted-foreground">
+                      {" "}/ {monitorCap}
+                    </span>
+                  </p>
+                  <div className="h-2 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-primary transition-all"
+                      style={{
+                        width: `${monitorCap > 0 ? Math.min(100, (dataStats.monitors / monitorCap) * 100) : 0}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">Results Stored</p>
+                  <p className="text-2xl font-bold">{formatNumber(dataStats.results)}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">Platforms Available</p>
+                  <p className="text-2xl font-bold">{platformCount}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">Refresh Cycle</p>
+                  <p className="text-2xl font-bold">{refreshHours}h</p>
+                </div>
               </div>
-            </div>
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Results Stored</p>
-              <p className="text-2xl font-bold">{formatNumber(dataStats.results)}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Platforms Available</p>
-              <p className="text-2xl font-bold">{subscriptionStatus === "free" ? "1" : subscriptionStatus === "solo" ? "9" : "17"}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Refresh Cycle</p>
-              <p className="text-2xl font-bold">{subscriptionStatus === "free" ? "24h" : subscriptionStatus === "solo" ? "4h" : "2h"}</p>
-            </div>
-          </div>
+            );
+          })()}
 
           <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
             <DropdownMenu>

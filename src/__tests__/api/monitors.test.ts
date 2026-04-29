@@ -224,7 +224,7 @@ describe("POST /api/monitors", () => {
     // "MONITOR_LIMIT:..." inside the transaction callback when count >= limit;
     // the catch block converts that to 403.
     mockDbTransaction.mockImplementation(async () => {
-      throw new Error("MONITOR_LIMIT:You've reached your limit of 1 monitor. Upgrade to Pro for more.");
+      throw new Error("MONITOR_LIMIT:You've reached your limit of 1 monitor. Upgrade your plan to add more.");
     });
     const res = await createMonitor(makeRequest("POST", "/api/monitors", validBody));
     expect(res.status).toBe(403);

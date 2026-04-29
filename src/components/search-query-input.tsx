@@ -47,7 +47,7 @@ export function SearchQueryInput({ value, onChange, isPro = false }: SearchQuery
           </Label>
         </div>
         <p className="text-xs text-muted-foreground">
-          Upgrade to Pro to use boolean search operators like &quot;exact phrase&quot;, NOT, OR, title:, author:, and more.
+          Upgrade to Solo to use boolean search operators like &quot;exact phrase&quot;, NOT, OR, title:, author:, and more.
         </p>
       </div>
     );

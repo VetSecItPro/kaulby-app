@@ -610,7 +610,7 @@ export function OnboardingWizard({ isOpen, onClose, userName, userPlan = "free" 
                 <details className="rounded-lg border border-primary/20 bg-primary/5 p-3">
                   <summary className="text-sm text-center cursor-pointer select-none list-none">
                     <Zap className="h-4 w-4 inline mr-1 text-primary" />
-                    <span className="font-medium">Upgrade to Pro</span> to unlock {ALL_PLATFORMS.length - 1} more platforms
+                    <span className="font-medium">Upgrade your plan</span> to unlock {ALL_PLATFORMS.length - 1} more platforms
                   </summary>
                   <div className="grid gap-1 mt-3">
                     {ALL_PLATFORMS.filter((p) => p.id !== "reddit").map((platform) => (
