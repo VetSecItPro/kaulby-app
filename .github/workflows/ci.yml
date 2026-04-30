@@ -243,9 +243,19 @@ jobs:
     # Run on non-draft PRs AND on merge_group queue checks (validates the
     # combined state before final merge). Push-to-main skips e2e — by the
     # time code lands on main it has already passed e2e via PR or queue.
+    #
+    # Dependabot PRs are SKIPPED here. GitHub does not pass repo secrets
+    # to dependabot[bot] runs (anti-exfiltration), so NEXT_PUBLIC_CLERK_*
+    # is empty during build → ClerkProvider can't initialize → e2e fails
+    # 100% of the time on every dep bump regardless of what changed.
+    # Lint/Type/Build/Security still run on dependabot PRs and catch
+    # actual regressions; e2e adds zero signal when it can't auth.
     if: |
-      (github.event_name == 'pull_request' && github.event.pull_request.draft == false)
-      || github.event_name == 'merge_group'
+      (
+        github.event_name == 'pull_request'
+        && github.event.pull_request.draft == false
+        && github.actor != 'dependabot[bot]'
+      ) || github.event_name == 'merge_group'
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
