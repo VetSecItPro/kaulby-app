@@ -583,6 +583,15 @@ export default function PricingPage() {
                   fits your workflow before picking a monthly plan.
                 </AccordionContent>
               </AccordionItem>
+              <AccordionItem value="what-is-day-pass">
+                <AccordionTrigger>What is the Day Pass?</AccordionTrigger>
+                <AccordionContent>
+                  Scale-level access for 24 hours with a one-time $15 payment. You get 10 monitors, all 12
+                  Scale-tier platforms, full AI analysis, and AI sentiment trend explainers. No subscription,
+                  no auto-renewal, no commitment. Perfect for one-off competitive research or kicking the tires
+                  before subscribing.
+                </AccordionContent>
+              </AccordionItem>
               <AccordionItem value="money-back-trial">
                 <AccordionTrigger>What about a free trial on the monthly plans?</AccordionTrigger>
                 <AccordionContent>
