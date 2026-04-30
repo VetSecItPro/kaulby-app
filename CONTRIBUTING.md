@@ -87,3 +87,9 @@ See `CLAUDE.md` (project root) for the canonical architecture rules. Key invaria
 ## Reporting bugs / proposing features
 
 Use Linear (project: Kaulby). GitHub Issues are not actively monitored here.
+
+## Skip-pass guard verified 2026-04-29
+
+Canary v2 PR confirmed `.github/workflows/ci-required-checks-noop.yml` fires on
+doc-only changes and reports the 4 required checks as success in ~5s, allowing
+branch-protection to clear the merge.
