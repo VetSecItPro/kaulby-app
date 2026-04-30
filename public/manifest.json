@@ -3,7 +3,8 @@
   "short_name": "Kaulby",
   "description": "AI-Powered Community Monitoring",
   "start_url": "/dashboard",
-  "id": "/dashboard",
+  "id": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#0a0a0a",
   "theme_color": "#0a0a0a",
@@ -29,6 +30,22 @@
       "purpose": "any"
     }
   ],
+  "screenshots": [
+    {
+      "src": "/screenshots/desktop-demo.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Kaulby dashboard with live mentions, sentiment, and lead scoring"
+    },
+    {
+      "src": "/screenshots/mobile-demo.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Kaulby mobile dashboard with at-a-glance KPIs"
+    }
+  ],
   "shortcuts": [
     {
       "name": "Dashboard",
@@ -44,6 +61,20 @@
       "name": "Monitors",
       "url": "/dashboard/monitors",
       "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "New Monitor",
+      "url": "/dashboard/monitors/new",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     }
-  ]
+  ],
+  "share_target": {
+    "action": "/dashboard/monitors/new",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
 }

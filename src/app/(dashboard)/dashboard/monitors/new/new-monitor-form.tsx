@@ -111,19 +111,21 @@ function generateKeywordSuggestions(companyName: string, selectedPlatforms: stri
 interface NewMonitorFormProps {
   limits: PlanLimits;
   userPlan: string;
+  prefillKeyword?: string;
+  prefillName?: string;
 }
 
 type MonitorType = "keyword" | "ai_discovery";
 
-export function NewMonitorForm({ limits, userPlan }: NewMonitorFormProps) {
+export function NewMonitorForm({ limits, userPlan, prefillKeyword, prefillName }: NewMonitorFormProps) {
   const formId = useId();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [name, setName] = useState("");
+  const [name, setName] = useState(prefillName ?? "");
   const [companyName, setCompanyName] = useState("");
 
   const [keywordInput, setKeywordInput] = useState("");
-  const [keywords, setKeywords] = useState<string[]>([]);
+  const [keywords, setKeywords] = useState<string[]>(prefillKeyword ? [prefillKeyword] : []);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [platformUrls, setPlatformUrls] = useState<Record<string, string>>({});
