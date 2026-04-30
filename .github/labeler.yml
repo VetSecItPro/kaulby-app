@@ -1,0 +1,64 @@
+# actions/labeler config — auto-label PRs by changed paths.
+# Powers conditional CI / triage / cost analysis.
+
+ai:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/lib/ai/**'
+          - 'src/__tests__/ai/**'
+          - 'src/app/api/ai/**'
+
+db:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/lib/db/**'
+          - 'drizzle.config.ts'
+          - 'drizzle/**'
+
+frontend:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/app/**'
+          - 'src/components/**'
+
+backend:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/lib/inngest/**'
+          - 'src/app/api/**'
+
+docs:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/*.md'
+          - 'docs/**'
+
+tests:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/*.test.ts'
+          - '**/*.test.tsx'
+          - '**/*.spec.ts'
+          - 'e2e/**'
+          - 'src/__tests__/**'
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.github/**'
+          - 'vercel.json'
+          - 'scripts/vercel-ignore-build.sh'
+
+billing:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/lib/polar/**'
+          - 'src/app/api/webhooks/polar/**'
+          - 'src/lib/plans.ts'
+
+security:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/lib/security/**'
+          - 'src/lib/auth-utils.ts'
+          - 'src/middleware.ts'

@@ -1,0 +1,48 @@
+# Dependabot config — group dep updates so each one doesn't burn a full
+# CI matrix. Without grouping, each lib bump = 1 PR = 1 CI run; this
+# repo gets 30-50 dep bumps a month otherwise.
+#
+# Strategy:
+#   - Group all DEV deps into one weekly PR (auto-mergeable in practice).
+#   - Group prod patches into one weekly PR.
+#   - Prod minor/major upgrades stay individual (they need eyes).
+version: 2
+
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/Chicago"
+    open-pull-requests-limit: 5
+    groups:
+      dev-deps:
+        dependency-type: "development"
+        update-types: ["patch", "minor"]
+      prod-patches:
+        dependency-type: "production"
+        update-types: ["patch"]
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/Chicago"
+    open-pull-requests-limit: 3
+    groups:
+      gh-actions:
+        patterns: ["*"]
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "chore(actions)"

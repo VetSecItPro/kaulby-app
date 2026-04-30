@@ -1,0 +1,36 @@
+# Auto-close stale PRs and branches. Prevents the "stale CI rebuild"
+# pattern where someone resurrects an ancient PR and burns 30+ min of
+# runner time on assertions that no longer match main.
+name: Stale PR/Branch Cleanup
+
+on:
+  schedule:
+    # Every Monday 10:00 Central. Cron is UTC; CT is UTC-6 (CDT) or UTC-5 (CST).
+    # 15:00 UTC = 10:00 CDT (summer) / 09:00 CST (winter). Close enough.
+    - cron: "0 15 * * 1"
+  workflow_dispatch:
+
+permissions:
+  pull-requests: write
+  issues: write
+
+jobs:
+  stale:
+    name: Mark stale PRs
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/stale@5bef64f19d7facfb25b37b414482c7164d639639 # v9
+        with:
+          days-before-pr-stale: 30
+          days-before-pr-close: 14
+          stale-pr-message: |
+            This PR has had no activity in 30 days. Marking as stale.
+            If still relevant, push a commit or comment. Otherwise it
+            will close in 14 days to keep the PR queue lean.
+          close-pr-message: |
+            Auto-closing after 14 days of staleness. Reopen if needed.
+          stale-pr-label: "stale"
+          exempt-pr-labels: "wip,blocked,long-running"
+          # Don't touch issues for now — we use Linear, not GitHub issues.
+          days-before-issue-stale: -1
