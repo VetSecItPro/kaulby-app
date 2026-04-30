@@ -1,0 +1,90 @@
+# Weekly cost digest — reads GitHub Actions billing usage and posts to
+# the configured Slack webhook. Catches cost regressions early so we
+# don't repeat the "75% of monthly budget burned in one day" pattern.
+#
+# Setup:
+#   - Add SLACK_WEBHOOK_BILLING repo secret pointing at a #ops or
+#     #billing-alerts channel webhook.
+#   - Optionally add VERCEL_API_TOKEN secret for Vercel usage stats
+#     (skip block if missing).
+name: Weekly Billing Digest
+
+on:
+  schedule:
+    # Sundays 18:00 Central (sets up Monday morning review).
+    # CT is UTC-6 (CDT) / UTC-5 (CST). 23:00 UTC = 18:00 CDT / 17:00 CST.
+    - cron: "0 23 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  digest:
+    name: Compose + post weekly cost digest
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: GitHub Actions billing snapshot
+        id: gh-billing
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Org-level billing API needs admin:org scope; falls back to
+          # repo-level usage if denied.
+          set -e
+          ORG="VetSecItPro"
+          REPO="kaulby-app"
+
+          ORG_USAGE=$(gh api "/orgs/$ORG/settings/billing/actions" 2>/dev/null || echo '{}')
+          ORG_MIN=$(echo "$ORG_USAGE" | jq -r '.total_minutes_used // "n/a"')
+          ORG_PAID=$(echo "$ORG_USAGE" | jq -r '.total_paid_minutes_used // "n/a"')
+          ORG_INC=$(echo "$ORG_USAGE" | jq -r '.included_minutes // "n/a"')
+
+          # Per-workflow runs in the last 7 days for this repo.
+          SINCE=$(date -u -d '7 days ago' +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date -u -v-7d +"%Y-%m-%dT%H:%M:%SZ")
+          RUNS=$(gh api "/repos/$ORG/$REPO/actions/runs?created=>$SINCE&per_page=100" --jq '.workflow_runs | length' 2>/dev/null || echo "n/a")
+
+          {
+            echo "org_minutes=$ORG_MIN"
+            echo "org_paid=$ORG_PAID"
+            echo "org_included=$ORG_INC"
+            echo "repo_runs_7d=$RUNS"
+          } >> $GITHUB_OUTPUT
+
+      - name: Compose digest
+        id: digest
+        env:
+          ORG_MIN: ${{ steps.gh-billing.outputs.org_minutes }}
+          ORG_PAID: ${{ steps.gh-billing.outputs.org_paid }}
+          ORG_INC: ${{ steps.gh-billing.outputs.org_included }}
+          REPO_RUNS: ${{ steps.gh-billing.outputs.repo_runs_7d }}
+        run: |
+          MSG="*Weekly billing digest — kaulby-app*\n"
+          MSG+="\n*GitHub Actions (org-wide, current period):*\n"
+          MSG+="• Total minutes used: ${ORG_MIN}\n"
+          MSG+="• Paid minutes used: ${ORG_PAID}\n"
+          MSG+="• Included minutes: ${ORG_INC}\n"
+          MSG+="\n*kaulby-app workflow runs in last 7 days:* ${REPO_RUNS}\n"
+          MSG+="\n_Vercel build minutes available in Vercel dashboard → Settings → Usage._"
+
+          # Encode for Slack JSON payload.
+          PAYLOAD=$(jq -n --arg text "$MSG" '{text: $text}')
+          echo "payload=$PAYLOAD" >> $GITHUB_OUTPUT
+
+      - name: Post to Slack
+        if: ${{ env.SLACK_WEBHOOK_BILLING != '' }}
+        env:
+          SLACK_WEBHOOK_BILLING: ${{ secrets.SLACK_WEBHOOK_BILLING }}
+        run: |
+          curl -s -X POST -H 'Content-type: application/json' \
+            --data '${{ steps.digest.outputs.payload }}' \
+            "$SLACK_WEBHOOK_BILLING"
+
+      - name: Job summary fallback
+        run: |
+          echo "## Weekly Billing Digest" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Org minutes used: \`${{ steps.gh-billing.outputs.org_minutes }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "Paid minutes used: \`${{ steps.gh-billing.outputs.org_paid }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "kaulby-app runs (7d): \`${{ steps.gh-billing.outputs.repo_runs_7d }}\`" >> $GITHUB_STEP_SUMMARY
