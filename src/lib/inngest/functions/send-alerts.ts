@@ -10,6 +10,7 @@ import { sendTeamsMessage, formatTeamsAlert } from "@/lib/integrations/teams";
 import { decryptIntegrationData } from "@/lib/encryption";
 import { logger } from "@/lib/logger";
 import { sortByAlertPriority } from "@/lib/alert-priority";
+import { sendPushToUser } from "@/lib/push";
 
 // PERF-BUILDTIME-002: Cache Intl.DateTimeFormat instances by timezone+type
 const tzFormatterCache = new Map<string, Intl.DateTimeFormat>();
@@ -199,6 +200,34 @@ export const sendAlert = inngest.createFunction(
         error: webhookResult.error,
       };
     }
+
+    // Additive push delivery: fires for the alert's owner whenever they have
+    // any active push subscriptions, regardless of the primary alert channel.
+    // Subscribe in /dashboard/settings to receive these. Errors are logged
+    // and never bubble — push must NEVER break email/slack/teams delivery.
+    await step.run("send-push-additive", async () => {
+      const userId = alert.monitor.userId;
+      if (!userId) return { skipped: "no userId" };
+      try {
+        const top = matchingResults[0];
+        const extra = matchingResults.length - 1;
+        const title = `New ${alert.monitor.name} mention${extra > 0 ? ` (+${extra} more)` : ""}`;
+        const body = (top.aiSummary || top.title || "Tap to view").slice(0, 140);
+        const r = await sendPushToUser(userId, {
+          title,
+          body,
+          url: `/dashboard/monitors/${alert.monitor.id}`,
+          tag: `monitor-${alert.monitor.id}`,
+        });
+        return { pushSent: r.sent, pushPruned: r.pruned };
+      } catch (err) {
+        logger.error("Push delivery failed (non-fatal)", {
+          alertId,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        return { error: err instanceof Error ? err.message : "unknown" };
+      }
+    });
 
     // In-app notifications
     if (alert.channel === "in_app") {
