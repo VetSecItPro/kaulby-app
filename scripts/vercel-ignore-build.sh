@@ -25,6 +25,17 @@
 
 set -e
 
+# GitHub Merge Queue creates throwaway `gh-readonly-queue/main/pr-N-<sha>`
+# branches purely for CI's combined-state validation. These are NEVER
+# customer-facing and are deleted as soon as the queue resolves. Vercel
+# previewing them is pure waste — skip immediately.
+case "${VERCEL_GIT_COMMIT_REF:-}" in
+  gh-readonly-queue/*)
+    echo "Merge-queue temporary ref ($VERCEL_GIT_COMMIT_REF) — skipping Vercel build"
+    exit 0
+    ;;
+esac
+
 # Always build the long-lived `sandbox` branch, regardless of changed files.
 # That branch is the host for the Polar sandbox webhook URL, so its preview
 # alias must reflect the latest env-var bindings even when the only commits
