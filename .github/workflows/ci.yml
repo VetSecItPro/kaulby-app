@@ -67,6 +67,7 @@ jobs:
   quality:
     name: Lint & Type Check
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
@@ -91,6 +92,7 @@ jobs:
   security:
     name: Security Audit
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
@@ -135,9 +137,13 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     needs: quality
+    timeout-minutes: 10
     # Skip the expensive build on draft PRs. Quality + security still run on
-    # drafts (fast feedback). Build/E2E/Lighthouse/Bundle-size only kick in
-    # once the PR is marked ready for review. Push to main always builds.
+    # drafts (fast feedback). Build/E2E/Lighthouse only kick in once the PR
+    # is marked ready for review. Push to main always builds.
+    # Bundle-size check is folded into this job (see "Bundle size summary"
+    # step below) — eliminates a redundant runner that did 30s of spinup
+    # + artifact-download for a 10s shell loop.
     if: github.event_name == 'push' || github.event.pull_request.draft == false
     # NEXT_PUBLIC_* vars are BAKED INTO THE BUNDLE at build time. Pages using
     # Clerk (/sign-in, /pricing, anything behind useUser) crash at runtime when
@@ -190,6 +196,42 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
           du -sh .next/static/chunks/*.js 2>/dev/null | sort -rh | head -20 >> $GITHUB_STEP_SUMMARY || echo "No chunks found" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
+
+      # Bundle size budget check. Folded in here (was its own job) — the
+      # standalone runner spent more time on spinup/checkout/artifact-
+      # download than on the actual size check. Inline saves a runner per PR.
+      - name: Bundle size budget
+        run: |
+          echo "## Bundle Size Report" >> $GITHUB_STEP_SUMMARY
+          echo '| File | Size |' >> $GITHUB_STEP_SUMMARY
+          echo '|------|------|' >> $GITHUB_STEP_SUMMARY
+
+          WARN=0
+          FAIL=0
+
+          for f in $(find .next/static/chunks -name "*.js" -type f 2>/dev/null | sort); do
+            SIZE=$(stat -c%s "$f" 2>/dev/null || stat -f%z "$f" 2>/dev/null || echo "0")
+            SIZE_KB=$((SIZE / 1024))
+            NAME=$(basename "$f")
+
+            if [ "$SIZE_KB" -gt 750 ]; then
+              echo "| \`$NAME\` | **${SIZE_KB}KB** :x: |" >> $GITHUB_STEP_SUMMARY
+              FAIL=$((FAIL + 1))
+            elif [ "$SIZE_KB" -gt 500 ]; then
+              echo "| \`$NAME\` | **${SIZE_KB}KB** :warning: |" >> $GITHUB_STEP_SUMMARY
+              WARN=$((WARN + 1))
+            elif [ "$SIZE_KB" -gt 200 ]; then
+              echo "| \`$NAME\` | ${SIZE_KB}KB |" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Chunks > 500KB: $WARN warnings, $FAIL failures" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$FAIL" -gt 0 ]; then
+            echo "::error::$FAIL chunk(s) exceed 750KB limit"
+            exit 1
+          fi
 
   # ─── E2E (Playwright against real app + test Clerk + E2E Neon branch) ───
   # Runs on pull_request only — main-branch pushes skip to keep deploys fast.
@@ -268,6 +310,7 @@ jobs:
     name: Lighthouse Audit
     runs-on: ubuntu-latest
     needs: build
+    timeout-minutes: 10
     # Match the e2e pattern: lighthouse on push to main has no gating value
     # (deploy already happened). PR-only keeps the perf signal while halving
     # lighthouse runs.
@@ -293,55 +336,9 @@ jobs:
           temporaryPublicStorage: true
         continue-on-error: true
 
-  # ─── Bundle size check (reuses build artifact) ───
-  bundle-size:
-    name: Bundle Size
-    runs-on: ubuntu-latest
-    needs: build
-    # Drafts skip — bundle-size depends on build artifact which we already
-    # gate behind draft==false. Push to main always runs.
-    if: github.event_name == 'push' || github.event.pull_request.draft == false
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-
-      - name: Download build artifact
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
-        with:
-          name: nextjs-build
-          path: .next
-
-      - name: Check bundle sizes
-        run: |
-          echo "## Bundle Size Report" >> $GITHUB_STEP_SUMMARY
-          echo '| File | Size |' >> $GITHUB_STEP_SUMMARY
-          echo '|------|------|' >> $GITHUB_STEP_SUMMARY
-
-          WARN=0
-          FAIL=0
-
-          for f in $(find .next/static/chunks -name "*.js" -type f 2>/dev/null | sort); do
-            SIZE=$(stat -c%s "$f" 2>/dev/null || stat -f%z "$f" 2>/dev/null || echo "0")
-            SIZE_KB=$((SIZE / 1024))
-            NAME=$(basename "$f")
-
-            if [ "$SIZE_KB" -gt 750 ]; then
-              echo "| \`$NAME\` | **${SIZE_KB}KB** :x: |" >> $GITHUB_STEP_SUMMARY
-              FAIL=$((FAIL + 1))
-            elif [ "$SIZE_KB" -gt 500 ]; then
-              echo "| \`$NAME\` | **${SIZE_KB}KB** :warning: |" >> $GITHUB_STEP_SUMMARY
-              WARN=$((WARN + 1))
-            elif [ "$SIZE_KB" -gt 200 ]; then
-              echo "| \`$NAME\` | ${SIZE_KB}KB |" >> $GITHUB_STEP_SUMMARY
-            fi
-          done
-
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Chunks > 500KB: $WARN warnings, $FAIL failures" >> $GITHUB_STEP_SUMMARY
-
-          if [ "$FAIL" -gt 0 ]; then
-            echo "::error::$FAIL chunk(s) exceed 750KB limit"
-            exit 1
-          fi
+  # NOTE: bundle-size check moved INTO the `build` job (above) as a final
+  # step. It used to be its own job; the runner spinup + checkout + artifact
+  # download cost more than the 10s shell loop that did the actual check.
 
   # ─── AI eval (only when AI code changes — guards against prompt/model regressions) ───
   # Runs the golden eval set against Kaulby's analyzers. Fails the PR if any metric
@@ -404,7 +401,8 @@ jobs:
   summary:
     name: CI Summary
     runs-on: ubuntu-latest
-    needs: [quality, security, build, e2e, lighthouse, bundle-size, ai-eval]
+    needs: [quality, security, build, e2e, lighthouse, ai-eval]
+    timeout-minutes: 2
     if: always()
     steps:
       - name: Evaluate results
@@ -430,10 +428,9 @@ jobs:
 
           check_job "Quality" "${{ needs.quality.result }}"
           check_job "Security" "${{ needs.security.result }}"
-          check_job "Build" "${{ needs.build.result }}"
+          check_job "Build (incl. bundle-size)" "${{ needs.build.result }}"
           check_job "E2E" "${{ needs.e2e.result }}"
           check_job "Lighthouse" "${{ needs.lighthouse.result }}"
-          check_job "Bundle Size" "${{ needs.bundle-size.result }}"
           check_job "AI Eval" "${{ needs['ai-eval'].result }}"
 
           if [ "$FAILED" -gt 0 ]; then

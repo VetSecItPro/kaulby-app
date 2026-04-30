@@ -34,6 +34,27 @@ if [ "${VERCEL_GIT_COMMIT_REF:-}" = "sandbox" ]; then
   exit 1
 fi
 
+# Production deploys always build — never skip a release on a [skip preview]
+# marker meant for PR work.
+if [ "${VERCEL_GIT_COMMIT_REF:-}" != "main" ]; then
+  # Per-PR commit-message override. Lets a dev push WIP work without
+  # spinning up a Vercel preview every time. Conventions:
+  #   [skip preview]   — skip this Vercel preview
+  #   [skip vercel]    — synonym
+  #   [wip]            — same intent
+  CMSG="${VERCEL_GIT_COMMIT_MESSAGE:-}"
+  if echo "$CMSG" | grep -qiE '\[(skip[ -]preview|skip[ -]vercel|wip)\]'; then
+    echo "Commit message contains skip-preview marker — skipping build"
+    exit 0
+  fi
+
+  # Branch-name override. wip/* and draft/* prefixes signal in-progress work.
+  REF="${VERCEL_GIT_COMMIT_REF:-}"
+  case "$REF" in
+    wip/*|draft/*) echo "Branch '$REF' matches wip/draft prefix — skipping build"; exit 0 ;;
+  esac
+fi
+
 # VERCEL_GIT_PREVIOUS_SHA is Vercel's idea of "the prior commit on this ref".
 # If unset (first build on a branch), build to be safe.
 if [ -z "${VERCEL_GIT_PREVIOUS_SHA:-}" ]; then
