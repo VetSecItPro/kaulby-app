@@ -13,9 +13,15 @@
 #     - .github/runbooks/**
 #     - .github/workflows/** (CI config, not app code)
 #     - docs/**
-#     - *.md at repo root
+#     - *.md anywhere (not just repo root — covers src/**/*.md, e2e/**/*.md, etc.)
 #     - scripts/** (one-off ops scripts, never deployed)
+#     - CHANGELOG, LICENSE, .editorconfig, .nvmrc, .npmrc, .gitignore (repo metadata)
 # - Build otherwise.
+#
+# NOTE: public/** is intentionally NOT in the skip list. Static assets in
+# public/ ship via Vercel's deploy step; if we skip the deploy, the asset
+# never goes live. The CI workflow's paths-ignore CAN safely include public/**
+# because CI doesn't deploy.
 
 set -e
 
@@ -58,8 +64,12 @@ while IFS= read -r file; do
   if [[ "$file" == .github/workflows/* ]]; then continue; fi
   if [[ "$file" == docs/* ]]; then continue; fi
   if [[ "$file" == scripts/* ]]; then continue; fi
-  # Root-level markdown (README, CONTRIBUTING, etc.)
-  if [[ "$file" =~ ^[^/]+\.md$ ]]; then continue; fi
+  # Markdown anywhere — never lands in the bundle.
+  if [[ "$file" == *.md ]]; then continue; fi
+  # Repo metadata files.
+  case "$file" in
+    CHANGELOG|LICENSE|.editorconfig|.nvmrc|.npmrc|.gitignore) continue ;;
+  esac
   # Anything else — we need to build
   echo "Needs build due to: $file"
   NEEDS_BUILD=1
