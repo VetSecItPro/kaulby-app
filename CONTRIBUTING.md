@@ -87,3 +87,9 @@ See `CLAUDE.md` (project root) for the canonical architecture rules. Key invaria
 ## Reporting bugs / proposing features
 
 Use Linear (project: Kaulby). GitHub Issues are not actively monitored here.
+
+## Verified working as of 2026-04-29
+
+- CI path-skip on `**/*.md` — confirmed (this canary PR triggered no workflow run)
+- Vercel preview skip — confirmed via `scripts/vercel-ignore-build.sh`
+- Pre-commit hook (`.githooks/pre-commit`) — opt-in via `git config core.hooksPath .githooks`
