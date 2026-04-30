@@ -216,7 +216,17 @@ export const config = {
   matcher: [
     // Skip Next.js internals and all static files, unless found in search params
     "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest|json|mp4|webm|ogg|mov|avi)).*)",
-    // Always run for API routes
-    "/(api|trpc)(.*)",
+    // Run for API routes EXCEPT machine-to-machine endpoints that have
+    // their own auth (HMAC for webhooks, signing key for inngest, none
+    // for /api/health which is hit by uptime probes). Each excluded route
+    // is hit by external services on a poll/event cadence — running Clerk
+    // middleware on them is wasted edge compute.
+    //
+    // Excluded:
+    //   /api/inngest        — Inngest cloud poll + every event
+    //   /api/webhooks/*     — Clerk / Polar / GitHub webhooks (HMAC-verified)
+    //   /api/health         — uptime probes (must run unauthenticated)
+    //   /api/v1/*           — public API uses its own bearer-token auth
+    "/(api|trpc)((?!/inngest|/webhooks|/health|/v1).*)",
   ],
 };
