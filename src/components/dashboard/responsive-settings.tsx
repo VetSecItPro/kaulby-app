@@ -9,6 +9,7 @@ const TeamSettings = dynamic(() => import("@/components/dashboard/team-settings"
 const ApiKeysSettings = dynamic(() => import("@/components/dashboard/api-keys-settings").then(m => m.ApiKeysSettings), { ssr: false });
 const IntegrationsSettings = dynamic(() => import("@/components/dashboard/integrations-settings").then(m => m.IntegrationsSettings), { ssr: false });
 const DetectionKeywordsSettings = dynamic(() => import("@/components/dashboard/detection-keywords-settings").then(m => m.DetectionKeywordsSettings), { ssr: false });
+const PushNotificationsCard = dynamic(() => import("@/components/dashboard/push-notifications-card").then(m => m.PushNotificationsCard), { ssr: false });
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -590,6 +591,9 @@ export function ResponsiveSettings({
           )}
         </CardContent>
       </Card>
+
+      {/* Push Notifications */}
+      <PushNotificationsCard />
 
       {/* Team Settings - Enterprise only */}
       <TeamSettings subscriptionStatus={subscriptionStatus} />
