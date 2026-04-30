@@ -53,8 +53,20 @@ on:
       - '.nvmrc'
       - '.npmrc'
       - '.gitignore'
+  # GitHub Merge Queue. When a PR is approved + has green CI, it's queued
+  # rather than merged directly. The queue creates a temporary
+  # `gh-readonly-queue/main/pr-N-<sha>` branch combining the PR with the
+  # latest main, fires `merge_group: checks_requested`, and merges only
+  # if THIS run goes green. Catches integration breakage that PR-isolated
+  # CI misses (the failure mode that bit #335/#336 today).
+  merge_group:
+    types: [checks_requested]
 
 concurrency:
+  # PR runs cancel each other on push; merge_group runs must NOT cancel each
+  # other (each represents a different queued combined-state to validate).
+  # Keying on ref means each PR has its own group; queue runs (different
+  # gh-readonly-queue/* refs) all run in parallel.
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
@@ -140,11 +152,11 @@ jobs:
     timeout-minutes: 10
     # Skip the expensive build on draft PRs. Quality + security still run on
     # drafts (fast feedback). Build/E2E/Lighthouse only kick in once the PR
-    # is marked ready for review. Push to main always builds.
+    # is marked ready for review. Push to main and merge_group always build.
     # Bundle-size check is folded into this job (see "Bundle size summary"
     # step below) — eliminates a redundant runner that did 30s of spinup
     # + artifact-download for a 10s shell loop.
-    if: github.event_name == 'push' || github.event.pull_request.draft == false
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     # NEXT_PUBLIC_* vars are BAKED INTO THE BUNDLE at build time. Pages using
     # Clerk (/sign-in, /pricing, anything behind useUser) crash at runtime when
     # the bundle was compiled with an undefined key, even if the e2e job
@@ -243,9 +255,12 @@ jobs:
     name: E2E Tests
     runs-on: ubuntu-latest
     needs: build
-    # PR-only AND non-draft. Drafts skip the full e2e suite so WIP pushes
-    # don't burn 15 min of runner time per push.
-    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
+    # Run on non-draft PRs AND on merge_group queue checks (validates the
+    # combined state before final merge). Push-to-main skips e2e — by the
+    # time code lands on main it has already passed e2e via PR or queue.
+    if: |
+      (github.event_name == 'pull_request' && github.event.pull_request.draft == false)
+      || github.event_name == 'merge_group'
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -311,9 +326,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     timeout-minutes: 10
-    # Match the e2e pattern: lighthouse on push to main has no gating value
-    # (deploy already happened). PR-only keeps the perf signal while halving
-    # lighthouse runs.
+    # PR-only AND non-draft. Skip on merge_group too: lighthouse is
+    # advisory (continue-on-error) and adds ~1m to every queued PR for
+    # zero gating value. Push-to-main also skipped (deploy already done).
     if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -347,8 +362,10 @@ jobs:
   ai-eval:
     name: AI Eval (golden set)
     runs-on: ubuntu-latest
-    # Drafts skip — eval calls cost real OpenRouter credits, no need to burn
-    # them while the PR is still WIP. Final eval still runs once marked ready.
+    # Drafts skip — eval calls cost real OpenRouter credits. Skip on
+    # merge_group too: the PR-side run already validated the AI changes;
+    # combining with main can't introduce AI regressions (no prompt code
+    # in main that wasn't in the PR's diff). Saves OpenRouter spend.
     if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
     timeout-minutes: 10
     steps:
