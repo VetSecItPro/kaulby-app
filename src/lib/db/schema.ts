@@ -55,6 +55,7 @@ export const alertChannelEnum = pgEnum("alert_channel", [
   "slack",
   "in_app",
   "teams",
+  "push",
 ]);
 
 export const alertFrequencyEnum = pgEnum("alert_frequency", [
@@ -1384,3 +1385,28 @@ export const dailyMetrics = pgTable("daily_metrics", {
 
 export type DailyMetric = typeof dailyMetrics.$inferSelect;
 export type NewDailyMetric = typeof dailyMetrics.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// pushSubscriptions — Web Push API subscriptions for native browser notifications
+// ---------------------------------------------------------------------------
+// One row per (user, browser) pairing. Endpoint is the unique key — same user
+// on Chrome desktop + Chrome mobile = two rows. Cleared on unsubscribe or when
+// web-push reports a 404/410 (subscription expired/revoked).
+export const pushSubscriptions = pgTable("push_subscriptions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
+  endpoint: text("endpoint").notNull().unique(),
+  // Encryption keys from PushSubscription.toJSON() — opaque to us, used by web-push
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  lastUsedAt: timestamp("last_used_at"),
+}, (table) => [
+  index("push_subscriptions_user_id_idx").on(table.userId),
+]);
+
+export type PushSubscriptionRow = typeof pushSubscriptions.$inferSelect;
+export type NewPushSubscription = typeof pushSubscriptions.$inferInsert;
