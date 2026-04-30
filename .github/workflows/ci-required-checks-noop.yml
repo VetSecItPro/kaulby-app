@@ -1,0 +1,68 @@
+# Skip-pass guard for required status checks.
+#
+# GitHub gotcha: when ci.yml's `paths-ignore` skips the whole workflow
+# on doc-only PRs, the required status checks (Build, E2E Tests,
+# Lint & Type Check, Security Audit) are never reported. Branch
+# protection then waits forever for results that never come, blocking
+# the PR from merging.
+#
+# Fix: this workflow uses the INVERSE `paths` filter — it ONLY runs on
+# the paths ci.yml ignores. It reports each required check as success
+# so doc-only PRs can merge cleanly.
+#
+# Required checks must match ci.yml's job names EXACTLY for branch
+# protection to recognize them as satisfying the requirement.
+
+name: CI (skip-pass for doc/asset PRs)
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - '**/*.md'
+      - 'docs/**'
+      - '.github/runbooks/**'
+      - 'public/videos/**'
+      - 'public/*.png'
+      - 'public/*.jpg'
+      - 'public/*.webp'
+      - 'public/*.ico'
+      - 'public/*.svg'
+      - 'public/*.gif'
+      - 'public/*.txt'
+      - 'CHANGELOG'
+      - 'LICENSE'
+      - '.editorconfig'
+      - '.nvmrc'
+      - '.npmrc'
+      - '.gitignore'
+
+jobs:
+  quality:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - run: echo "Skipped — doc/asset-only change."
+
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - run: echo "Skipped — doc/asset-only change."
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - run: echo "Skipped — doc/asset-only change."
+
+  e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - run: echo "Skipped — doc/asset-only change."
