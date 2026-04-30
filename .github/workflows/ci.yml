@@ -3,8 +3,33 @@ name: CI
 on:
   push:
     branches: [main]
+    # Skip the whole workflow on main pushes that only touch non-deployable
+    # files. Vercel's ignoreCommand (scripts/vercel-ignore-build.sh) handles
+    # the deploy side; this mirrors it for CI compute. Cost driver: every
+    # docs-only PR was running the full build matrix on merge.
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - '.github/runbooks/**'
+      - 'public/videos/**'
+      - 'public/*.png'
+      - 'public/*.jpg'
+      - 'public/*.webp'
+      - 'public/*.ico'
   pull_request:
     branches: [main]
+    # NOTE: do NOT add 'scripts/**' here. Admin scripts run with service_role
+    # creds and need the security audit even though they aren't deployed.
+    # Do NOT add '__tests__/**' or '*.test.*'. Test changes are real code.
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - '.github/runbooks/**'
+      - 'public/videos/**'
+      - 'public/*.png'
+      - 'public/*.jpg'
+      - 'public/*.webp'
+      - 'public/*.ico'
 
 concurrency:
   group: ci-${{ github.ref }}
