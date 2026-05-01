@@ -1,6 +1,8 @@
 # CLAUDE.md - Kaulby
 
-AI-powered community monitoring SaaS. Tracks 16 platforms (Reddit, Hacker News, Product Hunt, Dev.to, Google Reviews, Trustpilot, App Store, Play Store, YouTube, G2, Yelp, Amazon Reviews, Indie Hackers, GitHub, Hashnode, X/Twitter) for keywords, analyzes sentiment/pain points via AI, sends alerts. Quora is deferred (dropped 2026-04-22 pending Team-tier-only Crawlee reactivation — see .mdmp/apify-platform-cost-audit-2026-04-21.md).
+AI-powered community monitoring SaaS. Tracks 16 platforms (Reddit, Hacker News, Product Hunt, Dev.to, Google Reviews, Trustpilot, App Store, Play Store, YouTube, G2, Yelp, Amazon Reviews, Indie Hackers, GitHub, Hashnode, X/Twitter) for keywords, analyzes sentiment/pain points via AI, sends alerts. Quora is deferred (dropped 2026-04-22 pending Team-tier-only Crawlee reactivation — see `docs/archive/` for cost-audit history).
+
+Installs as a PWA with native push notifications: subscribe in Settings → receive a phone/desktop notification the moment a high-intent lead is detected.
 
 ## Development Philosophy
 
@@ -26,9 +28,11 @@ AI-powered community monitoring SaaS. Tracks 16 platforms (Reddit, Hacker News, 
 ## Tech Stack
 
 - Next.js 14 (App Router), TypeScript, Tailwind, shadcn/ui
-- Neon (Postgres) + Drizzle ORM
+- Neon (Postgres) + Drizzle ORM — pooled connection URL (`-pooler` host), HTTP driver for serverless + WS Pool driver for Inngest
 - Clerk (auth), Polar.sh (payments), Inngest (background jobs)
 - OpenRouter (AI) + Langfuse (observability), Resend (email), PostHog (analytics)
+- Serwist 9.5 service worker — Kaulby-shaped runtime caching (NetworkFirst on /api/v1, SWR on /dashboard, CacheFirst on /icons + /screenshots), `/~offline` fallback
+- Web Push (web-push + VAPID) — push_subscriptions table, /api/push/{subscribe,unsubscribe,test}, additive delivery in send-alerts.ts
 
 ## Getting Started
 
@@ -60,6 +64,31 @@ AI-powered community monitoring SaaS. Tracks 16 platforms (Reddit, Hacker News, 
 
 **After deploying code changes:** Must re-sync app in Inngest dashboard (Apps > Sync)
 
+**Kill switch:** Set `INNGEST_PAUSED=1` in Vercel env to register a single never-fired stub function — Inngest cloud prunes all 44 cron schedules on next sync. Currently ACTIVE (paused 2026-04-30). To resume: `printf '0' | vercel env add INNGEST_PAUSED production` (use `printf` not `echo`, trailing newlines break the strict check), redeploy, sync. See `src/app/api/inngest/route.ts`.
+
+## PWA + Push Notifications
+
+**Manifest:** `public/manifest.json` — id="/", scope="/", standalone display, share_target wired to `/dashboard/monitors/new` (prefills keyword from shared title/text/url), 4 shortcuts, screenshots for install prompt.
+
+**Service worker:** `src/app/sw.ts` (Serwist 9.5)
+- Runtime caching layered ON TOP of `defaultCache`:
+  - `NetworkFirst` on `/api/v1/*` (5s timeout, 1h max age)
+  - `NetworkFirst` on `/api/*` GET (4s timeout, 5min max age)
+  - `StaleWhileRevalidate` on `/dashboard/*` shells (24h max age)
+  - `CacheFirst` on `/icons/*`, `/screenshots/*`, branded PNGs (30d max age)
+- Push handler shows notification with title/body/url/tag/icon
+- Notificationclick focuses an existing tab if open at the URL, otherwise opens new
+
+**Push notifications:**
+- Schema: `push_subscriptions` table (user_id, endpoint UNIQUE, p256dh, auth, user_agent, created_at, last_used_at)
+- VAPID keys in env: `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`
+- API: POST `/api/push/{subscribe,unsubscribe,test}` — all auth-required
+- Library: `src/lib/push.ts` — `sendPushToUser(userId, payload)` auto-prunes dead subs (404/410)
+- UI: Settings page → Push Notifications card (`src/components/dashboard/push-notifications-card.tsx`)
+- Delivery: `send-alerts.ts` runs `sendPushToUser` ADDITIVELY on every alert dispatch (not as a channel) — failures logged but never break primary email/slack/teams paths
+
+**alert_channel enum:** email, slack, in_app, teams, push (push value reserved for future per-channel UX, currently delivery is additive)
+
 ## Architecture Rules
 
 - **Auth**: Always verify `userId` from Clerk before database operations
@@ -88,6 +117,11 @@ AI-powered community monitoring SaaS. Tracks 16 platforms (Reddit, Hacker News, 
 - `src/lib/plans.ts` - Plan definitions and tier logic
 - `src/lib/inngest/functions/` - Background jobs
 - `src/lib/ai/prompts.ts` - AI prompts
+- `src/lib/push.ts` - Web Push helper (sendPushToUser, auto-prunes 404/410 subs)
+- `src/app/sw.ts` - Service worker (Serwist) — runtime caching, push handler, notificationclick
+- `src/app/api/push/{subscribe,unsubscribe,test}/route.ts` - Push subscription API
+- `src/components/dashboard/push-notifications-card.tsx` - Settings UI for push toggle
+- `public/manifest.json` - PWA manifest (id="/", scope="/", screenshots, share_target)
 - `src/middleware.ts` - Route protection
 - `src/lib/security/` - Security utilities (sanitize, HMAC, rate-limit)
 - `src/lib/limits.ts` - Plan limits and tier logic

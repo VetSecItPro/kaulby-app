@@ -4,6 +4,7 @@ import { DashboardClientWrapper } from "@/components/dashboard/dashboard-client-
 import { ResponsiveDashboardLayout } from "@/components/dashboard/responsive-dashboard-layout";
 import { RoutePreloader } from "@/components/dashboard/route-preloader";
 import { FloatingAskKaulby } from "@/components/dashboard/floating-ask-kaulby";
+import { AppBadgeSync } from "@/components/shared/app-badge-sync";
 // PWA: Service worker registration handled by @serwist/next (auto-register)
 import { db } from "@/lib/db";
 import { monitors, users } from "@/lib/db/schema";
@@ -102,6 +103,7 @@ export default async function DashboardLayout({
       workspaceRole={workspaceRole}
     >
       <RoutePreloader />
+      <AppBadgeSync />
       <DashboardClientWrapper isNewUser={isNewUser} userName={userName} userPlan={userPlan}>
         {children}
       </DashboardClientWrapper>

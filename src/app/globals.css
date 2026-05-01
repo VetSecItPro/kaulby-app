@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+/* PWA: tell browser to render native scrollbars/form controls in dark mode.
+   Matches the always-dark app theme; eliminates white flash on form focus. */
+html {
+  color-scheme: dark;
+}
+
 @layer utilities {}
 
 @layer base {

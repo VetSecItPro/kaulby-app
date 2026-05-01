@@ -95,6 +95,39 @@ const serwist = new Serwist({
 
 serwist.addEventListeners();
 
+// SW update prompt support: client posts { type: "SKIP_WAITING" } when the user
+// taps "Refresh" in the toast — we activate immediately, then the controllerchange
+// event in the client triggers a one-shot reload.
+self.addEventListener("message", (event) => {
+  if ((event.data as { type?: string } | undefined)?.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+});
+
+// Periodic Background Sync: when the browser fires the 'refresh-dashboard' tag
+// (cadence chosen by browser based on user engagement, ~1×/day for active
+// users), revalidate the dashboard shell + recent results. This pre-warms
+// the SWR cache so opening the app feels instant after a long absence.
+// Limited support (Chrome on Android only); no-op silently elsewhere.
+// 'periodicsync' isn't in the standard ServiceWorkerGlobalScopeEventMap yet —
+// addEventListener is cast to bypass the strict typing.
+(self.addEventListener as (type: string, listener: (event: Event & { tag?: string; waitUntil: (p: Promise<unknown>) => void }) => void) => void)(
+  "periodicsync",
+  (event) => {
+    if (event.tag !== "refresh-dashboard") return;
+    event.waitUntil(
+      (async () => {
+        try {
+          await fetch("/dashboard", { credentials: "include", cache: "reload" });
+          await fetch("/api/aggregations", { credentials: "include", cache: "reload" }).catch(() => undefined);
+        } catch {
+          // Network errors during background sync are non-fatal — try again next tick.
+        }
+      })(),
+    );
+  },
+);
+
 // ---------------------------------------------------------------------------
 // Web Push handlers
 // ---------------------------------------------------------------------------
@@ -111,21 +144,44 @@ self.addEventListener("push", (event) => {
     }
   }
   const title = data.title || "Kaulby";
-  const options: NotificationOptions = {
+  const options: NotificationOptions & { actions?: { action: string; title: string }[] } = {
     body: data.body || "",
     icon: data.icon || "/icon-192.png",
     badge: "/icon-192.png",
     tag: data.tag || "kaulby",
     data: { url: data.url || "/dashboard" },
+    // Action buttons (Chrome/Edge/Android only — iOS Safari ignores them).
+    // 'view' opens the URL like a normal click; 'mark-read' dismisses without
+    // opening a tab, hitting the API in the background.
+    actions: [
+      { action: "view", title: "View" },
+      { action: "mark-read", title: "Mark read" },
+    ],
   };
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
 // Click handler — focus an existing tab if one is open at the target URL,
-// otherwise open a new one. Avoids spawning a new tab on every notification.
+// otherwise open a new one. The 'mark-read' action stays in the SW: hits the
+// API and closes the notification without opening any window.
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const target = (event.notification.data?.url as string | undefined) || "/dashboard";
+
+  if (event.action === "mark-read") {
+    event.waitUntil(
+      fetch("/api/notifications/mark-read-from-push", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: target, tag: event.notification.tag }),
+        credentials: "include",
+      }).catch(() => {
+        // Silent fail — user closed the notification, no UI feedback channel.
+      }),
+    );
+    return;
+  }
+
   event.waitUntil(
     (async () => {
       const all = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
