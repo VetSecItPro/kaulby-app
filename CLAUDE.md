@@ -89,6 +89,13 @@ Installs as a PWA with native push notifications: subscribe in Settings → rece
 
 **alert_channel enum:** email, slack, in_app, teams, push (push value reserved for future per-channel UX, currently delivery is additive)
 
+**Offline mutation queue (Background Sync):**
+- `src/lib/offline-queue.ts` exposes `fetchOrQueue(url, init)` — wraps fetch; on network failure, writes to IndexedDB (`kaulby-offline-queue` / `mutations`) and registers the `replay-mutations` Background Sync tag. Returns synthetic 202 so callers can update UI optimistically.
+- SW `sync` handler drains the queue when connectivity returns. Replays via fetch with idempotent error handling: 2xx/3xx/4xx (except 408/429) → remove; 408/429/5xx/network → re-throw so browser retries.
+- **Server endpoints replayed by the queue MUST be idempotent.** Bookmark POST is (find-or-update). DO NOT route a non-idempotent endpoint (e.g., create-collection) through fetchOrQueue — adopt Idempotency-Key first.
+- Browser support: Chrome/Edge/Android. Firefox/Safari fall back to immediate retry.
+- Wiring real call sites is task #176.
+
 ## Architecture Rules
 
 - **Auth**: Always verify `userId` from Clerk before database operations

@@ -104,6 +104,97 @@ self.addEventListener("message", (event) => {
   }
 });
 
+// Background Sync: drain the IndexedDB mutation queue when the browser
+// fires the 'replay-mutations' tag (after connectivity returns). Each
+// mutation is replayed via fetch; idempotent server endpoints make repeat
+// replays safe.
+//
+// Failure handling:
+//   - 2xx, 3xx, or 4xx (except 408/429): treat as terminal, remove from queue.
+//     4xx is a permanent server-side rejection — looping won't help.
+//   - 408/429/5xx/network error: re-throw so the browser retries the sync
+//     event later with backoff. Mutation stays in the queue.
+//
+// IDB constants must mirror lib/offline-queue.ts.
+const OQ_DB = "kaulby-offline-queue";
+const OQ_STORE = "mutations";
+const OQ_VERSION = 1;
+
+interface QueuedMutationSW {
+  id: string;
+  url: string;
+  method: string;
+  headers: Record<string, string>;
+  body: string | null;
+  createdAt: number;
+}
+
+function oqOpen(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(OQ_DB, OQ_VERSION);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(OQ_STORE)) {
+        const store = db.createObjectStore(OQ_STORE, { keyPath: "id" });
+        store.createIndex("createdAt", "createdAt");
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function oqAll(db: IDBDatabase): Promise<QueuedMutationSW[]> {
+  return new Promise((resolve, reject) => {
+    const t = db.transaction(OQ_STORE, "readonly");
+    const req = t.objectStore(OQ_STORE).getAll();
+    req.onsuccess = () => resolve((req.result as QueuedMutationSW[]) ?? []);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function oqDelete(db: IDBDatabase, id: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const t = db.transaction(OQ_STORE, "readwrite");
+    const req = t.objectStore(OQ_STORE).delete(id);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function replayQueuedMutations(): Promise<void> {
+  const db = await oqOpen();
+  try {
+    const items = (await oqAll(db)).sort((a, b) => a.createdAt - b.createdAt);
+    for (const m of items) {
+      const res = await fetch(m.url, {
+        method: m.method,
+        headers: m.headers,
+        body: m.body ?? undefined,
+        credentials: "include",
+      });
+      const transient = res.status === 408 || res.status === 429 || (res.status >= 500 && res.status < 600);
+      if (transient) {
+        // Re-throw to signal the browser this sync failed; it'll retry later.
+        throw new Error(`Transient ${res.status} replaying ${m.url}`);
+      }
+      // 2xx / 3xx / 4xx (non-transient) → remove. 4xx is a permanent server
+      // rejection (validation, auth) — looping won't help; surface via logs.
+      await oqDelete(db, m.id);
+    }
+  } finally {
+    db.close();
+  }
+}
+
+(self.addEventListener as (type: string, listener: (event: Event & { tag?: string; waitUntil: (p: Promise<unknown>) => void }) => void) => void)(
+  "sync",
+  (event) => {
+    if (event.tag !== "replay-mutations") return;
+    event.waitUntil(replayQueuedMutations());
+  },
+);
+
 // Periodic Background Sync: when the browser fires the 'refresh-dashboard' tag
 // (cadence chosen by browser based on user engagement, ~1×/day for active
 // users), revalidate the dashboard shell + recent results. This pre-warms

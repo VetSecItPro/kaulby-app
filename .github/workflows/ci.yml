@@ -256,7 +256,11 @@ jobs:
         && github.event.pull_request.draft == false
         && github.actor != 'dependabot[bot]'
       ) || github.event_name == 'merge_group'
-    timeout-minutes: 15
+    # Bumped from 15→25min on 2026-05-01: `playwright install --with-deps`
+    # runs apt-get install on Ubuntu mirrors that periodically slow down,
+    # pushing the job past 15min before any actual test runs. 25min gives
+    # the slow-mirror tail enough headroom without bloating typical runs.
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: ./.github/actions/setup-node-pnpm
@@ -267,8 +271,14 @@ jobs:
           name: nextjs-build
           path: .next
 
+      # Split system deps (apt-get) from browser binary so a slow Ubuntu
+      # mirror only blocks the deps step — easier to diagnose, easier to
+      # retry just the failing layer if it times out.
+      - name: Install Playwright system deps
+        run: pnpm exec playwright install-deps chromium
+
       - name: Install Playwright browser (chromium only)
-        run: pnpm exec playwright install --with-deps chromium
+        run: pnpm exec playwright install chromium
 
       - name: Run E2E tests
         # Task 0.3b fix: build job now has NEXT_PUBLIC_* env (Clerk keys + App URL +
