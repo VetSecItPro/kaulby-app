@@ -39,11 +39,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
-  markResultViewed,
   markResultClicked,
-  toggleResultSaved,
-  toggleResultHidden,
 } from "@/app/(dashboard)/dashboard/results/actions";
+import { fetchOrQueue } from "@/lib/offline-queue";
 import { getPlatformBadgeColor, getPlatformDisplayName } from "@/lib/platform-utils";
 import { ExportDialog } from "./export-dialog";
 import { SuggestReplyDrawer } from "./suggest-reply-drawer";
@@ -158,29 +156,43 @@ export const ResultCard = memo(function ResultCard({
     });
   }, [result.id]);
 
+  // Mark-read / save / hide go through fetchOrQueue so a tap on flaky network
+  // is queued in IndexedDB and replayed via Background Sync. Each endpoint is
+  // idempotent (see .github/runbooks/offline-queue.md). UI updates optimistically;
+  // queue replay or live response confirms eventual server state.
   const handleView = useCallback(() => {
-    if (!isViewed) {
-      startTransition(async () => {
-        await markResultViewed(result.id);
-        setIsViewed(true);
-      });
-    }
+    if (isViewed) return;
+    setIsViewed(true);
+    startTransition(async () => {
+      await fetchOrQueue(`/api/results/${result.id}/mark-read`, { method: "POST", body: "{}" });
+    });
   }, [result.id, isViewed]);
 
   const handleToggleSaved = useCallback(() => {
+    const next = !isSaved;
+    setIsSaved(next); // optimistic
     startTransition(async () => {
-      const response = await toggleResultSaved(result.id);
-      if (response.success) {
-        setIsSaved(response.isSaved ?? !isSaved);
+      const res = await fetchOrQueue(`/api/results/${result.id}/save`, {
+        method: "POST",
+        body: JSON.stringify({ saved: next }),
+      });
+      if (!res.ok && res.status !== 202) {
+        // Roll back optimistic update on permanent server error.
+        setIsSaved(!next);
       }
     });
   }, [result.id, isSaved]);
 
   const handleToggleHidden = useCallback(() => {
+    const next = !isHidden;
+    setIsHidden(next); // optimistic
     startTransition(async () => {
-      const response = await toggleResultHidden(result.id);
-      if (response.success) {
-        setIsHidden(response.isHidden ?? !isHidden);
+      const res = await fetchOrQueue(`/api/results/${result.id}/hide`, {
+        method: "POST",
+        body: JSON.stringify({ hidden: next }),
+      });
+      if (!res.ok && res.status !== 202) {
+        setIsHidden(!next);
       }
     });
   }, [result.id, isHidden]);
