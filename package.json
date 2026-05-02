@@ -28,7 +28,9 @@
     "remotion:preview": "cd remotion && npx remotion studio src/index.ts",
     "remotion:render": "cd remotion && npx remotion render src/index.ts ProductDemo ../public/videos/product-demo.mp4 && npx remotion render src/index.ts AIChatDemo ../public/videos/ai-chat-demo.mp4 && npx remotion render src/index.ts ProductDemo ../public/videos/product-demo.webm --codec=vp8 && npx remotion render src/index.ts AIChatDemo ../public/videos/ai-chat-demo.webm --codec=vp8",
     "remotion:posters": "cd remotion && npx remotion still src/index.ts ProductDemo ../public/videos/product-demo-poster.webp --image-format=webp --frame=0 && npx remotion still src/index.ts AIChatDemo ../public/videos/ai-chat-demo-poster.webp --image-format=webp --frame=0",
-    "pwa:audit": "tsx scripts/pwa-audit.ts"
+    "pwa:audit": "tsx scripts/pwa-audit.ts",
+    "marketing-videos": "tsx scripts/marketing-videos/build.ts",
+    "marketing-videos:preview": "remotion studio scripts/marketing-videos/remotion-root.tsx"
   },
   "dependencies": {
     "@clerk/nextjs": "6.39.3",
@@ -85,6 +87,8 @@
   },
   "devDependencies": {
     "@playwright/test": "1.59.1",
+    "@remotion/bundler": "^4.0.455",
+    "@remotion/renderer": "^4.0.455",
     "@types/node": "20.19.30",
     "@types/react": "18.3.27",
     "@types/react-dom": "18.3.7",
@@ -94,7 +98,10 @@
     "drizzle-kit": "0.31.10",
     "eslint": "8.57.1",
     "eslint-config-next": "15.5.14",
+    "ffmpeg-static": "^5.3.0",
+    "playwright": "^1.59.1",
     "postcss": "8.5.12",
+    "remotion": "^4.0.455",
     "serwist": "^9.5.8",
     "tailwindcss": "3.4.19",
     "tsx": "^4.21.0",
