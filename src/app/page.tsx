@@ -17,7 +17,6 @@ import {
   TextReveal,
 } from "@/components/shared/home-animations-lazy";
 import { HeroDashboard } from "@/components/landing/hero-dashboard";
-import { VideoPlayer } from "@/components/landing/video-player";
 import { UseCaseBlocks } from "@/components/landing/use-case-blocks";
 import { TestimonialSection } from "@/components/landing/testimonials";
 import { FeatureTabs } from "@/components/landing/feature-tabs";
@@ -107,13 +106,10 @@ export default function HomePage() {
               <div className="relative" style={{ perspective: "1200px" }}>
                 <div className="md:[transform:rotateX(2deg)] transition-transform duration-500">
                   <div className="absolute -inset-4 bg-teal-500/10 rounded-3xl blur-2xl -z-10" />
-                  <VideoPlayer
-                    mp4Src="/videos/product-overview.mp4"
-                    webmSrc="/videos/product-overview.webm"
-                    poster="/videos/product-overview-poster.webp"
-                    className="shadow-2xl shadow-teal-500/10 rounded-xl overflow-hidden"
-                    fallback={<HeroDashboard />}
-                  />
+                  {/* Production demo video pending — see .github/runbooks/marketing-video-pipeline.md.
+                      HeroDashboard renders the static dashboard mockup until the
+                      Playwright+Remotion pipeline ships its first asset. */}
+                  <HeroDashboard />
                 </div>
               </div>
             </div>
