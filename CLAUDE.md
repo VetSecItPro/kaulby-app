@@ -1,4 +1,70 @@
+# DORMANT - operator directive 2026-08-27
+
+**This repository is not under active development.** Do not spend effort here on baseline work,
+dependency sweeps, CI hardening, audits or refactors unless it is explicitly revived. If you found
+this repo through an estate-wide scan, stop and go no further.
+
+**Standing findings, recorded 2026-08-27 so they are not rediscovered as new:**
+13 dependency pins, 12 of them **unbounded** (`>=X` with no upper bound), which can silently cross a
+major on a fresh install. Has Dependabot, no Renovate.
+
+**A bounding pass was attempted on 2026-08-27 and REVERTED.** `readonly-verifier` caught that it
+downgraded `esbuild` 0.27.4 -> 0.25.12: for a 0.x package the minor is the breaking-change unit, and
+the ceiling was computed from the floor (`>=0.25.0` -> `<0.26`) instead of from the version already
+resolved. The other 11 bounds were correct and verified no-downgrade. Raising the ceiling to `<0.28`
+did not restore 0.27.4 either, because 0.25.12 already satisfied the wider range - restoring it needs
+the FLOOR raised, which is a different change. Given the repo is dormant, the diff was reverted with
+`git checkout` rather than debugged further.
+
+**This repo now carries NO uncommitted dependency diff.** `package.json` and `pnpm-lock.yaml` are
+exactly as at HEAD; the only uncommitted file is a pre-existing `CLAUDE.md` change that was not mine.
+If reviving: the 12 unbounded pins are still there, and the correct bound is one above the higher of
+the floor and the version actually resolved - for 0.x, one above the higher MINOR.
+
+**Dormancy makes these not urgent. It does not make them fixed.** Anything above must be resolved
+before this repo is redeployed or brought back into active work.
+
+To revive: delete this banner and the `.dormant` file at the repo root.
+
+---
+
 # CLAUDE.md - Kaulby
+
+> # ⛔ PROJECT SHELVED — SUNSET 2026-06-03
+> **Kaulby is NOT in active development. Do not resume building, fixing scrapers, or shipping features
+> without an explicit founder decision to revive (see preconditions below).** Everything under this banner
+> is preserved as historical reference, not a to-do list.
+>
+> **Why shelved (one line):** zero paying customers after ~5-6 months; structurally fragile + increasingly
+> litigated data dependency (Reddit killed unauth JSON May 2026 + anti-scrape Rule 8; X pay-per-use; DMCA §1201
+> enforcement). The best-case version of this exact niche — GummySearch ($35K MRR, 10k paying customers,
+> profitable) — was killed by Reddit's API terms Nov 2025. Doubly-variable COGS (scrape + AI) under a flat
+> subscription = worst margin shape; commoditized AI; squeezed $39-149 middle between free (F5Bot) and enterprise.
+> Full validated analysis + citations: **`scraper-audit-2026-06-03.md`** and **`SUNSET.md`** (repo root, local-only).
+>
+> **Revival preconditions (ALL three required before resuming):**
+> 1. A compliant + economically survivable Reddit data path at small scale (the make-or-break — what killed GummySearch).
+> 2. Proven willing-to-pay demand from a sell-first test (real prospects, real money) BEFORE more building.
+> 3. Radically narrowed scope — the only wedge with a pulse is **Reddit-led B2B-SaaS lead-gen** ($39-79,
+>    intent-scored + drafted replies) targeting the orphaned GummySearch base.
+>
+> **Cost teardown — VERIFIED COMPLETE 2026-06-03. Net recurring cost ≈ $0/month.**
+> - ✅ **Inngest** — crons paused (`INNGEST_PAUSED=1` in prod since 2026-04-30) → the expensive scan engine is OFF.
+> - ✅ **Neon** — switched to **Free plan** + **VERIFIED $0/month on the console Billing page** (org "John",
+>   "Current plan" badge). 18 MB DB preserved (under 512 MB cap), all 38 tables intact, compute scales to zero
+>   when idle. Not deleted — reversible. (Free allows 100 projects/org, so no collateral impact on other DBs.)
+> - ✅ **Sentry** Developer (free, confirmed by owner) · **Clerk** free (1 user, cap 10k MAU) ·
+>   **Langfuse** Hobby (free, zero traces) — all confirmed $0.
+> - ➖ **Vercel** team plan left as-is (shared with other VetSecItPro projects; not Kaulby-specific cost).
+> - ✅ Usage-based providers (Apify/OpenRouter/xAI/Serper/Upstash/Resend/PostHog) bill ~$0 at zero usage.
+> - ✅ Polar/Stripe — %-of-sales, zero customers = $0.
+>
+> **FINAL ENTRY.** Nothing further to do on Kaulby unless the founder explicitly revives it per the
+> preconditions above. Code is in git, data is preserved, billing is zeroed, everything is documented here +
+> in `SUNSET.md` + `scraper-audit-2026-06-03.md`. This is the end of the line for this build.
+>
+> ---
+> *Historical product documentation below — accurate as of the sunset, kept for revival reference.*
 
 AI-powered community monitoring SaaS. Tracks 16 platforms (Reddit, Hacker News, Product Hunt, Dev.to, Google Reviews, Trustpilot, App Store, Play Store, YouTube, G2, Yelp, Amazon Reviews, Indie Hackers, GitHub, Hashnode, X/Twitter) for keywords, analyzes sentiment/pain points via AI, sends alerts. Quora is deferred (dropped 2026-04-22 pending Team-tier-only Crawlee reactivation — see `docs/archive/` for cost-audit history).
 
